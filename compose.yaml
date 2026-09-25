@@ -1,7 +1,19 @@
 name: hp2js-cpi
+
+# Rotate container logs so long-running local stacks do not fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
 services:
   postgres:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    logging: *logging
+    # Clean shutdown avoids crash recovery on restart; parallel queries need >64MB shm.
+    stop_grace_period: 30s
+    shm_size: 128mb
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cpi_local}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cpi_local_only}
@@ -15,6 +27,7 @@ services:
       retries: 10
   redis:
     image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    logging: *logging
     command: ['redis-server', '--appendonly', 'yes']
     ports: ['127.0.0.1:16379:6379']
     volumes: ['redis_data:/data']
@@ -24,12 +37,40 @@ services:
       timeout: 3s
       retries: 10
   api:
+    image: hp2js-cpi-api:dev
+    logging: *logging
     build:
       context: .
       dockerfile: docker/api.Dockerfile
       target: development
+    develop:
+      watch:
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./pnpm-workspace.yaml
+        - action: rebuild
+          path: ./.npmrc
+        - action: rebuild
+          path: ./packages/tsconfig
+        - action: rebuild
+          path: ./packages/contracts/package.json
+        - action: rebuild
+          path: ./packages/contracts/tsconfig.json
+        - action: rebuild
+          path: ./apps/api/package.json
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./apps/api/tsconfig.json
+        - action: rebuild
+          path: ./docker/api.Dockerfile
+        - action: rebuild
+          path: ./apps/api/tsconfig.build.json
     init: true
-    command: ['pnpm', '--filter', '@cpi/api', 'dev']
+    command: ['pnpm', '--filter', '@cpi/api', 'dev:container']
     environment:
       NODE_ENV: development
       API_PORT: 3001
@@ -55,12 +96,40 @@ services:
       retries: 15
       start_period: 20s
   web:
+    image: hp2js-cpi-web:dev
+    logging: *logging
     build:
       context: .
       dockerfile: docker/web.Dockerfile
       target: development
+    develop:
+      watch:
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./pnpm-workspace.yaml
+        - action: rebuild
+          path: ./.npmrc
+        - action: rebuild
+          path: ./packages/tsconfig
+        - action: rebuild
+          path: ./packages/contracts/package.json
+        - action: rebuild
+          path: ./packages/contracts/tsconfig.json
+        - action: rebuild
+          path: ./apps/api/package.json
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./apps/web/tsconfig.json
+        - action: rebuild
+          path: ./docker/web.Dockerfile
+        - action: rebuild
+          path: ./apps/web/vite.config.ts
     init: true
-    command: ['pnpm', '--filter', '@cpi/web', 'dev']
+    command: ['pnpm', '--filter', '@cpi/web', 'dev:container']
     environment:
       API_PROXY_TARGET: http://api:3001
     ports: ['127.0.0.1:5180:5180']

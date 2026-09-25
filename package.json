@@ -4,18 +4,18 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.32.0",
   "engines": {
-    "node": ">=24.19.0 <25",
+    "node": ">=24.21.0 <25",
     "pnpm": "10.32.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @cpi/contracts build && pnpm --parallel --filter @cpi/api --filter @cpi/web dev",
+    "dev": "pnpm --filter @cpi/contracts build && pnpm --parallel --filter @cpi/contracts --filter @cpi/api --filter @cpi/web dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm --filter @cpi/contracts build && pnpm -r typecheck",
-    "lint": "eslint .",
+    "typecheck": "pnpm --filter @cpi/contracts build && pnpm -r typecheck && tsc -p e2e/tsconfig.json",
+    "lint": "pnpm --filter @cpi/contracts build && eslint .",
     "test": "pnpm --filter @cpi/contracts build && pnpm -r test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/check-compiler.mjs",
     "services:up": "docker compose up -d --wait postgres redis",
     "docker:up": "docker compose up -d --build --wait",
     "docker:down": "docker compose down",
@@ -25,11 +25,17 @@
     "db:migrate": "pnpm --filter @cpi/api db:migrate",
     "db:seed": "pnpm --filter @cpi/api db:seed",
     "db:reset": "node scripts/reset-local.mjs",
-    "test:smoke": "node scripts/smoke.mjs"
+    "test:smoke": "node scripts/smoke.mjs",
+    "docker:dev": "docker compose up --build --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:prod": "CPI_PRODUCTION=true playwright test"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.13.6",
     "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.12.0",
     "prettier": "3.9.9",
     "typescript": "5.9.3",

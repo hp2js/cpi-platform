@@ -1,9 +1,17 @@
-export interface ReadinessResponse {
-  status: 'ok' | 'degraded';
-  services: { database: 'up' | 'down'; redis: 'up' | 'down' };
-}
+import { z } from 'zod';
 
-export interface ApiErrorBody {
-  message: string;
-  fieldErrors?: Record<string, string>;
-}
+export const readinessSchema = z.object({
+  status: z.enum(['ok', 'degraded']),
+  services: z.object({
+    database: z.enum(['up', 'down']),
+    redis: z.enum(['up', 'down']),
+  }),
+});
+export type ReadinessResponse = z.infer<typeof readinessSchema>;
+export const apiErrorSchema = z.object({
+  message: z.string(),
+  fieldErrors: z.record(z.string(), z.string()).optional(),
+  requestId: z.string().optional(),
+});
+export type ApiErrorBody = z.infer<typeof apiErrorSchema>;
+export const livenessSchema = z.object({ status: z.literal('ok') });

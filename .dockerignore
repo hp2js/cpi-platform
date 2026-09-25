@@ -1,8 +1,27 @@
+# Keep the build context to what images need: smaller uploads, fewer cache busts.
 **/node_modules
 **/dist
+**/coverage
+**/*.tsbuildinfo
+**/.DS_Store
 .git
+.github
+.vscode
+.idea
+
+# Secrets never enter images; the example documents the variables.
 **/.env
 **/.env.*
 !**/.env.example
-coverage
-**/coverage
+
+# Not used inside images.
+docs
+e2e
+scripts
+*.md
+compose*.yaml
+playwright.config.ts
+docker/*.Dockerfile
+artifacts/
+playwright-report/
+test-results/

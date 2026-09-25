@@ -1,17 +1,33 @@
 # Local verification of production images; not a public deployment configuration.
+# Runtime hardening mirrors what a deployment should enforce: immutable root
+# filesystem, no Linux capabilities and no privilege escalation.
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+
 services:
   api:
+    <<: *hardening
+    image: hp2js-cpi-api:prod
     build:
       target: production
+    develop: !reset null
     command: !reset null
     volumes: !reset []
+    tmpfs: ['/tmp']
     environment:
       NODE_ENV: production
   web:
+    <<: *hardening
+    image: hp2js-cpi-web:prod
     build:
       target: production
+    develop: !reset null
     command: !reset null
     volumes: !reset []
+    # Caddy keeps certificates/state in /data and autosaved config in /config.
+    tmpfs: ['/tmp', '/data', '/config']
     environment: !reset {}
     ports: !override ['127.0.0.1:5180:8080']
     healthcheck:

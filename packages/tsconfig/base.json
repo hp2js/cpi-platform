@@ -6,6 +6,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noEmitOnError": true
   }
 }

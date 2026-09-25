@@ -6,9 +6,22 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsc --watch --preserveWatchOutput"
   },
   "devDependencies": {
-    "@cpi/tsconfig": "workspace:*"
+    "@cpi/tsconfig": "workspace:*",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   }
 }

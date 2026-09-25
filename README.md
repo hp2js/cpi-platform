@@ -1,9 +1,8 @@
 # CPI Platform
 
 HP2JS's Adili V3 Track 2 workspace for corruption prevention reporting and review.
-This repository currently provides the development foundation, not the business workflows.
 
-The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product. Linear tracks delivery. This README is the source for setup commands; [the frontend guide](docs/frontend.md) covers implementation patterns.
+The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns.
 
 ## Start with Docker
 
@@ -14,7 +13,7 @@ cp .env.example .env
 docker compose up -d --build --wait
 ```
 
-Open **http://localhost:5180**. The foundation screen includes real API readiness checks and explicitly fictional table/form examples. Source changes in `apps/api/src` and `apps/web/src` reload automatically. Rebuild after changing dependencies, configuration or shared packages.
+Open **http://localhost:5180**. Source changes in `apps/*/src` and `packages/contracts/src` reload automatically. Dependency, lockfile, tsconfig or Dockerfile changes need a rebuild: rerun `pnpm docker:up`, or develop with `pnpm docker:dev`, which rebuilds on those changes (Compose Watch).
 
 | Service       | Local address                          |
 | ------------- | -------------------------------------- |
@@ -24,24 +23,23 @@ Open **http://localhost:5180**. The foundation screen includes real API readines
 | PostgreSQL    | localhost:15432                        |
 | Redis         | localhost:16379                        |
 
-Ports bind to loopback. Project `hp2js-cpi` has its own network and persistent volumes. `.env.example` credentials are for local development only. Never use real institution records or personal data in the foundation.
+Ports bind to loopback, and the `hp2js-cpi` Compose project has its own network and volumes. `.env.example` credentials are for local development only. **Never use real institution records or personal data locally; use synthetic data.**
 
 ## Run applications on your machine
 
-Use the Node version in `.nvmrc` and the pnpm version in `package.json`.
+Use the Node version in `.nvmrc`; Corepack provides the pnpm version pinned in `package.json`.
 
 ```sh
 nvm install
 nvm use
 corepack enable
-corepack prepare pnpm@10.32.0 --activate
 pnpm install --frozen-lockfile
 cp .env.example .env  # first setup only; preserve existing configuration
-pnpm services:up
-pnpm dev
+pnpm services:up      # PostgreSQL and Redis in Docker
+pnpm dev              # contracts, API and web in watch mode
 ```
 
-If Docker applications are already running, first run `docker compose stop api web` to release their ports. `pnpm dev` runs API and web together. PostgreSQL and Redis remain in Docker. The Vite proxy routes `/api` to NestJS without browser CORS configuration.
+If the Docker applications are running, first run `docker compose stop api web` to free their ports. The Vite dev server proxies `/api` to the API, so no CORS configuration is needed.
 
 ## Daily commands
 
@@ -50,33 +48,36 @@ pnpm check            # lint, typecheck, tests, production builds
 pnpm format           # format source and docs
 pnpm format:check     # CI formatting check
 pnpm test:smoke       # running Docker stack: outages, recovery, DB persistence
+pnpm test:e2e         # running dev stack: browser tests (Playwright)
+pnpm test:e2e:prod    # running `docker:prod` stack: adds web-server checks
+pnpm docker:up        # rebuild and start the development stack
+pnpm docker:dev       # development stack with automatic rebuilds
 pnpm docker:logs      # follow application and service logs
 pnpm docker:down      # stop/remove containers; keep data
-pnpm docker:up        # rebuild and start the development stack
 ```
 
-Individual workspaces: `pnpm --filter @cpi/api test`, `pnpm --filter @cpi/web dev`.
+Run a script in one workspace with `pnpm --filter <package> <script>`, for example `pnpm --filter @cpi/api test`.
 
 ## Database workflow
 
 ```sh
-pnpm db:generate     # generate SQL after adding/changing Drizzle schema
+pnpm db:generate     # generate SQL from Drizzle schema changes
 pnpm db:migrate      # apply checked-in migrations to DATABASE_URL
-pnpm db:seed         # fixture entry point
+pnpm db:seed         # load synthetic fixtures
 ```
 
-The schema is intentionally empty until HP2-12 introduces domain tables. Migration and seed commands currently explain this and perform no writes. Never treat an empty seed command as a populated demo database. Synthetic fixtures belong to HP2-28. Commit generated SQL and Drizzle metadata together; review migrations before applying them. Do not use schema push for shared environments.
+- Generate migrations on the host so the files land in the checkout. Commit the generated SQL and Drizzle metadata together, and review migrations before applying them.
+- Do not use schema push against shared environments.
+- To run a database command inside the development API container: `docker compose exec api pnpm --filter @cpi/api db:migrate`.
 
-To run these inside the development API container, use `docker compose exec api pnpm --filter @cpi/api db:migrate` (or `db:seed`). Generate migrations on the host so their files remain in the checkout.
-
-**Destructive local reset** — deletes this project's PostgreSQL and Redis volumes:
+**Destructive local reset.** This deletes this project's PostgreSQL and Redis volumes:
 
 ```sh
 pnpm db:reset --confirm-local-data-loss
 pnpm docker:up
 ```
 
-Ordinary shutdown and rebuild preserve data. Changing database credentials after initialization does not change the existing database users; either alter them deliberately or reset disposable local data.
+Ordinary shutdown and rebuild keep data. Changing database credentials in `.env` does not change an existing database's users: alter them deliberately, or reset disposable local data.
 
 ## Production image verification
 
@@ -85,32 +86,36 @@ pnpm docker:prod
 curl --fail http://localhost:5180/api/health/ready
 ```
 
-This builds a non-root Node API and a non-root Caddy static frontend. Caddy proxies `/api` to the API; no API URL or secret is bundled in browser assets. The Compose override replaces the development services on the same local ports. Return to development with `pnpm docker:up`. Caddy serves SPA deep links, compresses responses, caches fingerprinted assets and exposes `/healthz` on container port 8080. The local configuration uses HTTP; domain/TLS configuration belongs to deployment. See `docker/Caddyfile` and the [Caddy SPA/proxy patterns](https://caddyserver.com/docs/caddyfile/patterns).
+This builds the production images and runs them hardened, on the same local ports as development: non-root, read-only filesystem, no Linux capabilities. Caddy serves the built frontend and proxies `/api` to the API, so no API URL or secret is bundled into browser assets. Return to development with `pnpm docker:up`.
 
-This is a **local production-image check**, not a public deployment specification. Deployment needs environment-managed secrets, TLS, access control, backups and the product's authentication/authorization work. No cloud providers have been selected here.
+This is a **local check of the production images**, not a deployment configuration. Secrets management, TLS, access control and backups belong to deployment.
 
 ## Structure
 
 ```text
-apps/api                 NestJS, Drizzle and Redis wiring; health endpoints
-apps/web                 Vite/React; TanStack Query, Router, Table, Form; shadcn/ui
-packages/contracts       API transport types shared by both applications
+apps/api                 NestJS API
+apps/web                 Vite/React frontend
+packages/contracts       Schemas and types shared by API and web
 packages/tsconfig        Shared strict TypeScript configuration
-scripts                  Local maintenance commands
+scripts                  Local maintenance and verification scripts
+e2e                      Playwright browser tests
 docker                   Development and production images; Caddy config
 docs                     Contributor guides
 ```
 
-Health liveness only reports that the API process responds. Readiness checks both PostgreSQL and Redis and returns **503** if either fails. Connection failures do not reveal credentials. Health endpoints are scaffolding, not authorization boundaries.
+## Conventions
 
-## CI and reproducibility
-
-CI performs a frozen install, formatting, lint, type checking, tests, builds, then starts and probes both Docker variants. Package versions and container digests are pinned. Update them deliberately with a refreshed lockfile and image digests, then run the same checks. Native dependency builds are allowlisted in `pnpm-workspace.yaml`.
+- **Versions are pinned.** Packages are exact, and container images and GitHub Actions are pinned by digest or commit SHA. Dependabot proposes updates; after taking one, run `pnpm check` and the Docker checks above. Keep `.nvmrc` in step with the Node base image.
+- **Each workspace declares the tools its scripts call.** Docker images install only their own app's dependency graph, so an undeclared tool can work on the host and still fail in a container.
+- **Keep Dockerfiles cache-friendly.** Copy manifests and the lockfile before installing, and copy source afterwards.
+- **Native dependency builds are allowlisted** in `pnpm-workspace.yaml`.
+- **CI mirrors local checks.** On failure, Compose logs and Playwright traces are uploaded as the `failure-diagnostics` artifact.
 
 ## Troubleshooting
 
-- **Engine mismatch:** run `nvm use`; Node 20/22 is not the configured runtime.
-- **Port occupied:** inspect `docker compose ps` and other local processes; stop only the conflicting service you own. Ports are fixed in Compose and Vite configuration.
-- **Readiness fails:** inspect `docker compose logs api postgres redis`. Both dependencies must be healthy. Database/cache failures do not make liveness fail.
-- **Changed package/config not reflected in Docker:** rerun `pnpm docker:up`.
-- **Local app cannot connect:** compare `.env` URLs with the host ports above. Inside Docker, services use container names and internal ports instead.
+- **Engine mismatch:** run `nvm use`.
+- **Browsers missing for e2e:** run `pnpm exec playwright install chromium`.
+- **Port occupied:** check `docker compose ps` and other local processes, and stop only the conflicting service you own. Ports are fixed in the Compose and Vite configuration.
+- **Readiness fails (503):** readiness requires both PostgreSQL and Redis; liveness only checks that the API process responds. Inspect `docker compose logs api postgres redis`. The API logs `dependency.failure` events with a sanitized error code. Every API response carries an `X-Request-ID` that matches its log entry.
+- **Changes not reflected in Docker:** rerun `pnpm docker:up`.
+- **Local app cannot connect:** compare the `.env` URLs with the host ports above. Inside Docker, services use container names and internal ports instead.
