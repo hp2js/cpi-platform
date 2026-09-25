@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS development
+FROM node:26.9.0-trixie-slim@sha256:3a771f83944bb763050c23c0225c260638c4b7899e7a72485ef75e5e570499e5 AS development
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 # pnpm version matches "packageManager" in package.json.
@@ -25,7 +25,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1000,gid=1000 \
     pnpm --filter @cpi/api build \
     && pnpm --filter @cpi/api deploy --legacy --prod --store-dir /pnpm/store /home/node/release
 
-FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS production
+FROM node:26.9.0-trixie-slim@sha256:3a771f83944bb763050c23c0225c260638c4b7899e7a72485ef75e5e570499e5 AS production
 ENV NODE_ENV=production
 # The runtime only needs node; package managers are unused attack surface.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
