@@ -1,0 +1,18 @@
+# Local verification of production images; not a public deployment configuration.
+services:
+  api:
+    build:
+      target: production
+    command: !reset null
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+  web:
+    build:
+      target: production
+    command: !reset null
+    volumes: !reset []
+    environment: !reset {}
+    ports: !override ['127.0.0.1:5180:8080']
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:8080/healthz']

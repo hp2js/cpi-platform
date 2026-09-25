@@ -1,0 +1,38 @@
+{
+  "name": "cpi-platform",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.32.0",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": "10.32.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @cpi/contracts build && pnpm --parallel --filter @cpi/api --filter @cpi/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm --filter @cpi/contracts build && pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm --filter @cpi/contracts build && pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "services:up": "docker compose up -d --wait postgres redis",
+    "docker:up": "docker compose up -d --build --wait",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=100",
+    "docker:prod": "docker compose -f compose.yaml -f compose.production.yaml up -d --build --wait",
+    "db:generate": "pnpm --filter @cpi/api db:generate",
+    "db:migrate": "pnpm --filter @cpi/api db:migrate",
+    "db:seed": "pnpm --filter @cpi/api db:seed",
+    "db:reset": "node scripts/reset-local.mjs",
+    "test:smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.11.0",
+    "globals": "17.12.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1"
+  }
+}
