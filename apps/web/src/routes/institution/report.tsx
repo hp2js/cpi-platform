@@ -1,0 +1,313 @@
+import type { EvidenceItem, ReportBundle } from '@cpi/contracts';
+import { useStore } from '@tanstack/react-form';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  getRouteApi,
+  Link,
+  useBlocker,
+  useNavigate,
+} from '@tanstack/react-router';
+import { ArrowRight, CircleCheck, Lock, Save } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { PageHeader } from '@/components/page-header';
+import { QueryView } from '@/components/query-view';
+import { WorkflowStateBadge } from '@/components/status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { answersFor } from '@/features/reporting/answers';
+import {
+  MilestoneCard,
+  QuestionField,
+} from '@/features/reporting/report-fields';
+import {
+  obligationIdFor,
+  reportKeys,
+  reportQuery,
+  saveDraft,
+  uploadEvidence,
+} from '@/features/reporting/queries';
+import { useSavedDefaultsForm } from '@/features/reporting/use-report-form';
+import { useSession } from '@/features/session/use-session';
+import { isApiError } from '@/lib/api';
+import {
+  formatCalendarDate,
+  formatDateRange,
+  formatDateTime,
+} from '@/lib/dates';
+
+const route = getRouteApi('/authed/institution/reports/$periodId');
+
+function ReportEditor({
+  bundle,
+  obligationId,
+  onReload,
+}: {
+  bundle: ReportBundle;
+  obligationId: string;
+  onReload: () => void;
+}) {
+  const form = bundle.form!;
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { form: reportForm, markSaved } = useSavedDefaultsForm(
+    answersFor(form, bundle.baseline.milestones, bundle.draft?.answers),
+  );
+  const [version, setVersion] = useState(bundle.draft?.version ?? 0);
+  const [savedAt, setSavedAt] = useState(bundle.draft?.savedAt ?? null);
+  const dirty = useStore(reportForm.store, (state) => state.isDirty);
+
+  const save = useMutation({
+    mutationFn: () => saveDraft(obligationId, version, reportForm.state.values),
+    onSuccess: async (draft) => {
+      setVersion(draft.version);
+      setSavedAt(draft.savedAt);
+      markSaved(draft.answers);
+      await queryClient.invalidateQueries({ queryKey: ['obligations'] });
+    },
+  });
+
+  const upload = useCallback(
+    async (file: File, category: string): Promise<EvidenceItem> => {
+      const item = await uploadEvidence(obligationId, file, category);
+      queryClient.setQueryData<ReportBundle>(
+        reportKeys.bundle(obligationId),
+        (current) =>
+          current && { ...current, evidence: [...current.evidence, item] },
+      );
+      return item;
+    },
+    [obligationId, queryClient],
+  );
+
+  useBlocker({
+    shouldBlockFn: () =>
+      dirty &&
+      !save.isPending &&
+      !window.confirm('You have unsaved changes. Leave without saving?'),
+    enableBeforeUnload: () => dirty,
+  });
+
+  async function reviewAndSubmit() {
+    if (dirty) await save.mutateAsync();
+    await queryClient.invalidateQueries({
+      queryKey: reportKeys.bundle(obligationId),
+    });
+    await navigate({
+      to: '/institution/reports/$periodId/review',
+      params: { periodId: bundle.period.id },
+    });
+  }
+
+  const conflict = isApiError(save.error, 409);
+  return (
+    <form
+      className="grid gap-8"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <p className="text-sm" aria-live="polite">
+          {save.isPending ? (
+            'Saving…'
+          ) : dirty ? (
+            <span className="font-medium">Unsaved changes</span>
+          ) : savedAt ? (
+            <span className="inline-flex items-center gap-1.5">
+              <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+              Draft saved {formatDateTime(savedAt)}
+            </span>
+          ) : (
+            'Not saved yet'
+          )}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={save.isPending || !dirty}
+          >
+            <Save aria-hidden="true" />
+            Save draft
+          </Button>
+          <Button
+            type="button"
+            disabled={save.isPending}
+            onClick={() => void reviewAndSubmit()}
+          >
+            Review and submit
+            <ArrowRight aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+
+      {save.isError && (
+        <Alert variant="destructive">
+          <AlertTitle>
+            {conflict
+              ? 'This draft changed elsewhere'
+              : 'Your draft was not saved'}
+          </AlertTitle>
+          <AlertDescription>
+            <p>{save.error.message} Your entries on this page are kept.</p>
+            {conflict && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={onReload}
+              >
+                Load the latest saved draft
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {form.sections.map((section) => (
+        <section
+          key={section.id}
+          aria-labelledby={`section-${section.id}`}
+          className="grid gap-5"
+        >
+          <div>
+            <h2 id={`section-${section.id}`} className="text-lg font-semibold">
+              {section.title}
+            </h2>
+            {section.description && (
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                {section.description}
+              </p>
+            )}
+          </div>
+          {section.questions.map((question) =>
+            question.type === 'milestone_progress' ? (
+              <div key={question.id} className="grid gap-4">
+                {bundle.baseline.milestones.map((milestone) => (
+                  <MilestoneCard
+                    key={milestone.id}
+                    form={reportForm}
+                    milestone={milestone}
+                    evidence={bundle.evidence}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div
+                key={question.id}
+                className="rounded-lg border bg-card p-4 sm:p-5"
+              >
+                <QuestionField
+                  form={reportForm}
+                  question={question}
+                  evidence={bundle.evidence}
+                  upload={upload}
+                />
+              </div>
+            ),
+          )}
+        </section>
+      ))}
+    </form>
+  );
+}
+
+function Unavailable({ bundle }: { bundle: ReportBundle }) {
+  const receipt = bundle.receipts.at(-1);
+  if (receipt) {
+    return (
+      <Alert>
+        <Lock aria-hidden="true" />
+        <AlertTitle>
+          Revision {receipt.revision} was submitted and cannot be changed
+        </AlertTitle>
+        <AlertDescription>
+          <p>
+            Submitted revisions are kept exactly as received. If the reviewing
+            officer asks for clarification, you will be able to submit a new
+            revision.
+          </p>
+          <Link
+            to="/institution/receipts/$receiptId"
+            params={{ receiptId: receipt.id }}
+            className={buttonVariants({
+              variant: 'outline',
+              size: 'sm',
+              className: 'mt-2',
+            })}
+          >
+            View receipt
+          </Link>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return (
+    <Alert>
+      <AlertTitle>
+        {bundle.form
+          ? 'This report is not open yet'
+          : 'The report form has not been published yet'}
+      </AlertTitle>
+      <AlertDescription>
+        {bundle.form
+          ? `Reporting opens after the quarter ends on ${formatCalendarDate(bundle.period.endsOn)}.`
+          : 'You will be notified when the administrator publishes it. Nothing is needed from you yet.'}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+export function ReportPage() {
+  const { periodId } = route.useParams();
+  const session = useSession();
+  const obligationId = obligationIdFor(
+    session.user.institutionId ?? '',
+    periodId,
+  );
+  const bundle = useQuery(reportQuery(obligationId));
+  const [generation, setGeneration] = useState(0);
+  return (
+    <div className="grid gap-6">
+      <PageHeader
+        eyebrow={
+          bundle.data
+            ? `${bundle.data.period.label} · ${formatDateRange(bundle.data.period.startsOn, bundle.data.period.endsOn)}`
+            : undefined
+        }
+        title="Quarterly progress report"
+        description={
+          bundle.data && (
+            <span className="flex flex-wrap items-center gap-2">
+              <WorkflowStateBadge
+                state={bundle.data.obligation.state}
+                audience="institution"
+              />
+              Due {formatDateTime(bundle.data.period.submissionDeadline)}
+            </span>
+          )
+        }
+      />
+      <QueryView query={bundle} label="report">
+        {(data) =>
+          data.editable ? (
+            <ReportEditor
+              key={generation}
+              bundle={data}
+              obligationId={obligationId}
+              onReload={() =>
+                void bundle
+                  .refetch()
+                  .then(() => setGeneration((value) => value + 1))
+              }
+            />
+          ) : (
+            <Unavailable bundle={data} />
+          )
+        }
+      </QueryView>
+    </div>
+  );
+}

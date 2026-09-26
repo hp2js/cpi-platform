@@ -45,7 +45,7 @@ Add primitives from the repo root:
 pnpm dlx shadcn@4.21.0 add <component> -c apps/web
 ```
 
-Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. Avoid installing another form/router/table system alongside the agreed libraries.
+Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. The pinned CLI currently installs an unrelated npm package named `cn` and imports `cn` from it: remove it with `pnpm --filter @cpi/web remove cn` and point the imports back to `@/lib/utils`. If it offers to overwrite an existing component, decline and write the new wrapper by hand (as done for `alert-dialog.tsx`). Avoid installing another form/router/table system alongside the agreed libraries.
 
 ## Adili palette source
 

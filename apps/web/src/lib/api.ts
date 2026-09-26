@@ -15,6 +15,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Resolves an API path against the page origin; Node-environment tests have no page. */
+export function apiUrl(path: string) {
+  return new URL(path, globalThis.location?.origin ?? 'http://localhost');
+}
+
 export function isApiError(error: unknown, status?: number): error is ApiError {
   return (
     error instanceof ApiError &&
@@ -37,8 +42,7 @@ export async function request<T>(
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (json !== undefined) headers.set('Content-Type', 'application/json');
-  // Resolve against the page origin so the same call works in the browser and in tests.
-  const response = await fetch(new URL(path, window.location.origin), {
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers,
     body: json === undefined ? init.body : JSON.stringify(json),

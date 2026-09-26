@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet } from '@tanstack/react-router';
-import { House } from 'lucide-react';
+import { History, House } from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
@@ -10,6 +10,12 @@ import { SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/institution', label: 'Home', icon: House, exact: true },
+  {
+    to: '/institution/receipts',
+    label: 'Receipts',
+    icon: History,
+    exact: false,
+  },
 ] as const satisfies readonly NavItem[];
 
 /**

@@ -45,3 +45,11 @@ export function toSession(user: MockUser): Session {
     },
   };
 }
+
+/** Resolve the caller and require one of the given roles, or throw 403. */
+export function requireRole(...roles: MockUser['role'][]): MockUser {
+  const user = requireUser();
+  if (!roles.includes(user.role))
+    throw apiError(403, 'You do not have access to this action.', 'forbidden');
+  return user;
+}

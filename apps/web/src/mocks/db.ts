@@ -1,4 +1,16 @@
-import type { Cycle, Institution } from '@cpi/contracts';
+import type {
+  Attestation,
+  Cycle,
+  Decision,
+  Draft,
+  EvidenceItem,
+  FormVersion,
+  Institution,
+  Receipt,
+  ReportAnswers,
+} from '@cpi/contracts';
+import { initialBaselines, type MockBaseline } from './seed/baselines';
+import { initialForm } from './seed/forms';
 import {
   institutions,
   initialAssignments,
@@ -28,6 +40,39 @@ export interface MockObligation {
   lastReceiptAt: string | null;
 }
 
+export interface MockEvidence extends EvidenceItem {
+  institutionId: string;
+  obligationId: string;
+}
+
+/** The public shape of a stored evidence record, without its internal scope keys. */
+export function toEvidenceItem(item: MockEvidence): EvidenceItem {
+  return {
+    id: item.id,
+    category: item.category,
+    fileName: item.fileName,
+    mimeType: item.mimeType,
+    sizeBytes: item.sizeBytes,
+    sha256: item.sha256,
+    uploadedAt: item.uploadedAt,
+    uploadedBy: item.uploadedBy,
+  };
+}
+
+/** An immutable submitted revision (PRD §7.2). */
+export interface MockSubmission {
+  id: string;
+  obligationId: string;
+  revision: number;
+  formVersionId: string;
+  answers: ReportAnswers;
+  evidenceIds: string[];
+  attestation: Attestation;
+  receiptId: string;
+  finalizedAt: string | null;
+  finalizedBy: string | null;
+}
+
 export interface MockDb {
   schemaVersion: number;
   runId: string;
@@ -38,9 +83,19 @@ export interface MockDb {
   assignments: typeof initialAssignments;
   obligations: MockObligation[];
   session: { userId: string; expired: boolean } | null;
+  forms: FormVersion[];
+  baselines: MockBaseline[];
+  drafts: Draft[];
+  evidence: MockEvidence[];
+  submissions: MockSubmission[];
+  receipts: Receipt[];
+  decisions: (Decision & { submissionId: string })[];
+  /** Idempotency-Key → receipt ID, so a retried submit returns the same receipt (AT06). */
+  idempotency: Record<string, string>;
+  sequence: number;
 }
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -64,7 +119,22 @@ function seed(): MockDb {
       })),
     ),
     session: null,
+    forms: [structuredClone(initialForm)],
+    baselines: structuredClone(initialBaselines),
+    drafts: [],
+    evidence: [],
+    submissions: [],
+    receipts: [],
+    decisions: [],
+    idempotency: {},
+    sequence: 0,
   };
+}
+
+/** Monotonic identifier, stable across reloads of the persisted store. */
+export function nextId(prefix: string) {
+  db.sequence += 1;
+  return `${prefix}-${String(db.sequence).padStart(4, '0')}`;
 }
 
 function storage(): Storage | undefined {

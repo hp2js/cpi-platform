@@ -5,7 +5,7 @@ import {
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { request } from '@/lib/api';
+import { apiUrl, request } from '@/lib/api';
 import { signInAs } from '@/test/render-app';
 
 describe('mock API scope (PRD §5.2, AT01, AT02)', () => {
@@ -56,7 +56,7 @@ describe('mock API scope (PRD §5.2, AT01, AT02)', () => {
       code: 'unauthenticated',
     });
     await signInAs('supervisor');
-    await fetch(new URL('/api/__mock/expire-session', window.location.origin), {
+    await fetch(apiUrl('/api/__mock/expire-session'), {
       method: 'POST',
     });
     await expect(

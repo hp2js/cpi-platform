@@ -137,37 +137,85 @@ export const adminRoute = createRoute({
   ),
 });
 
+const page = <T extends Record<string, unknown>>(
+  loader: () => Promise<T>,
+  name: keyof T & string,
+) => lazyRouteComponent(loader, name);
+
 const institutionHomeRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: '/',
-  component: lazyRouteComponent(
+  component: page(
     () => import('@/routes/institution/home'),
     'InstitutionHomePage',
   ),
 });
+const institutionReportRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'reports/$periodId',
+  component: page(() => import('@/routes/institution/report'), 'ReportPage'),
+});
+const institutionSubmitRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'reports/$periodId/review',
+  component: page(
+    () => import('@/routes/institution/review'),
+    'ReviewSubmitPage',
+  ),
+});
+const institutionReceiptsRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'receipts',
+  component: page(
+    () => import('@/routes/institution/receipts'),
+    'ReceiptsPage',
+  ),
+});
+const institutionReceiptRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'receipts/$receiptId',
+  component: page(() => import('@/routes/institution/receipt'), 'ReceiptPage'),
+});
+
 const officerHomeRoute = createRoute({
   getParentRoute: () => officerRoute,
   path: '/',
-  component: lazyRouteComponent(
-    () => import('@/routes/officer/home'),
-    'OfficerHomePage',
-  ),
+  // Optional so plain links to /officer work; the open queue is the default view.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: 'open' | 'finalized' } =>
+    search.tab === 'finalized' ? { tab: 'finalized' } : {},
+  component: page(() => import('@/routes/officer/home'), 'OfficerHomePage'),
 });
+const officerReviewRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'reviews/$submissionId',
+  component: page(() => import('@/routes/officer/review'), 'ReviewPage'),
+});
+
 const supervisorHomeRoute = createRoute({
   getParentRoute: () => supervisorRoute,
   path: '/',
-  component: lazyRouteComponent(
+  component: page(
     () => import('@/routes/supervisor/home'),
     'SupervisorHomePage',
   ),
 });
+
 const adminHomeRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '/',
-  component: lazyRouteComponent(
-    () => import('@/routes/admin/home'),
-    'AdminHomePage',
-  ),
+  component: page(() => import('@/routes/admin/home'), 'AdminHomePage'),
+});
+const adminFormsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'forms',
+  component: page(() => import('@/routes/admin/forms'), 'FormsPage'),
+});
+const adminFormRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'forms/$formId',
+  component: page(() => import('@/routes/admin/form-editor'), 'FormEditorPage'),
 });
 
 export const routeTree = rootRoute.addChildren([
@@ -176,10 +224,16 @@ export const routeTree = rootRoute.addChildren([
   forbiddenRoute,
   sessionExpiredRoute,
   authedRoute.addChildren([
-    institutionRoute.addChildren([institutionHomeRoute]),
-    officerRoute.addChildren([officerHomeRoute]),
+    institutionRoute.addChildren([
+      institutionHomeRoute,
+      institutionReportRoute,
+      institutionSubmitRoute,
+      institutionReceiptsRoute,
+      institutionReceiptRoute,
+    ]),
+    officerRoute.addChildren([officerHomeRoute, officerReviewRoute]),
     supervisorRoute.addChildren([supervisorHomeRoute]),
-    adminRoute.addChildren([adminHomeRoute]),
+    adminRoute.addChildren([adminHomeRoute, adminFormsRoute, adminFormRoute]),
   ]),
 ]);
 
