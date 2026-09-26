@@ -8,9 +8,18 @@ export class ApiError extends Error {
     message: string,
     readonly fieldErrors: Record<string, string> = {},
     readonly requestId?: string,
+    /** Machine-readable reason from the error envelope, e.g. `session_expired`. */
+    readonly code?: string,
   ) {
     super(message);
   }
+}
+
+export function isApiError(error: unknown, status?: number): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    (status === undefined || error.status === status)
+  );
 }
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
@@ -28,7 +37,8 @@ export async function request<T>(
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (json !== undefined) headers.set('Content-Type', 'application/json');
-  const response = await fetch(path, {
+  // Resolve against the page origin so the same call works in the browser and in tests.
+  const response = await fetch(new URL(path, window.location.origin), {
     ...init,
     headers,
     body: json === undefined ? init.body : JSON.stringify(json),
@@ -47,7 +57,8 @@ export async function request<T>(
         ? parsed.data.message
         : 'The service is unavailable. Please try again.',
       parsed.success ? parsed.data.fieldErrors : {},
-      requestId,
+      requestId ?? (parsed.success ? parsed.data.requestId : undefined),
+      parsed.success ? parsed.data.code : undefined,
     );
   }
   const text = await response.text();

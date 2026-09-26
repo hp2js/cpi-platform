@@ -17,6 +17,8 @@
   --color-accent: #f1e8f4;
   --color-accent-foreground: var(--primary);
   --color-destructive: #b42318;
+  --color-success: #e6f4ea;
+  --color-success-foreground: #14532d;
   --color-border: #ddd5e1;
   --color-input: #b7adbc;
   --color-ring: var(--primary);
