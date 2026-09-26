@@ -10,6 +10,20 @@ import type {
   ReportAnswers,
 } from '@cpi/contracts';
 import { initialBaselines, type MockBaseline } from './seed/baselines';
+import {
+  approvedPlanReference,
+  initialRisks,
+  seedFoundations,
+  type MockFoundationReview,
+  type MockFoundationVersion,
+  type MockRisk,
+} from './seed/planning';
+import type {
+  AuditEvent,
+  Amendment,
+  Clarification,
+  Role,
+} from '@cpi/contracts';
 import { initialForm } from './seed/forms';
 import {
   institutions,
@@ -40,6 +54,11 @@ export interface MockObligation {
   lastReceiptAt: string | null;
 }
 
+export type MockDecision = Decision & {
+  submissionId: string;
+  obligationId: string;
+};
+
 export interface MockEvidence extends EvidenceItem {
   institutionId: string;
   obligationId: string;
@@ -56,6 +75,9 @@ export function toEvidenceItem(item: MockEvidence): EvidenceItem {
     sha256: item.sha256,
     uploadedAt: item.uploadedAt,
     uploadedBy: item.uploadedBy,
+    version: item.version,
+    predecessorId: item.predecessorId,
+    supersededBy: item.supersededBy,
   };
 }
 
@@ -89,16 +111,71 @@ export interface MockDb {
   evidence: MockEvidence[];
   submissions: MockSubmission[];
   receipts: Receipt[];
-  decisions: (Decision & { submissionId: string })[];
+  decisions: MockDecision[];
   /** Idempotency-Key → receipt ID, so a retried submit returns the same receipt (AT06). */
   idempotency: Record<string, string>;
   sequence: number;
+  clarifications: Omit<Clarification, 'overdue' | 'extensionRequired'>[];
+  reopenings: {
+    obligationId: string;
+    submissionId: string;
+    reason: string;
+    by: string;
+    at: string;
+  }[];
+  notifications: MockNotification[];
+  deliveries: MockDelivery[];
+  emailSink: {
+    id: string;
+    to: string;
+    subject: string;
+    body: string;
+    deliveredAt: string;
+  }[];
+  /** Development control: when set, the demo email sink rejects deliveries (AT12). */
+  emailFailureMode: boolean;
+  audit: AuditEvent[];
+  planReference: string;
+  risks: MockRisk[];
+  amendments: Amendment[];
+  foundationVersions: MockFoundationVersion[];
+  foundationReviews: MockFoundationReview[];
 }
 
-const SCHEMA_VERSION = 2;
+export interface MockNotification {
+  id: string;
+  eventId: string;
+  recipientId: string;
+  eventType: string;
+  title: string;
+  body: string;
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface MockDelivery {
+  id: string;
+  /** Unique event–recipient–channel key: a replayed event cannot deliver twice (FR11). */
+  key: string;
+  eventType: string;
+  recipientId: string;
+  recipientName: string;
+  recipientEmail: string;
+  recipientRole: Role;
+  subject: string;
+  body: string;
+  status: 'queued' | 'delivered' | 'retrying' | 'failed';
+  attempts: number;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+}
+
+const SCHEMA_VERSION = 3;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
+  const foundations = seedFoundations();
   return {
     schemaVersion: SCHEMA_VERSION,
     runId: 'run-001',
@@ -122,12 +199,24 @@ function seed(): MockDb {
     forms: [structuredClone(initialForm)],
     baselines: structuredClone(initialBaselines),
     drafts: [],
-    evidence: [],
     submissions: [],
     receipts: [],
     decisions: [],
     idempotency: {},
     sequence: 0,
+    clarifications: [],
+    reopenings: [],
+    notifications: [],
+    deliveries: [],
+    emailSink: [],
+    emailFailureMode: false,
+    audit: [],
+    planReference: approvedPlanReference,
+    risks: structuredClone(initialRisks),
+    amendments: [],
+    foundationVersions: foundations.versions,
+    foundationReviews: [],
+    evidence: foundations.evidence,
   };
 }
 

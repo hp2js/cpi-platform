@@ -5,6 +5,7 @@ import { validateForm, periodLocked } from '../services/forms';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { requireRole, requireUser } from '../services/session';
+import { audit, notify, usersWithRole } from '../services/events';
 
 function issuesAsFieldErrors(issues: { path: string; message: string }[]) {
   const fieldErrors: Record<string, string> = {};
@@ -80,7 +81,7 @@ export const formHandlers = [
   }),
   http.post('/api/forms/:formId/publish', async ({ params }) => {
     await networkDelay();
-    requireRole('administrator');
+    const user = requireRole('administrator');
     const form = getDb().forms.find(
       (candidate) => candidate.id === params.formId,
     );
@@ -111,6 +112,24 @@ export const formHandlers = [
             (id) => !form.periodIds.includes(id),
           );
       }
+      audit(
+        db,
+        user,
+        'form.publish',
+        { type: 'form', id: form.id, version: form.version },
+        `Version ${form.version} for ${form.periodIds.length} period(s)`,
+      );
+      notify(
+        db,
+        `${form.id}:published`,
+        'form.published',
+        [...usersWithRole('institution'), ...usersWithRole('officer')],
+        {
+          title: `Reporting form version ${form.version} published`,
+          body: 'The quarterly progress report form is available for the assigned periods.',
+          link: null,
+        },
+      );
     });
     return HttpResponse.json(form);
   }),

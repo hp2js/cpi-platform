@@ -1,4 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router';
+import { InboxLink } from '@/components/inbox-link';
 import { LayoutDashboard } from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -44,7 +45,10 @@ export function SupervisorLayout() {
               ))}
             </ul>
           </nav>
-          <AccountMenu session={session} />
+          <div className="flex items-center gap-1">
+            <InboxLink to="/supervisor/inbox" />
+            <AccountMenu session={session} />
+          </div>
         </div>
       </header>
       <main id="main" className="mx-auto max-w-screen-2xl px-4 py-6 sm:px-6">

@@ -76,6 +76,9 @@ describe('provisional implementation credit (FR08)', () => {
       revision: 1,
       decidedBy: 'Officer',
       decidedAt: '2026-10-02T09:00:00+03:00',
+      id: `dec-${code}`,
+      carriedForwardFrom: null,
+      supersededAt: null as string | null,
     });
     const partial = scoreSummary(
       60,
@@ -107,6 +110,30 @@ describe('provisional implementation credit (FR08)', () => {
       ],
       1,
     );
+    // A superseded decision never counts: only the active decision per milestone does.
+    const superseded = {
+      ...decide('M-01', 'accepted'),
+      id: 'old',
+      supersededAt: '2026-10-02T08:00:00+03:00',
+    };
+    const withHistory = scoreSummary(
+      60,
+      milestones,
+      answers,
+      ['ev-1'],
+      [
+        superseded,
+        decide('M-01', 'rejected'),
+        decide('M-02', 'accepted'),
+        decide('M-03', 'accepted'),
+        decide('M-04', 'accepted'),
+      ],
+      1,
+    );
+    expect(withHistory.reviewed).toMatchObject({
+      status: 'calculated',
+      points: '45.00',
+    });
     expect(all.reviewed).toMatchObject({
       status: 'calculated',
       fraction: { numerator: 3, denominator: 4 },

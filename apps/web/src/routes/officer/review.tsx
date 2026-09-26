@@ -9,7 +9,17 @@ import type {
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
-import { ArrowLeft, CircleCheck, CircleX, FileText, Lock } from 'lucide-react';
+import {
+  ArrowLeft,
+  CircleCheck,
+  CircleX,
+  FileText,
+  History,
+  Lock,
+  MessageCircleQuestion,
+  RefreshCcw,
+} from 'lucide-react';
+import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { FlagList, WorkflowStateBadge } from '@/components/status';
@@ -26,21 +36,29 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { ClarificationCard } from '@/features/clarifications/clarification-card';
+import { invalidateEvents } from '@/features/events/queries';
 import {
   evidenceCategoryLabel,
   formatBytes,
 } from '@/features/reporting/answers';
 import {
+  carryForward,
   finalizeReview,
   invalidateReviews,
   recordDecision,
+  reopenReview,
+  requestClarification,
   reviewKeys,
   reviewQuery,
 } from '@/features/review/queries';
 import { ComponentScoreValue } from '@/features/review/score-display';
+import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
@@ -54,6 +72,24 @@ const basisLabel = {
   not_claimed: 'Not claimed complete',
 } as const;
 
+/** Store a returned bundle and refresh the lists and events that depend on it. */
+function useReviewMutation<T>(
+  bundle: ReviewBundle,
+  action: (value: T) => Promise<ReviewBundle>,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: action,
+    onSuccess: async (next) => {
+      queryClient.setQueryData(reviewKeys.detail(bundle.submissionId), next);
+      await Promise.all([
+        invalidateReviews(queryClient),
+        invalidateEvents(queryClient),
+      ]);
+    },
+  });
+}
+
 function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
   return (
     <section
@@ -62,7 +98,8 @@ function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="score-heading" className="font-semibold">
-          Implementation result for {bundle.item.periodLabel}
+          Implementation result for {bundle.item.periodLabel}, revision{' '}
+          {bundle.item.revision}
         </h2>
         <p className="text-xs text-muted-foreground">
           {bundle.score.profileName}
@@ -89,6 +126,46 @@ function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
         </div>
       </dl>
     </section>
+  );
+}
+
+function Revisions({ bundle }: { bundle: ReviewBundle }) {
+  if (bundle.revisions.length < 2) return null;
+  const latest = Math.max(
+    ...bundle.revisions.map((revision) => revision.revision),
+  );
+  return (
+    <nav
+      aria-label="Revisions"
+      className="flex flex-wrap items-center gap-2 text-sm"
+    >
+      <History className="size-4 text-muted-foreground" aria-hidden="true" />
+      <span className="text-muted-foreground">Revisions:</span>
+      {bundle.revisions.map((revision) =>
+        revision.submissionId === bundle.submissionId ? (
+          <span
+            key={revision.submissionId}
+            aria-current="page"
+            className="rounded-md bg-accent px-2 py-1 font-medium text-accent-foreground"
+          >
+            r{revision.revision}{' '}
+            {revision.revision === latest ? '(latest)' : ''} ·{' '}
+            {formatDateTime(revision.receivedAt)}
+          </span>
+        ) : (
+          <Link
+            key={revision.submissionId}
+            to="/officer/reviews/$submissionId"
+            params={{ submissionId: revision.submissionId }}
+            className="rounded-md border px-2 py-1 hover:bg-accent"
+          >
+            r{revision.revision}{' '}
+            {revision.revision === latest ? '(latest)' : ''} ·{' '}
+            {formatDateTime(revision.receivedAt)}
+          </Link>
+        ),
+      )}
+    </nav>
   );
 }
 
@@ -161,6 +238,12 @@ function Evidence({
               <span className="font-medium">
                 {item?.fileName ?? 'File not attached to this revision'}
               </span>
+              {item && item.version > 1 && (
+                <span className="text-muted-foreground">
+                  {' '}
+                  (version {item.version})
+                </span>
+              )}
               <span className="block text-muted-foreground">
                 Cited: {reference.passage || 'no passage given'}
               </span>
@@ -190,18 +273,14 @@ function DecisionForm({
   milestone: Milestone;
   decision: Decision | undefined;
 }) {
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: (value: { outcome: 'accepted' | 'rejected'; reason: string }) =>
+  const mutation = useReviewMutation(
+    bundle,
+    (value: { outcome: 'accepted' | 'rejected'; reason: string }) =>
       recordDecision(bundle.submissionId, milestone.code, {
         ...value,
         revision: bundle.item.revision,
       }),
-    onSuccess: async (next) => {
-      queryClient.setQueryData(reviewKeys.detail(bundle.submissionId), next);
-      await invalidateReviews(queryClient);
-    },
-  });
+  );
   const form = useForm({
     defaultValues: {
       outcome: decision?.outcome ?? '',
@@ -325,11 +404,69 @@ function DecisionForm({
         </Button>
         {decision && (
           <span className="text-xs text-muted-foreground" aria-live="polite">
-            Saved by {decision.decidedBy}, {formatDateTime(decision.decidedAt)}
+            {decision.carriedForwardFrom
+              ? 'Confirmed from the earlier revision'
+              : 'Saved'}{' '}
+            by {decision.decidedBy}, {formatDateTime(decision.decidedAt)}
           </span>
         )}
       </div>
     </form>
+  );
+}
+
+/** Earlier decision for this milestone, and whether it may be carried forward (PRD §7.3, AT27). */
+function PriorDecision({
+  bundle,
+  milestone,
+  current,
+}: {
+  bundle: ReviewBundle;
+  milestone: Milestone;
+  current: Decision | undefined;
+}) {
+  const previous = bundle.prior?.decisions.find(
+    (decision) => decision.milestoneId === milestone.id,
+  );
+  const change = bundle.prior?.changes[milestone.id];
+  const mutation = useReviewMutation(bundle, () =>
+    carryForward(bundle.submissionId, milestone.code, bundle.item.revision),
+  );
+  if (!bundle.prior || !previous || current) return null;
+  return (
+    <div className="grid gap-2 rounded-md border border-dashed p-3 text-sm">
+      {change === 'changed' ? (
+        <p className="flex items-start gap-1.5 font-medium">
+          <RefreshCcw className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          Changed since revision {bundle.prior.revision}: needs a new review.
+        </p>
+      ) : (
+        <p>Unchanged since revision {bundle.prior.revision}.</p>
+      )}
+      <p className="text-muted-foreground">
+        Earlier: {previous.outcome === 'accepted' ? 'accepted' : 'rejected'} by{' '}
+        {previous.decidedBy}
+        {previous.reason ? ` (“${previous.reason}”)` : ''}.
+      </p>
+      {change === 'unchanged' && bundle.canDecide && (
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-auto py-1.5 text-left whitespace-normal"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate(undefined)}
+          >
+            Confirm earlier decision for revision {bundle.item.revision}
+          </Button>
+          {mutation.isError && (
+            <p role="alert" className="mt-1 text-destructive">
+              {mutation.error.message}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -367,9 +504,20 @@ function MilestoneReview({
   const basis = bundle.score.provisionalCredits.find(
     (credit) => credit.milestoneId === milestone.id,
   )?.basis;
-  const column = 'grid content-start gap-2 p-4';
+  const change = bundle.prior?.changes[milestone.id];
+  const column = 'grid min-w-0 content-start gap-2 p-4';
   const heading =
     'text-xs font-semibold tracking-wide text-muted-foreground uppercase';
+  const status = decision
+    ? decision.outcome === 'accepted'
+      ? 'Accepted'
+      : 'Rejected'
+    : change === 'changed' &&
+        bundle.prior?.decisions.some(
+          (earlier) => earlier.milestoneId === milestone.id,
+        )
+      ? 'Needs re-review'
+      : 'Awaiting your decision';
   return (
     <article
       aria-labelledby={`m-${milestone.code}`}
@@ -380,13 +528,7 @@ function MilestoneReview({
           <span className="text-muted-foreground">{milestone.code}</span>{' '}
           {milestone.title}
         </h3>
-        <span className="text-sm">
-          {decision
-            ? decision.outcome === 'accepted'
-              ? 'Accepted'
-              : 'Rejected'
-            : 'Awaiting your decision'}
-        </span>
+        <span className="text-sm">{status}</span>
       </header>
       <div className="grid divide-y lg:grid-cols-4 lg:divide-x lg:divide-y-0">
         <section className={column} aria-label="Claim">
@@ -408,8 +550,14 @@ function MilestoneReview({
         </section>
         <section className={column} aria-label="Decision">
           <h4 className={heading}>Decision</h4>
+          <PriorDecision
+            bundle={bundle}
+            milestone={milestone}
+            current={decision}
+          />
           {bundle.canDecide ? (
             <DecisionForm
+              key={decision?.id ?? 'new'}
               bundle={bundle}
               milestone={milestone}
               decision={decision}
@@ -469,7 +617,7 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
         {bundle.evidence.map((item) => (
           <li key={item.id} className="text-muted-foreground">
             <span className="font-medium text-foreground">{item.fileName}</span>{' '}
-            · {evidenceCategoryLabel[item.category]} ·{' '}
+            · {evidenceCategoryLabel[item.category]} · version {item.version} ·{' '}
             {formatBytes(item.sizeBytes)} · SHA-256 {item.sha256.slice(0, 12)}…
           </li>
         ))}
@@ -478,15 +626,151 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
   );
 }
 
-function Finalize({ bundle }: { bundle: ReviewBundle }) {
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: () => finalizeReview(bundle.submissionId, bundle.item.revision),
-    onSuccess: async (next) => {
-      queryClient.setQueryData(reviewKeys.detail(bundle.submissionId), next);
-      await invalidateReviews(queryClient);
+interface ClarificationDraft {
+  code: string | null;
+  label: string;
+  selected: boolean;
+  question: string;
+  evidence: string;
+}
+
+/** Targeted clarification: one question per criterion, without deleting accepted evidence (FR09). */
+function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<ClarificationDraft[]>(() => [
+    ...bundle.milestones.map((milestone) => ({
+      code: milestone.code,
+      label: `${milestone.code} ${milestone.title}`,
+      selected: false,
+      question: '',
+      evidence: '',
+    })),
+    {
+      code: null,
+      label: 'The report as a whole',
+      selected: false,
+      question: '',
+      evidence: '',
     },
-  });
+  ]);
+  const mutation = useReviewMutation(bundle, () =>
+    requestClarification(bundle.submissionId, {
+      revision: bundle.item.revision,
+      items: items
+        .filter((item) => item.selected)
+        .map((item) => ({
+          milestoneCode: item.code,
+          question: item.question,
+          requestedEvidence: item.evidence,
+        })),
+    }),
+  );
+  const selected = items.filter((item) => item.selected);
+  const invalid =
+    selected.length === 0 ||
+    selected.some((item) => item.question.trim().length < 10);
+  const update = (index: number, patch: Partial<ClarificationDraft>) =>
+    setItems((current) =>
+      current.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    );
+  if (!open) {
+    return (
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <MessageCircleQuestion aria-hidden="true" />
+        Request clarification
+      </Button>
+    );
+  }
+  return (
+    <section
+      aria-labelledby="clarify-heading"
+      className="grid gap-4 rounded-lg border bg-card p-5"
+    >
+      <div>
+        <h2 id="clarify-heading" className="font-semibold">
+          Request clarification
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Choose the criteria you are questioning. Decisions already recorded
+          stay in the history; the institution will have seven calendar days to
+          respond.
+        </p>
+      </div>
+      <ul className="grid gap-3">
+        {items.map((item, index) => (
+          <li key={item.label} className="grid gap-2 rounded-md border p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`clarify-${index}`}
+                checked={item.selected}
+                onCheckedChange={(checked) =>
+                  update(index, { selected: checked === true })
+                }
+              />
+              <Label htmlFor={`clarify-${index}`} className="font-normal">
+                {item.label}
+              </Label>
+            </div>
+            {item.selected && (
+              <div className="grid gap-2 pl-6 md:grid-cols-2">
+                <div className="grid gap-1">
+                  <Label htmlFor={`clarify-${index}-question`}>Question</Label>
+                  <Textarea
+                    id={`clarify-${index}-question`}
+                    value={item.question}
+                    onChange={(event) =>
+                      update(index, { question: event.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label htmlFor={`clarify-${index}-evidence`}>
+                    Evidence requested (optional)
+                  </Label>
+                  <Input
+                    id={`clarify-${index}-evidence`}
+                    value={item.evidence}
+                    onChange={(event) =>
+                      update(index, { evidence: event.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {mutation.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {mutation.error.message}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          disabled={invalid || mutation.isPending}
+          onClick={() => mutation.mutate(undefined)}
+        >
+          {mutation.isPending
+            ? 'Sending…'
+            : `Send ${selected.length || ''} question${selected.length === 1 ? '' : 's'}`}
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        {invalid && selected.length > 0 && (
+          <p className="self-center text-sm text-muted-foreground">
+            Each question needs at least 10 characters.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Finalize({ bundle }: { bundle: ReviewBundle }) {
+  const mutation = useReviewMutation(bundle, () =>
+    finalizeReview(bundle.submissionId, bundle.item.revision),
+  );
   const undecided = bundle.milestones.filter(
     (milestone) =>
       !bundle.decisions.some(
@@ -495,6 +779,9 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
   );
   const rejected = bundle.decisions.filter(
     (decision) => decision.outcome === 'rejected',
+  );
+  const openClarification = bundle.clarifications.some(
+    (clarification) => clarification.status === 'open',
   );
   return (
     <section
@@ -518,12 +805,18 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
           </AlertTitle>
           <AlertDescription>
             {mutation.error.message}
+            {isApiError(mutation.error) &&
+              mutation.error.code === 'seed_unconfirmed' && (
+                <Link
+                  to="/officer/institutions/$institutionId"
+                  params={{ institutionId: bundle.item.institutionId }}
+                  className="mt-1 block font-medium underline"
+                >
+                  Open {bundle.item.institutionId} baselines to confirm
+                </Link>
+              )}
             {isApiError(mutation.error, 409) && (
-              <Link
-                to="/officer"
-                search={{ tab: 'open' }}
-                className="mt-1 block font-medium underline"
-              >
+              <Link to="/officer" className="mt-1 block font-medium underline">
                 Return to the queue to open the latest revision
               </Link>
             )}
@@ -533,7 +826,11 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button disabled={undecided.length > 0 || mutation.isPending}>
+            <Button
+              disabled={
+                undecided.length > 0 || openClarification || mutation.isPending
+              }
+            >
               {mutation.isPending ? 'Finalizing…' : 'Finalize review'}
             </Button>
           </AlertDialogTrigger>
@@ -551,18 +848,68 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Keep reviewing</AlertDialogCancel>
-              <AlertDialogAction onClick={() => mutation.mutate()}>
+              <AlertDialogAction onClick={() => mutation.mutate(undefined)}>
                 Finalize
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {undecided.length > 0 && (
+        {openClarification ? (
           <p className="text-sm text-muted-foreground">
-            Record a decision for{' '}
-            {undecided.map((milestone) => milestone.code).join(', ')} first.
+            A clarification is open; finalize after the institution responds.
           </p>
+        ) : (
+          undecided.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Record or confirm a decision for{' '}
+              {undecided.map((milestone) => milestone.code).join(', ')} first.
+            </p>
+          )
         )}
+      </div>
+    </section>
+  );
+}
+
+/** Controlled reopen before annual publication: a new decision version with a reason (§7.4). */
+function Reopen({ bundle }: { bundle: ReviewBundle }) {
+  const [reason, setReason] = useState('');
+  const mutation = useReviewMutation(bundle, () =>
+    reopenReview(bundle.submissionId, reason),
+  );
+  return (
+    <section
+      aria-labelledby="reopen-heading"
+      className="grid gap-3 rounded-lg border bg-card p-5"
+    >
+      <h2 id="reopen-heading" className="font-semibold">
+        Reopen this review
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Reopening keeps every earlier decision in the history and tells the
+        institution the review is open again.
+      </p>
+      <div className="grid gap-1.5">
+        <Label htmlFor="reopen-reason">Reason for reopening</Label>
+        <Textarea
+          id="reopen-reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </div>
+      {mutation.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {mutation.error.message}
+        </p>
+      )}
+      <div>
+        <Button
+          variant="outline"
+          disabled={reason.trim().length < 10 || mutation.isPending}
+          onClick={() => mutation.mutate(undefined)}
+        >
+          Reopen with this reason
+        </Button>
       </div>
     </section>
   );
@@ -570,6 +917,7 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
 
 export function ReviewPage() {
   const { submissionId } = route.useParams();
+  const session = useSession();
   const review = useQuery(reviewQuery(submissionId));
   return (
     <div className="grid gap-6">
@@ -596,7 +944,6 @@ export function ReviewPage() {
         actions={
           <Link
             to="/officer"
-            search={{ tab: 'open' }}
             className={buttonVariants({ variant: 'outline' })}
           >
             <ArrowLeft aria-hidden="true" />
@@ -605,38 +952,109 @@ export function ReviewPage() {
         }
       />
       <QueryView query={review} label="submission">
-        {(bundle) => (
-          <div className="grid gap-6">
-            {bundle.finalizedAt && (
-              <Alert>
-                <Lock aria-hidden="true" />
-                <AlertTitle>Finalized</AlertTitle>
-                <AlertDescription>
-                  Finalized by {bundle.finalizedBy},{' '}
-                  {formatDateTime(bundle.finalizedAt)}. Decisions are read-only.
-                </AlertDescription>
-              </Alert>
-            )}
-            <ScorePanel bundle={bundle} />
-            <section
-              aria-labelledby="milestones-heading"
-              className="grid gap-4"
-            >
-              <h2 id="milestones-heading" className="text-lg font-semibold">
-                Milestones in the locked baseline
-              </h2>
-              {bundle.milestones.map((milestone) => (
-                <MilestoneReview
-                  key={milestone.id}
-                  bundle={bundle}
-                  milestone={milestone}
-                />
+        {(bundle) => {
+          const latest = Math.max(
+            ...bundle.revisions.map((revision) => revision.revision),
+          );
+          const obsolete = bundle.item.revision < latest;
+          const openClarification = bundle.clarifications.some(
+            (clarification) => clarification.status === 'open',
+          );
+          return (
+            <div className="grid gap-6">
+              <Revisions bundle={bundle} />
+              {obsolete && (
+                <Alert>
+                  <History aria-hidden="true" />
+                  <AlertTitle>You are viewing an earlier revision</AlertTitle>
+                  <AlertDescription>
+                    It is kept exactly as received and cannot be decided or
+                    finalized. Open the latest revision to continue.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {bundle.finalizedAt && (
+                <Alert>
+                  <Lock aria-hidden="true" />
+                  <AlertTitle>Finalized</AlertTitle>
+                  <AlertDescription>
+                    Finalized by {bundle.finalizedBy},{' '}
+                    {formatDateTime(bundle.finalizedAt)}. Decisions are
+                    read-only unless the review is reopened.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {bundle.prior && (
+                <Alert>
+                  <RefreshCcw aria-hidden="true" />
+                  <AlertTitle>
+                    Revision {bundle.item.revision} responds to a clarification
+                  </AlertTitle>
+                  <AlertDescription>
+                    {
+                      Object.values(bundle.prior.changes).filter(
+                        (change) => change === 'changed',
+                      ).length
+                    }{' '}
+                    milestone(s) changed since revision {bundle.prior.revision}{' '}
+                    and need a new review. Unchanged decisions carry forward
+                    only when you confirm them.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {bundle.reopenings.map((reopening) => (
+                <p key={reopening.at} className="text-sm text-muted-foreground">
+                  Reopened by {reopening.by}, {formatDateTime(reopening.at)}:{' '}
+                  {reopening.reason}
+                </p>
               ))}
-            </section>
-            <OtherAnswers bundle={bundle} />
-            {bundle.canDecide && <Finalize bundle={bundle} />}
-          </div>
-        )}
+              <ScorePanel bundle={bundle} />
+              {bundle.clarifications.length > 0 && (
+                <section
+                  aria-labelledby="clarifications-heading"
+                  className="grid gap-3"
+                >
+                  <h2
+                    id="clarifications-heading"
+                    className="text-lg font-semibold"
+                  >
+                    Clarifications
+                  </h2>
+                  {bundle.clarifications.map((clarification) => (
+                    <ClarificationCard
+                      key={clarification.id}
+                      clarification={clarification}
+                      audience="officer"
+                    />
+                  ))}
+                </section>
+              )}
+              <section
+                aria-labelledby="milestones-heading"
+                className="grid gap-4"
+              >
+                <h2 id="milestones-heading" className="text-lg font-semibold">
+                  Milestones in the locked baseline
+                </h2>
+                {bundle.milestones.map((milestone) => (
+                  <MilestoneReview
+                    key={milestone.id}
+                    bundle={bundle}
+                    milestone={milestone}
+                  />
+                ))}
+              </section>
+              <OtherAnswers bundle={bundle} />
+              {bundle.canDecide && !openClarification && (
+                <RequestClarification bundle={bundle} />
+              )}
+              {bundle.canDecide && <Finalize bundle={bundle} />}
+              {session.user.role === 'officer' &&
+                bundle.finalizedAt &&
+                !obsolete && <Reopen bundle={bundle} />}
+            </div>
+          );
+        }}
       </QueryView>
     </div>
   );

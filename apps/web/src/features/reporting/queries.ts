@@ -10,6 +10,7 @@ import {
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { request } from '@/lib/api';
+import { uploadWithProgress } from '@/lib/upload';
 
 /** Obligation IDs combine institution and period, e.g. DEMO-001:FY2026-27-Q1. */
 export const obligationIdFor = (institutionId: string, periodId: string) =>
@@ -66,18 +67,24 @@ export const saveDraft = (
     json: { baseVersion, answers },
   });
 
+/** Uploads a file (optionally replacing an earlier version) with progress reporting. */
 export const uploadEvidence = (
   obligationId: string,
   file: File,
   category: string,
+  onProgress?: (fraction: number) => void,
+  replaces?: string,
 ) => {
   const body = new FormData();
   body.append('file', file);
   body.append('category', category);
-  return request(`${path(obligationId)}/evidence`, evidenceItemSchema, {
-    method: 'POST',
+  if (replaces) body.append('replaces', replaces);
+  return uploadWithProgress(
+    `${path(obligationId)}/evidence`,
     body,
-  });
+    evidenceItemSchema,
+    onProgress,
+  );
 };
 
 /** The idempotency key is reused on retry so a timed-out submit cannot create a second revision. */

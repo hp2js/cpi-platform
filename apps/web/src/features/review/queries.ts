@@ -1,4 +1,5 @@
 import {
+  type ClarificationRequest,
   reviewBundleSchema,
   reviewQueueSchema,
   type DecisionRequest,
@@ -58,3 +59,34 @@ export async function invalidateReviews(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ['obligations'] }),
   ]);
 }
+
+export const carryForward = (
+  submissionId: string,
+  milestoneCode: string,
+  revision: number,
+) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/decisions/${encodeURIComponent(milestoneCode)}/carry-forward`,
+    reviewBundleSchema,
+    {
+      method: 'POST',
+      json: { revision },
+    },
+  );
+
+export const requestClarification = (
+  submissionId: string,
+  clarification: ClarificationRequest,
+) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/clarifications`,
+    reviewBundleSchema,
+    { method: 'POST', json: clarification },
+  );
+
+export const reopenReview = (submissionId: string, reason: string) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/reopen`,
+    reviewBundleSchema,
+    { method: 'POST', json: { reason } },
+  );

@@ -55,3 +55,35 @@ export function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/** Points every reference to a replaced file at its new version. */
+export function replaceEvidence(
+  answers: ReportAnswers,
+  fromId: string,
+  toId: string,
+): ReportAnswers {
+  const questions: ReportAnswers['questions'] = {};
+  for (const [id, value] of Object.entries(answers.questions)) {
+    questions[id] =
+      value && typeof value === 'object'
+        ? {
+            ...value,
+            evidenceIds: value.evidenceIds.map((evidenceId) =>
+              evidenceId === fromId ? toId : evidenceId,
+            ),
+          }
+        : value;
+  }
+  const milestones: ReportAnswers['milestones'] = {};
+  for (const [id, response] of Object.entries(answers.milestones)) {
+    milestones[id] = {
+      ...response,
+      evidence: response.evidence.map((reference) =>
+        reference.evidenceId === fromId
+          ? { ...reference, evidenceId: toId }
+          : reference,
+      ),
+    };
+  }
+  return { questions, milestones };
+}

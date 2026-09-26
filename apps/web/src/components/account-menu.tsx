@@ -1,7 +1,7 @@
 import type { Session } from '@cpi/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,7 +45,8 @@ export function AccountMenu({
               'text-primary-foreground hover:bg-white/10 hover:text-primary-foreground',
           )}
         >
-          <span className="min-w-0">
+          <UserRound className="size-5 shrink-0 sm:hidden" aria-hidden="true" />
+          <span className="hidden min-w-0 sm:block">
             <span className="block truncate text-sm font-medium">
               {user.displayName}
             </span>
@@ -61,7 +62,10 @@ export function AccountMenu({
             </span>
           </span>
           <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
-          <span className="sr-only">Account menu</span>
+          <span className="sr-only sm:hidden">
+            Account menu for {user.displayName}
+          </span>
+          <span className="sr-only max-sm:hidden">Account menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

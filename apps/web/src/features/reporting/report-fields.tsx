@@ -25,7 +25,12 @@ function useReportFormType(initial: ReportAnswers) {
 }
 export type ReportForm = ReturnType<typeof useReportFormType>;
 
-export type UploadFn = (file: File, category: string) => Promise<EvidenceItem>;
+export type UploadFn = (
+  file: File,
+  category: string,
+  onProgress: (fraction: number) => void,
+  replaces?: string,
+) => Promise<EvidenceItem>;
 
 /**
  * TanStack Form cannot tell `milestones.<id>` from `milestones.<id>.output` when ids are record
@@ -157,24 +162,37 @@ function UploadButton({
   upload,
   onUploaded,
   disabled,
+  replaces,
+  label = 'Upload a file',
 }: {
   category: string;
   upload: UploadFn;
   onUploaded: (item: EvidenceItem) => void;
   disabled?: boolean;
+  /** Evidence ID this upload replaces; the server records a new version. */
+  replaces?: string;
+  label?: string;
 }) {
   const inputId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<
     | { state: 'idle' }
-    | { state: 'uploading'; name: string }
+    | { state: 'uploading'; name: string; progress: number }
     | { state: 'error'; message: string; file: File }
   >({ state: 'idle' });
 
   async function send(file: File) {
-    setStatus({ state: 'uploading', name: file.name });
+    setStatus({ state: 'uploading', name: file.name, progress: 0 });
     try {
-      onUploaded(await upload(file, category));
+      // A retry of a completed upload returns the same record; it is never duplicated (FR06).
+      const item = await upload(
+        file,
+        category,
+        (progress) =>
+          setStatus({ state: 'uploading', name: file.name, progress }),
+        replaces,
+      );
+      onUploaded(item);
       setStatus({ state: 'idle' });
     } catch (error) {
       const message = isApiError(error)
@@ -203,18 +221,34 @@ function UploadButton({
         />
         <Label
           htmlFor={inputId}
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs peer-focus-visible:outline-2 peer-focus-visible:outline-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 hover:bg-accent"
+          className={
+            replaces
+              ? 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm font-medium text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 hover:bg-accent'
+              : 'inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs peer-focus-visible:outline-2 peer-focus-visible:outline-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 hover:bg-accent'
+          }
         >
           <Upload className="size-4" aria-hidden="true" />
-          Upload a file
+          {label}
         </Label>
-        <span className="text-xs text-muted-foreground">
-          PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB
-        </span>
+        {!replaces && (
+          <span className="text-xs text-muted-foreground">
+            PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB
+          </span>
+        )}
       </div>
-      <p aria-live="polite" className="text-sm">
-        {status.state === 'uploading' && `Uploading ${status.name}…`}
-      </p>
+      {status.state === 'uploading' && (
+        <div className="grid max-w-sm gap-1">
+          <progress
+            className="h-2 w-full accent-primary"
+            value={status.progress}
+            max={1}
+            aria-label={`Uploading ${status.name}`}
+          />
+          <p aria-live="polite" className="text-xs text-muted-foreground">
+            Uploading {status.name}… {Math.round(status.progress * 100)}%
+          </p>
+        </div>
+      )}
       {status.state === 'error' && (
         <div
           role="alert"
@@ -343,8 +377,11 @@ export function QuestionField({
               evidenceIds: [],
               unavailable: null,
             }) as EvidenceAnswer;
+            // Only current versions are offered; replaced files stay in the record as history.
             const files = evidence.filter(
-              (item) => item.category === question.evidenceCategory,
+              (item) =>
+                item.category === question.evidenceCategory &&
+                !item.supersededBy,
             );
             const set = (next: Partial<EvidenceAnswer>) =>
               field.handleChange({ ...answer, ...next });
@@ -377,6 +414,17 @@ export function QuestionField({
                           aria-label={`Include ${item.fileName} in this report`}
                         />
                         <EvidenceFile item={item} />
+                        <div className="ml-auto">
+                          <UploadButton
+                            category={item.category}
+                            upload={upload}
+                            disabled={disabled}
+                            replaces={item.id}
+                            label="Replace"
+                            // The editor swaps every reference to the replaced file.
+                            onUploaded={() => undefined}
+                          />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -458,6 +506,7 @@ function EvidenceReferences({
   milestone: Milestone;
   evidence: EvidenceItem[];
 }) {
+  const current = evidence.filter((item) => !item.supersededBy);
   const name = `milestones.${milestone.id}.evidence` as const;
   const id = fieldDomId(name);
   return (
@@ -480,13 +529,13 @@ function EvidenceReferences({
               Expected: {milestone.evidenceExpectation} Select the files that
               support this claim and say where.
             </p>
-            {evidence.length === 0 ? (
+            {current.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Upload committee minutes above to reference them here.
               </p>
             ) : (
               <ul className="grid gap-2">
-                {evidence.map((item) => {
+                {current.map((item) => {
                   const reference = references.find(
                     (candidate) => candidate.evidenceId === item.id,
                   );

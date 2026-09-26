@@ -14,7 +14,8 @@ import { QueryView } from '@/components/query-view';
 import { WorkflowStateBadge } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { answersFor } from '@/features/reporting/answers';
+import { answersFor, replaceEvidence } from '@/features/reporting/answers';
+import { ClarificationCard } from '@/features/clarifications/clarification-card';
 import {
   MilestoneCard,
   QuestionField,
@@ -67,16 +68,51 @@ function ReportEditor({
   });
 
   const upload = useCallback(
-    async (file: File, category: string): Promise<EvidenceItem> => {
-      const item = await uploadEvidence(obligationId, file, category);
+    async (
+      file: File,
+      category: string,
+      onProgress: (fraction: number) => void,
+      replaces?: string,
+    ): Promise<EvidenceItem> => {
+      const item = await uploadEvidence(
+        obligationId,
+        file,
+        category,
+        onProgress,
+        replaces,
+      );
       queryClient.setQueryData<ReportBundle>(
         reportKeys.bundle(obligationId),
-        (current) =>
-          current && { ...current, evidence: [...current.evidence, item] },
+        (current) => {
+          if (!current) return current;
+          const evidence = current.evidence.some(
+            (existing) => existing.id === item.id,
+          )
+            ? current.evidence
+            : [
+                ...current.evidence.map((existing) =>
+                  existing.id === replaces
+                    ? { ...existing, supersededBy: item.id }
+                    : existing,
+                ),
+                item,
+              ];
+          return { ...current, evidence };
+        },
       );
+      // A replacement keeps every claim pointing at the current version of the file.
+      if (replaces && replaces !== item.id) {
+        const next = replaceEvidence(
+          reportForm.state.values,
+          replaces,
+          item.id,
+        );
+        reportForm.setFieldValue('questions', next.questions);
+        reportForm.setFieldValue('milestones', next.milestones);
+      }
       return item;
     },
-    [obligationId, queryClient],
+    [obligationId, queryClient, reportForm],
   );
 
   useBlocker({
@@ -118,6 +154,8 @@ function ReportEditor({
               <CircleCheck className="size-4 text-primary" aria-hidden="true" />
               Draft saved {formatDateTime(savedAt)}
             </span>
+          ) : bundle.draft ? (
+            'Draft prepared from your last submitted revision'
           ) : (
             'Not saved yet'
           )}
@@ -142,6 +180,23 @@ function ReportEditor({
         </div>
       </div>
 
+      {bundle.clarifications
+        .filter((clarification) => clarification.status === 'open')
+        .map((clarification) => (
+          <ClarificationCard
+            key={clarification.id}
+            clarification={clarification}
+            audience="institution"
+          />
+        ))}
+      {bundle.obligation.state === 'clarification_requested' && (
+        <p className="text-sm text-muted-foreground">
+          This draft starts from your last submitted revision. Change only what
+          the clarification asks about; unchanged answers keep their earlier
+          review. Submitting creates a new revision and keeps your earlier
+          receipt.
+        </p>
+      )}
       {save.isError && (
         <Alert variant="destructive">
           <AlertTitle>

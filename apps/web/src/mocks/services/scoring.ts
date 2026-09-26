@@ -92,8 +92,10 @@ export function scoreSummary(
             .reduce((sum, milestone) => sum + milestone.weight, 0),
           denominator,
         });
+  // Only active decisions on this revision count; superseded versions are history.
   const current = decisions.filter(
-    (decision) => decision.revision === revision,
+    (decision) =>
+      decision.revision === revision && decision.supersededAt === null,
   );
   const allDecided =
     denominator > 0 &&

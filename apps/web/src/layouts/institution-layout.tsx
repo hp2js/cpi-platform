@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
+import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
-import { History, House } from 'lucide-react';
+import {
+  FolderOpen,
+  History,
+  House,
+  ListChecks,
+  MessageCircleQuestion,
+} from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
@@ -10,6 +17,19 @@ import { SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/institution', label: 'Home', icon: House, exact: true },
+  { to: '/institution/plan', label: 'Plan', icon: ListChecks, exact: false },
+  {
+    to: '/institution/foundations',
+    label: 'Foundations',
+    icon: FolderOpen,
+    exact: false,
+  },
+  {
+    to: '/institution/clarifications',
+    label: 'Clarifications',
+    icon: MessageCircleQuestion,
+    exact: false,
+  },
   {
     to: '/institution/receipts',
     label: 'Receipts',
@@ -35,7 +55,10 @@ export function InstitutionLayout() {
           <Link to="/institution" aria-label="Institution home">
             <Brand />
           </Link>
-          <AccountMenu session={session} />
+          <div className="flex items-center gap-1">
+            <InboxLink to="/institution/inbox" />
+            <AccountMenu session={session} />
+          </div>
         </div>
         <div className="mx-auto max-w-5xl px-4 pt-3 pb-1 sm:px-6">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">

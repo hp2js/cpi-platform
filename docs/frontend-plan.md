@@ -1,6 +1,6 @@
 # Frontend implementation plan
 
-Status: approved to start, under team review · Progress: Phases 0–1 complete (26 September 2026) · Scope: `apps/web` against a mocked API · Sources: PRD v1.1 (`docs/HP2JS — Adili-V3-Track-2-PRD.md`), Linear project _Adili V3 — Track 2_.
+Status: approved to start, under team review · Progress: Phases 0–2 complete (26 September 2026) · Scope: `apps/web` against a mocked API · Sources: PRD v1.1 (`docs/HP2JS — Adili-V3-Track-2-PRD.md`), Linear project _Adili V3 — Track 2_.
 
 This plan builds the complete P0 frontend for all four roles before the backend exists. A mock API stands in for the server and behaves like one: it enforces role scope, versions, deadlines and conflicts, so the UI is built against realistic responses rather than happy-path fixtures. When the real API lands, the mock is switched off and the screens stay.
 

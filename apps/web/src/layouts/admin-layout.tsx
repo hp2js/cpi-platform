@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router';
-import { FileText, Gauge, Menu } from 'lucide-react';
+import { FileText, Gauge, Mail, Menu, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -23,6 +23,13 @@ const sections = [
   {
     heading: 'Forms & scoring',
     items: [{ to: '/admin/forms', label: 'Reporting forms', icon: FileText }],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { to: '/admin/notifications', label: 'Notifications', icon: Mail },
+      { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
+    ],
   },
 ] as const satisfies readonly { heading: string; items: readonly NavItem[] }[];
 

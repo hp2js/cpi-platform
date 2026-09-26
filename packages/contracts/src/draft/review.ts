@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { institutionIdSchema, instantSchema } from './common.js';
 import { obligationFlagSchema, workflowStateSchema } from './institutions.js';
 import { formVersionSchema } from './forms.js';
+import { clarificationSchema } from './clarifications.js';
 import {
   evidenceItemSchema,
   milestoneSchema,
@@ -58,6 +59,7 @@ export const scoreSummarySchema = z.object({
 export type ScoreSummary = z.infer<typeof scoreSummarySchema>;
 
 export const decisionSchema = z.object({
+  id: z.string(),
   milestoneId: z.string(),
   outcome: z.enum(['accepted', 'rejected']),
   reason: z.string(),
@@ -65,6 +67,10 @@ export const decisionSchema = z.object({
   revision: z.number().int().positive(),
   decidedBy: z.string(),
   decidedAt: instantSchema,
+  /** Set when an unchanged decision was explicitly confirmed against a newer revision (§7.3). */
+  carriedForwardFrom: z.string().nullable(),
+  /** Decisions are append-only; a replaced or reopened decision keeps its record. */
+  supersededAt: instantSchema.nullable(),
 });
 export type Decision = z.infer<typeof decisionSchema>;
 
@@ -113,5 +119,27 @@ export const reviewBundleSchema = z.object({
   finalizedBy: z.string().nullable(),
   /** Whether the caller may record decisions (assigned officer only; supervisors read). */
   canDecide: z.boolean(),
+  /** Every decision version for this obligation, including superseded ones. */
+  history: z.array(decisionSchema),
+  /** The previous revision's decisions and whether each milestone's dependencies changed. */
+  prior: z
+    .object({
+      revision: z.number().int().positive(),
+      decisions: z.array(decisionSchema),
+      changes: z.record(z.string(), z.enum(['changed', 'unchanged'])),
+    })
+    .nullable(),
+  revisions: z.array(
+    z.object({
+      revision: z.number().int().positive(),
+      submissionId: z.string(),
+      receiptId: z.string(),
+      receivedAt: instantSchema,
+    }),
+  ),
+  clarifications: z.array(clarificationSchema),
+  reopenings: z.array(
+    z.object({ reason: z.string(), by: z.string(), at: instantSchema }),
+  ),
 });
 export type ReviewBundle = z.infer<typeof reviewBundleSchema>;

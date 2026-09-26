@@ -138,7 +138,10 @@ test('publish, report, submit, review and finalize one quarter', async ({
 
   // Officer: reject one unsupported claim with a reason, accept the rest, finalize.
   await signIn(page, 'Prevention officer', /Prevention Officer A/);
-  await page.getByRole('link', { name: 'DEMO-001' }).first().click();
+  await page
+    .getByRole('table', { name: /Submissions awaiting review/ })
+    .getByRole('link', { name: 'DEMO-001' })
+    .click();
   await expect(page.getByText('60.00')).toBeVisible();
   const decide = async (
     code: string,
@@ -160,6 +163,21 @@ test('publish, report, submit, review and finalize one quarter', async ({
   await decide('M-03', 'Accept');
   await decide('M-04', 'Accept');
   await expect(page.getByText('45.00')).toBeVisible();
+  // The Q1 baseline is seeded for the simulated year; the officer confirms it first (AT25).
+  const reviewUrl = page.url();
+  await page
+    .getByRole('region', { name: 'My portfolio' })
+    .getByRole('link', { name: /DEMO-001/ })
+    .click();
+  await page
+    .getByRole('button', {
+      name: 'Confirm correspondence with the approved plan',
+    })
+    .click();
+  await expect(
+    page.getByText(/SEEDED HISTORICAL BASELINE · confirmed/).first(),
+  ).toBeVisible();
+  await page.goto(reviewUrl);
   await page.getByRole('button', { name: 'Finalize review' }).click();
   await page
     .getByRole('alertdialog')

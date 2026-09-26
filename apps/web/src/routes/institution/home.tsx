@@ -14,6 +14,10 @@ import { formatDateRange, formatDateTime } from '@/lib/dates';
 
 /** The earliest obligation that is open for reporting and not yet submitted. */
 function nextObligation(obligations: Obligation[]) {
+  const clarification = obligations.find(
+    (obligation) => obligation.state === 'clarification_requested',
+  );
+  if (clarification) return clarification;
   return obligations.find(
     (obligation) =>
       !obligation.flags.includes('not_yet_due') &&
@@ -37,6 +41,21 @@ function ObligationAction({
   const receipt = receipts.find(
     (candidate) => candidate.obligationId === obligation.id,
   );
+  if (obligation.state === 'clarification_requested') {
+    return (
+      <Link
+        to="/institution/reports/$periodId"
+        params={{ periodId: obligation.periodId }}
+        className={buttonVariants({
+          variant,
+          size: primary ? 'default' : 'sm',
+        })}
+      >
+        Respond to clarification
+        <ArrowRight aria-hidden="true" />
+      </Link>
+    );
+  }
   if (
     receipt &&
     obligation.state !== 'draft' &&

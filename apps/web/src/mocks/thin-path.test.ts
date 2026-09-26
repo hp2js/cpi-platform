@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { request } from '@/lib/api';
 import { exeBytes, pdfBytes, uploadForm } from '@/test/fixtures';
 import { signInAs } from '@/test/render-app';
+import { confirmSeed } from '@/test/api-helpers';
 
 const OBLIGATION = 'DEMO-001:FY2026-27-Q1';
 const obligationPath =
@@ -222,6 +223,14 @@ describe('officer review (FR09–FR10)', () => {
         json: { outcome: 'accepted', reason: '', revision: 2 },
       }),
     ).rejects.toMatchObject({ status: 409 });
+    // The Q1 baseline is a seeded historical baseline: finalizing waits for confirmation (AT25).
+    await expect(
+      request(`${path}/finalize`, z.unknown(), {
+        method: 'POST',
+        json: { revision: 1 },
+      }),
+    ).rejects.toMatchObject({ status: 422, code: 'seed_unconfirmed' });
+    await confirmSeed('DEMO-001');
     const final = await request(`${path}/finalize`, reviewBundleSchema, {
       method: 'POST',
       json: { revision: 1 },

@@ -1,5 +1,6 @@
 import type { Obligation, ObligationFlag } from '@cpi/contracts';
 import { getDb, type MockObligation } from '../db';
+import { clarificationsFor } from './clarifications';
 
 /** Flags are derived from business time on the server, never in the browser (FR02). */
 export function toObligation(obligation: MockObligation): Obligation {
@@ -18,5 +19,11 @@ export function toObligation(obligation: MockObligation): Obligation {
     : undefined;
   if (submittedAt !== undefined ? submittedAt > deadline : now > deadline)
     flags.push('late');
+  if (
+    clarificationsFor(obligation.id).some(
+      (clarification) => clarification.overdue,
+    )
+  )
+    flags.push('clarification_overdue');
   return { ...obligation, flags };
 }

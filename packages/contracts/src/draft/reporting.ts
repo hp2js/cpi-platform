@@ -3,6 +3,7 @@ import { institutionIdSchema, instantSchema } from './common.js';
 import { periodSchema } from './cycle.js';
 import { evidenceCategorySchema, formVersionSchema } from './forms.js';
 import { obligationSchema } from './institutions.js';
+import { clarificationSchema } from './clarifications.js';
 
 /** A locked, objectively reviewable unit of planned work (PRD §10.4). */
 export const milestoneSchema = z.object({
@@ -27,6 +28,10 @@ export const evidenceItemSchema = z.object({
   sha256: z.string(),
   uploadedAt: instantSchema,
   uploadedBy: z.string(),
+  /** A replaced document becomes a new version with a new hash (FR06). */
+  version: z.number().int().positive(),
+  predecessorId: z.string().nullable(),
+  supersededBy: z.string().nullable(),
 });
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
 
@@ -160,6 +165,8 @@ export const reportBundleSchema = z.object({
     status: z.enum(['approved', 'pending_approval']),
     milestones: z.array(milestoneSchema),
   }),
+  /** Open clarification requests this revision should answer. */
+  clarifications: z.array(clarificationSchema),
   draft: draftSchema.nullable(),
   evidence: z.array(evidenceItemSchema),
   receipts: z.array(receiptSchema),

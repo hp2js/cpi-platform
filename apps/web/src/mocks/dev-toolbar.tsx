@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FlaskConical, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AppRouter } from '@/app/router';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,21 @@ export function DevToolbar({ router }: { router: AppRouter }) {
     }
   }
 
+  const [emailFailing, setEmailFailing] = useState(false);
+  useEffect(() => {
+    void fetch('/api/__mock/email-failure')
+      .then((response) => response.json() as Promise<{ enabled: boolean }>)
+      .then((body) => setEmailFailing(body.enabled))
+      .catch(() => undefined);
+  }, []);
+  async function toggleEmailFailure(enabled: boolean) {
+    setEmailFailing(enabled);
+    await fetch('/api/__mock/email-failure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+  }
   async function expireSession() {
     await post('/api/__mock/expire-session');
     await queryClient.invalidateQueries();
@@ -89,6 +104,14 @@ export function DevToolbar({ router }: { router: AppRouter }) {
           <option value="realistic">Realistic (0.1–0.4 s)</option>
           <option value="slow">Slow (1.5–2.5 s)</option>
         </select>
+      </label>
+      <label className="mt-3 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={emailFailing}
+          onChange={(event) => void toggleEmailFailure(event.target.checked)}
+        />
+        <span>Demo email sink rejects messages</span>
       </label>
       <div className="mt-3 grid gap-2">
         <Button

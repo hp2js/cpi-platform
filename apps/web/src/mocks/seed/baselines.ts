@@ -2,15 +2,36 @@ import type { Milestone } from '@cpi/contracts';
 import { cycle } from './cycle';
 import { institutions } from './cast';
 
+/** A baseline version. Amendments add versions; earlier versions are never edited (PRD §10.4). */
 export interface MockBaseline {
+  id: string;
   institutionId: string;
   periodId: string;
-  status: 'approved' | 'pending_approval';
+  version: number;
+  status: 'proposed' | 'approved' | 'returned';
   milestones: Milestone[];
+  historicalSeed: {
+    reason: string;
+    loadedAt: string;
+    confirmedBy: string | null;
+    confirmedAt: string | null;
+  } | null;
+  approval: {
+    by: string;
+    at: string;
+    rationale: string;
+    checks: {
+      materialCoverage: boolean;
+      objectiveConditions: boolean;
+      mandatoryObligations: boolean;
+      noFragmentation: boolean;
+    };
+  } | null;
+  returned: { by: string; at: string; reason: string } | null;
 }
 
 /** One substantive risk and mitigation per fictional institution (PRD §3.3, §17.1). */
-const plans: Record<
+export const plans: Record<
   string,
   { risk: string; activity: string; milestone: string; condition: string }
 > = {
@@ -70,70 +91,176 @@ const plans: Record<
   },
 };
 
-function q1Milestones(institutionId: string): Milestone[] {
-  const plan = plans[institutionId]!;
+const officerFor = (institutionId: string) =>
+  Number(institutionId.slice(-3)) <= 4
+    ? 'Prevention Officer A'
+    : 'Prevention Officer B';
+
+function milestone(
+  institutionId: string,
+  code: string,
+  fields: Omit<Milestone, 'id' | 'code' | 'weight'> & { weight?: number },
+): Milestone {
+  return { id: `${institutionId}:${code}`, code, weight: 1, ...fields };
+}
+
+function committee(
+  institutionId: string,
+  cpc: string,
+  iao: string,
+): Milestone[] {
   return [
-    {
-      id: `${institutionId}:M-01`,
-      code: 'M-01',
-      title: plan.milestone,
-      activity: plan.activity,
-      risk: plan.risk,
-      completionCondition: plan.condition,
-      evidenceExpectation:
-        'Minutes or progress report passage recording completion.',
-      weight: 1,
-      mandatory: false,
-    },
-    {
-      id: `${institutionId}:M-02`,
-      code: 'M-02',
-      title: 'Staff trained on the corruption prevention procedure',
-      activity: 'A-02 Train staff in affected functions',
-      risk: plan.risk,
-      completionCondition:
-        'Training delivered to the staff named in the plan by quarter end.',
-      evidenceExpectation: 'Minutes recording the training and attendance.',
-      weight: 1,
-      mandatory: false,
-    },
-    {
-      id: `${institutionId}:M-03`,
-      code: 'M-03',
+    milestone(institutionId, cpc, {
       title: 'Quarterly CPC meeting held',
       activity: 'Committee obligation',
       risk: 'All identified risks',
       completionCondition:
         'The Corruption Prevention Committee met during the quarter.',
       evidenceExpectation: 'Signed CPC minutes.',
-      weight: 1,
       mandatory: true,
-    },
-    {
-      id: `${institutionId}:M-04`,
-      code: 'M-04',
+    }),
+    milestone(institutionId, iao, {
       title: 'Quarterly IAO meeting held',
       activity: 'Committee obligation',
       risk: 'All identified risks',
       completionCondition:
         'The Integrity Assurance Officers met during the quarter.',
       evidenceExpectation: 'Signed IAO minutes.',
-      weight: 1,
       mandatory: true,
-    },
+    }),
   ];
 }
 
-/** Q1 baselines are approved; later quarters await officer approval (added in a later phase). */
+/** Quarter q uses milestone codes M-(4q-3) … M-(4q). */
+function quarterMilestones(
+  institutionId: string,
+  quarter: number,
+): Milestone[] {
+  const plan = plans[institutionId]!;
+  const code = (offset: number) =>
+    `M-${String(4 * (quarter - 1) + offset).padStart(2, '0')}`;
+  const substantive: Milestone[] =
+    quarter === 1
+      ? [
+          milestone(institutionId, code(1), {
+            title: plan.milestone,
+            activity: plan.activity,
+            risk: plan.risk,
+            completionCondition: plan.condition,
+            evidenceExpectation:
+              'Minutes or progress report passage recording completion.',
+            mandatory: false,
+          }),
+          milestone(institutionId, code(2), {
+            title: 'Staff trained on the corruption prevention procedure',
+            activity: 'A-02 Train staff in affected functions',
+            risk: plan.risk,
+            completionCondition:
+              'Training delivered to the staff named in the plan by quarter end.',
+            evidenceExpectation:
+              'Minutes recording the training and attendance.',
+            mandatory: false,
+          }),
+        ]
+      : [
+          milestone(institutionId, code(1), {
+            title: `${plan.milestone}: quarter ${quarter} exception review`,
+            activity: plan.activity,
+            risk: plan.risk,
+            completionCondition: `An exception review of the control was completed and recorded by the end of Q${quarter}.`,
+            evidenceExpectation:
+              'Minutes or progress report passage recording the review.',
+            mandatory: false,
+          }),
+          milestone(institutionId, code(2), {
+            title: 'Procurement approval spot-check completed',
+            activity: 'A-03 Spot-check procurement approvals',
+            risk: 'R-02 Weak oversight of procurement approvals',
+            completionCondition: `A sample of at least ten approvals was checked in Q${quarter} and findings recorded.`,
+            evidenceExpectation: 'Spot-check findings in the CPC minutes.',
+            mandatory: false,
+          }),
+        ];
+  return [...substantive, ...committee(institutionId, code(3), code(4))];
+}
+
+/**
+ * The inflated proposal from PRD §10.7 / AT31: the same two substantive milestones plus
+ * eight trivial ones, which would dilute the committee obligations if approved.
+ */
+function inflatedProposal(institutionId: string): Milestone[] {
+  const base = quarterMilestones(institutionId, 2);
+  const trivial = [
+    'Circulate meeting notice',
+    'Book meeting room',
+    'Print agenda',
+    'Update notice board',
+    'Email reminder to staff',
+    'File minutes copy',
+    'Update contact list',
+    'Archive attendance sheet',
+  ].map((title, index) =>
+    milestone(institutionId, `M-${20 + index}`, {
+      title,
+      activity: 'A-99 Administrative tasks',
+      risk: 'R-01',
+      completionCondition: `${title} completed.`,
+      evidenceExpectation: 'Self-declaration.',
+      mandatory: false,
+    }),
+  );
+  return [...base, ...trivial];
+}
+
+const SEED_LOADED_AT = '2026-09-25T10:00:00+03:00';
+
 export const initialBaselines: MockBaseline[] = institutions.flatMap(
   (institution) =>
-    cycle.periods.map((period) => ({
-      institutionId: institution.id,
-      periodId: period.id,
-      status:
-        period.quarter === 1
-          ? ('approved' as const)
-          : ('pending_approval' as const),
-      milestones: period.quarter === 1 ? q1Milestones(institution.id) : [],
-    })),
+    cycle.periods.map((period): MockBaseline => {
+      const common = {
+        id: `bl-${institution.id}-${period.label}-v1`,
+        institutionId: institution.id,
+        periodId: period.id,
+        version: 1,
+        returned: null,
+      };
+      if (period.quarter === 1) {
+        return {
+          ...common,
+          status: 'approved',
+          milestones: quarterMilestones(institution.id, 1),
+          // Simulation-only exception: loaded from the fictional approved plan; the officer must
+          // still confirm correspondence before any dependent score is finalized.
+          historicalSeed: {
+            reason:
+              'SEEDED HISTORICAL BASELINE for the simulated year, loaded from the fictional approved plan.',
+            loadedAt: SEED_LOADED_AT,
+            confirmedBy: null,
+            confirmedAt: null,
+          },
+          approval: {
+            by: officerFor(institution.id),
+            at: SEED_LOADED_AT,
+            rationale:
+              'Seeded for the simulated year; correspondence with the approved plan awaits officer confirmation.',
+            checks: {
+              materialCoverage: true,
+              objectiveConditions: true,
+              mandatoryObligations: true,
+              noFragmentation: true,
+            },
+          },
+        };
+      }
+      return {
+        ...common,
+        status: 'proposed',
+        milestones:
+          institution.id === 'DEMO-004' && period.quarter === 2
+            ? inflatedProposal(institution.id)
+            : quarterMilestones(institution.id, period.quarter),
+        historicalSeed: null,
+        approval: null,
+      };
+    }),
 );

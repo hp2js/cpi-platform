@@ -7,6 +7,7 @@ import type {
   ReportBundle,
 } from '@cpi/contracts';
 import { getDb, toEvidenceItem, type MockObligation } from '../db';
+import { clarificationsFor } from './clarifications';
 import { publishedFormForPeriod } from './forms';
 import { toObligation } from './obligations';
 
@@ -18,12 +19,15 @@ export function periodOf(periodId: string) {
   return period;
 }
 
+/** The latest baseline version for a period; earlier versions stay in history. */
 export function baselineOf(institutionId: string, periodId: string) {
-  return getDb().baselines.find(
-    (baseline) =>
-      baseline.institutionId === institutionId &&
-      baseline.periodId === periodId,
-  );
+  return getDb()
+    .baselines.filter(
+      (baseline) =>
+        baseline.institutionId === institutionId &&
+        baseline.periodId === periodId,
+    )
+    .sort((a, b) => b.version - a.version)[0];
 }
 
 /** A draft keeps the version it started on; otherwise the period's current published version. */
@@ -41,6 +45,15 @@ export function formForObligation(
   return pinned
     ? db.forms.find((form) => form.id === pinned)
     : publishedFormForPeriod(obligation.periodId);
+}
+
+/** Drafts are open before first submission, and again while a clarification awaits a revision. */
+export function isEditableState(obligation: MockObligation) {
+  return (
+    obligation.state === 'not_started' ||
+    obligation.state === 'draft' ||
+    obligation.state === 'clarification_requested'
+  );
 }
 
 export function reportingOpen(obligation: MockObligation) {
@@ -86,9 +99,10 @@ export function reportBundle(obligation: MockObligation): ReportBundle {
     period: periodOf(obligation.periodId),
     form,
     baseline: {
-      status: baseline?.status ?? 'pending_approval',
+      status: baseline?.status === 'approved' ? 'approved' : 'pending_approval',
       milestones: baseline?.milestones ?? [],
     },
+    clarifications: clarificationsFor(obligation.id),
     draft:
       db.drafts.find((draft) => draft.obligationId === obligation.id) ?? null,
     evidence: db.evidence
@@ -98,9 +112,7 @@ export function reportBundle(obligation: MockObligation): ReportBundle {
       (receipt) => receipt.obligationId === obligation.id,
     ),
     editable:
-      form !== null &&
-      reportingOpen(obligation) &&
-      (obligation.state === 'not_started' || obligation.state === 'draft'),
+      form !== null && reportingOpen(obligation) && isEditableState(obligation),
   };
 }
 

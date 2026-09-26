@@ -176,7 +176,32 @@ const institutionReceiptRoute = createRoute({
   path: 'receipts/$receiptId',
   component: page(() => import('@/routes/institution/receipt'), 'ReceiptPage'),
 });
-
+const institutionClarificationsRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'clarifications',
+  component: page(
+    () => import('@/routes/institution/clarifications'),
+    'ClarificationsPage',
+  ),
+});
+const institutionPlanRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'plan',
+  component: page(() => import('@/routes/institution/plan'), 'PlanPage'),
+});
+const institutionFoundationsRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'foundations',
+  component: page(
+    () => import('@/routes/institution/foundations'),
+    'FoundationsPage',
+  ),
+});
+const institutionInboxRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'inbox',
+  component: page(() => import('@/routes/shared/inbox'), 'InboxPage'),
+});
 const officerHomeRoute = createRoute({
   getParentRoute: () => officerRoute,
   path: '/',
@@ -192,7 +217,19 @@ const officerReviewRoute = createRoute({
   path: 'reviews/$submissionId',
   component: page(() => import('@/routes/officer/review'), 'ReviewPage'),
 });
-
+const officerInstitutionRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'institutions/$institutionId',
+  component: page(
+    () => import('@/routes/officer/institution'),
+    'OfficerInstitutionPage',
+  ),
+});
+const officerInboxRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'inbox',
+  component: page(() => import('@/routes/shared/inbox'), 'InboxPage'),
+});
 const supervisorHomeRoute = createRoute({
   getParentRoute: () => supervisorRoute,
   path: '/',
@@ -201,7 +238,11 @@ const supervisorHomeRoute = createRoute({
     'SupervisorHomePage',
   ),
 });
-
+const supervisorInboxRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'inbox',
+  component: page(() => import('@/routes/shared/inbox'), 'InboxPage'),
+});
 const adminHomeRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '/',
@@ -217,6 +258,19 @@ const adminFormRoute = createRoute({
   path: 'forms/$formId',
   component: page(() => import('@/routes/admin/form-editor'), 'FormEditorPage'),
 });
+const adminNotificationsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'notifications',
+  component: page(
+    () => import('@/routes/admin/notifications'),
+    'NotificationsPage',
+  ),
+});
+const adminAuditRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'audit',
+  component: page(() => import('@/routes/admin/audit'), 'AuditPage'),
+});
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -230,10 +284,25 @@ export const routeTree = rootRoute.addChildren([
       institutionSubmitRoute,
       institutionReceiptsRoute,
       institutionReceiptRoute,
+      institutionClarificationsRoute,
+      institutionPlanRoute,
+      institutionFoundationsRoute,
+      institutionInboxRoute,
     ]),
-    officerRoute.addChildren([officerHomeRoute, officerReviewRoute]),
-    supervisorRoute.addChildren([supervisorHomeRoute]),
-    adminRoute.addChildren([adminHomeRoute, adminFormsRoute, adminFormRoute]),
+    officerRoute.addChildren([
+      officerHomeRoute,
+      officerReviewRoute,
+      officerInstitutionRoute,
+      officerInboxRoute,
+    ]),
+    supervisorRoute.addChildren([supervisorHomeRoute, supervisorInboxRoute]),
+    adminRoute.addChildren([
+      adminHomeRoute,
+      adminFormsRoute,
+      adminFormRoute,
+      adminNotificationsRoute,
+      adminAuditRoute,
+    ]),
   ]),
 ]);
 

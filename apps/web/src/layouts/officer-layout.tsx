@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
-import { ClipboardList, Menu } from 'lucide-react';
+import { Bell, ClipboardList, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -19,6 +20,7 @@ import { NavList, SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/officer', label: 'Assigned work', icon: ClipboardList, exact: true },
+  { to: '/officer/inbox', label: 'Inbox', icon: Bell, exact: false },
 ] as const satisfies readonly NavItem[];
 
 function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
@@ -40,11 +42,18 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
         </h2>
         <ul className="mt-2 grid gap-1 text-sm">
           {portfolio.data?.map((institution) => (
-            <li key={institution.id} className="rounded-md px-3 py-1.5">
-              <span className="block font-medium">{institution.id}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {institution.name}
-              </span>
+            <li key={institution.id}>
+              <Link
+                to="/officer/institutions/$institutionId"
+                params={{ institutionId: institution.id }}
+                onClick={onNavigate}
+                className="block rounded-md px-3 py-1.5 hover:bg-accent data-[status=active]:bg-accent"
+              >
+                <span className="block font-medium">{institution.id}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {institution.name}
+                </span>
+              </Link>
             </li>
           ))}
           {portfolio.isPending && (
@@ -90,7 +99,10 @@ export function OfficerLayout() {
                 <OfficerRail onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
-            <AccountMenu session={session} />
+            <div className="flex items-center gap-1">
+              <InboxLink to="/officer/inbox" />
+              <AccountMenu session={session} />
+            </div>
           </header>
           <main id="main" className="flex-1 px-4 py-6 lg:px-8">
             <Outlet />
