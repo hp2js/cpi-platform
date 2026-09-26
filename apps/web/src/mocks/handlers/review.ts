@@ -631,6 +631,24 @@ export const reviewHandlers = [
         return apiError(409, 'A newer revision exists.', 'version_conflict');
       const obligation = obligationOf(submission);
       const period = periodOf(obligation.periodId);
+      // After publication, only an administrator-opened correction case allows a change (§7.4).
+      const published = getDb().publications.some(
+        (publication) =>
+          publication.institutionId === obligation.institutionId &&
+          publication.supersededBy === null,
+      );
+      const correction = getDb().corrections.find(
+        (candidate) =>
+          candidate.institutionId === obligation.institutionId &&
+          candidate.closedAt === null,
+      );
+      if (published && correction?.periodId !== obligation.periodId) {
+        return apiError(
+          409,
+          'This result is published. An administrator must open a correction case for this quarter first.',
+          'correction_required',
+        );
+      }
       commit((db) => {
         db.reopenings.push({
           obligationId: obligation.id,

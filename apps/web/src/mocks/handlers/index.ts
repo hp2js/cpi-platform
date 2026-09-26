@@ -1,4 +1,7 @@
+import { annualHandlers } from './annual';
 import { devHandlers } from './dev';
+import { oversightHandlers } from './oversight';
+import { simulationHandlers } from './simulation';
 import { directoryHandlers } from './directory';
 import { eventHandlers } from './events';
 import { formHandlers } from './forms';
@@ -17,5 +20,8 @@ export const handlers = [
   ...planningHandlers,
   ...foundationHandlers,
   ...eventHandlers,
+  ...annualHandlers,
+  ...simulationHandlers,
+  ...oversightHandlers,
   ...devHandlers,
 ];

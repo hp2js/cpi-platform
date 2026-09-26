@@ -233,6 +233,19 @@ const officerInboxRoute = createRoute({
 const supervisorHomeRoute = createRoute({
   getParentRoute: () => supervisorRoute,
   path: '/',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { periodId?: string; institutionId?: string; officerId?: string } => ({
+    ...(typeof search.periodId === 'string' && search.periodId
+      ? { periodId: search.periodId }
+      : {}),
+    ...(typeof search.institutionId === 'string' && search.institutionId
+      ? { institutionId: search.institutionId }
+      : {}),
+    ...(typeof search.officerId === 'string' && search.officerId
+      ? { officerId: search.officerId }
+      : {}),
+  }),
   component: page(
     () => import('@/routes/supervisor/home'),
     'SupervisorHomePage',
@@ -272,6 +285,48 @@ const adminAuditRoute = createRoute({
   component: page(() => import('@/routes/admin/audit'), 'AuditPage'),
 });
 
+const institutionResultsRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'results',
+  component: page(() => import('@/routes/institution/results'), 'ResultsPage'),
+});
+const supervisorWorkloadRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'workload',
+  component: page(() => import('@/routes/supervisor/workload'), 'WorkloadPage'),
+});
+const supervisorAnnualRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'annual',
+  component: page(
+    () => import('@/routes/supervisor/annual'),
+    'SupervisorAnnualPage',
+  ),
+});
+const supervisorReportsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'reports',
+  component: page(() => import('@/routes/supervisor/reports'), 'ReportsPage'),
+});
+const adminSimulationRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'simulation',
+  component: page(() => import('@/routes/admin/simulation'), 'SimulationPage'),
+});
+const adminAnnualRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'annual',
+  component: page(() => import('@/routes/admin/annual'), 'AnnualPage'),
+});
+const adminAssignmentsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'assignments',
+  component: page(
+    () => import('@/routes/admin/assignments'),
+    'AssignmentsPage',
+  ),
+});
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
@@ -288,6 +343,7 @@ export const routeTree = rootRoute.addChildren([
       institutionPlanRoute,
       institutionFoundationsRoute,
       institutionInboxRoute,
+      institutionResultsRoute,
     ]),
     officerRoute.addChildren([
       officerHomeRoute,
@@ -295,9 +351,18 @@ export const routeTree = rootRoute.addChildren([
       officerInstitutionRoute,
       officerInboxRoute,
     ]),
-    supervisorRoute.addChildren([supervisorHomeRoute, supervisorInboxRoute]),
+    supervisorRoute.addChildren([
+      supervisorHomeRoute,
+      supervisorInboxRoute,
+      supervisorWorkloadRoute,
+      supervisorAnnualRoute,
+      supervisorReportsRoute,
+    ]),
     adminRoute.addChildren([
       adminHomeRoute,
+      adminSimulationRoute,
+      adminAnnualRoute,
+      adminAssignmentsRoute,
       adminFormsRoute,
       adminFormRoute,
       adminNotificationsRoute,

@@ -47,3 +47,26 @@
     @apply outline-offset-4;
   }
 }
+
+/*
+ * Print view for receipts and reports: navigation and controls are removed, while the
+ * simulation banner and profile labels stay so printed results remain clearly labelled.
+ */
+@media print {
+  nav,
+  aside,
+  [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  main {
+    padding: 0 !important;
+  }
+  section,
+  article,
+  table {
+    break-inside: avoid;
+  }
+}

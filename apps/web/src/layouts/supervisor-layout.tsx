@@ -1,6 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router';
 import { InboxLink } from '@/components/inbox-link';
-import { LayoutDashboard } from 'lucide-react';
+import { Award, FileText, LayoutDashboard, Users } from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
@@ -9,6 +9,14 @@ import { SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/supervisor', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { to: '/supervisor/workload', label: 'Workload', icon: Users, exact: false },
+  {
+    to: '/supervisor/annual',
+    label: 'Annual readiness',
+    icon: Award,
+    exact: false,
+  },
+  { to: '/supervisor/reports', label: 'Reports', icon: FileText, exact: false },
 ] as const satisfies readonly NavItem[];
 
 /**

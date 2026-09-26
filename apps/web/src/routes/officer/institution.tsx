@@ -1,3 +1,4 @@
+import { QuarterDispositions } from '@/features/annual/quarter-dispositions';
 import {
   foundationChecks,
   type Baseline,
@@ -592,6 +593,7 @@ export function OfficerInstitutionPage() {
       />
       <Tabs defaultValue="baselines" className="grid gap-4">
         <TabsList className="w-fit">
+          <TabsTrigger value="quarters">Quarters</TabsTrigger>
           <TabsTrigger value="baselines">Baselines</TabsTrigger>
           <TabsTrigger value="amendments">
             Amendments{pendingAmendments ? ` (${pendingAmendments})` : ''}
@@ -599,6 +601,9 @@ export function OfficerInstitutionPage() {
           <TabsTrigger value="foundations">Foundations</TabsTrigger>
           <TabsTrigger value="risks">Risks</TabsTrigger>
         </TabsList>
+        <TabsContent value="quarters">
+          <QuarterDispositions institutionId={institutionId} />
+        </TabsContent>
         <TabsContent value="baselines">
           <QueryView query={plan} label="baselines">
             {(data) => <Baselines plan={data} />}

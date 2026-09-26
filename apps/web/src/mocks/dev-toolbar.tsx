@@ -58,6 +58,7 @@ export function DevToolbar({ router }: { router: AppRouter }) {
   if (!open) {
     return (
       <Button
+        data-print-hide
         type="button"
         variant="outline"
         size="sm"
@@ -71,6 +72,7 @@ export function DevToolbar({ router }: { router: AppRouter }) {
   }
   return (
     <section
+      data-print-hide
       aria-label="Mock API controls"
       className="fixed right-3 bottom-24 z-50 w-72 rounded-lg border bg-card p-4 text-sm shadow-lg md:bottom-3"
     >

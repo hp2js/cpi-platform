@@ -1,5 +1,14 @@
 import { Link, Outlet } from '@tanstack/react-router';
-import { FileText, Gauge, Mail, Menu, ScrollText } from 'lucide-react';
+import {
+  Award,
+  CalendarClock,
+  FileText,
+  Gauge,
+  Mail,
+  Menu,
+  ScrollText,
+  Users,
+} from 'lucide-react';
 import { useState } from 'react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -21,12 +30,25 @@ const sections = [
     items: [{ to: '/admin', label: 'Console', icon: Gauge, exact: true }],
   },
   {
+    heading: 'Setup',
+    items: [{ to: '/admin/assignments', label: 'Assignments', icon: Users }],
+  },
+  {
     heading: 'Forms & scoring',
     items: [{ to: '/admin/forms', label: 'Reporting forms', icon: FileText }],
   },
   {
+    heading: 'Publication',
+    items: [{ to: '/admin/annual', label: 'Annual evaluation', icon: Award }],
+  },
+  {
     heading: 'Operations',
     items: [
+      {
+        to: '/admin/simulation',
+        label: 'Simulation clock',
+        icon: CalendarClock,
+      },
       { to: '/admin/notifications', label: 'Notifications', icon: Mail },
       { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
     ],

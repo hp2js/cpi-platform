@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
 import {
+  Award,
   FolderOpen,
   History,
   House,
@@ -15,28 +16,51 @@ import { institutionQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
 import { SkipLink, type NavItem } from './shared';
 
+// `short` labels fit six items in the phone bottom bar; the full label stays the accessible name.
 const nav = [
-  { to: '/institution', label: 'Home', icon: House, exact: true },
-  { to: '/institution/plan', label: 'Plan', icon: ListChecks, exact: false },
+  {
+    to: '/institution',
+    label: 'Home',
+    short: 'Home',
+    icon: House,
+    exact: true,
+  },
+  {
+    to: '/institution/plan',
+    label: 'Plan',
+    short: 'Plan',
+    icon: ListChecks,
+    exact: false,
+  },
   {
     to: '/institution/foundations',
     label: 'Foundations',
+    short: 'Docs',
     icon: FolderOpen,
     exact: false,
   },
   {
     to: '/institution/clarifications',
     label: 'Clarifications',
+    short: 'Questions',
     icon: MessageCircleQuestion,
     exact: false,
   },
   {
     to: '/institution/receipts',
     label: 'Receipts',
+    short: 'Receipts',
     icon: History,
     exact: false,
   },
-] as const satisfies readonly NavItem[];
+  {
+    to: '/institution/results',
+    label: 'Results',
+    short: 'Results',
+    icon: Award,
+    exact: false,
+  },
+] as const satisfies readonly (NavItem & { short: string })[];
 
 /**
  * Task layout for institution focal persons: one institution, one column, optimised for
@@ -103,15 +127,16 @@ export function InstitutionLayout() {
             gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))`,
           }}
         >
-          {nav.map(({ to, label, icon: Icon, exact }) => (
+          {nav.map(({ to, label, short, icon: Icon, exact }) => (
             <li key={to}>
               <Link
+                aria-label={label}
                 to={to}
                 activeOptions={{ exact }}
                 className="flex flex-col items-center gap-0.5 py-2 text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-primary"
               >
                 <Icon className="size-5" aria-hidden="true" />
-                {label}
+                {short}
               </Link>
             </li>
           ))}

@@ -26,9 +26,16 @@ export function setLatencyMode(mode: LatencyMode) {
 
 /** Simulated network time so loading states are visible during development. */
 export async function networkDelay() {
+  if (suppressed) return;
   const mode = getLatencyMode();
   if (mode === 'off') return;
   await delay(
     mode === 'slow' ? 1500 + Math.random() * 1000 : 120 + Math.random() * 280,
   );
+}
+
+let suppressed = false;
+/** The scenario driver makes hundreds of internal calls; simulated latency is skipped for them. */
+export function suppressLatency(on: boolean) {
+  suppressed = on;
 }

@@ -17,7 +17,11 @@ export function toObligation(obligation: MockObligation): Obligation {
   const submittedAt = obligation.firstSubmittedAt
     ? Date.parse(obligation.firstSubmittedAt)
     : undefined;
-  if (submittedAt !== undefined ? submittedAt > deadline : now > deadline)
+  // A closed quarter has a disposition, not a lateness flag.
+  if (
+    obligation.state !== 'closed_without_submission' &&
+    (submittedAt !== undefined ? submittedAt > deadline : now > deadline)
+  )
     flags.push('late');
   if (
     clarificationsFor(obligation.id).some(

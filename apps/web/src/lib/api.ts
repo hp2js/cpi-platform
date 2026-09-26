@@ -30,13 +30,15 @@ export function isApiError(error: unknown, status?: number): error is ApiError {
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | null;
   json?: unknown;
+  /** Defaults to five seconds; long-running administrative actions may extend it. */
+  timeoutMs?: number;
 };
 export async function request<T>(
   path: `/api/${string}`,
   schema: z.ZodType<T>,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { json, ...init } = options;
+  const { json, timeoutMs = 5000, ...init } = options;
   if (json !== undefined && init.body != null)
     throw new Error('Choose json or body, not both.');
   const headers = new Headers(init.headers);
@@ -47,8 +49,8 @@ export async function request<T>(
     headers,
     body: json === undefined ? init.body : JSON.stringify(json),
     signal: init.signal
-      ? AbortSignal.any([init.signal, AbortSignal.timeout(5000)])
-      : AbortSignal.timeout(5000),
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+      : AbortSignal.timeout(timeoutMs),
   });
   const requestId = response.headers.get('X-Request-ID') ?? undefined;
   if (!response.ok) {

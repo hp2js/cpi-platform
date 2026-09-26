@@ -140,6 +140,33 @@ export interface MockDb {
   amendments: Amendment[];
   foundationVersions: MockFoundationVersion[];
   foundationReviews: MockFoundationReview[];
+  /** Clock boundary events already processed in this run (FR14: replays are no-ops). */
+  processedEvents: string[];
+  closures: { obligationId: string; reason: string; by: string; at: string }[];
+  publications: MockPublication[];
+  corrections: {
+    id: string;
+    institutionId: string;
+    periodId: string;
+    reason: string;
+    openedBy: string;
+    openedAt: string;
+    closedAt: string | null;
+  }[];
+}
+
+export interface MockPublication {
+  id: string;
+  institutionId: string;
+  version: number;
+  batchId: string;
+  publishedAt: string;
+  publishedBy: string;
+  supersededBy: string | null;
+  correctionReason: string | null;
+  /** Immutable snapshot of the evaluation at release. */
+  evaluation: unknown;
+  points: string;
 }
 
 export interface MockNotification {
@@ -171,7 +198,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -216,6 +243,10 @@ function seed(): MockDb {
     amendments: [],
     foundationVersions: foundations.versions,
     foundationReviews: [],
+    processedEvents: [],
+    closures: [],
+    publications: [],
+    corrections: [],
     evidence: foundations.evidence,
   };
 }

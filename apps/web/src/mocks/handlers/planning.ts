@@ -513,4 +513,86 @@ export const planningHandlers = [
       return HttpResponse.json(planFor(amendment.institutionId));
     },
   ),
+
+  /** A returned proposal is revised by keeping a subset of its milestones; a new version is proposed. */
+  http.post(
+    '/api/baselines/:baselineId/revise',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('institution');
+      const baseline = getDb().baselines.find(
+        (candidate) => candidate.id === params.baselineId,
+      );
+      if (!baseline || baseline.institutionId !== user.institutionId)
+        return notFound();
+      const body = (await request.json().catch(() => undefined)) as
+        { version?: number; milestoneIds?: string[] } | undefined;
+      if (!body?.version || !Array.isArray(body.milestoneIds))
+        return apiError(
+          422,
+          'Choose the milestones to keep.',
+          'invalid_request',
+        );
+      requireLatest(baseline, body.version);
+      if (baseline.status !== 'returned')
+        return apiError(
+          409,
+          'Only a returned proposal can be revised.',
+          'not_returned',
+        );
+      if (locked(baseline))
+        return apiError(
+          409,
+          'Reporting has opened for this period.',
+          'baseline_locked',
+        );
+      const keep = baseline.milestones.filter((milestone) =>
+        body.milestoneIds!.includes(milestone.id),
+      );
+      if (
+        baseline.milestones.some(
+          (milestone) => milestone.mandatory && !keep.includes(milestone),
+        )
+      ) {
+        return apiError(
+          422,
+          'Committee meeting obligations must stay in the baseline.',
+          'mandatory_milestone',
+        );
+      }
+      if (keep.length === 0)
+        return apiError(422, 'Keep at least one milestone.', 'empty_baseline');
+      const revised: MockBaseline = {
+        ...structuredClone(baseline),
+        id: `bl-${baseline.institutionId}-${periodOf(baseline.periodId).label}-v${baseline.version + 1}`,
+        version: baseline.version + 1,
+        status: 'proposed',
+        milestones: keep,
+        returned: null,
+        approval: null,
+      };
+      commit((db) => {
+        db.baselines.push(revised);
+        audit(
+          db,
+          user,
+          'baseline.revise',
+          { type: 'baseline', id: revised.id, version: revised.version },
+          `${keep.length} milestones proposed`,
+        );
+        notify(
+          db,
+          `${revised.id}:proposed`,
+          'baseline.proposed',
+          assignedOfficers(baseline.institutionId),
+          {
+            title: `Revised baseline proposed: ${baseline.institutionId} ${periodOf(baseline.periodId).label}`,
+            body: `${keep.length} milestones are proposed for approval.`,
+            link: `/officer/institutions/${baseline.institutionId}`,
+          },
+        );
+      });
+      return HttpResponse.json(toBaseline(revised), { status: 201 });
+    },
+  ),
 ];

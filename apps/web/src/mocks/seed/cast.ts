@@ -108,4 +108,5 @@ export const initialAssignments = institutions.map((institution, index) => ({
   officerId: index < 4 ? 'officer-a' : 'officer-b',
   validFrom: '2026-07-01T00:00:00+03:00',
   validTo: null as string | null,
+  reason: null as string | null,
 }));

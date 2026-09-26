@@ -36,7 +36,7 @@ export function AccountMenu({
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild data-print-hide>
         <Button
           variant="ghost"
           className={cn(

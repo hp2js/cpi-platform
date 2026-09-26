@@ -27,7 +27,9 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+        <div data-print-hide className="flex shrink-0 flex-wrap gap-2">
+          {actions}
+        </div>
       )}
     </div>
   );
