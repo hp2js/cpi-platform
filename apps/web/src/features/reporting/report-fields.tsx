@@ -197,7 +197,9 @@ function UploadButton({
     } catch (error) {
       const message = isApiError(error)
         ? (error.fieldErrors.file ?? error.message)
-        : 'The upload failed. Check your connection and try again.';
+        : error instanceof Error
+          ? error.message
+          : 'The upload failed. Check your connection and try again.';
       setStatus({ state: 'error', message, file });
     } finally {
       if (input.current) input.current.value = '';

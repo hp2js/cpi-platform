@@ -278,6 +278,13 @@ function load(): MockDb {
 
 let db = load();
 
+// Behave like one shared server across tabs: another tab's write replaces this tab's copy.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY) db = load();
+  });
+}
+
 export function getDb(): MockDb {
   return db;
 }

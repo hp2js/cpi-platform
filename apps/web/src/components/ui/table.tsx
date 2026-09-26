@@ -1,13 +1,37 @@
-'use client';
-
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+/**
+ * A wide table scrolls horizontally inside its container. While it overflows, the container
+ * joins the tab order so keyboard users can scroll it (WCAG 2.1.1); otherwise it adds no stop.
+ */
+function useScrollableFocus() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [scrollable, setScrollable] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const update = () =>
+      setScrollable(element.scrollWidth > element.clientWidth + 1);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, scrollable };
+}
+
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
+  const { ref, scrollable } = useScrollableFocus();
   return (
     <div
+      ref={ref}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={scrollable ? 0 : undefined}
+      role={scrollable ? 'region' : undefined}
+      aria-label={scrollable ? 'Scrollable table' : undefined}
+      className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <table
         data-slot="table"

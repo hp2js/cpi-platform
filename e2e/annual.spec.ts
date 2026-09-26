@@ -161,8 +161,14 @@ test('a published result is corrected only through a case and keeps its history 
   await m13
     .getByRole('textbox')
     .fill('The exception review was not completed in Q4.');
+  // The earlier decision already reads "Saved by Prevention Officer A", so wait for this save itself.
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/decisions/M-13') &&
+      response.request().method() === 'PUT',
+  );
   await m13.getByRole('button', { name: 'Update decision' }).click();
-  await expect(m13.getByText(/Saved by Prevention Officer A/)).toBeVisible();
+  expect((await saved).ok()).toBe(true);
   await page.getByRole('button', { name: 'Finalize review' }).click();
   await page
     .getByRole('alertdialog')

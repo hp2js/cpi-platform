@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { makeQueryClient } from './app/query-client';
 import { makeRouter } from './app/router';
+import { hasUnsavedWork } from './features/session/unsaved-work';
 import './styles.css';
 
 const mockMode =
@@ -20,6 +21,8 @@ const DevToolbar = mockMode
 const publicPaths = new Set(['/sign-in', '/session-expired', '/forbidden']);
 const queryClient = makeQueryClient((code) => {
   if (publicPaths.has(router.state.location.pathname)) return;
+  // Never navigate away from unsaved input; the editor shows how to sign in again.
+  if (hasUnsavedWork()) return;
   const destination =
     code === 'session_expired'
       ? router.navigate({ to: '/session-expired' })

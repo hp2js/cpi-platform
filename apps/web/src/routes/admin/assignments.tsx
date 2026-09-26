@@ -41,7 +41,7 @@ export function AssignmentsPage() {
     },
   });
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <PageHeader
         eyebrow="Setup"
         title="Officer assignments"
@@ -49,17 +49,17 @@ export function AssignmentsPage() {
       />
       <section
         aria-labelledby="reassign-heading"
-        className="grid max-w-2xl gap-3 rounded-lg border bg-card p-5"
+        className="grid max-w-2xl grid-cols-1 gap-3 rounded-lg border bg-card p-5"
       >
         <h2 id="reassign-heading" className="font-semibold">
           Reassign an institution
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label htmlFor="assign-institution">Institution</Label>
             <select
               id="assign-institution"
-              className="h-9 rounded-md border bg-background px-2 text-sm"
+              className="h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm"
               value={institutionId}
               onChange={(event) => setInstitutionId(event.target.value)}
             >
@@ -74,7 +74,7 @@ export function AssignmentsPage() {
             <Label htmlFor="assign-officer">New officer</Label>
             <select
               id="assign-officer"
-              className="h-9 rounded-md border bg-background px-2 text-sm"
+              className="h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm"
               value={officerId}
               onChange={(event) => setOfficerId(event.target.value)}
             >

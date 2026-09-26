@@ -1,3 +1,4 @@
+import { SkipLink } from '@/layouts/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type ErrorComponentProps } from '@tanstack/react-router';
 import { Clock, SearchX, ShieldAlert, TriangleAlert } from 'lucide-react';
@@ -19,12 +20,14 @@ function SystemPage({
 }) {
   return (
     <div className="flex min-h-svh flex-col bg-background">
+      <SkipLink />
       <header className="border-b bg-card px-6 py-4">
         <Brand />
       </header>
       <main
         id="main"
-        className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16"
+        tabIndex={-1}
+        className="outline-none mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16"
       >
         <div className="text-primary" aria-hidden="true">
           {icon}

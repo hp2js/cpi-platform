@@ -100,7 +100,7 @@ export function SimulationPage() {
         {(state) => {
           const next = state.boundaries.find((boundary) => !boundary.passed);
           return (
-            <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section
                 aria-labelledby="run-heading"
                 className="grid content-start gap-4 rounded-lg border bg-card p-5"
@@ -127,6 +127,7 @@ export function SimulationPage() {
                 <div className="flex flex-wrap gap-2">
                   {next && (
                     <Button
+                      className="h-auto py-2 text-left whitespace-normal"
                       onClick={() => advance.mutate(next.id)}
                       disabled={advance.isPending}
                     >
@@ -193,7 +194,7 @@ export function SimulationPage() {
                   {state.boundaries.map((boundary) => (
                     <li
                       key={boundary.id}
-                      className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 odd:bg-muted/40"
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md px-2 py-1.5 odd:bg-muted/40"
                     >
                       <span className="flex items-center gap-2">
                         {boundary.passed ? (

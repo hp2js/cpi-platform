@@ -229,6 +229,7 @@ function SeedConfirmation({ baseline }: { baseline: Baseline }) {
       <div>
         <Button
           variant="outline"
+          className="h-auto py-2 text-left whitespace-normal"
           disabled={confirm.isPending}
           onClick={() => confirm.mutate(undefined)}
         >
@@ -250,7 +251,7 @@ function Baselines({ plan }: { plan: Plan }) {
         <article
           key={baseline.id}
           aria-labelledby={`obl-${baseline.periodId}`}
-          className="grid gap-3 rounded-lg border bg-card p-5"
+          className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-5"
         >
           <header className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 id={`obl-${baseline.periodId}`} className="font-semibold">
@@ -591,8 +592,8 @@ export function OfficerInstitutionPage() {
         title={plan.data?.institutionName ?? 'Institution'}
         description={plan.data?.approvedPlanReference}
       />
-      <Tabs defaultValue="baselines" className="grid gap-4">
-        <TabsList className="w-fit">
+      <Tabs defaultValue="baselines" className="grid grid-cols-1 gap-4">
+        <TabsList className="h-auto w-fit max-w-full flex-wrap justify-start">
           <TabsTrigger value="quarters">Quarters</TabsTrigger>
           <TabsTrigger value="baselines">Baselines</TabsTrigger>
           <TabsTrigger value="amendments">

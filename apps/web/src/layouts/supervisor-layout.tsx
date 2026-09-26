@@ -59,7 +59,11 @@ export function SupervisorLayout() {
           </div>
         </div>
       </header>
-      <main id="main" className="mx-auto max-w-screen-2xl px-4 py-6 sm:px-6">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="outline-none mx-auto max-w-screen-2xl px-4 py-6 sm:px-6"
+      >
         <Outlet />
       </main>
     </div>

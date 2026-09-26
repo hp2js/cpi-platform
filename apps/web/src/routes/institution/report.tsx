@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '@/features/session/unsaved-work';
 import type { EvidenceItem, ReportBundle } from '@cpi/contracts';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,6 +57,7 @@ function ReportEditor({
   const [version, setVersion] = useState(bundle.draft?.version ?? 0);
   const [savedAt, setSavedAt] = useState(bundle.draft?.savedAt ?? null);
   const dirty = useStore(reportForm.store, (state) => state.isDirty);
+  useUnsavedWork(dirty);
 
   const save = useMutation({
     mutationFn: () => saveDraft(obligationId, version, reportForm.state.values),
@@ -205,7 +207,25 @@ function ReportEditor({
               : 'Your draft was not saved'}
           </AlertTitle>
           <AlertDescription>
-            <p>{save.error.message} Your entries on this page are kept.</p>
+            <p>
+              {save.error.message}
+              {!save.error.message.includes('entries are kept') &&
+                ' Your entries on this page are kept.'}
+            </p>
+            {isApiError(save.error) &&
+              save.error.code === 'session_expired' && (
+                <p className="mt-2">
+                  <a
+                    href="/sign-in"
+                    target="_blank"
+                    rel="noopener"
+                    className="font-medium underline"
+                  >
+                    Sign in again in a new tab
+                  </a>
+                  , then return here and save.
+                </p>
+              )}
             {conflict && (
               <Button
                 type="button"

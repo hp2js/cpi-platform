@@ -4,6 +4,7 @@ import { oversightHandlers } from './oversight';
 import { simulationHandlers } from './simulation';
 import { directoryHandlers } from './directory';
 import { eventHandlers } from './events';
+import { faultHandlers } from './faults';
 import { formHandlers } from './forms';
 import { foundationHandlers } from './foundations';
 import { planningHandlers } from './planning';
@@ -12,6 +13,8 @@ import { reviewHandlers } from './review';
 import { sessionHandlers } from './session';
 
 export const handlers = [
+  // First, so an armed fault intercepts the next matching request.
+  ...faultHandlers,
   ...sessionHandlers,
   ...directoryHandlers,
   ...formHandlers,

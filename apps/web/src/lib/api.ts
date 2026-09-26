@@ -20,6 +20,9 @@ export function apiUrl(path: string) {
   return new URL(path, globalThis.location?.origin ?? 'http://localhost');
 }
 
+/** The request never reached the server or its response was lost; it is safe to retry. */
+export class NetworkError extends Error {}
+
 export function isApiError(error: unknown, status?: number): error is ApiError {
   return (
     error instanceof ApiError &&
@@ -44,14 +47,25 @@ export async function request<T>(
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (json !== undefined) headers.set('Content-Type', 'application/json');
-  const response = await fetch(apiUrl(path), {
-    ...init,
-    headers,
-    body: json === undefined ? init.body : JSON.stringify(json),
-    signal: init.signal
-      ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
-      : AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers,
+      body: json === undefined ? init.body : JSON.stringify(json),
+      signal: init.signal
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+        : AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    // A caller's own cancellation is not an error to report.
+    if (init.signal?.aborted) throw error;
+    throw new NetworkError(
+      error instanceof DOMException && error.name === 'TimeoutError'
+        ? 'The service took too long to respond. Your entries are kept; please try again.'
+        : 'The connection was interrupted. Your entries are kept; check your network and try again.',
+    );
+  }
   const requestId = response.headers.get('X-Request-ID') ?? undefined;
   if (!response.ok) {
     const parsed = apiErrorSchema.safeParse(

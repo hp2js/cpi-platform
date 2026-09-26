@@ -1,0 +1,113 @@
+# API handover: contracts the frontend depends on
+
+Status: draft for HP2-9 · Owner of the real API: backend (Patrick) · Frontend reference implementation: `apps/web/src/mocks/`
+
+The frontend is complete against a mock API. This document lists every endpoint it calls, who may call it, and the rules the mock enforces. Those rules are what the screens rely on, so treat them as acceptance criteria for the real API. Where the PRD leaves a choice open, the mock takes the PRD's proposed default; change it here and in the schemas together.
+
+## How to use this
+
+- **Schemas** live in `packages/contracts/src/draft/` (zod, exported from `@cpi/contracts`). The frontend validates every response against them, so a shape mismatch shows as "The server returned an invalid response". Adopt them in Nest with the existing `SchemaValidationPipe`, or revise them and update the frontend in the same change.
+- **Errors** use the existing envelope `{ message, fieldErrors?, requestId?, code? }`. The frontend branches on `status` and `code` (listed below), shows `message` to users, and maps `fieldErrors` keys to fields. Messages must never contain submitted content.
+- **Retiring the mock:** implement an endpoint, delete its handler from `apps/web/src/mocks/handlers/`, run `pnpm check` and `pnpm test:e2e`. Requests with no mock handler already pass through to the real API, so endpoints can move one at a time. The mock's tests in `apps/web/src/mocks/*.test.ts` describe the expected behaviour and can be ported to API integration tests.
+- **Times** are ISO-8601 instants with an offset. Business time comes from the server's clock (simulated in the demo); the browser never decides deadlines or lateness.
+
+## Cross-cutting rules
+
+| Rule                                     | Behaviour the frontend relies on                                                                                                                                                                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session                                  | `401` with `code: session_expired` or `unauthenticated`. Expired sessions keep unsaved input on screen; other pages route to sign-in.                                                                                                        |
+| Scope (PRD §5.2, AT01–AT02)              | Institution users see only their institution; officers only **currently** assigned institutions; supervisor and administrator see all. Out-of-scope reads return **404** (no names, counts or files leak). Forbidden actions return **403**. |
+| No scores before publication (O06, AT18) | Institution-facing responses (`report`, `receipts`, `foundations`, `results`) never contain points or fractions before release. Receipts say only `calculation: recorded` or `pending_baseline_approval`.                                    |
+| Pending, never zero (§10.5)              | Scores are `{ status: 'pending', reason }` or `{ status: 'calculated', fraction, points }`. Points are strings, half-up to two decimals, computed from exact fractions.                                                                      |
+| Optimistic concurrency                   | Drafts carry `version`; saves send `baseVersion` and get `409 version_conflict` when stale. Review writes carry the `revision` they assessed; `409 version_conflict` if not the latest (AT10).                                               |
+| Idempotency (AT06)                       | `POST …/submit` requires `Idempotency-Key`; a repeat returns the original receipt with no second revision.                                                                                                                                   |
+| Audit and notifications (FR10–FR11)      | Every write listed below records an audit event and, where noted, notifies recipients once per event, recipient and channel. Email content is a minimal summary with a link.                                                                 |
+
+## Endpoints
+
+Roles: **I** institution, **O** officer (assigned), **S** supervisor, **A** administrator.
+
+### Session and directory
+
+| Method and path                            | Roles   | Notes                                                                                 |
+| ------------------------------------------ | ------- | ------------------------------------------------------------------------------------- |
+| `GET /api/session`                         | any     | `Session`: user, simulated clock, profile. Replaced by real authentication (HP2-13).  |
+| `POST /api/session`, `DELETE /api/session` | –       | Demo sign-in and sign-out. `GET /api/demo/accounts` is demo-only and should not ship. |
+| `GET /api/cycles/current`                  | any     | Cycle with four periods, foundation deadline and evaluation cutoff.                   |
+| `GET /api/institutions`, `/:id`            | scoped  | 404 outside scope.                                                                    |
+| `GET /api/obligations?institutionId=`      | scoped  | Flags derived from business time: `not_yet_due`, `late`, `clarification_overdue`.     |
+| `GET /api/assignments`                     | O, S, A | Officers see their own. 403 for institutions.                                         |
+| `GET /api/assignments/history`             | S, A    | Includes ended assignments with reasons.                                              |
+| `POST /api/assignments`                    | A       | Reassign with reason; access changes immediately, history kept (AT22).                |
+
+### Forms (FR03)
+
+| Method and path                 | Roles                    | Notes                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/forms`, `/:id`        | A; others published only | Drafts are administrator-only.                                                                                                                                                                                                                                                             |
+| `PUT /api/forms/:id`            | A                        | Draft only (`409 version_locked` otherwise). Weights ignored once locked.                                                                                                                                                                                                                  |
+| `GET /api/forms/:id/validation` | A                        | `{ valid, issues: [{ path, message }] }`; paths like `sections.1.questions.2.label`.                                                                                                                                                                                                       |
+| `POST /api/forms/:id/publish`   | A                        | `422 publication_blocked` with `fieldErrors` keyed by path (AT03). Rules: weights total 100; unique IDs; exactly one scored `milestone_progress` block; every period covered; started periods keep their version; scored criteria unchanged after activation. Locks weights for the cycle. |
+| `POST /api/forms`               | A                        | New draft from the latest version; `409 draft_exists`.                                                                                                                                                                                                                                     |
+
+### Reporting (FR04–FR07)
+
+| Method and path                         | Roles     | Notes                                                                                                                                                                                                                                                                                              |
+| --------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/obligations/:id/report`       | I         | `ReportBundle`: form, baseline, draft, evidence (with versions), receipts, open clarifications, `editable`. Editable while not started, draft, or clarification requested.                                                                                                                         |
+| `PUT /api/obligations/:id/draft`        | I         | `{ baseVersion, answers }` → draft with `version + 1`. `409 version_conflict`, `409 not_editable`.                                                                                                                                                                                                 |
+| `GET /api/obligations/:id/completeness` | I         | `missing` (blocks submit) is kept separate from `declarations` (honest "not available", submittable). Field paths such as `milestones.<id>.evidence` let the UI link to the field.                                                                                                                 |
+| `POST /api/obligations/:id/evidence`    | I         | Multipart `file`, `category`, optional `replaces`. Allowlist PDF/DOCX/XLSX/JPEG/PNG, 20 MB per file, 100 MB per report, signature check (AT21: `422 upload_rejected`, `fieldErrors.file`). Same file again returns the existing record. `replaces` creates version n+1 and supersedes the old one. |
+| `POST /api/obligations/:id/submit`      | I         | `Idempotency-Key` required. `{ draftVersion, attestation }`. `422 attestation_required` (draft kept, AT26), `422 incomplete` with `fieldErrors`, `409 version_conflict`. Answers an open clarification with a new revision; earlier receipts kept. Notifies institution and assigned officer.      |
+| `GET /api/receipts`, `/:id`             | I; scoped | Receipt: business and actual time, timeliness, evidence inventory, declarations, `calculation`.                                                                                                                                                                                                    |
+
+### Review (FR08–FR10)
+
+| Method and path                               | Roles        | Notes                                                                                                                                                                                                                                                                                |
+| --------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/reviews?status=open\|finalized`     | O, S, A      | Current revisions only, oldest first. `needs_re_review` flag when earlier decisions await confirmation.                                                                                                                                                                              |
+| `GET /api/reviews/:submissionId`              | O, S, A      | `ReviewBundle`: answers, evidence, active decisions, full decision `history`, `prior` (earlier revision's decisions and `changed`/`unchanged` per milestone), clarifications, reopenings, scores. `canDecide` true only for the assigned officer on the latest unfinalized revision. |
+| `PUT …/decisions/:milestoneCode`              | O (assigned) | Append-only: supersedes the previous active decision. Reject needs a reason ≥ 10 characters. Moves `submitted` → `under_review`.                                                                                                                                                     |
+| `POST …/decisions/:code/carry-forward`        | O (assigned) | Only when the milestone's answer and cited files (by hash) are unchanged (AT27): `409 dependency_changed` otherwise.                                                                                                                                                                 |
+| `POST …/clarifications`                       | O (assigned) | Items per milestone or the whole report. Due at 23:59:59 EAT on the 7th calendar day after the later of availability and notification; `extensionRequired` if after the evaluation cutoff. Creates the institution's next draft from the latest revision.                            |
+| `POST …/finalize`                             | O (assigned) | Needs every milestone decided on this revision, no open clarification (`409 clarification_open`), and a confirmed historical seed baseline (`422 seed_unconfirmed`, AT25).                                                                                                           |
+| `POST …/reopen`                               | O (assigned) | Reason required. After publication, only with an open correction case for that quarter (`409 correction_required`).                                                                                                                                                                  |
+| `POST /api/obligations/:id/close-nonresponse` | O (assigned) | After the evaluation cutoff only; records a zero disposition with a reason.                                                                                                                                                                                                          |
+
+### Planning and foundations (FR04, §10.3–10.4)
+
+| Method and path                                      | Roles        | Notes                                                                                                                   |
+| ---------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/institutions/:id/plan`                     | scoped       | Risks (severity = probability × impact, no bands), every baseline version, amendments. `locked` once reporting opens.   |
+| `POST /api/baselines/:id/approve`                    | O (assigned) | All four checks `true` and a rationale ≥ 20 characters; both committee obligations required; never an empty baseline.   |
+| `POST /api/baselines/:id/return`, `/revise`          | O; I         | Return with reason; the institution proposes a new version keeping a subset (committee obligations must stay).          |
+| `POST /api/baselines/:id/confirm-seed`               | O (assigned) | Confirms a simulation-only historical baseline; records actual time.                                                    |
+| `POST /api/institutions/:id/amendments`              | I            | Unopened periods only (`409 baseline_locked`, AT17); committee obligations cannot be moved (`422 mandatory_milestone`). |
+| `POST /api/amendments/:id/decision`                  | O (assigned) | Confirming creates new baseline versions; earlier versions kept.                                                        |
+| `GET/POST /api/institutions/:id/foundations`         | scoped; I    | Versions with effective dates; a new version supersedes the active one. Scores are `null` for institution users.        |
+| `POST /api/foundation-versions/:id/withdraw`         | I            | Reason required.                                                                                                        |
+| `PUT /api/institutions/:id/foundations/:kind/review` | O (assigned) | Four checks; pass cites a passage, fail gives a reason. A review of a superseded version no longer counts (AT28).       |
+
+### Annual evaluation and publication (§7.6, FR12–FR13, FR16)
+
+| Method and path                                       | Roles   | Notes                                                                                                                                                             |
+| ----------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/annual`                                     | O, S, A | Per institution: four quarter dispositions, three foundation outcomes, total (pending with reasons until all are final), publication and correction state.        |
+| `POST /api/annual/publish`                            | A       | After the cutoff only. Batch of releasable institutions; a republish needs an open correction case and creates version n+1, superseding the previous (AT19–AT20). |
+| `POST /api/annual/corrections`                        | A       | Opens a case for one quarter of a published result.                                                                                                               |
+| `GET /api/annual/report(.csv)`                        | S, A    | `cpi-export-1` JSON, or CSV with formula-injection-safe cells.                                                                                                    |
+| `GET /api/results`, `/export.csv`                     | I       | Own publications only (current and superseded).                                                                                                                   |
+| `GET /api/oversight?periodId&institutionId&officerId` | S, A    | §4.3 metrics with numerator and denominator (`percent: null` when the denominator is zero), backlog, workload, finalized-only comparison with plan size.          |
+
+### Notifications, audit and simulation
+
+| Method and path                                      | Roles  | Notes                                                                                                      |
+| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| `GET /api/notifications`, `POST …/read`, `/read-all` | any    | Own inbox only.                                                                                            |
+| `GET /api/admin/deliveries?status=`, `POST …/retry`  | A      | Email delivery attempts; three automatic attempts, then the failure queue (AT12).                          |
+| `GET /api/admin/email-sink`                          | A      | Demo sink; never real recipients.                                                                          |
+| `GET /api/audit?objectType=`                         | A      | Read-only.                                                                                                 |
+| `GET /api/simulation`, `POST /advance`, `/reset`     | any; A | Named boundaries processed once per run (AT13, AT24). Server-side clock shared with scheduled jobs (FR14). |
+| `POST /api/simulation/scenario`                      | A      | Demo driver (HP2-28). The mock's `scenario.ts` shows the expected steps and results.                       |
+
+Development-only mock routes under `/api/__mock/*` (reset, session expiry, latency, email failure, fault injection) are not part of the contract.

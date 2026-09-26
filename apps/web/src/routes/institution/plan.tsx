@@ -268,7 +268,7 @@ export function PlanPage() {
                   <article
                     key={baseline.id}
                     aria-labelledby={`bl-${baseline.periodId}`}
-                    className="grid gap-3 rounded-lg border bg-card p-5"
+                    className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-5"
                   >
                     <header className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3

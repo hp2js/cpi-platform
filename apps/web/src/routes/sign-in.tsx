@@ -1,3 +1,4 @@
+import { SkipLink } from '@/layouts/shared';
 import type { DemoAccount, Role } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
@@ -62,10 +63,15 @@ export function SignInPage() {
 
   return (
     <div className="min-h-svh bg-background">
+      <SkipLink />
       <header className="border-b bg-card px-6 py-4">
         <Brand />
       </header>
-      <main id="main" className="mx-auto max-w-4xl px-6 py-10">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="outline-none mx-auto max-w-4xl px-6 py-10"
+      >
         <h1 className="text-2xl font-semibold tracking-tight">
           Sign in to the demonstration
         </h1>

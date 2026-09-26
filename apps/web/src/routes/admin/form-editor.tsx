@@ -1,3 +1,4 @@
+import { useUnsavedWork } from '@/features/session/unsaved-work';
 import type {
   FormDraftUpdate,
   FormIssue,
@@ -210,6 +211,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
   const [defaults, setDefaults] = useState(editableOf(form));
   const editor = useForm({ defaultValues: defaults });
   const dirty = useStore(editor.store, (state) => state.isDirty);
+  useUnsavedWork(dirty);
   const values = useStore(editor.store, (state) => state.values);
 
   const save = useMutation({
