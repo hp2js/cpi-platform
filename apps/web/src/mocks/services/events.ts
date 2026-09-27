@@ -65,14 +65,27 @@ function deliverWithRetries(db: MockDb, delivery: MockDelivery) {
  * Notify recipients of an event. The in-app notification is always recorded; email is a
  * minimal summary with a link, never evidence or unreleased scores.
  */
+function portalUrl(path: string) {
+  return new URL(path, globalThis.location?.origin ?? 'http://localhost').href;
+}
+
 export function notify(
   db: MockDb,
   eventId: string,
   eventType: string,
   recipients: MockUser[],
-  message: { title: string; body: string; link: string | null },
+  message: {
+    title: string;
+    body: string;
+    /** A path in the portal; a function when the destination depends on the recipient. */
+    link: string | null | ((recipient: MockUser) => string | null);
+  },
 ) {
   for (const recipient of recipients) {
+    const link =
+      typeof message.link === 'function'
+        ? message.link(recipient)
+        : message.link;
     const key = `${eventId}:${recipient.id}:email`;
     if (
       !db.notifications.some(
@@ -88,7 +101,7 @@ export function notify(
         eventType,
         title: message.title,
         body: message.body,
-        link: message.link,
+        link,
         createdAt: db.businessTime,
         readAt: null,
       });
@@ -103,7 +116,9 @@ export function notify(
       recipientEmail: recipient.email,
       recipientRole: recipient.role,
       subject: message.title,
-      body: `${message.body}\n\nSign in to view: ${message.link ?? '/'}`,
+      body: link
+        ? `${message.body}\n\nOpen in the portal: ${portalUrl(link)}`
+        : message.body,
       status: 'queued',
       attempts: 0,
       lastAttemptAt: null,

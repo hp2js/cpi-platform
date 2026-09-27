@@ -4,6 +4,7 @@ import type {
   Institution,
   Obligation,
 } from '@cpi/contracts';
+import { Link } from '@tanstack/react-router';
 import { FlagList, WorkflowStateBadge } from '@/components/status';
 import {
   Table,
@@ -25,12 +26,15 @@ export function ObligationMatrix({
   institutions,
   obligations,
   assignments,
+  linkToInstitution = false,
 }: {
   caption: string;
   cycle: Cycle;
   institutions: Institution[];
   obligations: Obligation[];
   assignments?: Assignment[];
+  /** Officers can open each institution's plan, baselines and foundations. */
+  linkToInstitution?: boolean;
 }) {
   const cell = (institutionId: string, periodId: string) =>
     obligations.find(
@@ -62,9 +66,19 @@ export function ObligationMatrix({
                 scope="row"
                 className="h-auto py-3 font-normal whitespace-normal"
               >
-                <span className="block font-medium text-foreground">
-                  {institution.id}
-                </span>
+                {linkToInstitution ? (
+                  <Link
+                    to="/officer/institutions/$institutionId"
+                    params={{ institutionId: institution.id }}
+                    className="block font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {institution.id}
+                  </Link>
+                ) : (
+                  <span className="block font-medium text-foreground">
+                    {institution.id}
+                  </span>
+                )}
                 <span className="block text-xs text-muted-foreground">
                   {institution.name}
                 </span>

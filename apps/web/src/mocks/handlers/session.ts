@@ -8,14 +8,21 @@ import { requireUser, toSession } from '../services/session';
 export const sessionHandlers = [
   http.get('/api/demo/accounts', async () => {
     await networkDelay();
-    const accounts: DemoAccount[] = getDb()
-      .users.filter((user) => user.active)
-      .map(({ id, displayName, role, institutionId }) => ({
-        id,
-        displayName,
-        role,
-        ...(institutionId ? { institutionId } : {}),
-      }));
+    const db = getDb();
+    const accounts: DemoAccount[] = db.users
+      .filter((user) => user.active)
+      .map(({ id, displayName, role, institutionId }) => {
+        const institution = db.institutions.find(
+          (candidate) => candidate.id === institutionId,
+        );
+        return {
+          id,
+          displayName,
+          role,
+          ...(institutionId ? { institutionId } : {}),
+          ...(institution ? { institutionName: institution.name } : {}),
+        };
+      });
     return HttpResponse.json(accounts);
   }),
   http.get('/api/session', async () => {

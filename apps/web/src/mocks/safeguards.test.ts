@@ -13,7 +13,7 @@ import {
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { apiUrl, request } from '@/lib/api';
+import { apiUrl, request, requestFile } from '@/lib/api';
 import {
   completeDraft,
   confirmSeed,
@@ -528,5 +528,26 @@ describe('prior phase regressions', () => {
     const { draft } = await completeDraft('DEMO-002');
     const receipt = await submitDraft('DEMO-002', draft.version);
     expect(receipt.revision).toBe(1);
+  });
+});
+
+describe('evidence downloads (PRD §5.2)', () => {
+  it('serves a file to its institution, and to the assigned officer only once submitted', async () => {
+    const file = (id: string) => requestFile(`/api/evidence/${id}/file`);
+    await publishSeedForm();
+    await signInAs('focal-demo-001');
+    const { draft, upload } = await completeDraft('DEMO-001');
+    expect(new Uint8Array(await (await file(upload.id)).arrayBuffer())).toEqual(
+      pdfBytes(),
+    );
+    // Drafts are private to the institution.
+    await signInAs('officer-a');
+    await expect(file(upload.id)).rejects.toMatchObject({ status: 404 });
+    await signInAs('focal-demo-001');
+    await submitDraft('DEMO-001', draft.version);
+    await signInAs('officer-a');
+    expect((await file(upload.id)).size).toBe(pdfBytes().byteLength);
+    await signInAs('officer-b');
+    await expect(file(upload.id)).rejects.toMatchObject({ status: 404 });
   });
 });

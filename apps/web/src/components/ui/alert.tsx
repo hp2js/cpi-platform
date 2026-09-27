@@ -26,7 +26,8 @@ function Alert({
   return (
     <div
       data-slot="alert"
-      role="alert"
+      // Errors interrupt; informational notices are announced politely, if at all.
+      role={variant === 'destructive' ? 'alert' : 'status'}
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />

@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router';
 import { ArrowRight, CircleCheck, Lock, Save } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { WorkflowStateBadge } from '@/components/status';
@@ -39,6 +39,22 @@ import {
 
 const route = getRouteApi('/authed/institution/reports/$periodId');
 
+/** Links from the review checklist carry the field's id; put the cursor in that field. */
+function useFocusLinkedField() {
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const target = id ? document.getElementById(id) : null;
+    if (!target) return;
+    const control = target.matches('input, textarea, select, button')
+      ? target
+      : target.querySelector<HTMLElement>(
+          'input:not([type=hidden]), textarea, select, button, [role=radio], [tabindex]',
+        );
+    target.scrollIntoView({ block: 'center' });
+    control?.focus({ preventScroll: true });
+  }, []);
+}
+
 function ReportEditor({
   bundle,
   obligationId,
@@ -58,6 +74,7 @@ function ReportEditor({
   const [savedAt, setSavedAt] = useState(bundle.draft?.savedAt ?? null);
   const dirty = useStore(reportForm.store, (state) => state.isDirty);
   useUnsavedWork(dirty);
+  useFocusLinkedField();
 
   const save = useMutation({
     mutationFn: () => saveDraft(obligationId, version, reportForm.state.values),
@@ -126,7 +143,14 @@ function ReportEditor({
   });
 
   async function reviewAndSubmit() {
-    if (dirty) await save.mutateAsync();
+    if (dirty) {
+      try {
+        await save.mutateAsync();
+      } catch {
+        // The save error is shown in the bar; stay on the editor with the entries kept.
+        return;
+      }
+    }
     await queryClient.invalidateQueries({
       queryKey: reportKeys.bundle(obligationId),
     });
@@ -180,6 +204,47 @@ function ReportEditor({
             <ArrowRight aria-hidden="true" />
           </Button>
         </div>
+        {save.isError && (
+          <Alert variant="destructive" className="basis-full">
+            <AlertTitle>
+              {conflict
+                ? 'This draft changed elsewhere'
+                : 'Your draft was not saved'}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                {save.error.message}
+                {!save.error.message.includes('entries are kept') &&
+                  ' Your entries on this page are kept.'}
+              </p>
+              {isApiError(save.error) &&
+                save.error.code === 'session_expired' && (
+                  <p className="mt-2">
+                    <a
+                      href="/sign-in"
+                      target="_blank"
+                      rel="noopener"
+                      className="font-medium underline"
+                    >
+                      Sign in again in a new tab
+                    </a>
+                    , then return here and save.
+                  </p>
+                )}
+              {conflict && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={onReload}
+                >
+                  Load the latest saved draft
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {bundle.clarifications
@@ -198,47 +263,6 @@ function ReportEditor({
           review. Submitting creates a new revision and keeps your earlier
           receipt.
         </p>
-      )}
-      {save.isError && (
-        <Alert variant="destructive">
-          <AlertTitle>
-            {conflict
-              ? 'This draft changed elsewhere'
-              : 'Your draft was not saved'}
-          </AlertTitle>
-          <AlertDescription>
-            <p>
-              {save.error.message}
-              {!save.error.message.includes('entries are kept') &&
-                ' Your entries on this page are kept.'}
-            </p>
-            {isApiError(save.error) &&
-              save.error.code === 'session_expired' && (
-                <p className="mt-2">
-                  <a
-                    href="/sign-in"
-                    target="_blank"
-                    rel="noopener"
-                    className="font-medium underline"
-                  >
-                    Sign in again in a new tab
-                  </a>
-                  , then return here and save.
-                </p>
-              )}
-            {conflict && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={onReload}
-              >
-                Load the latest saved draft
-              </Button>
-            )}
-          </AlertDescription>
-        </Alert>
       )}
 
       {form.sections.map((section) => (
@@ -286,6 +310,18 @@ function ReportEditor({
         </section>
       ))}
     </form>
+  );
+}
+
+/** During a clarification the response window, not the quarterly deadline, is what is due. */
+function ReportDeadline({ bundle }: { bundle: ReportBundle }) {
+  const open = bundle.clarifications.find(
+    (clarification) => clarification.status === 'open',
+  );
+  return open ? (
+    <>Respond by {formatDateTime(open.responseDueAt)}</>
+  ) : (
+    <>Due {formatDateTime(bundle.period.submissionDeadline)}</>
   );
 }
 
@@ -360,7 +396,7 @@ export function ReportPage() {
                 state={bundle.data.obligation.state}
                 audience="institution"
               />
-              Due {formatDateTime(bundle.data.period.submissionDeadline)}
+              <ReportDeadline bundle={bundle.data} />
             </span>
           )
         }

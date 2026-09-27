@@ -100,7 +100,7 @@ export function SimulationPage() {
         {(state) => {
           const next = state.boundaries.find((boundary) => !boundary.passed);
           return (
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
               <section
                 aria-labelledby="run-heading"
                 className="grid content-start gap-4 rounded-lg border bg-card p-5"

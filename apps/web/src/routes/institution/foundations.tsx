@@ -20,12 +20,43 @@ import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
-function NewVersion({
+/** With an active version, recording a replacement is opened on request, not always shown. */
+function VersionActions({
   institutionId,
   indicator,
+  activeVersionId,
 }: {
   institutionId: string;
   indicator: FoundationIndicator;
+  activeVersionId: string | undefined;
+}) {
+  const [recording, setRecording] = useState(false);
+  if (!activeVersionId || recording)
+    return (
+      <NewVersion
+        institutionId={institutionId}
+        indicator={indicator}
+        onCancel={activeVersionId ? () => setRecording(false) : undefined}
+      />
+    );
+  return (
+    <div className="flex flex-wrap items-start gap-2">
+      <Button variant="outline" size="sm" onClick={() => setRecording(true)}>
+        Record a new version
+      </Button>
+      <Withdraw institutionId={institutionId} versionId={activeVersionId} />
+    </div>
+  );
+}
+
+function NewVersion({
+  institutionId,
+  indicator,
+  onCancel,
+}: {
+  institutionId: string;
+  indicator: FoundationIndicator;
+  onCancel?: () => void;
 }) {
   const queryClient = useQueryClient();
   const id = useId();
@@ -53,9 +84,12 @@ function NewVersion({
       setApprovalReference('');
       setEffectiveFrom('');
       await invalidateEvents(queryClient);
+      onCancel?.();
     },
     onSettled: () => setProgress(null),
   });
+  const incomplete =
+    !file || approvalReference.trim().length < 2 || !effectiveFrom;
   const fieldErrors = isApiError(mutation.error)
     ? mutation.error.fieldErrors
     : {};
@@ -138,18 +172,25 @@ function NewVersion({
           {mutation.error.message}
         </p>
       )}
-      <div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           type="submit"
-          disabled={
-            !file ||
-            approvalReference.trim().length < 2 ||
-            !effectiveFrom ||
-            mutation.isPending
-          }
+          disabled={incomplete || mutation.isPending}
+          aria-describedby={incomplete ? `${id}-hint` : undefined}
         >
           {mutation.isPending ? 'Uploading…' : 'Record version'}
         </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        {incomplete && (
+          <p id={`${id}-hint`} className="text-sm text-muted-foreground">
+            Choose the approved document and give its approval reference and
+            effective date.
+          </p>
+        )}
       </div>
     </form>
   );
@@ -253,15 +294,10 @@ export function FoundationsPage() {
                     </p>
                   </div>
                   <VersionList indicator={indicator} />
-                  {active && (
-                    <Withdraw
-                      institutionId={institutionId}
-                      versionId={active.id}
-                    />
-                  )}
-                  <NewVersion
+                  <VersionActions
                     institutionId={institutionId}
                     indicator={indicator}
+                    activeVersionId={active?.id}
                   />
                 </section>
               );

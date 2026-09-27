@@ -31,7 +31,11 @@ export function SupervisorLayout() {
       <SimulationBanner session={session} />
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
-          <Link to="/supervisor" aria-label="Supervisor overview">
+          <Link
+            to="/supervisor"
+            activeOptions={{ exact: true }}
+            aria-label="Supervisor overview"
+          >
             <Brand />
           </Link>
           <nav

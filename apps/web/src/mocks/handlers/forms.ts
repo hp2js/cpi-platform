@@ -127,7 +127,8 @@ export const formHandlers = [
         {
           title: `Reporting form version ${form.version} published`,
           body: 'The quarterly progress report form is available for the assigned periods.',
-          link: null,
+          link: (recipient) =>
+            recipient.role === 'institution' ? '/institution' : '/officer',
         },
       );
     });

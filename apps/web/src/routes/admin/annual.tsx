@@ -206,7 +206,20 @@ export function AnnualPage() {
                               / 100 · {status(evaluation)}
                             </>
                           ) : (
-                            <>Pending: {evaluation.total.reasons.join('; ')}</>
+                            <details>
+                              <summary className="cursor-pointer">
+                                Pending · {evaluation.total.reasons.length}{' '}
+                                {evaluation.total.reasons.length === 1
+                                  ? 'item'
+                                  : 'items'}{' '}
+                                outstanding
+                              </summary>
+                              <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                                {evaluation.total.reasons.map((reason) => (
+                                  <li key={reason}>{reason}</li>
+                                ))}
+                              </ul>
+                            </details>
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground">

@@ -1,9 +1,17 @@
+import type { AnnualEvaluation } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { annualQuery } from '@/features/annual/queries';
 import { AnnualResultView } from '@/features/annual/result-view';
 import { formatDateTime } from '@/lib/dates';
+
+/** The summary stays one short line; the reasons are listed when the row is expanded. */
+function notReady(total: AnnualEvaluation['total']) {
+  if (total.status !== 'pending') return 'not ready';
+  const count = total.reasons.length;
+  return `not ready · ${count} ${count === 1 ? 'item' : 'items'} outstanding`;
+}
 
 export function SupervisorAnnualPage() {
   const annual = useQuery(annualQuery);
@@ -36,7 +44,7 @@ export function SupervisorAnnualPage() {
                     ? `published v${evaluation.publication.version}${evaluation.publication.stale ? ' (out of date)' : ''}`
                     : evaluation.releasable
                       ? 'ready for release'
-                      : `not ready: ${evaluation.total.status === 'pending' ? evaluation.total.reasons.join('; ') : ''}`}
+                      : notReady(evaluation.total)}
                 </summary>
                 <div className="mt-4">
                   <AnnualResultView

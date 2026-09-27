@@ -124,7 +124,10 @@ function process(db: MockDb, boundary: Omit<ClockBoundary, 'passed'>) {
         {
           title: `${period.label} report overdue: ${obligation.institutionId}`,
           body: `The ${period.label} deadline has passed without a submission. A late submission is still accepted and flagged as late.`,
-          link: null,
+          link: (recipient) =>
+            recipient.role === 'institution'
+              ? `/institution/reports/${period.id}`
+              : `/officer/institutions/${obligation.institutionId}`,
         },
       );
     }
@@ -152,7 +155,10 @@ export function advanceTo(db: MockDb, target: string) {
     );
   for (const boundary of boundaries()) {
     const at = Date.parse(boundary.at);
-    if (at <= to) process(db, boundary);
+    if (at > to) continue;
+    // Each boundary's notifications and audit entries carry the time it occurred.
+    if (at > Date.parse(db.businessTime)) db.businessTime = boundary.at;
+    process(db, boundary);
   }
   db.businessTime = target;
 }

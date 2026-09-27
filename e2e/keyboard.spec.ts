@@ -66,6 +66,10 @@ test('sign in, skip navigation and complete part of a report without a mouse', a
     page.getByRole('heading', { name: 'What is due and what needs attention' }),
   ).toBeVisible();
 
+  // Wait for the next-action card too, so tabbing does not run past it while it loads.
+  await expect(
+    page.getByRole('link', { name: /Start report/ }).first(),
+  ).toBeVisible();
   await tabTo(page, 'Start report');
   await page.keyboard.press('Enter');
   await expect(

@@ -36,17 +36,27 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   /** Defaults to five seconds; long-running administrative actions may extend it. */
   timeoutMs?: number;
 };
-export async function request<T>(
+let beforeRequest: (() => Promise<void>) | null = null;
+/** Registers work to finish before every API call; development mock mode uses it. */
+export function setBeforeRequest(hook: () => Promise<void>) {
+  beforeRequest = hook;
+}
+export async function awaitBeforeRequest() {
+  await beforeRequest?.();
+}
+
+/** Sends a request and returns the response once it is known to be successful. */
+async function send(
   path: `/api/${string}`,
-  schema: z.ZodType<T>,
-  options: RequestOptions = {},
-): Promise<T> {
+  options: RequestOptions,
+): Promise<Response> {
   const { json, timeoutMs = 5000, ...init } = options;
   if (json !== undefined && init.body != null)
     throw new Error('Choose json or body, not both.');
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (json !== undefined) headers.set('Content-Type', 'application/json');
+  await awaitBeforeRequest();
   let response: Response;
   try {
     response = await fetch(apiUrl(path), {
@@ -81,6 +91,16 @@ export async function request<T>(
       parsed.success ? parsed.data.code : undefined,
     );
   }
+  return response;
+}
+
+export async function request<T>(
+  path: `/api/${string}`,
+  schema: z.ZodType<T>,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await send(path, options);
+  const requestId = response.headers.get('X-Request-ID') ?? undefined;
   const text = await response.text();
   let value: unknown;
   try {
@@ -103,6 +123,17 @@ export async function request<T>(
     );
   return parsed.data;
 }
+/** Fetches a file (such as evidence) with the same session, timeout and error handling. */
+export async function requestFile(
+  path: `/api/${string}`,
+  options: RequestOptions = {},
+): Promise<Blob> {
+  const headers = new Headers(options.headers);
+  if (!headers.has('Accept')) headers.set('Accept', '*/*');
+  const response = await send(path, { timeoutMs: 30_000, ...options, headers });
+  return response.blob();
+}
+
 export const healthQuery = queryOptions({
   queryKey: ['system', 'readiness'],
   queryFn: ({ signal }) =>

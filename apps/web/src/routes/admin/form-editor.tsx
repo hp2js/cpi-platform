@@ -715,8 +715,10 @@ function QuestionEditor({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={`${domId}-help`}>Help text (optional)</Label>
-              <Input
+              <Textarea
                 id={`${domId}-help`}
+                rows={2}
+                className="min-h-0"
                 value={field.state.value ?? ''}
                 onChange={(event) =>
                   field.handleChange(event.target.value || undefined)

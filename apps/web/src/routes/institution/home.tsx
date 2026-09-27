@@ -7,7 +7,7 @@ import { QueryView } from '@/components/query-view';
 import { FlagList, WorkflowStateBadge } from '@/components/status';
 import { buttonVariants } from '@/components/ui/button';
 import { formsQuery } from '@/features/forms/queries';
-import { receiptsQuery } from '@/features/reporting/queries';
+import { receiptsQuery, reportQuery } from '@/features/reporting/queries';
 import { cycleQuery, obligationsQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
 import { formatDateRange, formatDateTime } from '@/lib/dates';
@@ -103,6 +103,18 @@ function Overview({
   const next = nextObligation(obligations);
   const nextPeriod =
     next && cycle.periods.find((period) => period.id === next.periodId);
+  // A clarification has its own, shorter response window (PRD §7.3); show that deadline.
+  const clarifying = next?.state === 'clarification_requested';
+  const bundle = useQuery({
+    ...reportQuery(next?.id ?? ''),
+    enabled: clarifying,
+  });
+  const openClarification = bundle.data?.clarifications.find(
+    (clarification) => clarification.status === 'open',
+  );
+  const deadline = clarifying
+    ? openClarification?.responseDueAt
+    : nextPeriod?.submissionDeadline;
   return (
     <div className="grid gap-8">
       <section
@@ -115,20 +127,30 @@ function Overview({
         {next && nextPeriod ? (
           <div className="mt-2 grid gap-2">
             <p>
-              Your <strong>{nextPeriod.label}</strong> quarterly report (
-              {formatDateRange(nextPeriod.startsOn, nextPeriod.endsOn)}) is open
-              for reporting.
+              {clarifying ? (
+                <>
+                  Your officer has questions about your{' '}
+                  <strong>{nextPeriod.label}</strong> report. Answer them by
+                  updating the report and submitting a new revision.
+                </>
+              ) : (
+                <>
+                  Your <strong>{nextPeriod.label}</strong> quarterly report (
+                  {formatDateRange(nextPeriod.startsOn, nextPeriod.endsOn)}) is
+                  open for reporting.
+                </>
+              )}
             </p>
-            <p className="flex items-center gap-2 text-sm">
-              <CalendarClock
-                className="size-4 text-primary"
-                aria-hidden="true"
-              />
-              Submit by{' '}
-              <time dateTime={nextPeriod.submissionDeadline}>
-                {formatDateTime(nextPeriod.submissionDeadline)}
-              </time>
-            </p>
+            {deadline && (
+              <p className="flex items-center gap-2 text-sm">
+                <CalendarClock
+                  className="size-4 text-primary"
+                  aria-hidden="true"
+                />
+                {clarifying ? 'Respond by' : 'Submit by'}{' '}
+                <time dateTime={deadline}>{formatDateTime(deadline)}</time>
+              </p>
+            )}
             <span className="flex flex-wrap items-center gap-2">
               <WorkflowStateBadge state={next.state} audience="institution" />
               <FlagList

@@ -124,10 +124,17 @@ export function SignInPage() {
                                 <span className="font-medium">
                                   {account.displayName}
                                 </span>
-                                {account.institutionId && (
-                                  <span className="sr-only">
-                                    , institution {account.institutionId}
+                                {account.institutionName ? (
+                                  <span className="block text-xs text-muted-foreground">
+                                    <span className="sr-only">, </span>
+                                    {account.institutionName}
                                   </span>
+                                ) : (
+                                  account.institutionId && (
+                                    <span className="sr-only">
+                                      , institution {account.institutionId}
+                                    </span>
+                                  )
                                 )}
                               </span>
                               <span className="flex items-center gap-1 text-primary">

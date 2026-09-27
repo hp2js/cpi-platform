@@ -35,12 +35,17 @@ export const sessionSchema = z.object({
 export type Session = z.infer<typeof sessionSchema>;
 
 /** Demo-only account directory used by the sign-in picker until real authentication exists. */
-export const demoAccountSchema = sessionUserSchema.pick({
-  id: true,
-  displayName: true,
-  role: true,
-  institutionId: true,
-});
+export const demoAccountSchema = sessionUserSchema
+  .pick({
+    id: true,
+    displayName: true,
+    role: true,
+    institutionId: true,
+  })
+  .extend({
+    /** Shown on the demo picker so the institution is recognisable, not just its code. */
+    institutionName: z.string().optional(),
+  });
 export type DemoAccount = z.infer<typeof demoAccountSchema>;
 export const demoAccountsSchema = z.array(demoAccountSchema);
 

@@ -51,12 +51,22 @@ export function FormsPage() {
           <Button
             onClick={() => create.mutate()}
             disabled={!hasPublished || hasDraft || create.isPending}
+            aria-describedby={
+              hasDraft || !hasPublished ? 'new-version-hint' : undefined
+            }
           >
             <Plus aria-hidden="true" />
             New version
           </Button>
         }
       />
+      {(hasDraft || (forms.isSuccess && !hasPublished)) && (
+        <p id="new-version-hint" className="text-sm text-muted-foreground">
+          {hasDraft
+            ? 'A draft version is already open. Publish or edit it before starting another.'
+            : 'Publish the first version before creating another.'}
+        </p>
+      )}
       {create.isError && (
         <Alert variant="destructive">
           <AlertDescription>{create.error.message}</AlertDescription>

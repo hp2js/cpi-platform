@@ -3,6 +3,7 @@ import { FlaskConical, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppRouter } from '@/app/router';
 import { Button } from '@/components/ui/button';
+import { awaitBeforeRequest } from '@/lib/api';
 import {
   getLatencyMode,
   setLatencyMode,
@@ -13,16 +14,36 @@ import {
  * Development-only controls for the mock API, used to exercise loading, expired-session
  * and fresh-start paths. Never rendered in production builds.
  */
+/** Like fetch, but first makes sure the mock worker still handles this page. */
+async function mockFetch(input: string, init?: RequestInit) {
+  await awaitBeforeRequest();
+  return fetch(input, init);
+}
+
 export function DevToolbar({ router }: { router: AppRouter }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [latency, setLatency] = useState<LatencyMode>(getLatencyMode);
   const [busy, setBusy] = useState(false);
 
+  // The panel is a quick control, not a page: close it on navigation and on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const unsubscribe = router.subscribe('onResolved', () => setOpen(false));
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, router]);
+
   async function post(path: string) {
     setBusy(true);
     try {
-      await fetch(path, { method: 'POST' });
+      await mockFetch(path, { method: 'POST' });
     } finally {
       setBusy(false);
     }
@@ -30,14 +51,14 @@ export function DevToolbar({ router }: { router: AppRouter }) {
 
   const [emailFailing, setEmailFailing] = useState(false);
   useEffect(() => {
-    void fetch('/api/__mock/email-failure')
+    void mockFetch('/api/__mock/email-failure')
       .then((response) => response.json() as Promise<{ enabled: boolean }>)
       .then((body) => setEmailFailing(body.enabled))
       .catch(() => undefined);
   }, []);
   async function toggleEmailFailure(enabled: boolean) {
     setEmailFailing(enabled);
-    await fetch('/api/__mock/email-failure', {
+    await mockFetch('/api/__mock/email-failure', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),

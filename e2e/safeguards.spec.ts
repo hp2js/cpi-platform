@@ -162,7 +162,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
   await page
     .getByRole('listitem')
     .filter({ hasText: 'Clarification requested' })
-    .getByRole('button', { name: 'Open' })
+    .getByRole('button', { name: /^Open/ })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Clarification requests' }),
@@ -208,7 +208,9 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
   await expect(queue.getByText('Needs re-review')).toBeVisible();
   await queue.getByRole('link', { name: 'DEMO-001' }).click();
   await expect(
-    page.getByText(/1 milestone\(s\) changed since revision 1/),
+    page.getByText(
+      /1 milestone changed and needs a new review since revision 1/,
+    ),
   ).toBeVisible();
   await expect(
     page
@@ -229,17 +231,14 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
   await m01Review.getByRole('button', { name: 'Save decision' }).click();
   await expect(m01Review.getByText(/Saved by/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Finalize review' }).click();
-  await page
-    .getByRole('alertdialog')
-    .getByRole('button', { name: 'Finalize' })
-    .click();
+  // The seeded baseline must be confirmed first (AT25); the page says so before any attempt.
   await expect(
-    page.getByText(/Confirm that the seeded historical baseline/),
+    page.getByRole('button', { name: 'Finalize review' }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(/Confirm that the seeded Q1 baseline matches/),
   ).toBeVisible();
-  await page
-    .getByRole('link', { name: /Open DEMO-001 baselines to confirm/ })
-    .click();
+  await page.getByRole('link', { name: 'Open DEMO-001 baselines' }).click();
   await page
     .getByRole('button', {
       name: 'Confirm correspondence with the approved plan',

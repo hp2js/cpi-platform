@@ -172,22 +172,33 @@ function Metrics({ data }: { data: Oversight }) {
       </div>
       <dl className="grid gap-3 sm:grid-cols-4">
         {[
-          ['Awaiting officer action', data.backlog.awaitingOfficer],
-          [
-            'Awaiting institution clarification',
-            data.backlog.awaitingInstitution,
-          ],
-          ['Closed without submission', data.backlog.closedNonresponse],
-          [
-            'Average reviewed implementation',
-            data.averageReviewed.points === null
-              ? 'Not applicable'
-              : `${data.averageReviewed.points} / 60 (${data.averageReviewed.included} finalized quarters of ${data.averageReviewed.expected})`,
-          ],
-        ].map(([label, value]) => (
+          {
+            label: 'Awaiting officer action',
+            value: data.backlog.awaitingOfficer,
+          },
+          {
+            label: 'Awaiting institution clarification',
+            value: data.backlog.awaitingInstitution,
+          },
+          {
+            label: 'Closed without submission',
+            value: data.backlog.closedNonresponse,
+          },
+          {
+            label: 'Average reviewed implementation',
+            value:
+              data.averageReviewed.points === null
+                ? 'Not applicable'
+                : `${data.averageReviewed.points} / 60`,
+            detail: `${data.averageReviewed.included} of ${data.averageReviewed.expected} institution-quarters finalized`,
+          },
+        ].map(({ label, value, detail }) => (
           <div key={label} className="rounded-lg border bg-card p-4">
             <dt className="text-sm text-muted-foreground">{label}</dt>
             <dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
+            {detail && (
+              <dd className="text-sm text-muted-foreground">{detail}</dd>
+            )}
           </div>
         ))}
       </dl>

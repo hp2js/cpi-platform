@@ -76,7 +76,11 @@ export function InstitutionLayout() {
       <SimulationBanner session={session} />
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-3 sm:px-6">
-          <Link to="/institution" aria-label="Institution home">
+          <Link
+            to="/institution"
+            activeOptions={{ exact: true }}
+            aria-label="Institution home"
+          >
             <Brand />
           </Link>
           <div className="flex items-center gap-1">

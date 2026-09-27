@@ -37,9 +37,9 @@ function Item({ notification }: { notification: Notification }) {
         <h2 className="font-medium">
           {!notification.readAt && (
             <span className="mr-2 rounded bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
-              New
+              New<span className="sr-only">:</span>
             </span>
-          )}
+          )}{' '}
           {notification.title}
         </h2>
         <time
@@ -57,6 +57,7 @@ function Item({ notification }: { notification: Notification }) {
             size="sm"
             onClick={() => open.mutate()}
             disabled={open.isPending}
+            aria-label={`${notification.link ? 'Open' : 'Mark as read'}: ${notification.title}`}
           >
             {notification.link ? 'Open' : 'Mark as read'}
           </Button>

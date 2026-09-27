@@ -21,7 +21,9 @@ import {
 import {
   checkUpload,
   evidenceCategories,
+  fileBytes,
   MAX_SUBMISSION_BYTES,
+  rememberFile,
   sha256,
 } from '../services/evidence';
 import { apiError, notFound } from '../services/http';
@@ -217,6 +219,7 @@ export const reportingHandlers = [
         institutionId: obligation.institutionId,
         obligationId: obligation.id,
       };
+      rememberFile(item.id, bytes);
       commit((store) => {
         store.evidence.push(item);
         if (previous) previous.supersededBy = item.id;
@@ -231,6 +234,55 @@ export const reportingHandlers = [
       return HttpResponse.json(toEvidenceItem(item), { status: 201 });
     },
   ),
+
+  // Reviewers see only files that were submitted; drafts stay private to the institution.
+  http.get('/api/evidence/:evidenceId/file', async ({ params }) => {
+    await networkDelay();
+    const user = requireUser();
+    const db = getDb();
+    const item = db.evidence.find(
+      (candidate) => candidate.id === params.evidenceId,
+    );
+    if (!item || !canReadInstitution(user, item.institutionId))
+      throw notFound();
+    if (
+      user.role !== 'institution' &&
+      !db.submissions.some((submission) =>
+        submission.evidenceIds.includes(item.id),
+      )
+    )
+      throw notFound();
+    const disposition = (name: string) =>
+      `inline; filename="${name.replace(/["\\\r\n]/g, '_')}"`;
+    const bytes = fileBytes(item.id);
+    if (bytes)
+      return new HttpResponse(bytes, {
+        headers: {
+          'Content-Type': item.mimeType,
+          'Content-Disposition': disposition(item.fileName),
+        },
+      });
+    // Seeded files, and uploads from an earlier page session, have no stored contents.
+    return new HttpResponse(
+      [
+        `Demonstration placeholder for ${item.fileName}`,
+        '',
+        'The mock API keeps uploaded contents only until the page reloads, and seeded',
+        'files never had contents. The real API returns the stored file.',
+        '',
+        `Category: ${item.category}`,
+        `Version: ${item.version}`,
+        `Size: ${item.sizeBytes} bytes`,
+        `SHA-256: ${item.sha256}`,
+      ].join('\n'),
+      {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': disposition(`${item.fileName}.txt`),
+        },
+      },
+    );
+  }),
 
   http.post(
     '/api/obligations/:obligationId/submit',

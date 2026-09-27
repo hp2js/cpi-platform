@@ -6,6 +6,8 @@ import type {
   MilestoneResponse,
   ReviewBundle,
 } from '@cpi/contracts';
+import { planQuery } from '@/features/planning/queries';
+import { EvidenceLink } from '@/features/reporting/evidence-link';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
@@ -235,9 +237,13 @@ function Evidence({
               aria-hidden="true"
             />
             <span>
-              <span className="font-medium">
-                {item?.fileName ?? 'File not attached to this revision'}
-              </span>
+              {item ? (
+                <EvidenceLink evidenceId={item.id} fileName={item.fileName} />
+              ) : (
+                <span className="font-medium">
+                  File not attached to this revision
+                </span>
+              )}
               {item && item.version > 1 && (
                 <span className="text-muted-foreground">
                   {' '}
@@ -616,8 +622,8 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
       <ul className="mt-2 grid gap-1.5 text-sm">
         {bundle.evidence.map((item) => (
           <li key={item.id} className="text-muted-foreground">
-            <span className="font-medium text-foreground">{item.fileName}</span>{' '}
-            · {evidenceCategoryLabel[item.category]} · version {item.version} ·{' '}
+            <EvidenceLink evidenceId={item.id} fileName={item.fileName} /> ·{' '}
+            {evidenceCategoryLabel[item.category]} · version {item.version} ·{' '}
             {formatBytes(item.sizeBytes)} · SHA-256 {item.sha256.slice(0, 12)}…
           </li>
         ))}
@@ -767,6 +773,15 @@ function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
   );
 }
 
+function changedSummary(prior: NonNullable<ReviewBundle['prior']>) {
+  const count = Object.values(prior.changes).filter(
+    (change) => change === 'changed',
+  ).length;
+  return count === 1
+    ? '1 milestone changed and needs a new review'
+    : `${count} milestones changed and need a new review`;
+}
+
 function Finalize({ bundle }: { bundle: ReviewBundle }) {
   const mutation = useReviewMutation(bundle, () =>
     finalizeReview(bundle.submissionId, bundle.item.revision),
@@ -783,6 +798,16 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
   const openClarification = bundle.clarifications.some(
     (clarification) => clarification.status === 'open',
   );
+  // A seeded historical baseline must be confirmed before the quarter is finalized (AT25).
+  const plan = useQuery(planQuery(bundle.item.institutionId));
+  const seedUnconfirmed =
+    plan.data?.baselines.some(
+      (baseline) =>
+        baseline.periodId === bundle.item.periodId &&
+        baseline.status === 'approved' &&
+        baseline.historicalSeed !== null &&
+        baseline.historicalSeed.confirmedAt === null,
+    ) ?? false;
   return (
     <section
       aria-labelledby="finalize-heading"
@@ -828,7 +853,10 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
           <AlertDialogTrigger asChild>
             <Button
               disabled={
-                undecided.length > 0 || openClarification || mutation.isPending
+                undecided.length > 0 ||
+                openClarification ||
+                seedUnconfirmed ||
+                mutation.isPending
               }
             >
               {mutation.isPending ? 'Finalizing…' : 'Finalize review'}
@@ -857,6 +885,18 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
         {openClarification ? (
           <p className="text-sm text-muted-foreground">
             A clarification is open; finalize after the institution responds.
+          </p>
+        ) : seedUnconfirmed ? (
+          <p className="text-sm text-muted-foreground">
+            Confirm that the seeded {bundle.item.periodLabel} baseline matches
+            the approved plan first.{' '}
+            <Link
+              to="/officer/institutions/$institutionId"
+              params={{ institutionId: bundle.item.institutionId }}
+              className="font-medium text-primary underline"
+            >
+              Open {bundle.item.institutionId} baselines
+            </Link>
           </p>
         ) : (
           undecided.length > 0 && (
@@ -984,20 +1024,15 @@ export function ReviewPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              {bundle.prior && (
+              {bundle.prior && !bundle.finalizedAt && (
                 <Alert>
                   <RefreshCcw aria-hidden="true" />
                   <AlertTitle>
                     Revision {bundle.item.revision} responds to a clarification
                   </AlertTitle>
                   <AlertDescription>
-                    {
-                      Object.values(bundle.prior.changes).filter(
-                        (change) => change === 'changed',
-                      ).length
-                    }{' '}
-                    milestone(s) changed since revision {bundle.prior.revision}{' '}
-                    and need a new review. Unchanged decisions carry forward
+                    {changedSummary(bundle.prior)} since revision{' '}
+                    {bundle.prior.revision}. Unchanged decisions carry forward
                     only when you confirm them.
                   </AlertDescription>
                 </Alert>

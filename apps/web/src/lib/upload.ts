@@ -1,12 +1,24 @@
 import { apiErrorSchema } from '@cpi/contracts';
 import type { z } from 'zod';
-import { ApiError, apiUrl } from './api';
+import { ApiError, apiUrl, awaitBeforeRequest } from './api';
 
 /**
  * Multipart upload with progress. fetch cannot report upload progress, so this uses XHR and
  * applies the same error envelope and response validation as `request`.
  */
 export function uploadWithProgress<T>(
+  path: `/api/${string}`,
+  body: FormData,
+  schema: z.ZodType<T>,
+  onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
+  return awaitBeforeRequest().then(() =>
+    send(path, body, schema, onProgress, signal),
+  );
+}
+
+function send<T>(
   path: `/api/${string}`,
   body: FormData,
   schema: z.ZodType<T>,

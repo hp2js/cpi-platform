@@ -33,8 +33,18 @@ export function AssignmentsPage() {
   const [institutionId, setInstitutionId] = useState('DEMO-001');
   const [officerId, setOfficerId] = useState('officer-b');
   const [reason, setReason] = useState('');
+  const currentOfficerId = history.data?.find(
+    (row) => row.institutionId === institutionId && row.validTo === null,
+  )?.officerId;
+  // Never offer the institution's current officer as the new one.
+  const newOfficerId =
+    officerId === currentOfficerId
+      ? (officers.find((officer) => officer.id !== currentOfficerId)?.id ??
+        officerId)
+      : officerId;
+  const reasonTooShort = reason.trim().length < 10;
   const mutation = useMutation({
-    mutationFn: () => reassign(institutionId, officerId, reason),
+    mutationFn: () => reassign(institutionId, newOfficerId, reason),
     onSuccess: async () => {
       setReason('');
       await queryClient.invalidateQueries();
@@ -75,12 +85,17 @@ export function AssignmentsPage() {
             <select
               id="assign-officer"
               className="h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm"
-              value={officerId}
+              value={newOfficerId}
               onChange={(event) => setOfficerId(event.target.value)}
             >
               {officers.map((officer) => (
-                <option key={officer.id} value={officer.id}>
+                <option
+                  key={officer.id}
+                  value={officer.id}
+                  disabled={officer.id === currentOfficerId}
+                >
                   {officer.name}
+                  {officer.id === currentOfficerId ? ' (current)' : ''}
                 </option>
               ))}
             </select>
@@ -90,14 +105,18 @@ export function AssignmentsPage() {
         <Textarea
           id="assign-reason"
           value={reason}
+          aria-describedby="assign-reason-hint"
           onChange={(event) => setReason(event.target.value)}
         />
+        <p id="assign-reason-hint" className="text-sm text-muted-foreground">
+          At least 10 characters. The reason is kept in the assignment history.
+        </p>
         {mutation.isError && (
           <p className="text-sm text-destructive">{mutation.error.message}</p>
         )}
         <div>
           <Button
-            disabled={reason.trim().length < 10 || mutation.isPending}
+            disabled={reasonTooShort || mutation.isPending}
             onClick={() => mutation.mutate()}
           >
             Reassign

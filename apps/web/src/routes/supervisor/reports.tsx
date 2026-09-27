@@ -87,11 +87,16 @@ export function ReportsPage() {
                 <h2 id="unreleased-heading" className="font-semibold">
                   Not released
                 </h2>
-                <ul className="mt-2 grid gap-1 text-sm">
+                <ul className="mt-3 grid gap-3 text-sm">
                   {data.unreleased.map((row) => (
-                    <li key={row.institutionId}>
+                    <li key={row.institutionId} className="break-inside-avoid">
                       <span className="font-medium">{row.institutionId}</span>{' '}
-                      {row.institutionName}: {row.reasons.join('; ')}
+                      {row.institutionName}
+                      <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                        {row.reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>

@@ -27,7 +27,12 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
   const portfolio = useQuery(institutionsQuery);
   return (
     <div className="flex h-full flex-col gap-6 p-4">
-      <Link to="/officer" onClick={onNavigate} aria-label="Officer home">
+      <Link
+        to="/officer"
+        activeOptions={{ exact: true }}
+        onClick={onNavigate}
+        aria-label="Officer home"
+      >
         <Brand />
       </Link>
       <nav aria-label="Officer">

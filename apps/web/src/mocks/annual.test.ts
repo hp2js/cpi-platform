@@ -219,6 +219,14 @@ describe('scripted demonstration year (PRD §17)', () => {
         .filter((item) => item.eventType === 'deadline.overdue')
         .map((item) => item.title),
     ).toEqual(['Q2 report overdue: DEMO-001', 'Q1 report overdue: DEMO-001']);
+    // Each notice carries the time its boundary occurred and a link to the report.
+    const q1 = inbox.items.find(
+      (item) => item.title === 'Q1 report overdue: DEMO-001',
+    );
+    expect(q1).toMatchObject({
+      createdAt: '2026-10-16T00:00:00+03:00',
+      link: '/institution/reports/FY2026-27-Q1',
+    });
   });
 
   it(

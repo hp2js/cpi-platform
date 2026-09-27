@@ -60,6 +60,7 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col gap-6 bg-primary p-4 text-primary-foreground">
       <Link
         to="/admin"
+        activeOptions={{ exact: true }}
         onClick={onNavigate}
         aria-label="Administration console"
       >
