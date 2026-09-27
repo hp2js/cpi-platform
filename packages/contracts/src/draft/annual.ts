@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { institutionIdSchema, instantSchema } from './common.js';
+import { indicatorWeightsSchema } from './forms.js';
 import { componentScoreSchema, fractionSchema } from './review.js';
 
 /** Named business-time boundaries the demo clock can advance to (FR14). */
@@ -54,7 +55,9 @@ export const quarterDispositionSchema = z.object({
   ]),
   implementation: fractionSchema.nullable(),
   late: z.boolean(),
+  daysLate: z.number().int().nonnegative().nullable(),
   firstSubmittedAt: instantSchema.nullable(),
+  firstCompleteEvidenceAt: instantSchema.nullable(),
   revision: z.number().int().positive().nullable(),
   reviewedBy: z.string().nullable(),
   /** Rejected criteria with their reasons, for the explanation. */
@@ -81,6 +84,8 @@ export const annualEvaluationSchema = z.object({
   officerName: z.string(),
   quarters: z.array(quarterDispositionSchema).length(4),
   foundations: z.array(foundationOutcomeSchema).length(3),
+  /** Weights of the profile the evaluation used; each quarter is worth implementation ÷ 4. */
+  weights: indicatorWeightsSchema,
   /** Annual score, or pending with reasons: never renormalised over reported quarters (§10.5). */
   total: z.discriminatedUnion('status', [
     z.object({
@@ -93,6 +98,23 @@ export const annualEvaluationSchema = z.object({
     z.object({ status: z.literal('pending'), reasons: z.array(z.string()) }),
   ]),
   releasable: z.boolean(),
+  /**
+   * An authorized institution-specific evaluation extension (PRD §7.3, AT29). It lets evidence
+   * and review finish; it never extends the original cutoff for achievement or lateness.
+   */
+  extension: z
+    .object({
+      until: instantSchema,
+      reason: z.string(),
+      authorizedBy: z.string(),
+      recordedBy: z.string(),
+      recordedAt: instantSchema,
+    })
+    .nullable(),
+  /** A clarification window ends after the cutoff and no extension covers it yet. */
+  extensionRequired: z.boolean(),
+  /** Reasons release must wait even when the total is calculable. */
+  holds: z.array(z.string()),
   publication: z
     .object({
       id: z.string(),
@@ -113,6 +135,14 @@ export const annualEvaluationSchema = z.object({
     .nullable(),
 });
 export type AnnualEvaluation = z.infer<typeof annualEvaluationSchema>;
+
+export const extensionRequestSchema = z.object({
+  institutionId: institutionIdSchema,
+  untilDate: z.iso.date(),
+  reason: z.string().trim().min(10).max(1000),
+  authorizedBy: z.string().trim().min(3).max(200),
+});
+export type ExtensionRequest = z.infer<typeof extensionRequestSchema>;
 
 export const annualOverviewSchema = z.object({
   cycleLabel: z.string(),
@@ -155,6 +185,9 @@ export const publishedResultSchema = z.object({
     publication: true,
     correction: true,
     releasable: true,
+    extension: true,
+    extensionRequired: true,
+    holds: true,
   }),
 });
 export type PublishedResult = z.infer<typeof publishedResultSchema>;

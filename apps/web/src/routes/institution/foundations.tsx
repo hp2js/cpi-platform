@@ -1,4 +1,4 @@
-import { foundationChecks, type FoundationIndicator } from '@cpi/contracts';
+import type { FoundationIndicator } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
@@ -140,7 +140,7 @@ function NewVersion({
       </div>
       <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">This document covers</legend>
-        {foundationChecks[indicator.kind].map((check, index) => (
+        {indicator.checks.map((check, index) => (
           <div key={check} className="flex items-center gap-2">
             <Checkbox
               id={`${id}-claim-${index}`}

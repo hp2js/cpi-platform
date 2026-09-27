@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Bell, ClipboardList, Menu } from 'lucide-react';
+import { Bell, ClipboardList, FileSearch, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -20,6 +20,12 @@ import { NavList, SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/officer', label: 'Assigned work', icon: ClipboardList, exact: true },
+  {
+    to: '/officer/evidence',
+    label: 'Evidence',
+    icon: FileSearch,
+    exact: false,
+  },
   { to: '/officer/inbox', label: 'Inbox', icon: Bell, exact: false },
 ] as const satisfies readonly NavItem[];
 

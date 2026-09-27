@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { passSuitability } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -27,23 +28,35 @@ test('publish, report, submit, review and finalize one quarter', async ({
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
 
-  // Administrator: invalid weights block publication (AT03), then publish.
+  // Administrator: invalid profile weights cannot be approved (AT03), then publish the form.
   await signIn(page, 'Administrator', /Administrator/);
-  await page
-    .getByRole('navigation', { name: 'Administration' })
-    .getByRole('link', { name: 'Reporting forms' })
-    .click();
-  await page.getByRole('link', { name: 'Version 1' }).click();
-  await page.getByLabel('Implementation').fill('50');
-  await page.getByRole('button', { name: 'Save draft' }).click();
+  const adminNav = page.getByRole('navigation', { name: 'Administration' });
+  await adminNav.getByRole('link', { name: 'Scoring profiles' }).click();
+  await page.getByRole('link', { name: 'Hackathon Mock v1' }).first().click();
+  await page.getByRole('button', { name: 'Copy to a new draft' }).click();
   await expect(
-    page.getByText('Indicator weights must total 100; they total 90.'),
+    page.getByRole('heading', { name: 'Hackathon Mock v1 copy' }),
   ).toBeVisible();
+  await page.getByLabel('Implementation').fill('50');
+  await page.getByRole('button', { name: 'Approve profile' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Approve' })
+    .click();
   await expect(
-    page.getByRole('button', { name: 'Publish version 1' }),
-  ).toBeDisabled();
-  await page.getByLabel('Implementation').fill('60');
-  await page.getByRole('button', { name: 'Save draft' }).click();
+    page.getByText('Indicator weights must total 100; they total 90.').first(),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Delete draft' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Scoring profiles' }),
+  ).toBeVisible();
+
+  await adminNav.getByRole('link', { name: 'Reporting forms' }).click();
+  await page.getByRole('link', { name: 'Version 1' }).click();
   await expect(
     page.getByText('No issues: this version can be published.'),
   ).toBeVisible();
@@ -143,6 +156,7 @@ test('publish, report, submit, review and finalize one quarter', async ({
     .getByRole('link', { name: 'DEMO-001' })
     .click();
   await expect(page.getByText('60.00')).toBeVisible();
+  await passSuitability(page);
   const decide = async (
     code: string,
     outcome: 'Accept' | 'Reject',

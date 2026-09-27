@@ -1,3 +1,4 @@
+import { suitabilityCheckKeys } from '@cpi/contracts';
 import type {
   Baseline,
   Foundations,
@@ -256,6 +257,10 @@ async function confirmSeed(institutionId: string, officer: string) {
     });
 }
 
+const allPass = Object.fromEntries(
+  suitabilityCheckKeys.map((key) => [key, { outcome: 'pass', reason: '' }]),
+);
+
 /** Decide every milestone (carrying forward unchanged earlier decisions) and finalize. */
 async function review(
   institutionId: string,
@@ -266,6 +271,15 @@ async function review(
   if (!open) return;
   const { officer, bundle } = open;
   const path = `/api/reviews/${bundle.submissionId}`;
+  // The officer checks each submitted file's suitability before relying on it (AT30).
+  for (const item of bundle.evidence) {
+    if (bundle.suitability.some((record) => record.evidenceId === item.id))
+      continue;
+    await call(officer, 'PUT', `${path}/evidence/${item.id}/suitability`, {
+      revision: bundle.item.revision,
+      checks: allPass,
+    });
+  }
   for (const milestone of bundle.milestones) {
     if (
       bundle.decisions.some((decision) => decision.milestoneId === milestone.id)

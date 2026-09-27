@@ -96,7 +96,9 @@ export function WorkloadPage() {
                       <TableHead scope="col">Institution</TableHead>
                       <TableHead scope="col">Quarter</TableHead>
                       <TableHead scope="col">Accepted</TableHead>
-                      <TableHead scope="col">Points (of 60)</TableHead>
+                      <TableHead scope="col">
+                        Points (of {data.averageReviewed.maxPoints})
+                      </TableHead>
                       <TableHead scope="col">Plan size</TableHead>
                     </TableRow>
                   </TableHeader>

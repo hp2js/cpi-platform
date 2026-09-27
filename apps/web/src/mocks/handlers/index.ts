@@ -11,6 +11,7 @@ import { planningHandlers } from './planning';
 import { reportingHandlers } from './reporting';
 import { reviewHandlers } from './review';
 import { sessionHandlers } from './session';
+import { settingsHandlers } from './settings';
 
 export const handlers = [
   // First, so an armed fault intercepts the next matching request.
@@ -26,5 +27,6 @@ export const handlers = [
   ...annualHandlers,
   ...simulationHandlers,
   ...oversightHandlers,
+  ...settingsHandlers,
   ...devHandlers,
 ];

@@ -145,6 +145,10 @@ export const receiptSchema = z.object({
   recordedAt: instantSchema,
   deadline: instantSchema,
   timeliness: z.enum(['on_time', 'late']),
+  /** Calendar days after the deadline; 0 when on time (§10.2). */
+  daysLate: z.number().int().nonnegative(),
+  /** True when every required document was supplied, none declared unavailable. */
+  evidenceComplete: z.boolean(),
   submittedBy: z.string(),
   submitterRole: z.string(),
   approval: attestationSchema.shape.approval,

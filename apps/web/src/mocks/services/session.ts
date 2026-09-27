@@ -2,6 +2,7 @@ import type { Session } from '@cpi/contracts';
 import { getDb } from '../db';
 import type { MockUser } from '../seed/cast';
 import { apiError } from './http';
+import { activeProfile } from './profiles';
 
 export function currentUser(): MockUser | undefined {
   const { session, users } = getDb();
@@ -39,9 +40,9 @@ export function toSession(user: MockUser): Session {
       timezone: db.cycle.timezone,
     },
     profile: {
-      id: 'hackathon-mock-v1',
-      name: 'Hackathon Mock v1',
-      simulation: true,
+      id: activeProfile(db).id,
+      name: activeProfile(db).name,
+      simulation: activeProfile(db).simulation,
     },
   };
 }

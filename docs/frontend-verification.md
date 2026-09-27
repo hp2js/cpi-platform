@@ -49,6 +49,24 @@ Still open, for the team to decide:
 - The PRD gives the supervisor an oversight comment on clarifications (§5.2 permission matrix, §7.3); there is no comment feature yet.
 - Advancing the clock does not summarise what the boundaries did (reminders sent, obligations now overdue); the administrator reads the email sink or audit log instead.
 
+## Second walkthrough: configuration and PRD gaps (27 September 2026)
+
+A second browser run focused on what the administrator can configure, then a line-by-line check against the PRD. Everything found is now built and tested, except the items listed as not built in [prd-coverage.md](prd-coverage.md).
+
+| Found                                                                                  | Built                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scoring weights were edited inside a form version, and the profile name was fixed text | **Scoring profiles**: copy, edit, approve and apply cycle-wide profiles; the 23rd Cycle structure as a reference; a new run can start with another profile. The form editor shows the cycle's profile. |
+| Deadlines, the cutoff and reminders could not be configured (FR02)                     | **Reporting calendar** with locks for opened or passed dates, a required reason, a change log and notices                                                                                              |
+| No user or institution management (FR01); deactivation missing (AT22)                  | **Users & institutions**; deactivation ends the session; assignments list any active officer                                                                                                           |
+| No evidence suitability checklist (§9.2, AT30)                                         | Five checks per file; accepting needs a checked file without a deficiency                                                                                                                              |
+| The supervisor could not read submissions or comment (§5.2)                            | **Submissions** (read only) and oversight comments for the officer                                                                                                                                     |
+| No recorded extension; an unanswered clarification could never be closed (§7.3, AT29)  | Extensions on the annual page with release holds; closing unanswered after the window and cutoff                                                                                                       |
+| No administrator override (FR10)                                                       | Justified override on **Reviews**, audited on every action                                                                                                                                             |
+| No evidence lookup (FR15)                                                              | **Evidence** pages for officers and the supervisor, scoped by the server                                                                                                                               |
+| Days late and first complete-evidence time missing (§7.2, §10.2)                       | On receipts, the review header and annual results                                                                                                                                                      |
+| Views and exports assumed 60 implementation points and 15 per quarter                  | All derived from the profile; publications keep the profile they used                                                                                                                                  |
+| AT04, AT05, AT11 and AT14 had no direct test                                           | `acceptance.test`                                                                                                                                                                                      |
+
 ## Not verified
 
 - Screen reader testing with NVDA, JAWS, VoiceOver or TalkBack. Structure (landmarks, headings, labels, live regions) is checked automatically; spoken output is not.

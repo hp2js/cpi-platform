@@ -1,6 +1,5 @@
 import { QuarterDispositions } from '@/features/annual/quarter-dispositions';
 import {
-  foundationChecks,
   type Baseline,
   type BaselineChecks,
   type FoundationIndicator,
@@ -390,7 +389,7 @@ function FoundationReview({
       : undefined;
   const [checks, setChecks] = useState(
     existing ??
-      foundationChecks[indicator.kind].map(() => ({
+      indicator.checks.map(() => ({
         outcome: '' as 'pass' | 'fail' | '',
         passage: '',
         reason: '',
@@ -422,7 +421,7 @@ function FoundationReview({
     );
   return (
     <div className="grid gap-3">
-      {foundationChecks[indicator.kind].map((label, index) => {
+      {indicator.checks.map((label, index) => {
         const check = checks[index]!;
         const id = `${indicator.kind}-${index}`;
         return (

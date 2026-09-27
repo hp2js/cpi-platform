@@ -1,15 +1,23 @@
 import {
-  foundationChecks,
   type AnnualEvaluation,
   type ComponentScore,
   type FoundationKind,
   type QuarterDisposition,
 } from '@cpi/contracts';
 import { getDb } from '../db';
+import { toClarification } from './clarifications';
+import { daysLate } from './obligations';
 import { baselineOf, periodOf } from './reporting';
 import { scoreSummary } from './scoring';
 import { points as formatPoints } from './scoring';
 import { add, format2, mul, rational, sum, type Rational } from './rational';
+import { activeProfile, activeWeights } from './profiles';
+
+const checklistKey = {
+  procedures: 'procedures',
+  risk_assessment: 'riskAssessment',
+  mitigation_plan: 'mitigationPlan',
+} as const;
 
 /**
  * Stand-in for the backend's annual evaluation (HP2-29): foundations once, four equally
@@ -28,9 +36,7 @@ const kindLabel: Record<FoundationKind, string> = {
 };
 
 export function weights() {
-  const db = getDb();
-  return (db.forms.find((form) => form.status === 'published') ?? db.forms[0]!)
-    .weights;
+  return activeWeights();
 }
 
 function quarterDisposition(
@@ -58,7 +64,11 @@ function quarterDisposition(
     periodId,
     periodLabel: period.label,
     late,
+    daysLate: obligation.firstSubmittedAt
+      ? daysLate(obligation.firstSubmittedAt, period.submissionDeadline)
+      : null,
     firstSubmittedAt: obligation.firstSubmittedAt,
+    firstCompleteEvidenceAt: obligation.firstCompleteEvidenceAt,
     revision: obligation.currentRevision,
     reviewedBy: submission?.finalizedBy ?? null,
     rejected: [] as QuarterDisposition['rejected'],
@@ -91,7 +101,7 @@ function quarterDisposition(
         decision.supersededAt === null,
     );
     const score = scoreSummary(
-      60,
+      activeWeights().implementation,
       milestones,
       submission.answers,
       submission.evidenceIds,
@@ -184,7 +194,8 @@ function foundationOutcome(
             check.outcome === 'fail'
               ? [
                   {
-                    check: foundationChecks[kind][index]!,
+                    check:
+                      activeProfile().checklists[checklistKey[kind]][index]!,
                     reason: check.reason,
                   },
                 ]
@@ -277,6 +288,24 @@ export function evaluate(institutionId: string): AnnualEvaluation {
     (assignment) =>
       assignment.institutionId === institutionId && assignment.validTo === null,
   );
+  // Clarification windows past the cutoff hold release until an authorized decision (§7.3).
+  const extension = db.extensions.find(
+    (candidate) => candidate.institutionId === institutionId,
+  );
+  const extensionRequired = db.clarifications.some(
+    (clarification) =>
+      clarification.institutionId === institutionId &&
+      toClarification(clarification).extensionRequired,
+  );
+  const holds: string[] = [];
+  if (extensionRequired)
+    holds.push(
+      'A clarification window ends after the evaluation cutoff: record an authorized extension, or the result stays pending.',
+    );
+  if (extension && Date.parse(db.businessTime) <= Date.parse(extension.until))
+    holds.push(
+      `Evaluation extended to ${extension.until.slice(0, 10)}: release waits until the extension ends.`,
+    );
   return {
     institutionId,
     institutionName:
@@ -287,8 +316,20 @@ export function evaluate(institutionId: string): AnnualEvaluation {
       'Unassigned',
     quarters: quarters.map((quarter) => quarter.disposition),
     foundations: foundations.map((foundation) => foundation.outcome),
+    weights: { ...activeWeights() },
     total,
-    releasable: total.status === 'calculated',
+    releasable: total.status === 'calculated' && holds.length === 0,
+    extension: extension
+      ? {
+          until: extension.until,
+          reason: extension.reason,
+          authorizedBy: extension.authorizedBy,
+          recordedBy: extension.recordedBy,
+          recordedAt: extension.recordedAt,
+        }
+      : null,
+    extensionRequired,
+    holds,
     publication: publication
       ? {
           id: publication.id,

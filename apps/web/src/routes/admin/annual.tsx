@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -26,8 +27,10 @@ import {
   invalidateAnnual,
   openCorrection,
   publishResults,
+  recordExtension,
 } from '@/features/annual/queries';
 import { invalidateEvents } from '@/features/events/queries';
+import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
 function status(evaluation: AnnualEvaluation) {
@@ -38,6 +41,89 @@ function status(evaluation: AnnualEvaluation) {
     return `Published v${evaluation.publication.version}, ${formatDateTime(evaluation.publication.publishedAt)}`;
   if (evaluation.releasable) return 'Ready for release';
   return 'Not ready';
+}
+
+/** An authorized institution-specific evaluation extension (PRD §7.3, AT29). */
+function ExtensionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [untilDate, setUntilDate] = useState('');
+  const [authorizedBy, setAuthorizedBy] = useState('');
+  const [reason, setReason] = useState('');
+  const mutation = useMutation({
+    mutationFn: () =>
+      recordExtension({
+        institutionId: evaluation.institutionId,
+        untilDate,
+        authorizedBy,
+        reason,
+      }),
+    onSuccess: async () => {
+      setOpen(false);
+      await Promise.all([
+        invalidateAnnual(queryClient),
+        invalidateEvents(queryClient),
+      ]);
+    },
+  });
+  const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
+  const id = `ext-${evaluation.institutionId}`;
+  if (!open)
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        Record an extension
+      </Button>
+    );
+  return (
+    <div className="grid gap-2 rounded-md border bg-background p-3">
+      <p className="text-sm text-muted-foreground">
+        The extension lets evidence and review finish. It never shortens a
+        response window and does not change other deadlines or lateness.
+      </p>
+      <Label htmlFor={`${id}-until`}>Extended to</Label>
+      <Input
+        id={`${id}-until`}
+        type="date"
+        value={untilDate}
+        onChange={(event) => setUntilDate(event.target.value)}
+      />
+      {errors.untilDate && (
+        <p className="text-sm text-destructive">{errors.untilDate}</p>
+      )}
+      <Label htmlFor={`${id}-by`}>Authorized by</Label>
+      <Input
+        id={`${id}-by`}
+        value={authorizedBy}
+        onChange={(event) => setAuthorizedBy(event.target.value)}
+      />
+      <Label htmlFor={`${id}-reason`}>Reason</Label>
+      <Textarea
+        id={`${id}-reason`}
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+      />
+      {mutation.isError && !errors.untilDate && (
+        <p className="text-sm text-destructive">{mutation.error.message}</p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          disabled={
+            !untilDate ||
+            authorizedBy.trim().length < 3 ||
+            reason.trim().length < 10 ||
+            mutation.isPending
+          }
+          onClick={() => mutation.mutate()}
+        >
+          Record extension
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
@@ -197,7 +283,7 @@ export function AnnualPage() {
                             {evaluation.officerName}
                           </span>
                         </p>
-                        <p>
+                        <div>
                           {evaluation.total.status === 'calculated' ? (
                             <>
                               <span className="font-semibold tabular-nums">
@@ -221,7 +307,7 @@ export function AnnualPage() {
                               </ul>
                             </details>
                           )}
-                        </p>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {evaluation.quarters
                             .map(
@@ -231,6 +317,28 @@ export function AnnualPage() {
                             .join(' · ')}
                         </p>
                       </div>
+                      {(evaluation.holds.length > 0 ||
+                        evaluation.extension) && (
+                        <div className="grid gap-1 text-sm">
+                          {evaluation.holds.map((hold) => (
+                            <p key={hold} className="font-medium">
+                              {hold}
+                            </p>
+                          ))}
+                          {evaluation.extension && (
+                            <p className="text-muted-foreground">
+                              Extension authorized by{' '}
+                              {evaluation.extension.authorizedBy}, recorded by{' '}
+                              {evaluation.extension.recordedBy}{' '}
+                              {formatDateTime(evaluation.extension.recordedAt)}:{' '}
+                              {evaluation.extension.reason}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {evaluation.extensionRequired && (
+                        <ExtensionForm evaluation={evaluation} />
+                      )}
                       {evaluation.publication && !evaluation.correction && (
                         <CorrectionForm evaluation={evaluation} />
                       )}

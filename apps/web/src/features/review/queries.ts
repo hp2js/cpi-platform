@@ -3,6 +3,7 @@ import {
   reviewBundleSchema,
   reviewQueueSchema,
   type DecisionRequest,
+  type SuitabilityChecks,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { request } from '@/lib/api';
@@ -44,6 +45,36 @@ export const recordDecision = (
       method: 'PUT',
       json: decision,
     },
+  );
+
+export const recordSuitability = (
+  submissionId: string,
+  evidenceId: string,
+  revision: number,
+  checks: SuitabilityChecks,
+) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/evidence/${encodeURIComponent(evidenceId)}/suitability`,
+    reviewBundleSchema,
+    { method: 'PUT', json: { revision, checks } },
+  );
+
+export const addOversightComment = (submissionId: string, text: string) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/comments`,
+    reviewBundleSchema,
+    { method: 'POST', json: { text } },
+  );
+
+export const closeClarification = (
+  submissionId: string,
+  clarificationId: string,
+  reason: string,
+) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/clarifications/${encodeURIComponent(clarificationId)}/close`,
+    reviewBundleSchema,
+    { method: 'POST', json: { reason } },
   );
 
 export const finalizeReview = (submissionId: string, revision: number) =>

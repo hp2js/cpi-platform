@@ -53,6 +53,8 @@ export const oversightSchema = z.object({
   }),
   averageReviewed: z.object({
     points: z.string().nullable(),
+    /** The profile's implementation weight, the maximum for one quarter's reviewed result. */
+    maxPoints: z.number(),
     included: z.number().int().nonnegative(),
     expected: z.number().int().nonnegative(),
   }),

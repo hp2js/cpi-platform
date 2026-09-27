@@ -5,7 +5,9 @@ import {
   planSchema,
   receiptSchema,
   reportBundleSchema,
+  reviewBundleSchema,
   reviewQueueSchema,
+  suitabilityCheckKeys,
   type ReportAnswers,
 } from '@cpi/contracts';
 import { request } from '@/lib/api';
@@ -108,4 +110,21 @@ export async function confirmSeed(institutionId: string) {
     planSchema.shape.baselines.element,
     { method: 'POST', json: { version: q1.version } },
   );
+}
+
+/** The assigned officer records that every file in the review passes its suitability checks (AT30). */
+export async function passSuitability(submissionId: string) {
+  const bundle = await request(
+    `/api/reviews/${submissionId}`,
+    reviewBundleSchema,
+  );
+  const checks = Object.fromEntries(
+    suitabilityCheckKeys.map((key) => [key, { outcome: 'pass', reason: '' }]),
+  );
+  for (const item of bundle.evidence)
+    await request(
+      `/api/reviews/${submissionId}/evidence/${item.id}/suitability`,
+      reviewBundleSchema,
+      { method: 'PUT', json: { revision: bundle.item.revision, checks } },
+    );
 }

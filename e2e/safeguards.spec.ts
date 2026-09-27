@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { passSuitability } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -134,6 +135,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
     .getByRole('table', { name: /Submissions awaiting review/ })
     .getByRole('link', { name: 'DEMO-001' })
     .click();
+  await passSuitability(page);
   for (const code of ['M-01', 'M-02', 'M-03', 'M-04']) {
     const card = page.getByRole('article', { name: new RegExp(`^${code} `) });
     await card.getByLabel(/^Accept:/).check();
@@ -226,6 +228,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
       card.getByText(/Confirmed from the earlier revision/),
     ).toBeVisible();
   }
+  await passSuitability(page);
   const m01Review = page.getByRole('article', { name: /^M-01 / });
   await m01Review.getByLabel(/^Accept:/).check();
   await m01Review.getByRole('button', { name: 'Save decision' }).click();

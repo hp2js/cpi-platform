@@ -1,7 +1,9 @@
 import {
+  annualEvaluationSchema,
   annualOverviewSchema,
   consolidatedReportSchema,
   institutionResultsSchema,
+  type ExtensionRequest,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -71,3 +73,9 @@ export async function downloadExport(path: `/api/${string}`, fileName: string) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+export const recordExtension = (extension: ExtensionRequest) =>
+  request('/api/annual/extensions', annualEvaluationSchema, {
+    method: 'POST',
+    json: extension,
+  });

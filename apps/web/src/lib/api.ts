@@ -36,6 +36,15 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   /** Defaults to five seconds; long-running administrative actions may extend it. */
   timeoutMs?: number;
 };
+let overrideReason: string | null = null;
+/**
+ * An administrator's justified override for review actions (FR10). While set, review writes
+ * carry the justification; the server records each use. Clear it when leaving the review.
+ */
+export function setOverrideReason(reason: string | null) {
+  overrideReason = reason;
+}
+
 let beforeRequest: (() => Promise<void>) | null = null;
 /** Registers work to finish before every API call; development mock mode uses it. */
 export function setBeforeRequest(hook: () => Promise<void>) {
@@ -55,6 +64,12 @@ async function send(
     throw new Error('Choose json or body, not both.');
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+  if (
+    overrideReason &&
+    path.startsWith('/api/reviews/') &&
+    (init.method ?? 'GET') !== 'GET'
+  )
+    headers.set('X-Override-Reason', overrideReason);
   if (json !== undefined) headers.set('Content-Type', 'application/json');
   await awaitBeforeRequest();
   let response: Response;

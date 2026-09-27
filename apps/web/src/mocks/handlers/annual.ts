@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import {
   closeNonresponseRequestSchema,
   correctionRequestSchema,
+  extensionRequestSchema,
   publishRequestSchema,
   type AnnualOverview,
   type ConsolidatedReport,
@@ -9,7 +10,9 @@ import {
 } from '@cpi/contracts';
 import { commit, getDb, nextId, type MockPublication } from '../db';
 import { evaluate } from '../services/annual';
+import { effectiveCutoff } from '../services/clarifications';
 import { toCsv } from '../services/csv';
+import { format2, mul, rational } from '../services/rational';
 import {
   assignedOfficers,
   audit,
@@ -24,8 +27,7 @@ import {
   readableInstitutionIds,
 } from '../services/scope';
 import { requireRole } from '../services/session';
-
-const PROFILE = 'Hackathon Mock v1';
+import { profileLabel } from '../services/profiles';
 
 function cutoffPassed() {
   const db = getDb();
@@ -48,7 +50,7 @@ function toPublished(publication: MockPublication): PublishedResult {
     status: publication.supersededBy ? 'superseded' : 'current',
     supersededBy: publication.supersededBy,
     correctionReason: publication.correctionReason,
-    profileName: PROFILE,
+    profileName: publication.profileName,
     simulation: true,
     evaluation: publication.evaluation as PublishedResult['evaluation'],
   };
@@ -58,7 +60,7 @@ function overview(institutionIds: string[]): AnnualOverview {
   const db = getDb();
   return {
     cycleLabel: db.cycle.label,
-    profileName: PROFILE,
+    profileName: profileLabel(),
     simulation: true,
     evaluationCutoff: db.cycle.evaluationCutoff,
     cutoffPassed: cutoffPassed(),
@@ -93,7 +95,7 @@ function consolidated(): ConsolidatedReport {
     simulation: true,
     generatedAt: db.businessTime,
     cycleLabel: db.cycle.label,
-    profileName: PROFILE,
+    profileName: profileLabel(),
     released,
     unreleased,
   };
@@ -107,7 +109,9 @@ function exportRows(results: PublishedResult[]) {
       'cpi-export-1',
       true,
       db.cycle.id,
+      result.profileName,
       result.institutionId,
+      '',
       '',
       foundation.kind,
       foundation.score.maxPoints,
@@ -120,15 +124,22 @@ function exportRows(results: PublishedResult[]) {
       'cpi-export-1',
       true,
       db.cycle.id,
+      result.profileName,
       result.institutionId,
       quarter.periodId,
+      quarter.revision ?? '',
       'implementation',
-      15,
+      result.evaluation.weights.implementation / 4,
       quarter.implementation
-        ? (
-            (15 * quarter.implementation.numerator) /
-            quarter.implementation.denominator
-          ).toFixed(2)
+        ? format2(
+            mul(
+              rational(result.evaluation.weights.implementation, 4),
+              rational(
+                quarter.implementation.numerator,
+                quarter.implementation.denominator,
+              ),
+            ),
+          )
         : '',
       quarter.status + (quarter.late ? ' (late)' : ''),
       result.publishedAt,
@@ -140,8 +151,10 @@ const exportHeader = [
   'schema_version',
   'simulation',
   'cycle_id',
+  'scoring_profile_version',
   'institution_id',
   'period_id',
+  'submission_revision',
   'indicator_id',
   'maximum_points',
   'earned_points',
@@ -232,6 +245,7 @@ export const annualHandlers = [
           officerName: evaluation.officerName,
           quarters: evaluation.quarters,
           foundations: evaluation.foundations,
+          weights: evaluation.weights,
           total: evaluation.total,
         };
         const publication: MockPublication = {
@@ -243,6 +257,8 @@ export const annualHandlers = [
           publishedBy: user.displayName,
           supersededBy: null,
           correctionReason: correction?.reason ?? null,
+          // A release keeps the profile it was scored with, even after a later run changes it.
+          profileName: profileLabel(db),
           evaluation: structuredClone(snapshot),
           points:
             evaluation.total.status === 'calculated'
@@ -282,6 +298,93 @@ export const annualHandlers = [
       }
     });
     return HttpResponse.json(overview(readableInstitutionIds(user)));
+  }),
+
+  http.post('/api/annual/extensions', async ({ request }) => {
+    await networkDelay();
+    const user = requireRole('administrator');
+    const parsed = extensionRequestSchema.safeParse(
+      await request.json().catch(() => undefined),
+    );
+    if (!parsed.success)
+      return apiError(
+        422,
+        'Give the new date, who authorized it and a reason of at least 10 characters.',
+        'invalid_request',
+        Object.fromEntries(
+          parsed.error.issues.map((issue) => [
+            issue.path.join('.'),
+            issue.message,
+          ]),
+        ),
+      );
+    const db = getDb();
+    const { institutionId, untilDate, reason, authorizedBy } = parsed.data;
+    if (!db.institutions.some((item) => item.id === institutionId))
+      return notFound();
+    const until = `${untilDate}T23:59:59+03:00`;
+    if (Date.parse(until) <= Date.parse(db.cycle.evaluationCutoff))
+      return apiError(
+        422,
+        'An extension must end after the evaluation cutoff.',
+        'invalid_request',
+        { untilDate: 'Choose a date after the evaluation cutoff.' },
+      );
+    // The system never shortens a response window (§7.3).
+    const latestWindow = db.clarifications
+      .filter((clarification) => clarification.institutionId === institutionId)
+      .reduce(
+        (latest, clarification) =>
+          Math.max(latest, Date.parse(clarification.responseDueAt)),
+        0,
+      );
+    if (Date.parse(until) < latestWindow)
+      return apiError(
+        422,
+        'The extension cannot end before an open clarification window does.',
+        'invalid_request',
+        {
+          untilDate: `Choose ${new Date(latestWindow + 3 * 3_600_000).toISOString().slice(0, 10)} or later.`,
+        },
+      );
+    commit((store) => {
+      store.extensions = store.extensions.filter(
+        (candidate) => candidate.institutionId !== institutionId,
+      );
+      store.extensions.push({
+        institutionId,
+        until,
+        reason,
+        authorizedBy,
+        recordedBy: user.displayName,
+        recordedAt: store.businessTime,
+      });
+      audit(
+        store,
+        user,
+        'evaluation.extension',
+        { type: 'institution', id: institutionId },
+        `Extended to ${untilDate}, authorized by ${authorizedBy}: ${reason}`,
+      );
+      notify(
+        store,
+        `${institutionId}:extension:${store.sequence}`,
+        'evaluation.extension',
+        [
+          ...institutionUsers(institutionId),
+          ...assignedOfficers(institutionId),
+        ],
+        {
+          title: `Evaluation extended to ${untilDate} for ${institutionId}`,
+          body: 'The extension lets evidence and review finish. It does not change other deadlines or lateness.',
+          link: (recipient) =>
+            recipient.role === 'institution'
+              ? '/institution/clarifications'
+              : `/officer/institutions/${institutionId}`,
+        },
+      );
+    });
+    return HttpResponse.json(evaluate(institutionId));
   }),
 
   http.post('/api/annual/corrections', async ({ request }) => {
@@ -447,7 +550,10 @@ export const annualHandlers = [
           { reason: 'Give a reason of at least 10 characters.' },
         );
       // The scheduler never decides this: the officer records it, and only after the cutoff (§7.6).
-      if (!cutoffPassed())
+      if (
+        Date.parse(getDb().businessTime) <=
+        effectiveCutoff(obligation.institutionId)
+      )
         return apiError(
           409,
           'Non-response can be recorded only after the evaluation cutoff.',

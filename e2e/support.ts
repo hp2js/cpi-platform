@@ -202,3 +202,17 @@ export async function publishedYear(page: Page) {
     },
   });
 }
+
+/** The officer records that every unchecked file passes its suitability checks (AT30). */
+export async function passSuitability(page: Page) {
+  const section = page.getByRole('region', { name: 'Evidence suitability' });
+  await expect(section).toBeVisible();
+  const shortcut = section.getByRole('button', {
+    name: /^All five checks pass/,
+  });
+  while ((await shortcut.count()) > 0) {
+    const before = await shortcut.count();
+    await shortcut.first().click();
+    await expect(shortcut).toHaveCount(before - 1);
+  }
+}

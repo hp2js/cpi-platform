@@ -36,8 +36,17 @@ export const clarificationSchema = z.object({
       submittedAt: instantSchema,
     })
     .nullable(),
+  /** Set when the officer closed it unanswered after the window and the cutoff (§7.3). */
+  closure: z
+    .object({ reason: z.string(), by: z.string(), at: instantSchema })
+    .nullable(),
 });
 export type Clarification = z.infer<typeof clarificationSchema>;
+
+/** Closing an unanswered clarification after its window and the cutoff (PRD §7.3). */
+export const closeClarificationRequestSchema = z.object({
+  reason: z.string().trim().min(10).max(1000),
+});
 export const clarificationsSchema = z.array(clarificationSchema);
 
 export const clarificationRequestSchema = z.object({

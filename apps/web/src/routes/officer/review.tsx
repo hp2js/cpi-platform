@@ -2,15 +2,20 @@ import type {
   Decision,
   EvidenceAnswer,
   EvidenceItem,
+  EvidenceSuitability,
   Milestone,
   MilestoneResponse,
   ReviewBundle,
 } from '@cpi/contracts';
 import { planQuery } from '@/features/planning/queries';
 import { EvidenceLink } from '@/features/reporting/evidence-link';
+import {
+  SuitabilitySection,
+  suitabilityStatus,
+} from '@/features/review/suitability';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import {
   ArrowLeft,
   CircleCheck,
@@ -20,8 +25,9 @@ import {
   Lock,
   MessageCircleQuestion,
   RefreshCcw,
+  ShieldAlert,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { FlagList, WorkflowStateBadge } from '@/components/status';
@@ -58,13 +64,95 @@ import {
   requestClarification,
   reviewKeys,
   reviewQuery,
+  addOversightComment,
+  closeClarification,
 } from '@/features/review/queries';
 import { ComponentScoreValue } from '@/features/review/score-display';
 import { useSession } from '@/features/session/use-session';
-import { isApiError } from '@/lib/api';
+import { isApiError, setOverrideReason } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
-const route = getRouteApi('/authed/officer/reviews/$submissionId');
+/** Officers review their assigned work; the supervisor reads every submission (PRD §5.2). */
+const reviewPath = (role: string) =>
+  role === 'supervisor'
+    ? ('/supervisor/reviews/$submissionId' as const)
+    : role === 'administrator'
+      ? ('/admin/reviews/$submissionId' as const)
+      : ('/officer/reviews/$submissionId' as const);
+const queuePath = (role: string) =>
+  role === 'supervisor'
+    ? ('/supervisor/submissions' as const)
+    : role === 'administrator'
+      ? ('/admin/reviews' as const)
+      : ('/officer' as const);
+
+/**
+ * FR10: an administrator acts on a review only through a distinct override with a written
+ * justification. While it is on, every action carries the justification and is audited.
+ */
+function OverridePanel({
+  active,
+  onChange,
+}: {
+  active: boolean;
+  onChange: (reason: string | null) => void;
+}) {
+  const [reason, setReason] = useState('');
+  if (active)
+    return (
+      <Alert variant="destructive">
+        <ShieldAlert aria-hidden="true" />
+        <AlertTitle>Administrator override is on</AlertTitle>
+        <AlertDescription>
+          <p>
+            Each action you take here is recorded in the audit log with your
+            justification. Turn the override off when you are done.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            onClick={() => onChange(null)}
+          >
+            End override
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  return (
+    <section
+      aria-labelledby="override-heading"
+      className="grid gap-2 rounded-lg border bg-card p-5"
+    >
+      <h2 id="override-heading" className="font-semibold">
+        Administrator override
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Review decisions belong to the assigned officer. Use an override only
+        when the officer cannot act, for example after an unplanned absence. It
+        is a distinct, logged action (FR10).
+      </p>
+      <Label htmlFor="override-reason">Justification</Label>
+      <Textarea
+        id="override-reason"
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+      />
+      <p className="text-sm text-muted-foreground">
+        At least 20 characters. Recorded with every action you take.
+      </p>
+      <div>
+        <Button
+          variant="destructive"
+          disabled={reason.trim().length < 20}
+          onClick={() => onChange(reason.trim())}
+        >
+          Turn on override
+        </Button>
+      </div>
+    </section>
+  );
+}
 
 const basisLabel = {
   claimed_with_evidence: 'Claimed complete with a supplied file',
@@ -120,7 +208,8 @@ function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
         </div>
         <div className="rounded-md bg-accent p-4">
           <dt className="text-sm font-medium">
-            Reviewed (from your decisions)
+            Reviewed (from {bundle.canDecide ? 'your' : 'the officer’s'}{' '}
+            decisions)
           </dt>
           <dd className="mt-1">
             <ComponentScoreValue score={bundle.score.reviewed} />
@@ -132,6 +221,7 @@ function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
 }
 
 function Revisions({ bundle }: { bundle: ReviewBundle }) {
+  const session = useSession();
   if (bundle.revisions.length < 2) return null;
   const latest = Math.max(
     ...bundle.revisions.map((revision) => revision.revision),
@@ -157,7 +247,7 @@ function Revisions({ bundle }: { bundle: ReviewBundle }) {
         ) : (
           <Link
             key={revision.submissionId}
-            to="/officer/reviews/$submissionId"
+            to={reviewPath(session.user.role)}
             params={{ submissionId: revision.submissionId }}
             className="rounded-md border px-2 py-1 hover:bg-accent"
           >
@@ -216,9 +306,11 @@ function Claim({
 function Evidence({
   response,
   evidence,
+  suitability,
 }: {
   response: MilestoneResponse | undefined;
   evidence: EvidenceItem[];
+  suitability: EvidenceSuitability[];
 }) {
   if (!response?.completed)
     return (
@@ -253,6 +345,17 @@ function Evidence({
               <span className="block text-muted-foreground">
                 Cited: {reference.passage || 'no passage given'}
               </span>
+              {item && (
+                <span className="block text-xs text-muted-foreground">
+                  {
+                    suitabilityStatus(
+                      suitability.find(
+                        (record) => record.evidenceId === item.id,
+                      ),
+                    ).label
+                  }
+                </span>
+              )}
             </span>
           </p>
         );
@@ -523,7 +626,9 @@ function MilestoneReview({
           (earlier) => earlier.milestoneId === milestone.id,
         )
       ? 'Needs re-review'
-      : 'Awaiting your decision';
+      : bundle.canDecide
+        ? 'Awaiting your decision'
+        : 'Awaiting the officer’s decision';
   return (
     <article
       aria-labelledby={`m-${milestone.code}`}
@@ -552,7 +657,11 @@ function MilestoneReview({
         </section>
         <section className={column} aria-label="Evidence">
           <h4 className={heading}>Evidence</h4>
-          <Evidence response={response} evidence={bundle.evidence} />
+          <Evidence
+            response={response}
+            evidence={bundle.evidence}
+            suitability={bundle.suitability}
+          />
         </section>
         <section className={column} aria-label="Decision">
           <h4 className={heading}>Decision</h4>
@@ -782,6 +891,133 @@ function changedSummary(prior: NonNullable<ReviewBundle['prior']>) {
     : `${count} milestones changed and need a new review`;
 }
 
+/** After the window and the cutoff, the officer can close an unanswered clarification (§7.3). */
+function CloseUnanswered({
+  bundle,
+  clarificationId,
+}: {
+  bundle: ReviewBundle;
+  clarificationId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const mutation = useReviewMutation(bundle, () =>
+    closeClarification(bundle.submissionId, clarificationId, reason),
+  );
+  if (!open)
+    return (
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Close unanswered
+      </Button>
+    );
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={`close-${clarificationId}`}>
+        Why it is closed without a response
+      </Label>
+      <Textarea
+        id={`close-${clarificationId}`}
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+      />
+      <p className="text-sm text-muted-foreground">
+        Allowed only after the response window and the evaluation cutoff (or an
+        authorized extension) have both passed. Decide the questioned milestones
+        afterwards; unsupported claims are rejected with a reason.
+      </p>
+      {mutation.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {mutation.error.message}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          disabled={reason.trim().length < 10 || mutation.isPending}
+          onClick={() => mutation.mutate(undefined)}
+        >
+          Close clarification
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Supervisor guidance for the officer; never shown to the institution, never an approval gate. */
+function OversightComments({
+  bundle,
+  canComment,
+}: {
+  bundle: ReviewBundle;
+  canComment: boolean;
+}) {
+  const [text, setText] = useState('');
+  const mutation = useReviewMutation(bundle, () =>
+    addOversightComment(bundle.submissionId, text),
+  );
+  if (!canComment && bundle.comments.length === 0) return null;
+  return (
+    <section
+      aria-labelledby="comments-heading"
+      className="grid gap-3 rounded-lg border bg-card p-5"
+    >
+      <h2 id="comments-heading" className="font-semibold">
+        Oversight comments
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        From the supervisor to the officer. They support oversight and are not
+        an approval step; the institution does not see them.
+      </p>
+      {bundle.comments.length > 0 && (
+        <ul className="grid gap-2">
+          {bundle.comments.map((comment) => (
+            <li key={comment.id} className="rounded-md border p-3 text-sm">
+              <p className="whitespace-pre-line">{comment.text}</p>
+              <p className="mt-1 text-muted-foreground">
+                {comment.author}, {formatDateTime(comment.at)} · on revision{' '}
+                {comment.revision}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {canComment && (
+        <form
+          className="grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            mutation.mutate(undefined, { onSuccess: () => setText('') });
+          }}
+        >
+          <Label htmlFor="oversight-comment">Add a comment</Label>
+          <Textarea
+            id="oversight-comment"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+          {mutation.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              {mutation.error.message}
+            </p>
+          )}
+          <div>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={text.trim().length < 10 || mutation.isPending}
+            >
+              Post comment
+            </Button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
 function Finalize({ bundle }: { bundle: ReviewBundle }) {
   const mutation = useReviewMutation(bundle, () =>
     finalizeReview(bundle.submissionId, bundle.item.revision),
@@ -956,8 +1192,16 @@ function Reopen({ bundle }: { bundle: ReviewBundle }) {
 }
 
 export function ReviewPage() {
-  const { submissionId } = route.useParams();
+  const { submissionId } = useParams({ strict: false }) as {
+    submissionId: string;
+  };
   const session = useSession();
+  const supervisor = session.user.role === 'supervisor';
+  const [override, setOverride] = useState<string | null>(null);
+  useEffect(() => {
+    setOverrideReason(override);
+    return () => setOverrideReason(null);
+  }, [override]);
   const review = useQuery(reviewQuery(submissionId));
   return (
     <div className="grid gap-6">
@@ -976,23 +1220,30 @@ export function ReviewPage() {
               Received {formatDateTime(review.data.receipt.receivedAt)} (
               {review.data.receipt.timeliness === 'on_time'
                 ? 'on time'
-                : 'late'}
+                : `late by ${review.data.receipt.daysLate} ${review.data.receipt.daysLate === 1 ? 'day' : 'days'}`}
+              {!review.data.receipt.evidenceComplete &&
+                '; some evidence declared unavailable'}
               )
             </span>
           )
         }
         actions={
           <Link
-            to="/officer"
+            to={queuePath(session.user.role)}
             className={buttonVariants({ variant: 'outline' })}
           >
             <ArrowLeft aria-hidden="true" />
-            Queue
+            {session.user.role === 'officer' ? 'Queue' : 'Submissions'}
           </Link>
         }
       />
       <QueryView query={review} label="submission">
-        {(bundle) => {
+        {(loaded) => {
+          // Under an active override the administrator gets the officer's controls.
+          const bundle =
+            override && loaded.canOverride
+              ? { ...loaded, canDecide: true }
+              : loaded;
           const latest = Math.max(
             ...bundle.revisions.map((revision) => revision.revision),
           );
@@ -1003,6 +1254,12 @@ export function ReviewPage() {
           return (
             <div className="grid gap-6">
               <Revisions bundle={bundle} />
+              {loaded.canOverride && (
+                <OverridePanel
+                  active={override !== null}
+                  onChange={setOverride}
+                />
+              )}
               {obsolete && (
                 <Alert>
                   <History aria-hidden="true" />
@@ -1060,10 +1317,21 @@ export function ReviewPage() {
                       key={clarification.id}
                       clarification={clarification}
                       audience="officer"
+                      actions={
+                        bundle.canDecide &&
+                        clarification.status === 'open' &&
+                        clarification.overdue ? (
+                          <CloseUnanswered
+                            bundle={bundle}
+                            clarificationId={clarification.id}
+                          />
+                        ) : undefined
+                      }
                     />
                   ))}
                 </section>
               )}
+              <SuitabilitySection bundle={bundle} />
               <section
                 aria-labelledby="milestones-heading"
                 className="grid gap-4"
@@ -1080,6 +1348,7 @@ export function ReviewPage() {
                 ))}
               </section>
               <OtherAnswers bundle={bundle} />
+              <OversightComments bundle={bundle} canComment={supervisor} />
               {bundle.canDecide && !openClarification && (
                 <RequestClarification bundle={bundle} />
               )}

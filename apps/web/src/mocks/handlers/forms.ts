@@ -6,6 +6,7 @@ import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { requireRole, requireUser } from '../services/session';
 import { audit, notify, usersWithRole } from '../services/events';
+import { activeWeights } from '../services/profiles';
 
 function issuesAsFieldErrors(issues: { path: string; message: string }[]) {
   const fieldErrors: Record<string, string> = {};
@@ -73,7 +74,8 @@ export const formHandlers = [
     }
     commit((db) => {
       Object.assign(form, parsed.data, {
-        weights: form.weightsLocked ? form.weights : parsed.data.weights,
+        // A snapshot of the cycle profile's weights; they are set in Settings, not here.
+        weights: activeWeights(db),
         updatedAt: db.businessTime,
       });
     });
@@ -103,6 +105,7 @@ export const formHandlers = [
     commit((db) => {
       form.status = 'published';
       form.publishedAt = db.businessTime;
+      form.weights = activeWeights(db);
       // The scoring profile is locked for the cycle from the first publication (PRD §7.1).
       for (const candidate of db.forms) candidate.weightsLocked = true;
       // Future-period assignments move to the new version; started periods keep theirs.

@@ -23,6 +23,7 @@ import { networkDelay } from '../services/latency';
 import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
 import { points } from '../services/scoring';
 import { requireRole, requireUser } from '../services/session';
+import { activeProfile, activeWeights } from '../services/profiles';
 
 const labels: Record<FoundationKind, string> = {
   procedures: 'Procedures',
@@ -36,10 +37,7 @@ const weightKey = {
 } as const;
 
 function maxPointsFor(kind: FoundationKind) {
-  const form =
-    getDb().forms.find((candidate) => candidate.status === 'published') ??
-    getDb().forms[0]!;
-  return form.weights[weightKey[kind]];
+  return activeWeights()[weightKey[kind]];
 }
 
 const calculated = (maxPoints: number, numerator: number): ComponentScore => ({
@@ -77,6 +75,11 @@ function foundationsFor(user: MockUser, institutionId: string): Foundations {
         kind,
         label: labels[kind],
         maxPoints,
+        checks: activeProfile(db).checklists[weightKey[kind]],
+        mode:
+          kind === 'procedures'
+            ? activeProfile(db).proceduresMode
+            : ('scored' as const),
         versions: versions.map((version) => ({
           id: version.id,
           kind: version.kind,

@@ -189,7 +189,7 @@ function Metrics({ data }: { data: Oversight }) {
             value:
               data.averageReviewed.points === null
                 ? 'Not applicable'
-                : `${data.averageReviewed.points} / 60`,
+                : `${data.averageReviewed.points} / ${data.averageReviewed.maxPoints}`,
             detail: `${data.averageReviewed.included} of ${data.averageReviewed.expected} institution-quarters finalized`,
           },
         ].map(({ label, value, detail }) => (

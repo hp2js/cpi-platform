@@ -235,6 +235,40 @@ function Overview({
           })}
         </ol>
       </section>
+
+      <section
+        aria-labelledby="terms-heading"
+        className="rounded-lg border bg-card p-5 text-sm"
+      >
+        <h2 id="terms-heading" className="font-semibold">
+          Terms used here
+        </h2>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-[8rem_1fr]">
+          <dt className="font-medium">CPC</dt>
+          <dd className="text-muted-foreground">
+            Corruption Prevention Committee: the institution's committee that
+            oversees prevention work. Its signed quarterly minutes go with each
+            report.
+          </dd>
+          <dt className="font-medium">IAO</dt>
+          <dd className="text-muted-foreground">
+            Integrity Assurance Officers: the officers who carry out integrity
+            assurance. Their signed quarterly meeting minutes go with each
+            report.
+          </dd>
+          <dt className="font-medium">CRAMP</dt>
+          <dd className="text-muted-foreground">
+            Corruption Risk Assessment and Mitigation Plan: your approved plan.
+            Each quarter is scored against the milestones in its locked
+            baseline.
+          </dd>
+          <dt className="font-medium">Baseline</dt>
+          <dd className="text-muted-foreground">
+            The milestones your officer approved for a quarter before it opened.
+            They cannot be removed to improve a result.
+          </dd>
+        </dl>
+      </section>
     </div>
   );
 }

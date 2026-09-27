@@ -12,7 +12,7 @@ const iso = (ms: number) =>
   `${new Date(ms + 3 * 3_600_000).toISOString().slice(0, 19)}+03:00`;
 
 export function boundaries(): Omit<ClockBoundary, 'passed'>[] {
-  const { cycle } = getDb();
+  const { cycle, reminders } = getDb();
   const list: Omit<ClockBoundary, 'passed'>[] = [];
   for (const period of cycle.periods) {
     const deadline = Date.parse(period.submissionDeadline);
@@ -23,18 +23,15 @@ export function boundaries(): Omit<ClockBoundary, 'passed'>[] {
       at: iso(opens),
       kind: 'reporting_open',
     });
-    list.push({
-      id: `${period.label}-reminder-7`,
-      label: `${period.label} reminder: 7 days to deadline`,
-      at: iso(deadline - 7 * DAY),
-      kind: 'reminder',
-    });
-    list.push({
-      id: `${period.label}-reminder-1`,
-      label: `${period.label} reminder: 1 day to deadline`,
-      at: iso(deadline - DAY),
-      kind: 'reminder',
-    });
+    // The reminder schedule is an administrator setting (FR02; PRD §9.1 defaults 7 and 1).
+    for (const days of reminders.daysBefore) {
+      list.push({
+        id: `${period.label}-reminder-${days}`,
+        label: `${period.label} reminder: ${days} ${days === 1 ? 'day' : 'days'} to deadline`,
+        at: iso(deadline - days * DAY),
+        kind: 'reminder',
+      });
+    }
     list.push({
       id: `${period.label}-due`,
       label: `${period.label} deadline (last on-time second)`,
@@ -111,7 +108,7 @@ function process(db: MockDb, boundary: Omit<ClockBoundary, 'passed'>) {
       );
     }
   }
-  if (boundary.kind === 'overdue' && period) {
+  if (boundary.kind === 'overdue' && period && db.reminders.overdueNotice) {
     for (const obligation of unsubmitted(db, period.id)) {
       notify(
         db,
@@ -142,6 +139,23 @@ function process(db: MockDb, boundary: Omit<ClockBoundary, 'passed'>) {
         link: '/officer',
       });
     }
+  }
+}
+
+/**
+ * After a schedule change, reminders already in the past are marked processed so a new
+ * reminder time never fires retroactively.
+ */
+export function skipPastBoundaries(db: MockDb) {
+  const now = Date.parse(db.businessTime);
+  for (const boundary of boundaries()) {
+    const key = `${db.runId}:${boundary.id}`;
+    if (
+      boundary.kind === 'reminder' &&
+      Date.parse(boundary.at) <= now &&
+      !db.processedEvents.includes(key)
+    )
+      db.processedEvents.push(key);
   }
 }
 

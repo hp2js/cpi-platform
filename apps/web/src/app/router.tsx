@@ -327,6 +327,66 @@ const adminAssignmentsRoute = createRoute({
   ),
 });
 
+const adminProfilesRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'profiles',
+  component: page(() => import('@/routes/admin/profiles'), 'ProfilesPage'),
+});
+const adminProfileRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'profiles/$profileId',
+  component: page(
+    () => import('@/routes/admin/profile-detail'),
+    'ProfileDetailPage',
+  ),
+});
+const adminCalendarRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'calendar',
+  component: page(() => import('@/routes/admin/calendar'), 'CalendarPage'),
+});
+const adminPeopleRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'people',
+  component: page(() => import('@/routes/admin/people'), 'PeoplePage'),
+});
+
+const supervisorSubmissionsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'submissions',
+  component: page(
+    () => import('@/routes/supervisor/submissions'),
+    'SubmissionsPage',
+  ),
+});
+const supervisorReviewRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'reviews/$submissionId',
+  component: page(() => import('@/routes/officer/review'), 'ReviewPage'),
+});
+
+const officerEvidenceRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'evidence',
+  component: page(() => import('@/routes/officer/evidence'), 'EvidencePage'),
+});
+const supervisorEvidenceRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'evidence',
+  component: page(() => import('@/routes/supervisor/evidence'), 'EvidencePage'),
+});
+
+const adminReviewsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'reviews',
+  component: page(() => import('@/routes/admin/reviews'), 'AdminReviewsPage'),
+});
+const adminReviewRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'reviews/$submissionId',
+  component: page(() => import('@/routes/officer/review'), 'ReviewPage'),
+});
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
@@ -348,11 +408,15 @@ export const routeTree = rootRoute.addChildren([
     officerRoute.addChildren([
       officerHomeRoute,
       officerReviewRoute,
+      officerEvidenceRoute,
       officerInstitutionRoute,
       officerInboxRoute,
     ]),
     supervisorRoute.addChildren([
       supervisorHomeRoute,
+      supervisorSubmissionsRoute,
+      supervisorReviewRoute,
+      supervisorEvidenceRoute,
       supervisorInboxRoute,
       supervisorWorkloadRoute,
       supervisorAnnualRoute,
@@ -363,9 +427,15 @@ export const routeTree = rootRoute.addChildren([
       adminSimulationRoute,
       adminAnnualRoute,
       adminAssignmentsRoute,
+      adminCalendarRoute,
+      adminPeopleRoute,
+      adminProfilesRoute,
+      adminProfileRoute,
       adminFormsRoute,
       adminFormRoute,
       adminNotificationsRoute,
+      adminReviewsRoute,
+      adminReviewRoute,
       adminAuditRoute,
     ]),
   ]),

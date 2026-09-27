@@ -14,3 +14,4 @@ export * from './events.js';
 export * from './planning.js';
 export * from './annual.js';
 export * from './oversight.js';
+export * from './settings.js';

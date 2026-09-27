@@ -18,6 +18,7 @@ type Evaluation = Pick<
   | 'officerName'
   | 'quarters'
   | 'foundations'
+  | 'weights'
   | 'total'
 >;
 
@@ -29,13 +30,31 @@ const dispositionLabel: Record<QuarterDisposition['status'], string> = {
   not_submitted: 'Not submitted',
 };
 
-/** Quarter implementation points: 60 ÷ 4 = 15 per quarter, from the exact fraction. */
-function quarterPoints(quarter: QuarterDisposition) {
+/** Quarter implementation points: the profile's implementation weight ÷ 4, from the exact fraction. */
+function quarterPoints(quarter: QuarterDisposition, quarterMax: number) {
   if (!quarter.implementation) return 'Pending';
   return (
-    (15 * quarter.implementation.numerator) /
+    (quarterMax * quarter.implementation.numerator) /
     quarter.implementation.denominator
   ).toFixed(2);
+}
+
+const formatQuarterMax = (implementation: number) =>
+  Number.isInteger(implementation / 4)
+    ? String(implementation / 4)
+    : (implementation / 4).toFixed(2);
+
+/** A foundation with no points under the profile is a prerequisite: met or not met. */
+function foundationResult(score: Evaluation['foundations'][number]['score']) {
+  if (score.maxPoints === 0)
+    return score.status === 'calculated'
+      ? score.fraction.numerator === score.fraction.denominator
+        ? 'Prerequisite met (no points)'
+        : `Prerequisite not met: ${score.fraction.numerator} of ${score.fraction.denominator} checks (no points)`
+      : 'Prerequisite: pending review';
+  return score.status === 'calculated'
+    ? `${score.points} / ${score.maxPoints}`
+    : `Pending (max ${score.maxPoints})`;
 }
 
 /** Explains an annual result: foundations once, four equal quarters, reasons for rejected claims. */
@@ -68,8 +87,9 @@ export function AnnualResultView({
             </p>
             <p className="text-sm text-muted-foreground">
               Foundations {evaluation.total.foundationPoints} + implementation{' '}
-              {evaluation.total.implementationPoints} (60 × average of four
-              quarters, {evaluation.total.implementationAverage.numerator}/
+              {evaluation.total.implementationPoints} (
+              {evaluation.weights.implementation} × average of four quarters,{' '}
+              {evaluation.total.implementationAverage.numerator}/
               {evaluation.total.implementationAverage.denominator})
             </p>
           </div>
@@ -110,9 +130,7 @@ export function AnnualResultView({
               <TableRow key={foundation.kind}>
                 <TableHead scope="row">{foundation.label}</TableHead>
                 <TableCell className="tabular-nums">
-                  {foundation.score.status === 'calculated'
-                    ? `${foundation.score.points} / ${foundation.score.maxPoints}`
-                    : `Pending (max ${foundation.score.maxPoints})`}
+                  {foundationResult(foundation.score)}
                 </TableCell>
                 <TableCell className="text-sm whitespace-normal">
                   {foundation.failedChecks.length
@@ -130,8 +148,9 @@ export function AnnualResultView({
       <div className="overflow-x-auto rounded-lg border bg-card">
         <Table className="min-w-[52rem]">
           <TableCaption className="text-left">
-            Each quarter contributes up to 15 implementation points. A missing
-            quarter is never averaged away.
+            Each quarter contributes up to{' '}
+            {formatQuarterMax(evaluation.weights.implementation)} implementation
+            points. A missing quarter is never averaged away.
           </TableCaption>
           <TableHeader>
             <TableRow>
@@ -156,21 +175,33 @@ export function AnnualResultView({
                     : '—'}
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {quarterPoints(quarter)}
+                  {quarterPoints(
+                    quarter,
+                    evaluation.weights.implementation / 4,
+                  )}
                 </TableCell>
                 <TableCell className="text-sm">
                   {quarter.late ? (
                     <span className="inline-flex items-center gap-1 font-medium">
                       <AlarmClock className="size-4" aria-hidden="true" />
-                      Late
-                      {quarter.firstSubmittedAt
-                        ? `: ${formatDateTime(quarter.firstSubmittedAt)}`
-                        : ''}
+                      Late by {quarter.daysLate}{' '}
+                      {quarter.daysLate === 1 ? 'day' : 'days'}
                     </span>
                   ) : quarter.firstSubmittedAt ? (
                     'On time'
                   ) : (
                     '—'
+                  )}
+                  {quarter.firstSubmittedAt && (
+                    <span className="block text-xs text-muted-foreground">
+                      First submitted {formatDateTime(quarter.firstSubmittedAt)}
+                      {quarter.firstCompleteEvidenceAt
+                        ? quarter.firstCompleteEvidenceAt !==
+                          quarter.firstSubmittedAt
+                          ? `; evidence complete ${formatDateTime(quarter.firstCompleteEvidenceAt)}`
+                          : '; evidence complete'
+                        : '; evidence never complete'}
+                    </span>
                   )}
                 </TableCell>
                 <TableCell className="text-sm whitespace-normal">

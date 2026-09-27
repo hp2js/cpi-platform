@@ -19,17 +19,18 @@ import {
   assignmentHistoryQuery,
   reassign,
 } from '@/features/simulation/queries';
+import { peopleQuery } from '@/features/settings/queries';
 import { formatDateTime } from '@/lib/dates';
-
-const officers = [
-  { id: 'officer-a', name: 'Prevention Officer A' },
-  { id: 'officer-b', name: 'Prevention Officer B' },
-];
 
 export function AssignmentsPage() {
   const queryClient = useQueryClient();
   const history = useQuery(assignmentHistoryQuery);
   const institutions = useQuery(institutionsQuery);
+  const people = useQuery(peopleQuery);
+  // Active officers only; a deactivated account cannot take on institutions.
+  const officers = (people.data?.users ?? [])
+    .filter((user) => user.role === 'officer' && user.active)
+    .map((user) => ({ id: user.id, name: user.displayName }));
   const [institutionId, setInstitutionId] = useState('DEMO-001');
   const [officerId, setOfficerId] = useState('officer-b');
   const [reason, setReason] = useState('');

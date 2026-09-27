@@ -1,5 +1,6 @@
 import type { FormIssue, FormVersion } from '@cpi/contracts';
 import { getDb } from '../db';
+import { activeProfile, profileIssues } from './profiles';
 
 /** The latest published version assigned to a period; open periods keep theirs (PRD §7.1). */
 export function publishedFormForPeriod(
@@ -38,27 +39,13 @@ export function validateForm(form: FormVersion): FormIssue[] {
   if (!form.title.trim())
     issues.push({ path: 'title', message: 'Give the form a title.' });
 
-  const total =
-    form.weights.procedures +
-    form.weights.riskAssessment +
-    form.weights.mitigationPlan +
-    form.weights.implementation;
-  if (total !== 100)
+  // Weights come from the cycle's scoring profile, which must be approved and valid (§7.1).
+  const profile = activeProfile(db);
+  if (profile.status !== 'approved' || profileIssues(profile, db).length)
     issues.push({
-      path: 'weights',
-      message: `Indicator weights must total 100; they total ${total}.`,
+      path: 'profile',
+      message: `The cycle's scoring profile, ${profile.name}, is not approved and valid. Fix it in Settings.`,
     });
-  const locked = db.forms.find((candidate) => candidate.status === 'published');
-  if (
-    locked &&
-    JSON.stringify(locked.weights) !== JSON.stringify(form.weights)
-  ) {
-    issues.push({
-      path: 'weights',
-      message:
-        'Weights are locked for this cycle once the first form is published.',
-    });
-  }
 
   const sectionIds = new Set<string>();
   const questionIds = new Set<string>();

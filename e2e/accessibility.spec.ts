@@ -67,6 +67,14 @@ test('mid-year screens for every role', async ({ page }) => {
     ],
     ['officer-a', '/officer', 'officer queue'],
     ['officer-a', `/officer/reviews/${review}`, 'officer review workspace'],
+    ['officer-a', '/officer/evidence', 'officer evidence lookup'],
+    ['supervisor', '/supervisor/submissions', 'supervisor submissions'],
+    [
+      'supervisor',
+      `/supervisor/reviews/${review}`,
+      'supervisor review (read only)',
+    ],
+    ['supervisor', '/supervisor/evidence', 'supervisor evidence lookup'],
     [
       'officer-a',
       '/officer/institutions/DEMO-004',
@@ -91,6 +99,11 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/notifications', 'admin notifications'],
     ['/admin/audit', 'admin audit'],
     ['/admin/simulation', 'admin simulation'],
+    ['/admin/profiles', 'admin scoring profiles'],
+    ['/admin/profiles/hackathon-mock-v1', 'admin profile detail'],
+    ['/admin/calendar', 'admin reporting calendar'],
+    ['/admin/people', 'admin users and institutions'],
+    ['/admin/reviews', 'admin reviews'],
   ] as const) {
     await visit(page, 'administrator', path);
     await page.waitForLoadState('networkidle');

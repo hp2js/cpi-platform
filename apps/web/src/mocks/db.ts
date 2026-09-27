@@ -4,6 +4,8 @@ import type {
   Decision,
   Draft,
   EvidenceItem,
+  EvidenceSuitability,
+  OversightComment,
   FormVersion,
   Institution,
   Receipt,
@@ -32,6 +34,7 @@ import {
   type MockUser,
 } from './seed/cast';
 import { cycle, initialBusinessTime } from './seed/cycle';
+import { initialProfiles, type MockProfile } from './seed/profiles';
 
 /**
  * In-memory stand-in for the server's database. In the browser it is persisted to
@@ -51,6 +54,7 @@ export interface MockObligation {
     | 'closed_without_submission';
   currentRevision: number | null;
   firstSubmittedAt: string | null;
+  firstCompleteEvidenceAt: string | null;
   lastReceiptAt: string | null;
 }
 
@@ -153,6 +157,32 @@ export interface MockDb {
     openedAt: string;
     closedAt: string | null;
   }[];
+  /** Officer suitability checks per evidence version (PRD §9.2, AT30). */
+  suitability: EvidenceSuitability[];
+  comments: (OversightComment & { obligationId: string })[];
+  /** Authorized institution-specific evaluation extensions (PRD §7.3, AT29). */
+  extensions: {
+    institutionId: string;
+    until: string;
+    reason: string;
+    authorizedBy: string;
+    recordedBy: string;
+    recordedAt: string;
+  }[];
+  /** Administrator settings (PRD §7.1, FR01, FR02). Profiles survive a new simulation run. */
+  profiles: MockProfile[];
+  cycleProfileId: string;
+  reminders: { daysBefore: number[]; overdueNotice: boolean };
+  calendarChanges: {
+    at: string;
+    by: string;
+    summary: string;
+    reason: string;
+  }[];
+  institutionContacts: Record<
+    string,
+    { focalContact: string; accountingOfficerContact: string }
+  >;
 }
 
 export interface MockPublication {
@@ -164,6 +194,7 @@ export interface MockPublication {
   publishedBy: string;
   supersededBy: string | null;
   correctionReason: string | null;
+  profileName: string;
   /** Immutable snapshot of the evaluation at release. */
   evaluation: unknown;
   points: string;
@@ -198,7 +229,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 9;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -219,6 +250,7 @@ function seed(): MockDb {
         state: 'not_started' as const,
         currentRevision: null,
         firstSubmittedAt: null,
+        firstCompleteEvidenceAt: null,
         lastReceiptAt: null,
       })),
     ),
@@ -248,6 +280,25 @@ function seed(): MockDb {
     publications: [],
     corrections: [],
     evidence: foundations.evidence,
+    suitability: [],
+    comments: [],
+    extensions: [],
+    profiles: structuredClone(initialProfiles),
+    cycleProfileId: 'hackathon-mock-v1',
+    reminders: { daysBefore: [7, 1], overdueNotice: true },
+    calendarChanges: [],
+    institutionContacts: Object.fromEntries(
+      institutions.map((institution) => {
+        const slug = institution.id.toLowerCase();
+        return [
+          institution.id,
+          {
+            focalContact: `Focal person, ${institution.id} · focal.${slug}@example.invalid`,
+            accountingOfficerContact: `Accounting Officer, ${institution.id} · ao.${slug}@example.invalid`,
+          },
+        ];
+      }),
+    ),
   };
 }
 
@@ -299,9 +350,14 @@ export function commit(change: (db: MockDb) => void) {
   }
 }
 
-/** Restore the seeded fixture state (a new simulation run keeps its ID prefix). */
-export function resetDb() {
+/**
+ * Restore the seeded fixture state. A new simulation run passes `keepProfiles` so the
+ * administrator's profile library carries over; the development reset restores everything.
+ */
+export function resetDb(options: { keepProfiles?: boolean } = {}) {
+  const profiles = db.profiles;
   db = seed();
+  if (options.keepProfiles) db.profiles = profiles;
   try {
     storage()?.removeItem(STORAGE_KEY);
   } catch {

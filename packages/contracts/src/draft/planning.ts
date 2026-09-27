@@ -191,6 +191,10 @@ export const foundationIndicatorSchema = z.object({
   kind: foundationKindSchema,
   label: z.string(),
   maxPoints: z.number(),
+  /** The four checks from the cycle's scoring profile (PRD §10.3). */
+  checks: z.array(z.string()).length(4),
+  /** `prerequisite` under a profile that shows procedures without points. */
+  mode: z.enum(['scored', 'prerequisite']),
   versions: z.array(foundationVersionSchema),
   review: foundationReviewSchema.nullable(),
   /** Internal only: omitted (null) for institution users before publication. */

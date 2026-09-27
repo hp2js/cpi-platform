@@ -53,6 +53,8 @@ test('mid-year screens fit a phone', async ({ page }) => {
     ['focal-demo-001', '/institution/receipts'],
     ['officer-a', '/officer'],
     ['officer-a', `/officer/reviews/${review}`],
+    ['officer-a', '/officer/evidence'],
+    ['supervisor', `/supervisor/reviews/${review}`],
     ['officer-a', '/officer/institutions/DEMO-004'],
     ['administrator', '/admin'],
     ['administrator', '/admin/forms/form-v2'],
@@ -60,6 +62,9 @@ test('mid-year screens fit a phone', async ({ page }) => {
     ['administrator', '/admin/audit'],
     ['administrator', '/admin/simulation'],
     ['administrator', '/admin/assignments'],
+    ['administrator', '/admin/profiles/hackathon-mock-v1'],
+    ['administrator', '/admin/calendar'],
+    ['administrator', '/admin/people'],
   ] as const) {
     await visit(page, account, path);
     await expectNoPageOverflow(page, path);

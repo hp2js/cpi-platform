@@ -81,6 +81,82 @@ export const decisionRequestSchema = z.object({
 });
 export type DecisionRequest = z.infer<typeof decisionRequestSchema>;
 
+/**
+ * Evidence suitability (PRD §9.2, AT30): for every relied-on evidence version the officer
+ * records five checks. A deficiency means the file cannot substantiate a claim; it is an
+ * evidence finding, not an allegation of fraud.
+ */
+export const suitabilityCheckKeys = [
+  'institution',
+  'period',
+  'relevance',
+  'approval',
+  'readability',
+] as const;
+export const suitabilityCheckLabels: Record<
+  (typeof suitabilityCheckKeys)[number],
+  string
+> = {
+  institution: 'Matches the institution',
+  period: 'Matches the reporting or effective period',
+  relevance: 'Relevant to the claims that cite it',
+  approval: 'Required approval or signature present',
+  readability: 'Readable',
+};
+const suitabilityCheckSchema = z.object({
+  outcome: z.enum(['pass', 'deficient', 'not_applicable']),
+  reason: z.string().max(1000),
+});
+export const suitabilityChecksSchema = z.object({
+  institution: suitabilityCheckSchema,
+  period: suitabilityCheckSchema,
+  relevance: suitabilityCheckSchema,
+  approval: suitabilityCheckSchema,
+  readability: suitabilityCheckSchema,
+});
+export type SuitabilityChecks = z.infer<typeof suitabilityChecksSchema>;
+export const evidenceSuitabilitySchema = z.object({
+  evidenceId: z.string(),
+  checks: suitabilityChecksSchema,
+  /** True when any check is deficient: the file cannot substantiate a claim. */
+  deficient: z.boolean(),
+  recordedBy: z.string(),
+  recordedAt: instantSchema,
+});
+export type EvidenceSuitability = z.infer<typeof evidenceSuitabilitySchema>;
+export const suitabilityRequestSchema = z
+  .object({
+    revision: z.number().int().positive(),
+    checks: suitabilityChecksSchema,
+  })
+  .superRefine((value, context) => {
+    for (const key of suitabilityCheckKeys) {
+      const check = value.checks[key];
+      if (check.outcome !== 'pass' && check.reason.trim().length < 10)
+        context.addIssue({
+          code: 'custom',
+          path: ['checks', key, 'reason'],
+          message: 'Give a reason of at least 10 characters.',
+        });
+    }
+  });
+
+/**
+ * Supervisor oversight comments (PRD §5.2, §7.3): visible to officers and administrators,
+ * never to the institution, and never an approval step for the officer's decisions.
+ */
+export const oversightCommentSchema = z.object({
+  id: z.string(),
+  revision: z.number().int().positive(),
+  author: z.string(),
+  at: instantSchema,
+  text: z.string(),
+});
+export type OversightComment = z.infer<typeof oversightCommentSchema>;
+export const oversightCommentRequestSchema = z.object({
+  text: z.string().trim().min(10).max(2000),
+});
+
 export const finalizeRequestSchema = z.object({
   revision: z.number().int().positive(),
 });
@@ -113,12 +189,18 @@ export const reviewBundleSchema = z.object({
   milestones: z.array(milestoneSchema),
   answers: reportAnswersSchema,
   evidence: z.array(evidenceItemSchema),
+  /** Suitability records for this submission's files (AT30). */
+  suitability: z.array(evidenceSuitabilitySchema),
+  /** Supervisor oversight comments on this obligation, across revisions. */
+  comments: z.array(oversightCommentSchema),
   decisions: z.array(decisionSchema),
   score: scoreSummarySchema,
   finalizedAt: instantSchema.nullable(),
   finalizedBy: z.string().nullable(),
   /** Whether the caller may record decisions (assigned officer only; supervisors read). */
   canDecide: z.boolean(),
+  /** An administrator may act here only through a justified, logged override (FR10). */
+  canOverride: z.boolean(),
   /** Every decision version for this obligation, including superseded ones. */
   history: z.array(decisionSchema),
   /** The previous revision's decisions and whether each milestone's dependencies changed. */
@@ -143,3 +225,22 @@ export const reviewBundleSchema = z.object({
   ),
 });
 export type ReviewBundle = z.infer<typeof reviewBundleSchema>;
+
+/**
+ * Basic evidence lookup (FR15): submitted files within the caller's scope, filtered by
+ * institution, period, category and review state. There is no unrestricted document search.
+ */
+export const evidenceLookupItemSchema = z.object({
+  evidence: evidenceItemSchema,
+  institutionId: institutionIdSchema,
+  institutionName: z.string(),
+  periodId: z.string(),
+  periodLabel: z.string(),
+  submissionId: z.string(),
+  revision: z.number().int().positive(),
+  reviewState: z.enum(['awaiting_review', 'finalized']),
+  suitability: z.enum(['not_checked', 'suitable', 'deficient']),
+  citedBy: z.array(z.string()),
+});
+export type EvidenceLookupItem = z.infer<typeof evidenceLookupItemSchema>;
+export const evidenceLookupSchema = z.array(evidenceLookupItemSchema);

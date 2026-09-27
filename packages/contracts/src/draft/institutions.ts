@@ -40,6 +40,14 @@ export const obligationSchema = z.object({
   flags: z.array(obligationFlagSchema),
   currentRevision: z.number().int().positive().nullable(),
   firstSubmittedAt: instantSchema.nullable(),
+  /**
+   * The first revision with every required document supplied (no evidence declared
+   * unavailable). Kept apart from first submission so an early, empty response cannot hide a
+   * late completion (PRD §7.2).
+   */
+  firstCompleteEvidenceAt: instantSchema.nullable(),
+  /** Calendar days (Africa/Nairobi) the first submission came after the deadline; 0 on time. */
+  daysLate: z.number().int().nonnegative().nullable(),
   lastReceiptAt: instantSchema.nullable(),
 });
 export type Obligation = z.infer<typeof obligationSchema>;

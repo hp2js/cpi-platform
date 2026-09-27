@@ -58,7 +58,9 @@ import {
   QuestionField,
 } from '@/features/reporting/report-fields';
 import { useSavedDefaultsForm } from '@/features/reporting/use-report-form';
+import { profilesQuery } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
+import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
 
 const route = getRouteApi('/authed/admin/forms/$formId');
@@ -76,13 +78,6 @@ const typeLabels: Record<QuestionType, string> = {
 const addableTypes = (Object.keys(typeLabels) as QuestionType[]).filter(
   (type) => type !== 'milestone_progress',
 );
-
-const weightFields = [
-  ['procedures', 'Procedures'],
-  ['riskAssessment', 'Risk assessment'],
-  ['mitigationPlan', 'Mitigation plan'],
-  ['implementation', 'Implementation'],
-] as const;
 
 const editableOf = (form: FormVersion): FormDraftUpdate => ({
   title: form.title,
@@ -102,7 +97,7 @@ function issueAnchor(path: string) {
   const match = /^sections\.(\d+)(?:\.questions\.(\d+))?/.exec(path);
   if (match)
     return match[2] ? `edit-s${match[1]}-q${match[2]}` : `edit-s${match[1]}`;
-  if (path.startsWith('weights')) return 'edit-weights';
+  if (path.startsWith('weights') || path === 'profile') return 'edit-profile';
   if (path.startsWith('periodIds')) return 'edit-periods';
   return 'edit-title';
 }
@@ -113,7 +108,8 @@ function issueLocation(path: string) {
     return match[2]
       ? `Section ${Number(match[1]) + 1}, question ${Number(match[2]) + 1}`
       : `Section ${Number(match[1]) + 1}`;
-  if (path.startsWith('weights')) return 'Scoring weights';
+  if (path.startsWith('weights') || path === 'profile')
+    return 'Scoring profile';
   if (path.startsWith('periodIds')) return 'Periods';
   return 'Form';
 }
@@ -184,6 +180,51 @@ function Preview({ form }: { form: FormVersion }) {
   );
 }
 
+/** Weights come from the cycle's scoring profile (PRD §7.1); they are set in Settings. */
+function CycleProfile() {
+  const profiles = useQuery(profilesQuery);
+  const profile = profiles.data?.profiles.find(
+    (candidate) => candidate.id === profiles.data?.cycleProfileId,
+  );
+  return (
+    <section
+      id="edit-profile"
+      aria-labelledby="profile-heading"
+      className="grid gap-2 rounded-lg border bg-card p-5"
+    >
+      <h2 id="profile-heading" className="font-semibold">
+        Scoring profile
+      </h2>
+      {profile ? (
+        <>
+          <p>
+            <Link
+              to="/admin/profiles/$profileId"
+              params={{ profileId: profile.id }}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {profile.name}
+            </Link>
+            <span className="text-sm text-muted-foreground">
+              {' '}
+              · {weightSummary(profile)}
+            </span>
+          </p>
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            {profiles.data?.locked && (
+              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            )}
+            {profiles.data?.lockedReason ??
+              'Weights and checklists come from the cycle’s profile, not the form. Choose or change it in Scoring profiles before the first version is published.'}
+          </p>
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground">Loading the profile…</p>
+      )}
+    </section>
+  );
+}
+
 function Issues({ issues }: { issues: FormIssue[] }) {
   if (issues.length === 0)
     return <p className="text-sm">No issues: this version can be published.</p>;
@@ -246,10 +287,6 @@ function DraftEditor({ form }: { form: FormVersion }) {
   const allQuestionIds = values.sections.flatMap((section) =>
     section.questions.map((question) => question.id),
   );
-  const total = weightFields.reduce(
-    (sum, [key]) => sum + (values.weights[key] || 0),
-    0,
-  );
   const issues = validation.data?.issues ?? [];
   const publishIssues = isApiError(publish.error)
     ? Object.entries(publish.error.fieldErrors).map(([path, message]) => ({
@@ -299,7 +336,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
                   for the assigned periods, and existing responses are not
                   migrated.
                   {!form.weightsLocked &&
-                    ' Publishing also locks the scoring weights for the whole cycle.'}
+                    ' Publishing also locks the cycle’s scoring profile for the whole cycle.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -363,57 +400,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
           )}
         </editor.Field>
 
-        <fieldset
-          id="edit-weights"
-          className="grid gap-3 rounded-lg border bg-card p-5"
-        >
-          <legend className="px-1 font-semibold">
-            Scoring weights (Hackathon Mock v1)
-          </legend>
-          {form.weightsLocked ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Lock className="size-4" aria-hidden="true" />
-              Locked for this cycle since the first publication. A different
-              weighting needs an approved profile change, not a form edit.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Must total 100. Locked for the whole cycle once the first version
-              is published.
-            </p>
-          )}
-          <div className="grid gap-3 sm:grid-cols-4">
-            {weightFields.map(([key, label]) => (
-              <editor.Field key={key} name={`weights.${key}`}>
-                {(field) => (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`weight-${key}`}>{label}</Label>
-                    <Input
-                      id={`weight-${key}`}
-                      type="number"
-                      min={0}
-                      max={100}
-                      inputMode="numeric"
-                      disabled={form.weightsLocked}
-                      value={field.state.value}
-                      onChange={(event) =>
-                        field.handleChange(Number(event.target.value) || 0)
-                      }
-                    />
-                  </div>
-                )}
-              </editor.Field>
-            ))}
-          </div>
-          <p
-            className={
-              total === 100 ? 'text-sm' : 'text-sm font-medium text-destructive'
-            }
-            aria-live="polite"
-          >
-            Total: {total}
-          </p>
-        </fieldset>
+        <CycleProfile />
 
         <editor.Field name="periodIds">
           {(field) => (

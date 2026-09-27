@@ -56,21 +56,38 @@ export const simulationHandlers = [
   }),
 
   /** A new run with fresh fixtures; it never touches another run or a real environment (AT24). */
-  http.post('/api/simulation/reset', async () => {
+  http.post('/api/simulation/reset', async ({ request }) => {
     await networkDelay();
     const user = requireRole('administrator');
+    const { profileId } = ((await request.json().catch(() => null)) ?? {}) as {
+      profileId?: string;
+    };
+    const chosen = profileId
+      ? getDb().profiles.find((profile) => profile.id === profileId)
+      : undefined;
+    if (profileId && chosen?.status !== 'approved')
+      return apiError(
+        409,
+        'A new run can only start with an approved profile.',
+        'profile_not_approved',
+      );
     const previous = getDb().runId;
     const next = `run-${String(Number(previous.replace(/\D/g, '')) + 1).padStart(3, '0')}`;
-    resetDb();
+    // Settings carry over: the profile library is kept, and a chosen profile applies (§7.1).
+    resetDb({ keepProfiles: true });
     commit((db) => {
       db.runId = next;
       db.session = { userId: user.id, expired: false };
+      if (chosen) {
+        db.cycleProfileId = chosen.id;
+        for (const form of db.forms) form.weights = { ...chosen.weights };
+      }
       audit(
         db,
         user,
         'simulation.reset',
         { type: 'simulation', id: next },
-        `Started ${next}, replacing ${previous}`,
+        `Started ${next}, replacing ${previous}${chosen ? `, with ${chosen.name}` : ''}`,
       );
     });
     return HttpResponse.json(state());

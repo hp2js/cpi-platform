@@ -1,5 +1,7 @@
 // @vitest-environment node
 import {
+  annualOverviewSchema,
+  evidenceLookupSchema,
   auditEventsSchema,
   deliveriesSchema,
   draftSchema,
@@ -18,12 +20,14 @@ import {
   completeDraft,
   confirmSeed,
   obligationPath,
+  passSuitability,
   publishSeedForm,
   submitDraft,
   submittedQ1,
 } from '@/test/api-helpers';
 import { pdfBytes, uploadForm } from '@/test/fixtures';
 import { signInAs } from '@/test/render-app';
+import { getDb } from './db';
 import { responseDueAt } from './services/clarifications';
 
 const path = obligationPath('DEMO-001');
@@ -59,6 +63,7 @@ describe('clarification window (PRD §7.3, AT29)', () => {
 describe('clarification and revision loop (AT09, AT27)', () => {
   it('keeps the earlier receipt, re-reviews changed milestones and carries forward only by confirmation', async () => {
     const item = await submittedQ1();
+    await passSuitability(item.submissionId);
     for (const code of ['M-01', 'M-02', 'M-03', 'M-04']) {
       await request(
         `${review(item.submissionId)}/decisions/${code}`,
@@ -165,6 +170,7 @@ describe('clarification and revision loop (AT09, AT27)', () => {
 describe('controlled reopen (PRD §7.4)', () => {
   it('reopens a finalized review with a reason and keeps decision history', async () => {
     const item = await submittedQ1();
+    await passSuitability(item.submissionId);
     for (const code of ['M-01', 'M-02', 'M-03', 'M-04']) {
       await request(
         `${review(item.submissionId)}/decisions/${code}`,
@@ -549,5 +555,150 @@ describe('evidence downloads (PRD §5.2)', () => {
     expect((await file(upload.id)).size).toBe(pdfBytes().byteLength);
     await signInAs('officer-b');
     await expect(file(upload.id)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('supervisor oversight (PRD §5.2, §7.3)', () => {
+  it('reads any submission and comments without deciding', async () => {
+    const item = await submittedQ1('DEMO-005', 'officer-b');
+    await signInAs('supervisor');
+    const path = `/api/reviews/${item.submissionId}` as const;
+    const bundle = await request(path, reviewBundleSchema);
+    expect(bundle.canDecide).toBe(false);
+    const commented = await request(`${path}/comments`, reviewBundleSchema, {
+      method: 'POST',
+      json: { text: 'Please check the minutes cover the Q1 training.' },
+    });
+    expect(commented.comments).toHaveLength(1);
+    await expect(
+      request(`${path}/decisions/M-05`, z.unknown(), {
+        method: 'PUT',
+        json: { outcome: 'accepted', reason: '', revision: 1 },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    // Officers read comments but cannot add them.
+    await signInAs('officer-b');
+    expect(
+      (await request(path, reviewBundleSchema)).comments[0]?.text,
+    ).toContain('Q1 training');
+    await expect(
+      request(`${path}/comments`, z.unknown(), {
+        method: 'POST',
+        json: { text: 'Officers cannot post oversight comments.' },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe('cutoff fairness and extensions (PRD §7.3, AT29)', () => {
+  it('keeps the full window, holds release until an authorized extension ends, then allows closure', async () => {
+    const item = await submittedQ1();
+    // Two calendar days before the cutoff, the officer asks a question.
+    getDb().businessTime = '2027-07-29T10:00:00+03:00';
+    const asked = await clarify(item.submissionId);
+    const open = asked.clarifications[0]!;
+    expect(open.responseDueAt).toBe('2027-08-05T23:59:59+03:00');
+    expect(open.extensionRequired).toBe(true);
+
+    await signInAs('administrator');
+    let annual = await request('/api/annual', annualOverviewSchema);
+    const demo1 = () =>
+      annual.institutions.find((row) => row.institutionId === 'DEMO-001')!;
+    expect(demo1().extensionRequired).toBe(true);
+    expect(demo1().releasable).toBe(false);
+    const extend = (untilDate: string) =>
+      request('/api/annual/extensions', z.unknown(), {
+        method: 'POST',
+        json: {
+          institutionId: 'DEMO-001',
+          untilDate,
+          reason: 'Clarification raised close to the cutoff.',
+          authorizedBy: 'Head of Prevention (fictional)',
+        },
+      });
+    // The window is never shortened.
+    await expect(extend('2027-08-02')).rejects.toMatchObject({ status: 422 });
+    await extend('2027-08-10');
+    annual = await request('/api/annual', annualOverviewSchema);
+    expect(demo1().extensionRequired).toBe(false);
+    expect(demo1().holds[0]).toMatch(/Evaluation extended to 2027-08-10/);
+
+    const close = () =>
+      request(
+        `/api/reviews/${item.submissionId}/clarifications/${open.id}/close`,
+        reviewBundleSchema,
+        {
+          method: 'POST',
+          json: { reason: 'No response by the end of the extension.' },
+        },
+      );
+    await signInAs('officer-a');
+    getDb().businessTime = '2027-08-06T09:00:00+03:00';
+    await expect(close()).rejects.toMatchObject({
+      status: 409,
+      code: 'window_open',
+    });
+    getDb().businessTime = '2027-08-11T09:00:00+03:00';
+    const closed = await close();
+    expect(closed.clarifications[0]).toMatchObject({
+      status: 'closed_unanswered',
+    });
+    expect(closed.item.state).toBe('under_review');
+  });
+});
+
+describe('evidence lookup (FR15)', () => {
+  it('lists only files in the caller’s scope, with filters', async () => {
+    await submittedQ1();
+    await signInAs('officer-a');
+    const mine = await request('/api/evidence', evidenceLookupSchema);
+    expect(mine.map((row) => row.evidence.fileName)).toEqual([
+      'cpc-minutes.pdf',
+    ]);
+    expect(mine[0]).toMatchObject({
+      institutionId: 'DEMO-001',
+      suitability: 'not_checked',
+      citedBy: ['M-01', 'M-02', 'M-03', 'M-04'],
+    });
+    expect(
+      await request('/api/evidence?category=iao_minutes', evidenceLookupSchema),
+    ).toEqual([]);
+    // Another officer's lookup has no trace of DEMO-001's files.
+    await signInAs('officer-b');
+    expect(await request('/api/evidence', evidenceLookupSchema)).toEqual([]);
+    await signInAs('focal-demo-001');
+    await expect(
+      request('/api/evidence', evidenceLookupSchema),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe('administrator override (FR10)', () => {
+  it('acts only with a justification and records every use', async () => {
+    const item = await submittedQ1();
+    await signInAs('administrator');
+    const path = `/api/reviews/${item.submissionId}` as const;
+    expect((await request(path, reviewBundleSchema)).canOverride).toBe(true);
+    const reject = (headers?: Record<string, string>) =>
+      request(`${path}/decisions/M-01`, reviewBundleSchema, {
+        method: 'PUT',
+        headers,
+        json: {
+          outcome: 'rejected',
+          reason: 'Minutes do not record the review.',
+          revision: 1,
+        },
+      });
+    await expect(reject()).rejects.toMatchObject({ status: 403 });
+    await expect(
+      reject({ 'X-Override-Reason': 'Officer away' }),
+    ).rejects.toMatchObject({ status: 422 });
+    await reject({
+      'X-Override-Reason':
+        'Officer A is on unplanned leave until after the cutoff.',
+    });
+    expect(
+      getDb().audit.filter((event) => event.action === 'review.override'),
+    ).toHaveLength(1);
   });
 });

@@ -7,6 +7,7 @@ import { format2, mul, rational, sum } from '../services/rational';
 import { readableInstitutionIds } from '../services/scope';
 import { scoreSummary } from '../services/scoring';
 import { requireRole } from '../services/session';
+import { activeWeights, profileLabel } from '../services/profiles';
 
 const metric = (
   id: string,
@@ -109,7 +110,7 @@ export const oversightHandlers = [
           decision.supersededAt === null,
       );
       const score = scoreSummary(
-        60,
+        activeWeights(db).implementation,
         milestones,
         submission.answers,
         submission.evidenceIds,
@@ -129,7 +130,10 @@ export const oversightHandlers = [
         periodLabel: periodOf(obligation.periodId).label,
         reviewed: fraction,
         points: format2(
-          mul(rational(60), rational(fraction.numerator, fraction.denominator)),
+          mul(
+            rational(activeWeights(db).implementation),
+            rational(fraction.numerator, fraction.denominator),
+          ),
         ),
         planSize: Math.max(1, milestones.length),
       };
@@ -140,7 +144,7 @@ export const oversightHandlers = [
             sum(
               comparison.map((row) =>
                 mul(
-                  rational(60),
+                  rational(activeWeights(db).implementation),
                   rational(row.reviewed.numerator, row.reviewed.denominator),
                 ),
               ),
@@ -198,7 +202,7 @@ export const oversightHandlers = [
 
     const body: Oversight = {
       asOf: db.businessTime,
-      profileName: 'Hackathon Mock v1',
+      profileName: profileLabel(db),
       simulation: true,
       filters: {
         periodId,
@@ -250,6 +254,7 @@ export const oversightHandlers = [
       },
       averageReviewed: {
         points: average,
+        maxPoints: activeWeights(db).implementation,
         included: comparison.length,
         expected: obligations.length,
       },

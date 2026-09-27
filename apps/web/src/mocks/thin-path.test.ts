@@ -7,6 +7,7 @@ import {
   reportBundleSchema,
   reviewBundleSchema,
   reviewQueueSchema,
+  scoringProfileSchema,
   type ReportAnswers,
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
@@ -14,7 +15,7 @@ import { z } from 'zod';
 import { request } from '@/lib/api';
 import { exeBytes, pdfBytes, uploadForm } from '@/test/fixtures';
 import { signInAs } from '@/test/render-app';
-import { confirmSeed } from '@/test/api-helpers';
+import { confirmSeed, passSuitability } from '@/test/api-helpers';
 
 const OBLIGATION = 'DEMO-001:FY2026-27-Q1';
 const obligationPath =
@@ -78,13 +79,29 @@ async function completeDraft() {
 describe('form publication (FR03)', () => {
   it('blocks invalid weights with an actionable error (AT03)', async () => {
     await signInAs('administrator');
-    const form = await request('/api/forms/form-v1', formVersionSchema);
-    await request('/api/forms/form-v1', formVersionSchema, {
+    // Weights live in the cycle's scoring profile; an invalid profile cannot be approved.
+    const draft = await request(
+      '/api/settings/profiles',
+      scoringProfileSchema,
+      {
+        method: 'POST',
+        json: { basedOn: 'hackathon-mock-v1' },
+      },
+    );
+    await request(`/api/settings/profiles/${draft.id}`, scoringProfileSchema, {
       method: 'PUT',
-      json: { ...form, weights: { ...form.weights, implementation: 50 } },
+      json: {
+        name: draft.name,
+        weights: { ...draft.weights, implementation: 50 },
+        proceduresMode: draft.proceduresMode,
+        checklists: draft.checklists,
+        sourceNote: draft.sourceNote,
+      },
     });
     await expect(
-      request('/api/forms/form-v1/publish', z.unknown(), { method: 'POST' }),
+      request(`/api/settings/profiles/${draft.id}/approve`, z.unknown(), {
+        method: 'POST',
+      }),
     ).rejects.toMatchObject({
       status: 422,
       fieldErrors: {
@@ -211,6 +228,39 @@ describe('officer review (FR09–FR10)', () => {
         revision: 1,
       },
     });
+    // Evidence suitability (AT30): no credit on an unchecked or deficient file.
+    const accept = () =>
+      request(`${path}/decisions/M-02`, z.unknown(), {
+        method: 'PUT',
+        json: { outcome: 'accepted', reason: '', revision: 1 },
+      });
+    await expect(accept()).rejects.toMatchObject({
+      status: 422,
+      code: 'suitability_required',
+    });
+    const file = initial.evidence[0]!.id;
+    const pass = { outcome: 'pass', reason: '' };
+    await request(`${path}/evidence/${file}/suitability`, reviewBundleSchema, {
+      method: 'PUT',
+      json: {
+        revision: 1,
+        checks: {
+          institution: pass,
+          period: pass,
+          relevance: pass,
+          approval: pass,
+          readability: {
+            outcome: 'deficient',
+            reason: 'Pages 2 and 3 are an unreadable scan.',
+          },
+        },
+      },
+    });
+    await expect(accept()).rejects.toMatchObject({
+      status: 422,
+      code: 'evidence_deficient',
+    });
+    await passSuitability(item.submissionId);
     for (const code of ['M-02', 'M-03', 'M-04']) {
       await request(`${path}/decisions/${code}`, reviewBundleSchema, {
         method: 'PUT',

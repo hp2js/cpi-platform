@@ -15,7 +15,13 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
       'Timeliness',
       receipt.timeliness === 'on_time'
         ? 'On time'
-        : 'Late: received after the deadline',
+        : `Late by ${receipt.daysLate} ${receipt.daysLate === 1 ? 'day' : 'days'}; no penalty is applied in this demonstration`,
+    ],
+    [
+      'Evidence',
+      receipt.evidenceComplete
+        ? 'Every required document supplied'
+        : 'Incomplete: some documents declared unavailable (listed below)',
     ],
     ['Submitted by', `${receipt.submittedBy}, ${receipt.submitterRole}`],
     [

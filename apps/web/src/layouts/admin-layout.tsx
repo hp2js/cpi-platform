@@ -1,12 +1,16 @@
 import { Link, Outlet } from '@tanstack/react-router';
 import {
   Award,
+  Building2,
   CalendarClock,
+  CalendarDays,
+  ClipboardCheck,
   FileText,
   Gauge,
   Mail,
   Menu,
   ScrollText,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -31,11 +35,26 @@ const sections = [
   },
   {
     heading: 'Setup',
-    items: [{ to: '/admin/assignments', label: 'Assignments', icon: Users }],
+    items: [
+      {
+        to: '/admin/calendar',
+        label: 'Reporting calendar',
+        icon: CalendarDays,
+      },
+      { to: '/admin/people', label: 'Users & institutions', icon: Building2 },
+      { to: '/admin/assignments', label: 'Assignments', icon: Users },
+    ],
   },
   {
     heading: 'Forms & scoring',
-    items: [{ to: '/admin/forms', label: 'Reporting forms', icon: FileText }],
+    items: [
+      {
+        to: '/admin/profiles',
+        label: 'Scoring profiles',
+        icon: SlidersHorizontal,
+      },
+      { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
+    ],
   },
   {
     heading: 'Publication',
@@ -49,6 +68,7 @@ const sections = [
         label: 'Simulation clock',
         icon: CalendarClock,
       },
+      { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
       { to: '/admin/notifications', label: 'Notifications', icon: Mail },
       { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
     ],

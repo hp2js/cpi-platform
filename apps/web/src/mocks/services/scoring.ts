@@ -6,6 +6,7 @@ import type {
   ReportAnswers,
   ScoreSummary,
 } from '@cpi/contracts';
+import { profileLabel } from './profiles';
 
 /**
  * Stand-in for the backend scoring engine (HP2-18) implementing PRD §10.4 for the
@@ -122,7 +123,7 @@ export function scoreSummary(
             : 'awaiting_officer_decisions',
       };
   return {
-    profileName: 'Hackathon Mock v1',
+    profileName: profileLabel(),
     simulation: true,
     provisional,
     provisionalCredits: credits,

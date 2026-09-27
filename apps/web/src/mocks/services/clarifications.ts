@@ -23,6 +23,15 @@ export function responseDueAt(availableAt: string, notifiedAt: string) {
   return `${due.toISOString().slice(0, 19)}+03:00`;
 }
 
+/** The cutoff that applies to an institution: the cycle's, or an authorized extension (§7.3). */
+export function effectiveCutoff(institutionId: string, db: MockDb = getDb()) {
+  const extension = db.extensions.find(
+    (candidate) => candidate.institutionId === institutionId,
+  );
+  const cutoff = Date.parse(db.cycle.evaluationCutoff);
+  return extension ? Math.max(cutoff, Date.parse(extension.until)) : cutoff;
+}
+
 export function toClarification(
   stored: MockDb['clarifications'][number],
 ): Clarification {
@@ -34,7 +43,9 @@ export function toClarification(
       Date.parse(businessTime) > Date.parse(stored.responseDueAt),
     // Never shortened automatically: an authorized extension or a pending result is required.
     extensionRequired:
-      Date.parse(stored.responseDueAt) > Date.parse(cycle.evaluationCutoff),
+      stored.status === 'open' &&
+      Date.parse(stored.responseDueAt) > Date.parse(cycle.evaluationCutoff) &&
+      Date.parse(stored.responseDueAt) > effectiveCutoff(stored.institutionId),
   };
 }
 

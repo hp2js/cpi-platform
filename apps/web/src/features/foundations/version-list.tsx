@@ -1,5 +1,4 @@
 import type { FoundationIndicator } from '@cpi/contracts';
-import { foundationChecks } from '@cpi/contracts';
 import { FileText } from 'lucide-react';
 import { formatBytes } from '@/features/reporting/answers';
 import { formatCalendarDate, formatDateTime } from '@/lib/dates';
@@ -42,7 +41,7 @@ export function VersionList({ indicator }: { indicator: FoundationIndicator }) {
           </p>
           <p className="text-muted-foreground">
             Claims:{' '}
-            {foundationChecks[version.kind]
+            {indicator.checks
               .filter((_, index) => version.claimedChecks[index])
               .join('; ') || 'none'}
           </p>

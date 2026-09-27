@@ -4,6 +4,10 @@ import {
   decisionRequestSchema,
   finalizeRequestSchema,
   reopenRequestSchema,
+  suitabilityCheckKeys,
+  suitabilityRequestSchema,
+  oversightCommentRequestSchema,
+  closeClarificationRequestSchema,
   type Decision,
   type ReviewBundle,
   type ReviewQueueItem,
@@ -21,9 +25,15 @@ import {
   clarificationsFor,
   copyAnswers,
   dependencyChanges,
+  effectiveCutoff,
   responseDueAt,
 } from '../services/clarifications';
-import { audit, institutionUsers, notify } from '../services/events';
+import {
+  assignedOfficers,
+  audit,
+  institutionUsers,
+  notify,
+} from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { toObligation } from '../services/obligations';
@@ -32,6 +42,7 @@ import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
 import { scoreSummary } from '../services/scoring';
 import { requireRole } from '../services/session';
 import type { MockUser } from '../seed/cast';
+import { activeWeights } from '../services/profiles';
 
 const obligationOf = (submission: MockSubmission) =>
   getDb().obligations.find(
@@ -142,19 +153,47 @@ function findSubmission(user: MockUser, submissionId: unknown) {
 }
 
 /** Only the currently assigned officer records decisions (PRD §5.2). */
-function requireAssigned(user: MockUser, submission: MockSubmission) {
+/**
+ * Review actions belong to the assigned officer. An administrator may act only through a
+ * distinct, justified override (FR10, PRD §5.2); every use is recorded in the audit log.
+ */
+function requireAssigned(
+  user: MockUser,
+  submission: MockSubmission,
+  request?: Request,
+) {
+  const institutionId = obligationOf(submission).institutionId;
   if (
-    user.role !== 'officer' ||
-    !assignedInstitutionIds(user.id).includes(
-      obligationOf(submission).institutionId,
-    )
-  ) {
-    throw apiError(
-      403,
-      'Only the assigned officer can take review actions.',
-      'forbidden',
+    user.role === 'officer' &&
+    assignedInstitutionIds(user.id).includes(institutionId)
+  )
+    return;
+  const justification = request?.headers.get('X-Override-Reason')?.trim();
+  if (user.role === 'administrator' && justification) {
+    if (justification.length < 20)
+      throw apiError(
+        422,
+        'An override needs a justification of at least 20 characters.',
+        'override_reason_required',
+      );
+    commit((db) =>
+      audit(
+        db,
+        user,
+        'review.override',
+        { type: 'submission', id: submission.id, version: submission.revision },
+        `${new URL(request!.url).pathname.split('/').slice(4).join('/') || 'review'}: ${justification}`,
+      ),
     );
+    return;
   }
+  throw apiError(
+    403,
+    user.role === 'administrator'
+      ? 'Administrators act on reviews only through a justified override.'
+      : 'Only the assigned officer can take review actions.',
+    'forbidden',
+  );
 }
 
 /** Decisions must assess the latest revision; older work is refused, never overwritten (AT10). */
@@ -210,9 +249,21 @@ function reviewBundle(
     evidence: db.evidence
       .filter((item) => submission.evidenceIds.includes(item.id))
       .map(toEvidenceItem),
+    suitability: db.suitability.filter((record) =>
+      submission.evidenceIds.includes(record.evidenceId),
+    ),
+    comments: db.comments
+      .filter((comment) => comment.obligationId === submission.obligationId)
+      .map((comment) => ({
+        id: comment.id,
+        revision: comment.revision,
+        author: comment.author,
+        at: comment.at,
+        text: comment.text,
+      })),
     decisions: decisions.map(toDecision),
     score: scoreSummary(
-      form.weights.implementation,
+      activeWeights().implementation,
       milestones,
       submission.answers,
       submission.evidenceIds,
@@ -221,6 +272,10 @@ function reviewBundle(
     ),
     finalizedAt: submission.finalizedAt,
     finalizedBy: submission.finalizedBy,
+    canOverride:
+      user.role === 'administrator' &&
+      !submission.finalizedAt &&
+      obligation.currentRevision === submission.revision,
     canDecide:
       user.role === 'officer' &&
       assignedInstitutionIds(user.id).includes(obligation.institutionId) &&
@@ -239,6 +294,39 @@ function reviewBundle(
 }
 
 /** Append a decision, superseding any active one for the same milestone and revision. */
+/** Reviewed credit needs a cited file whose suitability checks found no deficiency (AT30). */
+function acceptBlocker(
+  db: MockDb,
+  submission: MockSubmission,
+  milestoneId: string,
+): { code: string; message: string } | null {
+  const cited = (
+    submission.answers.milestones[milestoneId]?.evidence ?? []
+  ).map((reference) => reference.evidenceId);
+  const name = (id: string) =>
+    db.evidence.find((item) => item.id === id)?.fileName ?? id;
+  const record = (id: string) =>
+    db.suitability.find((candidate) => candidate.evidenceId === id);
+  if (!cited.length)
+    return {
+      code: 'evidence_required',
+      message:
+        'Accepting needs a cited file. Reject with a reason, or ask for the file through a clarification.',
+    };
+  const unchecked = cited.filter((id) => !record(id));
+  if (unchecked.length)
+    return {
+      code: 'suitability_required',
+      message: `Record the suitability checks for ${unchecked.map(name).join(', ')} first.`,
+    };
+  if (cited.every((id) => record(id)!.deficient))
+    return {
+      code: 'evidence_deficient',
+      message: `${cited.map(name).join(', ')} failed a suitability check, so it cannot support this claim. Reject with a reason, or ask for another file through a clarification.`,
+    };
+  return null;
+}
+
 function recordDecision(
   db: MockDb,
   user: MockUser,
@@ -282,6 +370,76 @@ function recordDecision(
 }
 
 export const reviewHandlers = [
+  // FR15: scoped lookup only; out-of-scope files never appear in results or counts.
+  http.get('/api/evidence', async ({ request }) => {
+    await networkDelay();
+    const user = requireRole('officer', 'supervisor', 'administrator');
+    const params = new URL(request.url).searchParams;
+    const filter = {
+      institutionId: params.get('institutionId') || null,
+      periodId: params.get('periodId') || null,
+      category: params.get('category') || null,
+      reviewState: params.get('reviewState') || null,
+    };
+    const db = getDb();
+    const items = visibleSubmissions(user).flatMap((submission) => {
+      const obligation = obligationOf(submission);
+      const reviewState =
+        obligation.state === 'finalized' ? 'finalized' : 'awaiting_review';
+      if (
+        filter.institutionId &&
+        obligation.institutionId !== filter.institutionId
+      )
+        return [];
+      if (filter.periodId && obligation.periodId !== filter.periodId) return [];
+      if (filter.reviewState && reviewState !== filter.reviewState) return [];
+      const institution = db.institutions.find(
+        (candidate) => candidate.id === obligation.institutionId,
+      )!;
+      return db.evidence
+        .filter(
+          (item) =>
+            submission.evidenceIds.includes(item.id) &&
+            (!filter.category || item.category === filter.category),
+        )
+        .map((item) => {
+          const record = db.suitability.find(
+            (candidate) => candidate.evidenceId === item.id,
+          );
+          return {
+            evidence: toEvidenceItem(item),
+            institutionId: obligation.institutionId,
+            institutionName: institution.name,
+            periodId: obligation.periodId,
+            periodLabel: periodOf(obligation.periodId).label,
+            submissionId: submission.id,
+            revision: submission.revision,
+            reviewState,
+            suitability: !record
+              ? ('not_checked' as const)
+              : record.deficient
+                ? ('deficient' as const)
+                : ('suitable' as const),
+            citedBy: milestonesOf(submission)
+              .filter((milestone) =>
+                submission.answers.milestones[milestone.id]?.evidence.some(
+                  (reference) => reference.evidenceId === item.id,
+                ),
+              )
+              .map((milestone) => milestone.code),
+          };
+        });
+    });
+    return HttpResponse.json(
+      items.sort(
+        (a, b) =>
+          a.institutionId.localeCompare(b.institutionId) ||
+          a.periodId.localeCompare(b.periodId) ||
+          a.evidence.fileName.localeCompare(b.evidence.fileName),
+      ),
+    );
+  }),
+
   http.get('/api/reviews', async ({ request }) => {
     await networkDelay();
     const user = requireRole('officer', 'supervisor', 'administrator');
@@ -312,7 +470,7 @@ export const reviewHandlers = [
       await networkDelay();
       const user = requireRole('officer', 'supervisor', 'administrator');
       const submission = findSubmission(user, params.submissionId);
-      requireAssigned(user, submission);
+      requireAssigned(user, submission, request);
       const parsed = decisionRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );
@@ -336,6 +494,10 @@ export const reviewHandlers = [
           { reason: 'Give a reason of at least 10 characters.' },
         );
       }
+      if (parsed.data.outcome === 'accepted') {
+        const blocker = acceptBlocker(getDb(), submission, milestone.id);
+        if (blocker) return apiError(422, blocker.message, blocker.code);
+      }
       commit((db) =>
         recordDecision(
           db,
@@ -351,13 +513,232 @@ export const reviewHandlers = [
     },
   ),
 
+  http.put(
+    '/api/reviews/:submissionId/evidence/:evidenceId/suitability',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('officer', 'supervisor', 'administrator');
+      const submission = findSubmission(user, params.submissionId);
+      requireAssigned(user, submission, request);
+      const parsed = suitabilityRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!parsed.success)
+        return apiError(
+          422,
+          'Each check needs an outcome, and a reason when it does not pass.',
+          'invalid_suitability',
+          Object.fromEntries(
+            parsed.error.issues.map((issue) => [
+              issue.path.join('.'),
+              issue.message,
+            ]),
+          ),
+        );
+      requireCurrent(submission, parsed.data.revision);
+      const db = getDb();
+      const evidenceId = String(params.evidenceId);
+      if (!submission.evidenceIds.includes(evidenceId)) return notFound();
+      const deficient = suitabilityCheckKeys.some(
+        (key) => parsed.data.checks[key].outcome === 'deficient',
+      );
+      if (deficient) {
+        // An accepted claim cannot silently lose its only suitable file.
+        const affected = activeDecisions(submission).filter((decision) => {
+          if (decision.outcome !== 'accepted') return false;
+          const cited = (
+            submission.answers.milestones[decision.milestoneId]?.evidence ?? []
+          ).map((reference) => reference.evidenceId);
+          return (
+            cited.includes(evidenceId) &&
+            cited.every(
+              (id) =>
+                id === evidenceId ||
+                db.suitability.find((record) => record.evidenceId === id)
+                  ?.deficient !== false,
+            )
+          );
+        });
+        if (affected.length) {
+          const codes = affected.map(
+            (decision) =>
+              milestonesOf(submission).find(
+                (milestone) => milestone.id === decision.milestoneId,
+              )?.code ?? decision.milestoneId,
+          );
+          return apiError(
+            409,
+            `${codes.join(', ')} ${codes.length === 1 ? 'is' : 'are'} accepted on this file. Change ${codes.length === 1 ? 'that decision' : 'those decisions'} first.`,
+            'decision_depends',
+          );
+        }
+      }
+      commit((store) => {
+        store.suitability = store.suitability.filter(
+          (record) => record.evidenceId !== evidenceId,
+        );
+        store.suitability.push({
+          evidenceId,
+          checks: parsed.data.checks,
+          deficient,
+          recordedBy: user.displayName,
+          recordedAt: store.businessTime,
+        });
+        audit(
+          store,
+          user,
+          'evidence.suitability',
+          { type: 'evidence', id: evidenceId },
+          deficient
+            ? `Deficient: ${suitabilityCheckKeys
+                .filter(
+                  (key) => parsed.data.checks[key].outcome === 'deficient',
+                )
+                .map((key) => `${key} (${parsed.data.checks[key].reason})`)
+                .join('; ')}`
+            : 'All checks pass or not applicable',
+        );
+      });
+      return HttpResponse.json(reviewBundle(user, submission));
+    },
+  ),
+
+  http.post(
+    '/api/reviews/:submissionId/clarifications/:clarificationId/close',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('officer', 'supervisor', 'administrator');
+      const submission = findSubmission(user, params.submissionId);
+      requireAssigned(user, submission, request);
+      const parsed = closeClarificationRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!parsed.success)
+        return apiError(
+          422,
+          'Give a reason of at least 10 characters.',
+          'reason_required',
+          { reason: 'Give a reason of at least 10 characters.' },
+        );
+      const db = getDb();
+      const obligation = obligationOf(submission);
+      const clarification = db.clarifications.find(
+        (candidate) =>
+          candidate.id === params.clarificationId &&
+          candidate.obligationId === obligation.id,
+      );
+      if (!clarification) return notFound();
+      if (clarification.status !== 'open')
+        return apiError(
+          409,
+          'This clarification is not open.',
+          'clarification_not_open',
+        );
+      const now = Date.parse(db.businessTime);
+      // Only after both the response window and the applicable cutoff (§7.3, AT29).
+      if (
+        now <= Date.parse(clarification.responseDueAt) ||
+        now <= effectiveCutoff(obligation.institutionId)
+      )
+        return apiError(
+          409,
+          'An unanswered clarification can be closed only after its response window and the evaluation cutoff (or an authorized extension) have both passed.',
+          'window_open',
+        );
+      commit((store) => {
+        clarification.status = 'closed_unanswered';
+        clarification.closure = {
+          reason: parsed.data.reason,
+          by: user.displayName,
+          at: store.businessTime,
+        };
+        obligation.state = 'under_review';
+        audit(
+          store,
+          user,
+          'clarification.close_unanswered',
+          { type: 'clarification', id: clarification.id },
+          parsed.data.reason,
+        );
+        notify(
+          store,
+          `${clarification.id}:closed`,
+          'clarification.closed',
+          institutionUsers(obligation.institutionId),
+          {
+            title: `${periodOf(obligation.periodId).label} clarification closed unanswered`,
+            body: `The response window and the evaluation cutoff have passed. Reason: ${parsed.data.reason}`,
+            link: '/institution/clarifications',
+          },
+        );
+      });
+      return HttpResponse.json(reviewBundle(user, submission));
+    },
+  ),
+
+  http.post(
+    '/api/reviews/:submissionId/comments',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('supervisor');
+      const submission = findSubmission(user, params.submissionId);
+      const parsed = oversightCommentRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!parsed.success)
+        return apiError(
+          422,
+          'Write at least 10 characters.',
+          'invalid_comment',
+          {
+            text: 'Write at least 10 characters.',
+          },
+        );
+      const obligation = obligationOf(submission);
+      commit((db) => {
+        const comment = {
+          id: nextId('cmt'),
+          obligationId: obligation.id,
+          revision: submission.revision,
+          author: user.displayName,
+          at: db.businessTime,
+          text: parsed.data.text,
+        };
+        db.comments.push(comment);
+        audit(
+          db,
+          user,
+          'review.comment',
+          {
+            type: 'submission',
+            id: submission.id,
+            version: submission.revision,
+          },
+          `Oversight comment on ${obligation.id}`,
+        );
+        notify(
+          db,
+          `${comment.id}:comment`,
+          'review.comment',
+          assignedOfficers(obligation.institutionId),
+          {
+            title: `Supervisor comment on ${obligation.institutionId} ${periodOf(obligation.periodId).label}`,
+            body: 'The supervisor left an oversight comment. It is guidance, not an approval step.',
+            link: `/officer/reviews/${submission.id}`,
+          },
+        );
+      });
+      return HttpResponse.json(reviewBundle(user, submission));
+    },
+  ),
+
   http.post(
     '/api/reviews/:submissionId/decisions/:milestoneCode/carry-forward',
     async ({ params, request }) => {
       await networkDelay();
       const user = requireRole('officer', 'supervisor', 'administrator');
       const submission = findSubmission(user, params.submissionId);
-      requireAssigned(user, submission);
+      requireAssigned(user, submission, request);
       const parsed = finalizeRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );
@@ -410,7 +791,7 @@ export const reviewHandlers = [
       await networkDelay();
       const user = requireRole('officer', 'supervisor', 'administrator');
       const submission = findSubmission(user, params.submissionId);
-      requireAssigned(user, submission);
+      requireAssigned(user, submission, request);
       const parsed = clarificationRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );
@@ -476,6 +857,7 @@ export const reviewHandlers = [
           responseDueAt: responseDueAt(now, now),
           status: 'open' as const,
           response: null,
+          closure: null,
         };
         db.clarifications.push(clarification);
         obligation.state = 'clarification_requested';
@@ -523,7 +905,7 @@ export const reviewHandlers = [
       await networkDelay();
       const user = requireRole('officer', 'supervisor', 'administrator');
       const submission = findSubmission(user, params.submissionId);
-      requireAssigned(user, submission);
+      requireAssigned(user, submission, request);
       const parsed = finalizeRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );
@@ -610,7 +992,7 @@ export const reviewHandlers = [
       await networkDelay();
       const user = requireRole('officer', 'supervisor', 'administrator');
       const submission = findSubmission(user, params.submissionId);
-      requireAssigned(user, submission);
+      requireAssigned(user, submission, request);
       const parsed = reopenRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );

@@ -28,6 +28,7 @@ import {
 } from '../services/evidence';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
+import { daysLate } from '../services/obligations';
 import {
   baselineOf,
   completeness,
@@ -252,6 +253,17 @@ export const reportingHandlers = [
       )
     )
       throw notFound();
+    // Administrator access to evidence is logged (PRD §5.2).
+    if (user.role === 'administrator')
+      commit((store) =>
+        audit(
+          store,
+          user,
+          'evidence.access',
+          { type: 'evidence', id: item.id, version: item.version },
+          `${item.fileName} opened by an administrator`,
+        ),
+      );
     const disposition = (name: string) =>
       `inline; filename="${name.replace(/["\\\r\n]/g, '_')}"`;
     const bytes = fileBytes(item.id);
@@ -366,6 +378,10 @@ export const reportingHandlers = [
           clarification.obligationId === obligation.id &&
           clarification.status === 'open',
       );
+      // Complete evidence: every required document supplied, none declared unavailable.
+      const evidenceComplete = !check.declarations.some((declaration) =>
+        /unavailable$/i.test(declaration.field),
+      );
       const receipt: Receipt = {
         id: nextId('rcpt'),
         obligationId: obligation.id,
@@ -381,6 +397,8 @@ export const reportingHandlers = [
           Date.parse(db.businessTime) > Date.parse(period.submissionDeadline)
             ? 'late'
             : 'on_time',
+        daysLate: daysLate(db.businessTime, period.submissionDeadline),
+        evidenceComplete,
         submittedBy: user.displayName,
         submitterRole: parsed.data.attestation.submitterRole,
         approval: parsed.data.attestation.approval,
@@ -424,6 +442,8 @@ export const reportingHandlers = [
         obligation.state = 'submitted';
         obligation.currentRevision = revision;
         obligation.firstSubmittedAt ??= receipt.receivedAt;
+        if (evidenceComplete)
+          obligation.firstCompleteEvidenceAt ??= receipt.receivedAt;
         obligation.lastReceiptAt = receipt.receivedAt;
         audit(
           store,

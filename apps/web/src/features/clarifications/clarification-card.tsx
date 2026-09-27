@@ -112,6 +112,13 @@ export function ClarificationCard({
             non-response.
           </p>
         )}
+        {clarification.closure && (
+          <p>
+            Closed without response by {clarification.closure.by},{' '}
+            {formatDateTime(clarification.closure.at)}:{' '}
+            {clarification.closure.reason}
+          </p>
+        )}
       </div>
       {actions}
     </article>

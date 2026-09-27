@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { midYear, signInAs } from './support';
+import { midYear, passSuitability, signInAs } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -97,6 +97,7 @@ test('an officer records a decision with the keyboard', async ({ page }) => {
   const { review } = await midYear(page);
   await signInAs(page, 'officer-a');
   await page.goto(`/officer/reviews/${review}`);
+  await passSuitability(page);
   const card = page.getByRole('article', { name: /^M-01 / });
   const accept = card.getByRole('radio', { name: /^Accept:/ });
   await accept.focus();

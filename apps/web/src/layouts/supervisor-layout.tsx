@@ -1,6 +1,13 @@
 import { Link, Outlet } from '@tanstack/react-router';
 import { InboxLink } from '@/components/inbox-link';
-import { Award, FileText, LayoutDashboard, Users } from 'lucide-react';
+import {
+  Award,
+  FileSearch,
+  FileText,
+  Inbox,
+  LayoutDashboard,
+  Users,
+} from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
@@ -9,6 +16,18 @@ import { SkipLink, type NavItem } from './shared';
 
 const nav = [
   { to: '/supervisor', label: 'Overview', icon: LayoutDashboard, exact: true },
+  {
+    to: '/supervisor/submissions',
+    label: 'Submissions',
+    icon: Inbox,
+    exact: false,
+  },
+  {
+    to: '/supervisor/evidence',
+    label: 'Evidence',
+    icon: FileSearch,
+    exact: false,
+  },
   { to: '/supervisor/workload', label: 'Workload', icon: Users, exact: false },
   {
     to: '/supervisor/annual',
