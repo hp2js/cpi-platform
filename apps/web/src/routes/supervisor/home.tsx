@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/select-field';
 import {
   Table,
   TableBody,
@@ -78,20 +78,18 @@ function Filters({ search }: { search: OversightSearch }) {
     >
       <div className="grid w-40 gap-1.5">
         <Label htmlFor="filter-period">Quarter</Label>
-        <NativeSelect
+        <SelectField
           id="filter-period"
           value={search.periodId ?? ''}
-          onChange={(event) =>
-            set({ periodId: event.target.value || undefined })
-          }
-        >
-          <option value="">All quarters</option>
-          {cycle.data?.periods.map((period) => (
-            <option key={period.id} value={period.id}>
-              {period.label}
-            </option>
-          ))}
-        </NativeSelect>
+          onChange={(value) => set({ periodId: value || undefined })}
+          options={[
+            { value: '', label: 'All quarters' },
+            ...(cycle.data?.periods ?? []).map((period) => ({
+              value: period.id,
+              label: period.label,
+            })),
+          ]}
+        />
       </div>
       <div className="grid w-full gap-1.5 sm:w-80">
         <Label htmlFor="filter-institution">Institution</Label>

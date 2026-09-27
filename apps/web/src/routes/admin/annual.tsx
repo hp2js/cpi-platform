@@ -37,7 +37,7 @@ import {
 import { invalidateEvents } from '@/features/events/queries';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/select-field';
 
 function status(evaluation: AnnualEvaluation) {
   if (evaluation.correction)
@@ -159,17 +159,15 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
       <Label htmlFor={`corr-period-${evaluation.institutionId}`}>
         Quarter to correct
       </Label>
-      <NativeSelect
+      <SelectField
         id={`corr-period-${evaluation.institutionId}`}
         value={periodId}
-        onChange={(event) => setPeriodId(event.target.value)}
-      >
-        {evaluation.quarters.map((quarter) => (
-          <option key={quarter.periodId} value={quarter.periodId}>
-            {quarter.periodLabel}
-          </option>
-        ))}
-      </NativeSelect>
+        onChange={setPeriodId}
+        options={evaluation.quarters.map((quarter) => ({
+          value: quarter.periodId,
+          label: quarter.periodLabel,
+        }))}
+      />
       <Label htmlFor={`corr-reason-${evaluation.institutionId}`}>Reason</Label>
       <Textarea
         id={`corr-reason-${evaluation.institutionId}`}
@@ -244,31 +242,25 @@ function EvaluationList({
         />
         <div className="grid w-52 gap-1.5">
           <Label htmlFor="annual-state">Status</Label>
-          <NativeSelect
+          <SelectField
             id="annual-state"
             value={state}
-            onChange={(event) => setState(event.target.value)}
-          >
-            <option value="">All ({evaluations.length})</option>
-            {(
-              [
-                ['ready', 'Ready for release'],
-                ['pending', 'Not ready'],
-                ['published', 'Published'],
-                ['correction', 'Correction open'],
-              ] as const
-            ).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label} (
-                {
-                  evaluations.filter(
-                    (evaluation) => stateOf(evaluation) === value,
-                  ).length
-                }
-                )
-              </option>
-            ))}
-          </NativeSelect>
+            onChange={setState}
+            options={[
+              { value: '', label: `All (${evaluations.length})` },
+              ...(
+                [
+                  ['ready', 'Ready for release'],
+                  ['pending', 'Not ready'],
+                  ['published', 'Published'],
+                  ['correction', 'Correction open'],
+                ] as const
+              ).map(([value, label]) => ({
+                value,
+                label: `${label} (${evaluations.filter((evaluation) => stateOf(evaluation) === value).length})`,
+              })),
+            ]}
+          />
         </div>
       </div>
       <ul className="grid gap-3">

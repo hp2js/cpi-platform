@@ -1,5 +1,6 @@
 import {
   institutionImportColumns,
+  type AccountingOfficer,
   type InstitutionCreate,
   type InstitutionImportPreview,
 } from '@cpi/contracts';
@@ -22,11 +23,36 @@ const EMAIL_PATTERN = /^[^@\s]+@example\.invalid$/;
 export interface NewInstitution {
   id: string;
   name: string;
-  type: string;
+  /** Resolved against the managed list; undefined when unknown or retired. */
+  typeId: string | undefined;
+  /** What the request gave, for error messages. */
+  typeInput: string;
   officer: MockUser | undefined;
-  focalContact: string;
-  accountingOfficerContact: string;
-  focalUser: { displayName: string; email: string } | null;
+  accountingOfficer: AccountingOfficer;
+  focalUser: { displayName: string; email: string; jobTitle: string } | null;
+}
+
+export function accountingOfficerProblems(officer: AccountingOfficer) {
+  const errors: string[] = [];
+  if (officer.name.trim().length < 3)
+    errors.push('Give the Accounting Officer’s name.');
+  if (officer.designation.trim().length < 2)
+    errors.push('Give the Accounting Officer’s designation.');
+  if (officer.email && !EMAIL_PATTERN.test(officer.email.trim().toLowerCase()))
+    errors.push(
+      'The Accounting Officer’s email must be a fictional @example.invalid address.',
+    );
+  return errors;
+}
+
+/** Matches an active type by ID or by label, ignoring case. */
+export function activeTypeId(db: MockDb, reference: string) {
+  const key = reference.trim().toLowerCase();
+  return db.institutionTypes.find(
+    (type) =>
+      type.active &&
+      (type.id === reference || type.label.toLowerCase() === key),
+  )?.id;
 }
 
 /** Problems with one institution; `taken` holds IDs and emails claimed earlier in the batch. */
@@ -57,7 +83,16 @@ export function institutionProblems(
     )
   )
     errors.push(`An institution named “${input.name}” already exists.`);
-  if (input.type.trim().length < 3) errors.push('Give the institution type.');
+  if (!input.typeId)
+    errors.push(
+      input.typeInput
+        ? `“${input.typeInput}” is not an active institution type. Use one of: ${db.institutionTypes
+            .filter((type) => type.active)
+            .map((type) => type.label)
+            .join(', ')}.`
+        : 'Choose the institution type.',
+    );
+  errors.push(...accountingOfficerProblems(input.accountingOfficer));
   if (!input.officer) errors.push('Choose an active prevention officer.');
   if (input.focalUser) {
     const email = input.focalUser.email.toLowerCase();
@@ -98,16 +133,20 @@ export function createInstitution(
   nextId: (prefix: string) => string,
 ) {
   const now = Date.parse(db.businessTime);
+  const type = db.institutionTypes.find((item) => item.id === input.typeId)!;
   db.institutions.push({
     id: input.id,
     name: input.name.trim(),
-    type: input.type.trim(),
+    typeId: type.id,
+    type: type.label,
     active: true,
+    accountingOfficer: {
+      name: input.accountingOfficer.name.trim(),
+      designation: input.accountingOfficer.designation.trim(),
+      email: input.accountingOfficer.email.trim().toLowerCase(),
+      phone: input.accountingOfficer.phone.trim(),
+    },
   });
-  db.institutionContacts[input.id] = {
-    focalContact: input.focalContact.trim(),
-    accountingOfficerContact: input.accountingOfficerContact.trim(),
-  };
   db.assignments.push({
     institutionId: input.id,
     officerId: input.officer.id,
@@ -172,6 +211,7 @@ export function createInstitution(
       role: 'institution',
       institutionId: input.id,
       active: true,
+      jobTitle: input.focalUser.jobTitle.trim(),
     });
 }
 
@@ -182,10 +222,10 @@ export function fromCreateRequest(
   return {
     id: request.id,
     name: request.name,
-    type: request.type,
+    typeId: activeTypeId(db, request.typeId),
+    typeInput: request.typeId,
     officer: activeOfficer(db, request.officerId),
-    focalContact: request.focalContact,
-    accountingOfficerContact: request.accountingOfficerContact,
+    accountingOfficer: request.accountingOfficer,
     focalUser: request.focalUser,
   };
 }
@@ -199,7 +239,14 @@ export function previewImport(
   const columns = header.map((name) => name.trim().toLowerCase());
   const missing = institutionImportColumns
     .filter((column) =>
-      ['institution_id', 'name', 'type', 'officer_email'].includes(column),
+      [
+        'institution_id',
+        'name',
+        'type',
+        'officer_email',
+        'ao_name',
+        'ao_designation',
+      ].includes(column),
     )
     .filter((column) => !columns.includes(column));
   const fileErrors: string[] = [];
@@ -221,16 +268,22 @@ export function previewImport(
   const previewRows = lines.map((cells, index) => {
     const focalEmail = cell(cells, 'focal_email');
     const focalName = cell(cells, 'focal_name');
+    const typeInput = cell(cells, 'type');
     const input: NewInstitution = {
       id: cell(cells, 'institution_id').toUpperCase(),
       name: cell(cells, 'name'),
-      type: cell(cells, 'type'),
+      typeId: activeTypeId(db, typeInput),
+      typeInput,
       officer: activeOfficer(db, cell(cells, 'officer_email')),
-      focalContact: cell(cells, 'focal_contact'),
-      accountingOfficerContact: cell(cells, 'accounting_officer_contact'),
+      accountingOfficer: {
+        name: cell(cells, 'ao_name'),
+        designation: cell(cells, 'ao_designation'),
+        email: cell(cells, 'ao_email'),
+        phone: cell(cells, 'ao_phone'),
+      },
       focalUser:
         focalEmail || focalName
-          ? { displayName: focalName, email: focalEmail }
+          ? { displayName: focalName, email: focalEmail, jobTitle: '' }
           : null,
     };
     const errors = institutionProblems(db, input, taken);
@@ -243,7 +296,9 @@ export function previewImport(
       line: index + 2,
       institutionId: input.id,
       name: input.name,
-      type: input.type,
+      type: input.typeId
+        ? db.institutionTypes.find((type) => type.id === input.typeId)!.label
+        : input.typeInput,
       officerName: input.officer?.displayName ?? null,
       focalEmail: input.focalUser?.email || null,
       errors,

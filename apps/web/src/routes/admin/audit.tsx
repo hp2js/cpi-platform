@@ -15,7 +15,7 @@ import {
 import { auditQuery } from '@/features/events/queries';
 import { roleLabel } from '@/features/session/queries';
 import { formatDateTime } from '@/lib/dates';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/select-field';
 
 const objectTypes = [
   'form',
@@ -41,18 +41,15 @@ export function AuditPage() {
       />
       <div className="grid max-w-xs gap-1.5">
         <Label htmlFor="audit-type">Object type</Label>
-        <NativeSelect
+        <SelectField
           id="audit-type"
           value={objectType ?? ''}
-          onChange={(event) => setObjectType(event.target.value || null)}
-        >
-          <option value="">All</option>
-          {objectTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </NativeSelect>
+          onChange={(value) => setObjectType(value || null)}
+          options={[
+            { value: '', label: 'All' },
+            ...objectTypes.map((type) => ({ value: type, label: type })),
+          ]}
+        />
       </div>
       <QueryView
         query={events}

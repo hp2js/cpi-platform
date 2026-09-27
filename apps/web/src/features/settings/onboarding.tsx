@@ -1,12 +1,14 @@
 import {
   institutionImportColumns,
   type InstitutionCreate,
+  type InstitutionType,
   type InstitutionImportPreview,
   type ManagedUser,
 } from '@cpi/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { Download, Plus, Upload } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useState } from 'react';
 import { Combobox } from '@/components/combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,6 +33,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { isApiError } from '@/lib/api';
+import {
+  AccountingOfficerFields,
+  emptyAccountingOfficer,
+  InstitutionTypeSelect,
+  TextField,
+} from './institution-form';
 import {
   createInstitution,
   importInstitutions,
@@ -78,55 +86,57 @@ function SeedOption({
 const blank = (officerId: string): InstitutionCreate => ({
   id: '',
   name: '',
-  type: '',
+  typeId: '',
   officerId,
-  focalContact: '',
-  accountingOfficerContact: '',
+  accountingOfficer: emptyAccountingOfficer,
   focalUser: null,
   seedOpenedQuarters: true,
 });
 
-export function AddInstitution({ officers }: { officers: ManagedUser[] }) {
+export function AddInstitution({
+  officers,
+  types,
+}: {
+  officers: ManagedUser[];
+  types: InstitutionType[];
+}) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const id = useId();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(() => blank(officers[0]?.id ?? ''));
   const [withFocal, setWithFocal] = useState(true);
-  const [focal, setFocal] = useState({ displayName: '', email: '' });
+  const [focal, setFocal] = useState({
+    displayName: '',
+    email: '',
+    jobTitle: 'Integrity Assurance Officer',
+  });
   const mutation = useMutation({
     mutationFn: () =>
-      createInstitution({ ...values, focalUser: withFocal ? focal : null }),
+      createInstitution({
+        ...values,
+        id: values.id.trim().toUpperCase(),
+        focalUser: withFocal ? focal : null,
+      }),
     onSuccess: async () => {
       setOpen(false);
       await queryClient.invalidateQueries();
+      await navigate({
+        to: '/admin/institutions/$institutionId',
+        params: { institutionId: values.id.trim().toUpperCase() },
+      });
     },
   });
   const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
-  const field = (
-    key: 'id' | 'name' | 'type' | 'focalContact' | 'accountingOfficerContact',
-    label: string,
-    hint?: ReactNode,
-  ) => (
-    <div className="grid gap-1.5">
-      <Label htmlFor={`${id}-${key}`}>{label}</Label>
-      <Input
-        id={`${id}-${key}`}
-        value={values[key]}
-        onChange={(event) =>
-          setValues({
-            ...values,
-            [key]:
-              key === 'id'
-                ? event.target.value.toUpperCase()
-                : event.target.value,
-          })
-        }
-        aria-invalid={errors[key] ? true : undefined}
-      />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {errors[key] && <p className="text-sm text-destructive">{errors[key]}</p>}
-    </div>
-  );
+  const ready =
+    /^[A-Z]+-\d{3}$/.test(values.id.trim().toUpperCase()) &&
+    values.name.trim().length >= 3 &&
+    values.typeId &&
+    values.officerId &&
+    values.accountingOfficer.name.trim().length >= 3 &&
+    values.accountingOfficer.designation.trim().length >= 2 &&
+    (!withFocal ||
+      (focal.displayName.trim().length >= 3 && focal.email.trim()));
   return (
     <Dialog
       open={open}
@@ -134,7 +144,11 @@ export function AddInstitution({ officers }: { officers: ManagedUser[] }) {
         setOpen(next);
         if (next) {
           setValues(blank(officers[0]?.id ?? ''));
-          setFocal({ displayName: '', email: '' });
+          setFocal({
+            displayName: '',
+            email: '',
+            jobTitle: 'Integrity Assurance Officer',
+          });
           mutation.reset();
         }
       }}
@@ -145,82 +159,119 @@ export function AddInstitution({ officers }: { officers: ManagedUser[] }) {
           Add institution
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add an institution</DialogTitle>
           <DialogDescription>
-            It gets four reporting obligations and a reviewing officer.
-            Baselines start with the mandatory CPC and IAO milestones.
+            It gets four reporting obligations and a reviewing officer. Its
+            baselines start with the mandatory CPC and IAO milestones.
           </DialogDescription>
         </DialogHeader>
         <form
-          className="grid gap-3"
+          className="grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
             mutation.mutate();
           }}
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            {field(
-              'id',
-              'Institution ID',
-              'Stable code, e.g. MDA-123. It never changes.',
-            )}
-            {field('type', 'Type')}
-          </div>
-          {field('name', 'Name')}
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-officer`}>Reviewing officer</Label>
-            <Combobox
-              id={`${id}-officer`}
-              searchPlaceholder="Search officers"
-              value={values.officerId}
-              onChange={(officerId) => setValues({ ...values, officerId })}
-              options={officers.map((officer) => ({
-                value: officer.id,
-                label: officer.displayName,
-                description: `${officer.assignedInstitutionIds.length} institutions`,
-              }))}
-            />
-          </div>
-          {field('focalContact', 'Focal contact')}
-          {field('accountingOfficerContact', 'Accounting Officer contact')}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`${id}-with-focal`}
-              checked={withFocal}
-              onCheckedChange={(value) => setWithFocal(value === true)}
-            />
-            <Label htmlFor={`${id}-with-focal`} className="font-normal">
-              Create a focal person account
-            </Label>
-          </div>
-          {withFocal && (
+          <fieldset className="grid gap-3">
+            <legend className="mb-2 text-sm font-semibold">Institution</legend>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor={`${id}-focal-name`}>Focal person name</Label>
-                <Input
+              <TextField
+                id={`${id}-id`}
+                label="Institution ID"
+                hint="Stable code, e.g. MDA-123. It never changes."
+                value={values.id}
+                onChange={(next) =>
+                  setValues({ ...values, id: next.toUpperCase() })
+                }
+                error={errors.id}
+              />
+              <InstitutionTypeSelect
+                id={`${id}-type`}
+                value={values.typeId}
+                onChange={(typeId) => setValues({ ...values, typeId })}
+                types={types}
+                error={errors.typeId}
+              />
+            </div>
+            <TextField
+              id={`${id}-name`}
+              label="Name"
+              value={values.name}
+              onChange={(name) => setValues({ ...values, name })}
+              error={errors.name}
+            />
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-officer`}>Reviewing officer</Label>
+              <Combobox
+                id={`${id}-officer`}
+                searchPlaceholder="Search officers"
+                value={values.officerId}
+                onChange={(officerId) => setValues({ ...values, officerId })}
+                options={officers.map((officer) => ({
+                  value: officer.id,
+                  label: officer.displayName,
+                  description: `${officer.assignedInstitutionIds.length} institutions`,
+                }))}
+              />
+            </div>
+          </fieldset>
+
+          <AccountingOfficerFields
+            idPrefix={id}
+            value={values.accountingOfficer}
+            onChange={(accountingOfficer) =>
+              setValues({ ...values, accountingOfficer })
+            }
+            errors={errors}
+          />
+
+          <fieldset className="grid gap-3">
+            <legend className="mb-2 text-sm font-semibold">Focal person</legend>
+            <p className="text-xs text-muted-foreground">
+              The person who reports for the institution on the platform. More
+              focal persons can be added later from the institution’s page.
+            </p>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`${id}-with-focal`}
+                checked={withFocal}
+                onCheckedChange={(value) => setWithFocal(value === true)}
+              />
+              <Label htmlFor={`${id}-with-focal`} className="font-normal">
+                Create a focal person account now
+              </Label>
+            </div>
+            {withFocal && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField
                   id={`${id}-focal-name`}
+                  label="Name"
                   value={focal.displayName}
-                  onChange={(event) =>
-                    setFocal({ ...focal, displayName: event.target.value })
+                  onChange={(displayName) =>
+                    setFocal({ ...focal, displayName })
                   }
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor={`${id}-focal-email`}>Focal person email</Label>
-                <Input
+                <TextField
                   id={`${id}-focal-email`}
+                  label="Email (sign-in)"
                   type="email"
                   placeholder="name@example.invalid"
                   value={focal.email}
-                  onChange={(event) =>
-                    setFocal({ ...focal, email: event.target.value })
-                  }
+                  onChange={(email) => setFocal({ ...focal, email })}
+                />
+                <TextField
+                  id={`${id}-focal-title`}
+                  label="Job title"
+                  optional
+                  value={focal.jobTitle}
+                  onChange={(jobTitle) => setFocal({ ...focal, jobTitle })}
                 />
               </div>
-            </div>
-          )}
+            )}
+          </fieldset>
+
           <SeedOption
             id={`${id}-seed`}
             checked={values.seedOpenedQuarters}
@@ -241,16 +292,7 @@ export function AddInstitution({ officers }: { officers: ManagedUser[] }) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                !values.id ||
-                values.name.trim().length < 3 ||
-                values.type.trim().length < 3 ||
-                !values.officerId ||
-                mutation.isPending
-              }
-            >
+            <Button type="submit" disabled={!ready || mutation.isPending}>
               {mutation.isPending ? 'Adding…' : 'Add institution'}
             </Button>
           </DialogFooter>
@@ -262,8 +304,8 @@ export function AddInstitution({ officers }: { officers: ManagedUser[] }) {
 
 const template = [
   institutionImportColumns.join(','),
-  'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,Focal person MDA-201,focal.mda-201@example.invalid,Registry office,Accounting Officer MDA-201',
-  '"MDA-202","Demo Fisheries Service, Coast",State agency,officer.b@example.invalid,,,,',
+  'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,Accounting Officer MDA-201,Managing Director,ao.mda-201@example.invalid,,Focal person MDA-201,focal.mda-201@example.invalid',
+  '"MDA-202","Demo Fisheries Service, Coast",State agency,officer.b@example.invalid,Accounting Officer MDA-202,Director General,,,,',
 ].join('\r\n');
 
 function downloadTemplate() {
@@ -335,7 +377,7 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
   );
 }
 
-export function ImportInstitutions() {
+export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
   const queryClient = useQueryClient();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -410,7 +452,17 @@ export function ImportInstitutions() {
                 <code className="text-xs">
                   {institutionImportColumns.join(', ')}
                 </code>
-                . The first four are required; officers are matched by email.
+                . Required:{' '}
+                <code className="text-xs">
+                  institution_id, name, type, officer_email, ao_name,
+                  ao_designation
+                </code>
+                . Officers are matched by email and types by name (
+                {types
+                  .filter((type) => type.active)
+                  .map((type) => type.label)
+                  .join(', ')}
+                ).
               </p>
               <div>
                 <Button

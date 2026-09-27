@@ -2,11 +2,40 @@ import { z } from 'zod';
 import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 
+const fictionalEmail = z
+  .string()
+  .trim()
+  .regex(
+    /^[^@\s]+@example\.invalid$/,
+    'Use a fictional @example.invalid address.',
+  );
+
+/**
+ * The institution's Accounting Officer (PRD §3.1, §12.1). A contact on the institution, not a
+ * platform account: the Accounting Officer chairs the CPC, and their approval reaches the
+ * platform as a reference on each submission (§7.2); no approver role exists in P0.
+ */
+export const accountingOfficerSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, 'Give the Accounting Officer’s name.')
+    .max(120),
+  /** Their title in the institution, e.g. Director General or Chief Executive Officer. */
+  designation: z.string().trim().min(2, 'Give their designation.').max(120),
+  email: fictionalEmail.or(z.literal('')),
+  phone: z.string().trim().max(40),
+});
+export type AccountingOfficer = z.infer<typeof accountingOfficerSchema>;
+
 export const institutionSchema = z.object({
   id: institutionIdSchema,
   name: z.string(),
+  /** Managed list (Settings → Institution types); `type` is its current label. */
+  typeId: z.string(),
   type: z.string(),
   active: z.boolean(),
+  accountingOfficer: accountingOfficerSchema.nullable(),
 });
 export type Institution = z.infer<typeof institutionSchema>;
 export const institutionsSchema = z.array(institutionSchema);

@@ -6,6 +6,7 @@ import {
   roleSchema,
 } from './common.js';
 import { dayCountingSchema } from './cycle.js';
+import { accountingOfficerSchema } from './institutions.js';
 import { indicatorWeightsSchema } from './forms.js';
 
 /**
@@ -138,6 +139,7 @@ export const managedUserSchema = z.object({
   displayName: z.string(),
   email: z.string(),
   role: roleSchema,
+  jobTitle: z.string(),
   institutionId: institutionIdSchema.nullable(),
   active: z.boolean(),
   /** Institutions currently assigned to an officer. */
@@ -148,29 +150,59 @@ export type ManagedUser = z.infer<typeof managedUserSchema>;
 export const managedInstitutionSchema = z.object({
   id: institutionIdSchema,
   name: z.string(),
+  typeId: z.string(),
   type: z.string(),
   active: z.boolean(),
-  focalContact: z.string(),
-  accountingOfficerContact: z.string(),
+  accountingOfficer: accountingOfficerSchema.nullable(),
+  /** Focal persons are the institution's platform accounts (the PRD allows several). */
+  focalPersons: z.array(
+    z.object({
+      id: z.string(),
+      displayName: z.string(),
+      email: z.string(),
+      jobTitle: z.string(),
+      active: z.boolean(),
+    }),
+  ),
+  officer: z.object({ id: z.string(), name: z.string() }).nullable(),
 });
 export type ManagedInstitution = z.infer<typeof managedInstitutionSchema>;
+
+export const institutionTypeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  /** Retired types stay on existing institutions but are not offered for new ones. */
+  active: z.boolean(),
+  institutionCount: z.number().int().nonnegative(),
+});
+export type InstitutionType = z.infer<typeof institutionTypeSchema>;
 
 export const peopleSchema = z.object({
   users: z.array(managedUserSchema),
   institutions: z.array(managedInstitutionSchema),
+  institutionTypes: z.array(institutionTypeSchema),
 });
 export type People = z.infer<typeof peopleSchema>;
+
+export const institutionTypeUpdateSchema = z.object({
+  label: z.string().trim().min(3).max(60),
+  active: z.boolean(),
+});
+export type InstitutionTypeUpdate = z.infer<typeof institutionTypeUpdateSchema>;
+
+const fictional = z
+  .string()
+  .trim()
+  .regex(
+    /^[^@\s]+@example\.invalid$/,
+    'Use a fictional @example.invalid address.',
+  );
 
 export const userCreateSchema = z
   .object({
     displayName: z.string().trim().min(3).max(80),
-    email: z
-      .string()
-      .trim()
-      .regex(
-        /^[^@\s]+@example\.invalid$/,
-        'Use a fictional @example.invalid address.',
-      ),
+    email: fictional,
+    jobTitle: z.string().trim().max(80),
     role: roleSchema,
     institutionId: institutionIdSchema.nullable(),
   })
@@ -188,23 +220,51 @@ export const userStatusSchema = z.object({
   reason: z.string().trim().min(10).max(500),
 });
 
+/** What an administrator may change on someone else's account; email is the sign-in identity. */
+export const userUpdateSchema = z.object({
+  displayName: z.string().trim().min(3).max(80),
+  jobTitle: z.string().trim().max(80),
+});
+export type UserUpdate = z.infer<typeof userUpdateSchema>;
+
 export const institutionUpdateSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  type: z.string().trim().min(3).max(80),
-  focalContact: z.string().trim().max(200),
-  accountingOfficerContact: z.string().trim().max(200),
+  typeId: z.string().min(1, 'Choose the institution type.'),
+  accountingOfficer: accountingOfficerSchema,
 });
 export type InstitutionUpdate = z.infer<typeof institutionUpdateSchema>;
 
-const focalUserSchema = z.object({
-  displayName: z.string().trim().min(3).max(80),
-  email: z
+/** The signed-in user's own profile (My account). */
+export const accountSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  email: z.string(),
+  role: roleSchema,
+  jobTitle: z.string(),
+  phone: z.string(),
+  institution: z
+    .object({ id: institutionIdSchema, name: z.string() })
+    .nullable(),
+  /** For an institution: who reviews its reports. For an officer: their portfolio size. */
+  reviewingOfficer: z.string().nullable(),
+  portfolioSize: z.number().int().nonnegative().nullable(),
+});
+export type Account = z.infer<typeof accountSchema>;
+export const accountUpdateSchema = z.object({
+  displayName: z.string().trim().min(3, 'Give your name.').max(80),
+  jobTitle: z.string().trim().max(80),
+  phone: z
     .string()
     .trim()
-    .regex(
-      /^[^@\s]+@example\.invalid$/,
-      'Use a fictional @example.invalid address.',
-    ),
+    .max(40)
+    .regex(/^[+\d\s()-]*$/, 'Use digits, spaces and + ( ) - only.'),
+});
+export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+
+const focalUserSchema = z.object({
+  displayName: z.string().trim().min(3).max(80),
+  email: fictional,
+  jobTitle: z.string().trim().max(80),
 });
 
 /** A new institution (FR01). Stable IDs follow the pattern ABC-123. */
@@ -236,10 +296,12 @@ export const institutionImportColumns = [
   'name',
   'type',
   'officer_email',
+  'ao_name',
+  'ao_designation',
+  'ao_email',
+  'ao_phone',
   'focal_name',
   'focal_email',
-  'focal_contact',
-  'accounting_officer_contact',
 ] as const;
 export const institutionImportPreviewSchema = z.object({
   /** Problems with the file itself, such as missing columns. */

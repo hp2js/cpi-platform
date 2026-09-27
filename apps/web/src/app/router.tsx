@@ -345,12 +345,53 @@ const adminCalendarRoute = createRoute({
   path: 'calendar',
   component: page(() => import('@/routes/admin/calendar'), 'CalendarPage'),
 });
-const adminPeopleRoute = createRoute({
+const adminInstitutionsRoute = createRoute({
   getParentRoute: () => adminRoute,
-  path: 'people',
-  component: page(() => import('@/routes/admin/people'), 'PeoplePage'),
+  path: 'institutions',
+  validateSearch: (search: Record<string, unknown>): { tab?: 'types' } =>
+    search.tab === 'types' ? { tab: 'types' } : {},
+  component: page(
+    () => import('@/routes/admin/institutions'),
+    'InstitutionsPage',
+  ),
 });
-
+const adminInstitutionRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'institutions/$institutionId',
+  component: page(
+    () => import('@/routes/admin/institution-detail'),
+    'InstitutionDetailPage',
+  ),
+});
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'users',
+  component: page(() => import('@/routes/admin/users'), 'UsersPage'),
+});
+const accountPage = page(
+  () => import('@/routes/shared/account'),
+  'AccountPage',
+);
+const institutionAccountRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'account',
+  component: accountPage,
+});
+const officerAccountRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'account',
+  component: accountPage,
+});
+const supervisorAccountRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'account',
+  component: accountPage,
+});
+const adminAccountRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'account',
+  component: accountPage,
+});
 const supervisorSubmissionsRoute = createRoute({
   getParentRoute: () => supervisorRoute,
   path: 'submissions',
@@ -404,6 +445,7 @@ export const routeTree = rootRoute.addChildren([
       institutionFoundationsRoute,
       institutionInboxRoute,
       institutionResultsRoute,
+      institutionAccountRoute,
     ]),
     officerRoute.addChildren([
       officerHomeRoute,
@@ -411,6 +453,7 @@ export const routeTree = rootRoute.addChildren([
       officerEvidenceRoute,
       officerInstitutionRoute,
       officerInboxRoute,
+      officerAccountRoute,
     ]),
     supervisorRoute.addChildren([
       supervisorHomeRoute,
@@ -418,6 +461,7 @@ export const routeTree = rootRoute.addChildren([
       supervisorReviewRoute,
       supervisorEvidenceRoute,
       supervisorInboxRoute,
+      supervisorAccountRoute,
       supervisorWorkloadRoute,
       supervisorAnnualRoute,
       supervisorReportsRoute,
@@ -428,7 +472,10 @@ export const routeTree = rootRoute.addChildren([
       adminAnnualRoute,
       adminAssignmentsRoute,
       adminCalendarRoute,
-      adminPeopleRoute,
+      adminInstitutionsRoute,
+      adminInstitutionRoute,
+      adminUsersRoute,
+      adminAccountRoute,
       adminProfilesRoute,
       adminProfileRoute,
       adminFormsRoute,

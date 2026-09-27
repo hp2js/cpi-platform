@@ -116,7 +116,11 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/profiles', 'admin scoring profiles'],
     ['/admin/profiles/hackathon-mock-v1', 'admin profile detail'],
     ['/admin/calendar', 'admin reporting calendar'],
-    ['/admin/people', 'admin users and institutions'],
+    ['/admin/institutions', 'admin institutions'],
+    ['/admin/institutions?tab=types', 'admin institution types'],
+    ['/admin/institutions/DEMO-001', 'admin institution page'],
+    ['/admin/users', 'admin users'],
+    ['/admin/account', 'my account'],
     ['/admin/reviews', 'admin reviews'],
   ] as const) {
     await visit(page, 'administrator', path);
@@ -152,11 +156,7 @@ test('year-end screens for every role', async ({ page }) => {
 
 test('configuration dialogs and searchable selects', async ({ page }) => {
   await openApp(page);
-  await visit(page, 'administrator', '/admin/people');
-  await scan(page, 'institutions tab');
-  await page.getByRole('tab', { name: /Users/ }).click();
-  await scan(page, 'users tab');
-  await page.getByRole('tab', { name: /Institutions/ }).click();
+  await visit(page, 'administrator', '/admin/institutions');
   await page.getByRole('button', { name: 'Import from CSV' }).click();
   await page
     .getByRole('dialog')
@@ -165,7 +165,7 @@ test('configuration dialogs and searchable selects', async ({ page }) => {
       name: 'institutions.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(
-        'institution_id,name,type,officer_email\nMDA-401,Demo Board,State agency,officer.a@example.invalid\nDEMO-001,Duplicate,State agency,nobody@example.invalid\n',
+        'institution_id,name,type,officer_email,ao_name,ao_designation\nMDA-401,Demo Board,State agency,officer.a@example.invalid,AO MDA-401,Director\nDEMO-001,Duplicate,State agency,nobody@example.invalid,AO,Director\n',
       ),
     });
   await expect(page.getByText(/1 ready, 1 row needs attention/)).toBeVisible();

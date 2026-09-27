@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  accountSchema,
   assignmentHistorySchema,
   calendarSettingsSchema,
   peopleSchema,
@@ -199,6 +200,7 @@ describe('users and institutions (FR01, AT22)', () => {
       json: {
         displayName: 'Deputy focal person, DEMO-001',
         email: 'deputy.demo-001@example.invalid',
+        jobTitle: 'Deputy Integrity Assurance Officer',
         role: 'institution',
         institutionId: 'DEMO-001',
       },
@@ -241,15 +243,56 @@ describe('users and institutions (FR01, AT22)', () => {
         method: 'PUT',
         json: {
           name: 'Demo Water and Sanitation Board',
-          type: 'State corporation',
-          focalContact: 'Focal person, DEMO-002',
-          accountingOfficerContact: 'Accounting Officer, DEMO-002',
+          typeId: 'state-corporation',
+          accountingOfficer: {
+            name: 'Accounting Officer, DEMO-002',
+            designation: 'Managing Director',
+            email: 'ao.demo-002@example.invalid',
+            phone: '+254 700 000 002',
+          },
         },
       },
     );
     expect(
       people.institutions.find((institution) => institution.id === 'DEMO-002'),
-    ).toMatchObject({ name: 'Demo Water and Sanitation Board' });
+    ).toMatchObject({
+      name: 'Demo Water and Sanitation Board',
+      accountingOfficer: { phone: '+254 700 000 002' },
+      focalPersons: [{ email: 'focal.demo-002@example.invalid' }],
+      officer: { id: 'officer-a' },
+    });
+  });
+
+  it('manages institution types: renaming updates labels, retiring keeps history', async () => {
+    await signInAs('administrator');
+    const type = (json: object, id = '') =>
+      request(
+        `/api/settings/institution-types${id ? `/${id}` : ''}`,
+        peopleSchema,
+        { method: id ? 'PUT' : 'POST', json },
+      );
+    const added = await type({ label: 'Tertiary college', active: true });
+    expect(
+      added.institutionTypes.find((item) => item.label === 'Tertiary college'),
+    ).toMatchObject({ id: 'tertiary-college', institutionCount: 0 });
+    await expect(type({ label: 'fund', active: true })).rejects.toMatchObject({
+      status: 422,
+    });
+    const renamed = await type(
+      { label: 'Government fund', active: true },
+      'fund',
+    );
+    expect(
+      renamed.institutions.find((item) => item.id === 'DEMO-007')?.type,
+    ).toBe('Government fund');
+    const retired = await type(
+      { label: 'Government fund', active: false },
+      'fund',
+    );
+    // A retired type stays on existing institutions; new ones cannot choose it.
+    expect(
+      retired.institutions.find((item) => item.id === 'DEMO-007')?.typeId,
+    ).toBe('fund');
   });
 });
 
@@ -279,5 +322,41 @@ describe('reassignment (AT22)', () => {
     ).rejects.toMatchObject({ status: 404 });
     await signInAs('officer-a');
     await request('/api/institutions/DEMO-005', z.unknown());
+  });
+});
+
+describe('my account', () => {
+  it('lets any user edit their name, job title and phone, but not their email or role', async () => {
+    await signInAs('focal-demo-001');
+    const before = await request('/api/account', accountSchema);
+    expect(before).toMatchObject({
+      role: 'institution',
+      institution: { id: 'DEMO-001' },
+      reviewingOfficer: 'Prevention Officer A',
+      jobTitle: 'Integrity Assurance Officer',
+    });
+    const after = await request('/api/account', accountSchema, {
+      method: 'PUT',
+      json: {
+        displayName: 'Amina Focal (fictional)',
+        jobTitle: 'Senior Integrity Assurance Officer',
+        phone: '+254 700 000 001',
+        email: 'changed@example.invalid',
+        role: 'administrator',
+      },
+    });
+    expect(after).toMatchObject({
+      displayName: 'Amina Focal (fictional)',
+      email: 'focal.demo-001@example.invalid',
+      role: 'institution',
+    });
+    const session = await request('/api/session', sessionSchema);
+    expect(session.user.jobTitle).toBe('Senior Integrity Assurance Officer');
+    await expect(
+      request('/api/account', accountSchema, {
+        method: 'PUT',
+        json: { displayName: 'A', jobTitle: '', phone: 'call me' },
+      }),
+    ).rejects.toMatchObject({ status: 422 });
   });
 });

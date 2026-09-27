@@ -30,7 +30,9 @@ import { initialForm } from './seed/forms';
 import {
   institutions,
   initialAssignments,
+  initialInstitutionTypes,
   users,
+  type MockInstitutionType,
   type MockUser,
 } from './seed/cast';
 import { cycle, initialBusinessTime } from './seed/cycle';
@@ -179,10 +181,7 @@ export interface MockDb {
     summary: string;
     reason: string;
   }[];
-  institutionContacts: Record<
-    string,
-    { focalContact: string; accountingOfficerContact: string }
-  >;
+  institutionTypes: MockInstitutionType[];
 }
 
 export interface MockPublication {
@@ -229,7 +228,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -287,18 +286,7 @@ function seed(): MockDb {
     cycleProfileId: 'hackathon-mock-v1',
     reminders: { daysBefore: [7, 1], overdueNotice: true },
     calendarChanges: [],
-    institutionContacts: Object.fromEntries(
-      institutions.map((institution) => {
-        const slug = institution.id.toLowerCase();
-        return [
-          institution.id,
-          {
-            focalContact: `Focal person, ${institution.id} · focal.${slug}@example.invalid`,
-            accountingOfficerContact: `Accounting Officer, ${institution.id} · ao.${slug}@example.invalid`,
-          },
-        ];
-      }),
-    ),
+    institutionTypes: structuredClone(initialInstitutionTypes),
   };
 }
 

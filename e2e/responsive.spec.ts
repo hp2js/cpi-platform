@@ -64,7 +64,10 @@ test('mid-year screens fit a phone', async ({ page }) => {
     ['administrator', '/admin/assignments'],
     ['administrator', '/admin/profiles/hackathon-mock-v1'],
     ['administrator', '/admin/calendar'],
-    ['administrator', '/admin/people'],
+    ['administrator', '/admin/institutions'],
+    ['administrator', '/admin/institutions/DEMO-001'],
+    ['administrator', '/admin/users'],
+    ['focal-demo-001', '/institution/account'],
   ] as const) {
     await visit(page, account, path);
     await expectNoPageOverflow(page, path);

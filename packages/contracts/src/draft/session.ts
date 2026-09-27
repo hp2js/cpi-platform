@@ -8,6 +8,8 @@ export const sessionUserSchema = z.object({
   role: roleSchema,
   /** Present only for institution users: the one institution they act for. */
   institutionId: institutionIdSchema.optional(),
+  /** Self-maintained; prefills the submission's role or delegation reference. */
+  jobTitle: z.string().optional(),
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 

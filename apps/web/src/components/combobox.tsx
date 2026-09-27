@@ -141,7 +141,7 @@ export function Combobox({
           >
             {selected
               ? selected.description
-                ? `${selected.label} ${selected.description}`
+                ? `${selected.label} · ${selected.description}`
                 : selected.label
               : placeholder}
           </span>

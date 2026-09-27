@@ -103,13 +103,18 @@ describe('onboarding institutions (FR01)', () => {
   const newInstitution = {
     id: 'MDA-101',
     name: 'Demo Ports Authority',
-    type: 'State corporation',
+    typeId: 'state-corporation',
     officerId: 'officer-b',
-    focalContact: 'Focal person · focal.mda-101@example.invalid',
-    accountingOfficerContact: 'Accounting Officer · ao.mda-101@example.invalid',
+    accountingOfficer: {
+      name: 'Accounting Officer, MDA-101',
+      designation: 'Managing Director',
+      email: 'ao.mda-101@example.invalid',
+      phone: '',
+    },
     focalUser: {
       displayName: 'Focal person, MDA-101',
       email: 'focal.mda-101@example.invalid',
+      jobTitle: 'Integrity Assurance Officer',
     },
     seedOpenedQuarters: true,
   };
@@ -151,15 +156,15 @@ describe('onboarding institutions (FR01)', () => {
   it('previews a CSV import row by row and imports all or nothing', async () => {
     await signInAs('administrator');
     const header =
-      'institution_id,name,type,officer_email,focal_name,focal_email,focal_contact,accounting_officer_contact';
+      'institution_id,name,type,officer_email,ao_name,ao_designation,ao_email,ao_phone,focal_name,focal_email';
     const good = [
-      'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,Focal person MDA-201,focal.mda-201@example.invalid,,',
-      '"MDA-202","Demo Fisheries Service, Coast",State agency,officer.b@example.invalid,,,,',
+      'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,AO MDA-201,Managing Director,,,Focal person MDA-201,focal.mda-201@example.invalid',
+      '"MDA-202","Demo Fisheries Service, Coast",state agency,officer.b@example.invalid,AO MDA-202,Director General,,,,',
     ];
     const bad = [
-      'DEMO-001,Duplicate,State agency,officer.a@example.invalid,,,,',
-      'mda203,Bad ID,State agency,nobody@example.invalid,,,,',
-      'MDA-201,Repeated in file,State agency,officer.a@example.invalid,,,,',
+      'DEMO-001,Duplicate,State agency,officer.a@example.invalid,AO,Director General,,,,',
+      'mda203,Bad ID,Space agency,nobody@example.invalid,,,,,,',
+      'MDA-201,Repeated in file,State agency,officer.a@example.invalid,AO MDA-201b,Director,,,,',
     ];
     const preview = (csv: string) =>
       request(
@@ -177,7 +182,7 @@ describe('onboarding institutions (FR01)', () => {
     );
     expect(checked.rows[4]!.errors[0]).toMatch(/already in use/);
     expect((await preview('name,type\nX,Y')).fileErrors[0]).toMatch(
-      /Missing columns: institution_id, officer_email/,
+      /Missing columns: institution_id, officer_email, ao_name, ao_designation/,
     );
 
     const importCsv = (csv: string) =>

@@ -1,4 +1,9 @@
-import type { Attestation, Completeness, ReportBundle } from '@cpi/contracts';
+import type {
+  AccountingOfficer,
+  Attestation,
+  Completeness,
+  ReportBundle,
+} from '@cpi/contracts';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
@@ -223,12 +228,15 @@ function SubmitForm({
   completeness,
   obligationId,
   institutionName,
+  accountingOfficer,
 }: {
   bundle: ReportBundle;
   completeness: Completeness;
   obligationId: string;
   institutionName: string;
+  accountingOfficer: AccountingOfficer | null;
 }) {
+  const session = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   // One key per review of one draft version: a retried request returns the same receipt.
@@ -259,7 +267,8 @@ function SubmitForm({
   const form = useForm({
     defaultValues: {
       authorized: false,
-      submitterRole: '',
+      // Entered once under My account and reused here (PRD §12.2).
+      submitterRole: session.user.jobTitle ?? '',
       approvalKind: '',
       reference: '',
       explanation: '',
@@ -374,9 +383,11 @@ function SubmitForm({
                 Institutional approval of this report
               </legend>
               <p className="text-sm text-muted-foreground">
-                Give the CPC or Accounting Officer approval reference. If
-                approval is not available, say so; this is recorded as a review
-                deficiency, not a false statement.
+                Give the CPC or Accounting Officer approval reference
+                {accountingOfficer &&
+                  ` (${accountingOfficer.name}, ${accountingOfficer.designation}, chairs your CPC)`}
+                . If approval is not available, say so; this is recorded as a
+                review deficiency, not a false statement.
               </p>
               <RadioGroup
                 value={field.state.value}
@@ -559,6 +570,9 @@ export function ReviewSubmitPage() {
                     completeness={check}
                     obligationId={obligationId}
                     institutionName={institution.data?.name ?? 'my institution'}
+                    accountingOfficer={
+                      institution.data?.accountingOfficer ?? null
+                    }
                   />
                 </div>
               )}

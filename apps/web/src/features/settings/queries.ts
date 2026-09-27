@@ -11,6 +11,10 @@ import {
   type InstitutionUpdate,
   type ProfileUpdate,
   type UserCreate,
+  type UserUpdate,
+  type InstitutionTypeUpdate,
+  accountSchema,
+  type AccountUpdate,
 } from '@cpi/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import { request } from '@/lib/api';
@@ -110,3 +114,25 @@ export const importInstitutions = (csv: string, seedOpenedQuarters: boolean) =>
     json: { csv, seedOpenedQuarters },
     timeoutMs: 30_000,
   });
+
+export const updateUser = (userId: string, update: UserUpdate) =>
+  request(`/api/settings/users/${encodeURIComponent(userId)}`, peopleSchema, {
+    method: 'PUT',
+    json: update,
+  });
+export const saveInstitutionType = (
+  update: InstitutionTypeUpdate,
+  typeId?: string,
+) =>
+  request(
+    `/api/settings/institution-types${typeId ? `/${encodeURIComponent(typeId)}` : ''}`,
+    peopleSchema,
+    { method: typeId ? 'PUT' : 'POST', json: update },
+  );
+
+export const accountQuery = queryOptions({
+  queryKey: ['account'],
+  queryFn: ({ signal }) => request('/api/account', accountSchema, { signal }),
+});
+export const saveAccount = (update: AccountUpdate) =>
+  request('/api/account', accountSchema, { method: 'PUT', json: update });

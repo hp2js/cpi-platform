@@ -3,7 +3,9 @@ import {
   calendarUpdateSchema,
   institutionCreateSchema,
   institutionImportRequestSchema,
+  institutionTypeUpdateSchema,
   institutionUpdateSchema,
+  userUpdateSchema,
   profileUpdateSchema,
   userCreateSchema,
   userStatusSchema,
@@ -17,6 +19,7 @@ import type { MockUser } from '../seed/cast';
 import type { MockProfile } from '../seed/profiles';
 import { skipPastBoundaries } from '../services/clock';
 import {
+  accountingOfficerProblems,
   createInstitution,
   fromCreateRequest,
   institutionProblems,
@@ -162,6 +165,13 @@ function calendar(): CalendarSettings {
 
 /* ---------- People ---------- */
 
+function typeLabelTaken(db: MockDb, label: string, exceptId?: string) {
+  const key = label.trim().toLowerCase();
+  return db.institutionTypes.some(
+    (type) => type.id !== exceptId && type.label.toLowerCase() === key,
+  );
+}
+
 /** One notice per officer for everything assigned to them in this change. */
 function notifyOfficers(db: MockDb, rows: NewInstitution[]) {
   const byOfficer = new Map<string, NewInstitution[]>();
@@ -200,6 +210,7 @@ function people(): People {
       displayName: user.displayName,
       email: user.email,
       role: user.role,
+      jobTitle: user.jobTitle ?? '',
       institutionId: user.institutionId ?? null,
       active: user.active,
       assignedInstitutionIds: db.assignments
@@ -209,11 +220,36 @@ function people(): People {
         )
         .map((assignment) => assignment.institutionId),
     })),
-    institutions: db.institutions.map((institution) => ({
-      ...institution,
-      focalContact: db.institutionContacts[institution.id]?.focalContact ?? '',
-      accountingOfficerContact:
-        db.institutionContacts[institution.id]?.accountingOfficerContact ?? '',
+    institutions: db.institutions.map((institution) => {
+      const current = db.assignments.find(
+        (assignment) =>
+          assignment.institutionId === institution.id &&
+          assignment.validTo === null,
+      );
+      const officer = db.users.find((user) => user.id === current?.officerId);
+      return {
+        ...institution,
+        focalPersons: db.users
+          .filter(
+            (user) =>
+              user.role === 'institution' &&
+              user.institutionId === institution.id,
+          )
+          .map((user) => ({
+            id: user.id,
+            displayName: user.displayName,
+            email: user.email,
+            jobTitle: user.jobTitle ?? '',
+            active: user.active,
+          })),
+        officer: officer ? { id: officer.id, name: officer.displayName } : null,
+      };
+    }),
+    institutionTypes: db.institutionTypes.map((type) => ({
+      ...type,
+      institutionCount: db.institutions.filter(
+        (institution) => institution.typeId === type.id,
+      ).length,
     })),
   };
 }
@@ -554,6 +590,7 @@ export const settingsHandlers = [
       role: input.role,
       ...(input.institutionId ? { institutionId: input.institutionId } : {}),
       active: true,
+      jobTitle: input.jobTitle,
     };
     commit((store) => {
       store.users.push(user);
@@ -619,6 +656,113 @@ export const settingsHandlers = [
     },
   ),
 
+  /* Institution types: a managed list; retiring keeps history, renaming updates labels. */
+  http.post('/api/settings/institution-types', async ({ request }) => {
+    await networkDelay();
+    const admin = requireRole('administrator');
+    const input = await body(request, institutionTypeUpdateSchema);
+    const db = getDb();
+    if (typeLabelTaken(db, input.label))
+      return apiError(422, 'That type already exists.', 'invalid_settings', {
+        label: 'That type already exists.',
+      });
+    const slug = input.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const id = db.institutionTypes.some((type) => type.id === slug)
+      ? `${slug}-${db.sequence + 1}`
+      : slug;
+    commit((store) => {
+      store.institutionTypes.push({
+        id,
+        label: input.label,
+        active: input.active,
+      });
+      audit(
+        store,
+        admin,
+        'institution_type.create',
+        { type: 'institution_type', id },
+        input.label,
+      );
+    });
+    return HttpResponse.json(people(), { status: 201 });
+  }),
+
+  http.put(
+    '/api/settings/institution-types/:typeId',
+    async ({ params, request }) => {
+      await networkDelay();
+      const admin = requireRole('administrator');
+      const input = await body(request, institutionTypeUpdateSchema);
+      const db = getDb();
+      const type = db.institutionTypes.find(
+        (item) => item.id === params.typeId,
+      );
+      if (!type) return notFound();
+      if (typeLabelTaken(db, input.label, type.id))
+        return apiError(422, 'That type already exists.', 'invalid_settings', {
+          label: 'That type already exists.',
+        });
+      if (
+        !input.active &&
+        db.institutionTypes.filter((item) => item.active && item.id !== type.id)
+          .length === 0
+      )
+        return apiError(
+          409,
+          'At least one type must stay active.',
+          'last_type',
+        );
+      commit((store) => {
+        const changes = [
+          type.label !== input.label && `renamed from ${type.label}`,
+          type.active !== input.active &&
+            (input.active ? 'reactivated' : 'retired'),
+        ].filter(Boolean);
+        type.label = input.label;
+        type.active = input.active;
+        // Institutions show the current label; their type ID never changes.
+        for (const institution of store.institutions)
+          if (institution.typeId === type.id) institution.type = input.label;
+        audit(
+          store,
+          admin,
+          'institution_type.update',
+          { type: 'institution_type', id: type.id },
+          `${input.label}: ${changes.join(', ') || 'no changes'}`,
+        );
+      });
+      return HttpResponse.json(people());
+    },
+  ),
+
+  http.put('/api/settings/users/:userId', async ({ params, request }) => {
+    await networkDelay();
+    const admin = requireRole('administrator');
+    const input = await body(request, userUpdateSchema);
+    const user = getDb().users.find(
+      (candidate) => candidate.id === params.userId,
+    );
+    if (!user) return notFound();
+    commit((store) => {
+      const previous = user.displayName;
+      user.displayName = input.displayName;
+      user.jobTitle = input.jobTitle;
+      audit(
+        store,
+        admin,
+        'user.update',
+        { type: 'user', id: user.id },
+        previous === input.displayName
+          ? 'Job title updated'
+          : `Renamed from ${previous}`,
+      );
+    });
+    return HttpResponse.json(people());
+  }),
+
   http.post('/api/settings/institutions', async ({ request }) => {
     await networkDelay();
     const admin = requireRole('administrator');
@@ -641,7 +785,7 @@ export const settingsHandlers = [
         admin,
         'institution.create',
         { type: 'institution', id: candidate.id },
-        `${candidate.name} (${candidate.type}), reviewed by ${candidate.officer!.displayName}`,
+        `${candidate.name}, reviewed by ${candidate.officer!.displayName}; Accounting Officer ${candidate.accountingOfficer.name}`,
       );
       notifyOfficers(store, [candidate]);
     });
@@ -706,22 +850,45 @@ export const settingsHandlers = [
         (candidate) => candidate.id === params.institutionId,
       );
       if (!institution) return notFound();
+      const type = db.institutionTypes.find((item) => item.id === input.typeId);
+      // A retired type may stay on an institution that already has it, but is not newly chosen.
+      if (!type || (!type.active && type.id !== institution.typeId))
+        return apiError(
+          422,
+          'Choose an active institution type.',
+          'invalid_settings',
+          {
+            typeId: 'Choose an active institution type.',
+          },
+        );
+      const problems = accountingOfficerProblems(input.accountingOfficer);
+      if (problems.length)
+        return apiError(422, problems.join(' '), 'invalid_settings');
       commit((store) => {
         const previous = institution.name;
+        const changed = [
+          previous !== input.name && `renamed from ${previous}`,
+          institution.typeId !== type.id &&
+            `type ${institution.type} → ${type.label}`,
+          JSON.stringify(institution.accountingOfficer) !==
+            JSON.stringify(input.accountingOfficer) &&
+            'Accounting Officer contact updated',
+        ].filter(Boolean);
         institution.name = input.name;
-        institution.type = input.type;
-        store.institutionContacts[institution.id] = {
-          focalContact: input.focalContact,
-          accountingOfficerContact: input.accountingOfficerContact,
+        institution.typeId = type.id;
+        institution.type = type.label;
+        institution.accountingOfficer = {
+          ...input.accountingOfficer,
+          email: input.accountingOfficer.email.toLowerCase(),
         };
         audit(
           store,
           admin,
           'institution.update',
           { type: 'institution', id: institution.id },
-          previous === input.name
-            ? 'Details updated'
-            : `Renamed from ${previous}; the stable ID ${institution.id} is unchanged`,
+          changed.length
+            ? `${changed.join('; ')}; the stable ID ${institution.id} is unchanged`
+            : 'No changes',
         );
         if (previous !== input.name)
           notify(

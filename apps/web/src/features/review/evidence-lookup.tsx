@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { QueryView } from '@/components/query-view';
 import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/select-field';
 import {
   Table,
   TableBody,
@@ -73,18 +73,15 @@ export function EvidenceLookup({
   ) => (
     <div className="grid gap-1.5">
       <Label htmlFor={`filter-${key}`}>{label}</Label>
-      <NativeSelect
+      <SelectField
         id={`filter-${key}`}
         value={filters[key]}
-        onChange={(event) => set(key)(event.target.value)}
-      >
-        <option value="">All</option>
-        {options.map(([value, text]) => (
-          <option key={value} value={value}>
-            {text}
-          </option>
-        ))}
-      </NativeSelect>
+        onChange={set(key)}
+        options={[
+          { value: '', label: 'All' },
+          ...options.map(([value, text]) => ({ value, label: text })),
+        ]}
+      />
     </div>
   );
 

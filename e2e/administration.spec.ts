@@ -10,11 +10,11 @@ test('an administrator imports institutions from a CSV after a row-by-row previe
   page,
 }) => {
   await reset(page);
-  await visit(page, 'administrator', '/admin/people');
+  await visit(page, 'administrator', '/admin/institutions');
   await page.getByRole('button', { name: 'Import from CSV' }).click();
   const dialog = page.getByRole('dialog', { name: 'Import institutions' });
   const header =
-    'institution_id,name,type,officer_email,focal_name,focal_email,focal_contact,accounting_officer_contact';
+    'institution_id,name,type,officer_email,ao_name,ao_designation,ao_email,ao_phone,focal_name,focal_email';
   const upload = (rows: string[]) =>
     dialog.getByLabel('CSV file').setInputFiles({
       name: 'institutions.csv',
@@ -23,8 +23,8 @@ test('an administrator imports institutions from a CSV after a row-by-row previe
     });
 
   await upload([
-    'MDA-301,Demo Tea Board,State corporation,officer.a@example.invalid,Focal person MDA-301,focal.mda-301@example.invalid,,',
-    'DEMO-001,Duplicate agency,State agency,officer.a@example.invalid,,,,',
+    'MDA-301,Demo Tea Board,State corporation,officer.a@example.invalid,AO MDA-301,Managing Director,,,Focal person MDA-301,focal.mda-301@example.invalid',
+    'DEMO-001,Duplicate agency,State agency,officer.a@example.invalid,AO,Director General,,,,',
   ]);
   await expect(
     dialog.getByText(/1 ready, 1 row needs attention/),
@@ -33,8 +33,8 @@ test('an administrator imports institutions from a CSV after a row-by-row previe
   await expect(dialog.getByRole('button', { name: /^Import/ })).toBeDisabled();
 
   await upload([
-    'MDA-301,Demo Tea Board,State corporation,officer.a@example.invalid,Focal person MDA-301,focal.mda-301@example.invalid,,',
-    'MDA-302,Demo Fisheries Service,State agency,officer.b@example.invalid,,,,',
+    'MDA-301,Demo Tea Board,State corporation,officer.a@example.invalid,AO MDA-301,Managing Director,,,Focal person MDA-301,focal.mda-301@example.invalid',
+    'MDA-302,Demo Fisheries Service,State agency,officer.b@example.invalid,AO MDA-302,Director General,,,,',
   ]);
   await dialog.getByRole('button', { name: 'Import 2 institutions' }).click();
   await expect(
@@ -117,4 +117,63 @@ test('the header and sidebar stay in place while the page scrolls', async ({
   expect((await account.boundingBox())?.y).toBe(before?.y);
   // The sidebar does not move with the page; on a short screen it scrolls on its own.
   await expect(nav.getByRole('link', { name: 'Console' })).toBeInViewport();
+});
+
+test('an institution page edits details and the Accounting Officer in place', async ({
+  page,
+}) => {
+  await reset(page);
+  await visit(page, 'administrator', '/admin/institutions');
+  await page.getByRole('link', { name: /DEMO-002/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Demo Water Services Board' }),
+  ).toBeVisible();
+
+  const details = page.getByRole('region', { name: 'Details' });
+  await details.getByRole('button', { name: /Edit/ }).click();
+  await details.getByLabel('Name').fill('Demo Water and Sanitation Board');
+  await details.getByRole('combobox', { name: 'Type' }).click();
+  await page.getByRole('option', { name: 'Regulator' }).click();
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Demo Water and Sanitation Board' }),
+  ).toBeVisible();
+  await expect(details.getByText('Regulator')).toBeVisible();
+
+  const officer = page.getByRole('region', { name: 'Accounting Officer' });
+  await officer.getByRole('button', { name: /Edit/ }).click();
+  await officer.getByLabel('Phone').fill('+254 700 000 002');
+  await officer.getByRole('button', { name: 'Save' }).click();
+  await expect(officer.getByText('+254 700 000 002')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Add focal person' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Name').fill('Deputy focal person, DEMO-002');
+  await dialog
+    .getByLabel('Email (sign-in)')
+    .fill('deputy.demo-002@example.invalid');
+  await dialog.getByRole('button', { name: 'Add focal person' }).click();
+  await expect(
+    page
+      .getByRole('region', { name: 'Focal persons' })
+      .getByText('Deputy focal person, DEMO-002'),
+  ).toBeVisible();
+});
+
+test('people keep their own profile up to date under My account', async ({
+  page,
+}) => {
+  await reset(page);
+  await visit(page, 'focal-demo-003', '/institution');
+  await page.getByRole('button', { name: /Account menu/ }).click();
+  await page.getByRole('menuitem', { name: 'My account' }).click();
+  await expect(page.getByRole('heading', { name: 'My account' })).toBeVisible();
+  await expect(page.getByText('Prevention Officer A')).toBeVisible();
+  await page.getByLabel('Name').fill('Wanjiru Focal (fictional)');
+  await page.getByLabel('Job title').fill('Senior Integrity Assurance Officer');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('Your details are saved.')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Account menu/ }),
+  ).toContainText('Wanjiru Focal (fictional)');
 });

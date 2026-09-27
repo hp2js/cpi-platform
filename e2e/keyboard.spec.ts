@@ -142,7 +142,9 @@ test('dialogs trap focus and return it on Escape; the account menu works from th
   await menu.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
-  await page.keyboard.press('ArrowDown');
+  // My account comes first, then Sign out.
+  await page.keyboard.press('End');
+  await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(
     page.getByRole('heading', { name: 'Sign in to the demonstration' }),

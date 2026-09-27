@@ -62,7 +62,7 @@ import { profilesQuery } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
 import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectField } from '@/components/select-field';
 
 const route = getRouteApi('/authed/admin/forms/$formId');
 
@@ -585,18 +585,16 @@ function AddQuestion({ onAdd }: { onAdd: (type: QuestionType) => void }) {
         <Label htmlFor={selectId} className="text-sm">
           New question type
         </Label>
-        <NativeSelect
+        <SelectField
           className="w-48"
           id={selectId}
           value={type}
-          onChange={(event) => setType(event.target.value as QuestionType)}
-        >
-          {addableTypes.map((option) => (
-            <option key={option} value={option}>
-              {typeLabels[option]}
-            </option>
-          ))}
-        </NativeSelect>
+          onChange={(value) => setType(value as QuestionType)}
+          options={addableTypes.map((option) => ({
+            value: option,
+            label: typeLabels[option],
+          }))}
+        />
       </div>
       <Button variant="outline" size="sm" onClick={() => onAdd(type)}>
         <Plus aria-hidden="true" />
@@ -743,26 +741,19 @@ function QuestionEditor({
             {(field) => (
               <div className="grid gap-1.5">
                 <Label htmlFor={`${domId}-category`}>Evidence category</Label>
-                <NativeSelect
+                <SelectField
                   className="w-48"
                   id={`${domId}-category`}
                   value={field.state.value ?? 'other'}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     field.handleChange(
-                      event.target.value as NonNullable<
-                        Question['evidenceCategory']
-                      >,
+                      value as NonNullable<Question['evidenceCategory']>,
                     )
                   }
-                >
-                  {Object.entries(evidenceCategoryLabel).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ),
+                  options={Object.entries(evidenceCategoryLabel).map(
+                    ([value, label]) => ({ value, label }),
                   )}
-                </NativeSelect>
+                />
               </div>
             )}
           </editor.Field>

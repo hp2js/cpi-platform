@@ -10,6 +10,7 @@ import { foundationHandlers } from './foundations';
 import { planningHandlers } from './planning';
 import { reportingHandlers } from './reporting';
 import { reviewHandlers } from './review';
+import { accountHandlers } from './account';
 import { sessionHandlers } from './session';
 import { settingsHandlers } from './settings';
 
@@ -17,6 +18,7 @@ export const handlers = [
   // First, so an armed fault intercepts the next matching request.
   ...faultHandlers,
   ...sessionHandlers,
+  ...accountHandlers,
   ...directoryHandlers,
   ...formHandlers,
   ...reportingHandlers,

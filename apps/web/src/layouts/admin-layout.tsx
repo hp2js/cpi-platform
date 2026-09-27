@@ -11,6 +11,7 @@ import {
   Menu,
   ScrollText,
   SlidersHorizontal,
+  UserRound,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -41,7 +42,8 @@ const sections = [
         label: 'Reporting calendar',
         icon: CalendarDays,
       },
-      { to: '/admin/people', label: 'Users & institutions', icon: Building2 },
+      { to: '/admin/institutions', label: 'Institutions', icon: Building2 },
+      { to: '/admin/users', label: 'Users', icon: UserRound },
       { to: '/admin/assignments', label: 'Assignments', icon: Users },
     ],
   },
