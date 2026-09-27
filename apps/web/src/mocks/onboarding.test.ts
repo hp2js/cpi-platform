@@ -11,7 +11,7 @@ import {
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { request } from '@/lib/api';
-import { publishSeedForm } from '@/test/api-helpers';
+import { acceptInvitation, publishSeedForm } from '@/test/api-helpers';
 import { signInAs } from '@/test/render-app';
 import { getDb } from './db';
 import { countDays, shiftDays } from './services/days';
@@ -141,10 +141,7 @@ describe('onboarding institutions (FR01)', () => {
     expect(plan.baselines[0]!.historicalSeed?.confirmedAt).toBeNull();
     expect(plan.baselines[1]!.milestones.every((m) => m.mandatory)).toBe(true);
 
-    const focal = getDb().users.find(
-      (user) => user.email === 'focal.mda-101@example.invalid',
-    )!;
-    await signInAs(focal.id);
+    await acceptInvitation('focal.mda-101@example.invalid');
     const q1 = await request(
       `/api/obligations/${encodeURIComponent('MDA-101:FY2026-27-Q1')}/report`,
       reportBundleSchema,

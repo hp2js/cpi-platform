@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw';
-import { accountUpdateSchema, type Account } from '@cpi/contracts';
+import {
+  accountUpdateSchema,
+  changePasswordSchema,
+  passwordProblems,
+  type Account,
+} from '@cpi/contracts';
+import { hashPassword, passwordMatches } from '../services/auth';
 import { commit, getDb } from '../db';
 import type { MockUser } from '../seed/cast';
 import { audit } from '../services/events';
@@ -46,6 +52,44 @@ function account(user: MockUser): Account {
 }
 
 export const accountHandlers = [
+  http.post('/api/account/password', async ({ request }) => {
+    await networkDelay();
+    const user = requireUser();
+    const parsed = changePasswordSchema.safeParse(
+      await request.json().catch(() => undefined),
+    );
+    if (
+      !parsed.success ||
+      !(await passwordMatches(user, parsed.data.currentPassword))
+    )
+      return apiError(
+        422,
+        'Your current password is not right.',
+        'invalid_password',
+        {
+          currentPassword: 'Your current password is not right.',
+        },
+      );
+    const problems = passwordProblems(parsed.data.newPassword, user.email);
+    if (problems.length)
+      return apiError(422, problems.join(' '), 'weak_password', {
+        newPassword: problems.join(' '),
+      });
+    const hash = await hashPassword(user, parsed.data.newPassword);
+    commit((db) => {
+      user.passwordHash = hash;
+      user.authLink = null;
+      audit(
+        db,
+        user,
+        'account.password_change',
+        { type: 'user', id: user.id },
+        'Password changed',
+      );
+    });
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get('/api/account', async () => {
     await networkDelay();
     return HttpResponse.json(account(requireUser()));

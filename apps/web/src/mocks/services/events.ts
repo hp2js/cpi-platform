@@ -129,6 +129,36 @@ export function notify(
   }
 }
 
+/**
+ * An email only, with no in-app notification: for account invitations and password resets,
+ * whose single-use links must not sit in an inbox. Delivery retries like any other email.
+ */
+export function sendEmail(
+  db: MockDb,
+  key: string,
+  eventType: string,
+  recipient: MockUser,
+  message: { subject: string; body: string; link: string },
+) {
+  const delivery: MockDelivery = {
+    id: nextId('dlv'),
+    key,
+    eventType,
+    recipientId: recipient.id,
+    recipientName: recipient.displayName,
+    recipientEmail: recipient.email,
+    recipientRole: recipient.role,
+    subject: message.subject,
+    body: `${message.body}\n\n${portalUrl(message.link)}`,
+    status: 'queued',
+    attempts: 0,
+    lastAttemptAt: null,
+    lastError: null,
+  };
+  db.deliveries.push(delivery);
+  deliverWithRetries(db, delivery);
+}
+
 export function institutionUsers(institutionId: string) {
   return getDb().users.filter(
     (user) =>

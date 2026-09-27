@@ -17,6 +17,7 @@ import type { z } from 'zod';
 import { commit, getDb, nextId, type MockDb } from '../db';
 import type { MockUser } from '../seed/cast';
 import type { MockProfile } from '../seed/profiles';
+import { accountStatus, prepareLink, sendLink } from '../services/auth';
 import { skipPastBoundaries } from '../services/clock';
 import {
   accountingOfficerProblems,
@@ -213,6 +214,11 @@ function people(): People {
       jobTitle: user.jobTitle ?? '',
       institutionId: user.institutionId ?? null,
       active: user.active,
+      status: accountStatus(user),
+      invitationExpiresAt:
+        user.authLink?.purpose === 'invitation'
+          ? user.authLink.expiresAt
+          : null,
       assignedInstitutionIds: db.assignments
         .filter(
           (assignment) =>
@@ -583,6 +589,7 @@ export const settingsHandlers = [
       !db.institutions.some((item) => item.id === input.institutionId)
     )
       return notFound();
+    const invitation = await prepareLink('invitation');
     const user: MockUser = {
       id: nextId('user'),
       displayName: input.displayName,
@@ -591,9 +598,12 @@ export const settingsHandlers = [
       ...(input.institutionId ? { institutionId: input.institutionId } : {}),
       active: true,
       jobTitle: input.jobTitle,
+      passwordHash: null,
     };
     commit((store) => {
       store.users.push(user);
+      // The person sets their own password from the invitation email.
+      sendLink(store, user, invitation, admin);
       audit(
         store,
         admin,
@@ -738,6 +748,36 @@ export const settingsHandlers = [
     },
   ),
 
+  // A new invitation link replaces the earlier one (e.g. it expired or the email was lost).
+  http.post('/api/settings/users/:userId/invitation', async ({ params }) => {
+    await networkDelay();
+    const admin = requireRole('administrator');
+    const user = getDb().users.find(
+      (candidate) => candidate.id === params.userId,
+    );
+    if (!user) return notFound();
+    if (accountStatus(user) !== 'invited')
+      return apiError(
+        409,
+        user.active
+          ? 'This person has already set a password.'
+          : 'Reactivate the account before inviting again.',
+        'not_invited',
+      );
+    const invitation = await prepareLink('invitation');
+    commit((store) => {
+      sendLink(store, user, invitation, admin);
+      audit(
+        store,
+        admin,
+        'user.invite',
+        { type: 'user', id: user.id },
+        `Invitation sent again to ${user.email}`,
+      );
+    });
+    return HttpResponse.json(people());
+  }),
+
   http.put('/api/settings/users/:userId', async ({ params, request }) => {
     await networkDelay();
     const admin = requireRole('administrator');
@@ -772,6 +812,9 @@ export const settingsHandlers = [
     const problems = institutionProblems(db, candidate);
     if (problems.length)
       return apiError(422, problems.join(' '), 'invalid_institution');
+    const invitation = candidate.focalUser
+      ? await prepareLink('invitation')
+      : undefined;
     commit((store) => {
       createInstitution(
         store,
@@ -779,6 +822,7 @@ export const settingsHandlers = [
         { ...candidate, officer: candidate.officer! },
         input.seedOpenedQuarters,
         nextId,
+        invitation,
       );
       audit(
         store,
@@ -815,15 +859,22 @@ export const settingsHandlers = [
           `${preview.invalid} ${preview.invalid === 1 ? 'row needs' : 'rows need'} attention; nothing was imported.`,
         'import_invalid',
       );
+    const invitations = await Promise.all(
+      rows.map((row) =>
+        row.focalUser ? prepareLink('invitation') : Promise.resolve(undefined),
+      ),
+    );
     commit((store) => {
-      for (const row of rows)
+      rows.forEach((row, index) =>
         createInstitution(
           store,
           admin,
           { ...row, officer: row.officer! },
           input.seedOpenedQuarters,
           nextId,
-        );
+          invitations[index],
+        ),
+      );
       audit(
         store,
         admin,

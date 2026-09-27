@@ -182,6 +182,11 @@ export interface MockDb {
     reason: string;
   }[];
   institutionTypes: MockInstitutionType[];
+  /** Failed sign-ins per email (actual time), for throttling (PRD §13.1). */
+  loginAttempts: Record<
+    string,
+    { failures: number[]; lockedUntil: number | null }
+  >;
 }
 
 export interface MockPublication {
@@ -228,7 +233,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -287,6 +292,7 @@ function seed(): MockDb {
     reminders: { daysBefore: [7, 1], overdueNotice: true },
     calendarChanges: [],
     institutionTypes: structuredClone(initialInstitutionTypes),
+    loginAttempts: {},
   };
 }
 

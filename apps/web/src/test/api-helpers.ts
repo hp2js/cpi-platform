@@ -7,10 +7,12 @@ import {
   reportBundleSchema,
   reviewBundleSchema,
   reviewQueueSchema,
+  sessionSchema,
   suitabilityCheckKeys,
   type ReportAnswers,
 } from '@cpi/contracts';
 import { request } from '@/lib/api';
+import { getDb } from '@/mocks/db';
 import { pdfBytes, uploadForm } from './fixtures';
 import { signInAs } from './render-app';
 
@@ -127,4 +129,26 @@ export async function passSuitability(submissionId: string) {
       reviewBundleSchema,
       { method: 'PUT', json: { revision: bundle.item.revision, checks } },
     );
+}
+
+/** The single-use link most recently emailed to an address (from the demo email sink). */
+export function emailedLink(email: string) {
+  const deliveries = getDb().deliveries.filter(
+    (delivery) => delivery.recipientEmail === email,
+  );
+  const body = deliveries.at(-1)?.body ?? '';
+  const token = /set-password\?token=([\w-]+)/.exec(body)?.[1];
+  if (!token) throw new Error(`No link was emailed to ${email}`);
+  return token;
+}
+
+/** Accepts an emailed invitation by choosing a password, which also signs the person in. */
+export async function acceptInvitation(
+  email: string,
+  password = 'a-long-demo-passphrase',
+) {
+  await request(`/api/auth/tokens/${emailedLink(email)}`, sessionSchema, {
+    method: 'POST',
+    json: { password },
+  });
 }

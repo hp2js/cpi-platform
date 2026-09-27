@@ -10,6 +10,14 @@ export interface MockUser {
   active: boolean;
   jobTitle?: string;
   phone?: string;
+  /** Salted hash; `demo-password` marks seeded accounts that accept the published demo password; null until an invited person sets one. */
+  passwordHash?: string | null;
+  /** The current single-use invitation or reset link (its token hash only). */
+  authLink?: {
+    purpose: 'invitation' | 'reset';
+    tokenHash: string;
+    expiresAt: string;
+  } | null;
 }
 
 /** Managed list of institution types (Settings → Institution types). */
@@ -149,6 +157,7 @@ const focalPersons: MockUser[] = institutions.map((institution) => ({
   role: 'institution',
   institutionId: institution.id,
   active: true,
+  passwordHash: 'demo-password',
   jobTitle: 'Integrity Assurance Officer',
 }));
 
@@ -161,6 +170,7 @@ export const users: MockUser[] = [
     email: 'officer.a@example.invalid',
     role: 'officer',
     active: true,
+    passwordHash: 'demo-password',
   },
   {
     id: 'officer-b',
@@ -169,6 +179,7 @@ export const users: MockUser[] = [
     email: 'officer.b@example.invalid',
     role: 'officer',
     active: true,
+    passwordHash: 'demo-password',
   },
   {
     id: 'supervisor',
@@ -177,6 +188,7 @@ export const users: MockUser[] = [
     email: 'supervisor@example.invalid',
     role: 'supervisor',
     active: true,
+    passwordHash: 'demo-password',
   },
   {
     id: 'administrator',
@@ -185,6 +197,7 @@ export const users: MockUser[] = [
     email: 'administrator@example.invalid',
     role: 'administrator',
     active: true,
+    passwordHash: 'demo-password',
   },
 ];
 

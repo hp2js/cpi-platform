@@ -13,7 +13,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { request } from '@/lib/api';
-import { publishSeedForm } from '@/test/api-helpers';
+import { acceptInvitation, publishSeedForm } from '@/test/api-helpers';
 import { signInAs } from '@/test/render-app';
 import { getDb } from './db';
 
@@ -208,9 +208,10 @@ describe('users and institutions (FR01, AT22)', () => {
     const deputy = created.users.find(
       (user) => user.email === 'deputy.demo-001@example.invalid',
     )!;
-    expect(deputy.active).toBe(true);
-
-    await signInAs(deputy.id);
+    expect(deputy).toMatchObject({ active: true, status: 'invited' });
+    // They cannot sign in until they accept the emailed invitation.
+    await expect(signInAs(deputy.id)).rejects.toThrow();
+    await acceptInvitation('deputy.demo-001@example.invalid');
     await request('/api/session', sessionSchema);
     // The administrator deactivates the account from another session.
     getDb().session = { userId: 'administrator', expired: false };

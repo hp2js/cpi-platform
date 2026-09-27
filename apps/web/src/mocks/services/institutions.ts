@@ -7,6 +7,7 @@ import {
 import type { MockDb } from '../db';
 import { committee, type MockBaseline } from '../seed/baselines';
 import type { MockUser } from '../seed/cast';
+import { sendLink, type PreparedLink } from './auth';
 import { parseCsv } from './csv';
 
 /**
@@ -131,6 +132,7 @@ export function createInstitution(
   input: NewInstitution & { officer: MockUser },
   seedOpenedQuarters: boolean,
   nextId: (prefix: string) => string,
+  invitation?: PreparedLink,
 ) {
   const now = Date.parse(db.businessTime);
   const type = db.institutionTypes.find((item) => item.id === input.typeId)!;
@@ -203,8 +205,8 @@ export function createInstitution(
     };
     db.baselines.push(baseline);
   }
-  if (input.focalUser)
-    db.users.push({
+  if (input.focalUser) {
+    const focal: MockUser = {
       id: nextId('user'),
       displayName: input.focalUser.displayName.trim(),
       email: input.focalUser.email.trim().toLowerCase(),
@@ -212,7 +214,11 @@ export function createInstitution(
       institutionId: input.id,
       active: true,
       jobTitle: input.focalUser.jobTitle.trim(),
-    });
+      passwordHash: null,
+    };
+    db.users.push(focal);
+    if (invitation) sendLink(db, focal, invitation, admin);
+  }
 }
 
 export function fromCreateRequest(

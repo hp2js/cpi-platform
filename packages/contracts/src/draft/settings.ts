@@ -142,6 +142,9 @@ export const managedUserSchema = z.object({
   jobTitle: z.string(),
   institutionId: institutionIdSchema.nullable(),
   active: z.boolean(),
+  /** `invited`: the account exists but its password has not been set yet. */
+  status: z.enum(['active', 'invited', 'deactivated']),
+  invitationExpiresAt: instantSchema.nullable(),
   /** Institutions currently assigned to an officer. */
   assignedInstitutionIds: z.array(institutionIdSchema),
 });
