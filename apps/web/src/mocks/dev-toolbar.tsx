@@ -9,6 +9,7 @@ import {
   setLatencyMode,
   type LatencyMode,
 } from './services/latency';
+import { NativeSelect } from '@/components/ui/native-select';
 
 /**
  * Development-only controls for the mock API, used to exercise loading, expired-session
@@ -114,8 +115,7 @@ export function DevToolbar({ router }: { router: AppRouter }) {
       </p>
       <label className="mt-3 grid gap-1">
         <span className="font-medium">Network latency</span>
-        <select
-          className="h-9 rounded-md border bg-background px-2"
+        <NativeSelect
           value={latency}
           onChange={(event) => {
             const mode = event.target.value as LatencyMode;
@@ -126,7 +126,7 @@ export function DevToolbar({ router }: { router: AppRouter }) {
           <option value="off">Off</option>
           <option value="realistic">Realistic (0.1–0.4 s)</option>
           <option value="slow">Slow (1.5–2.5 s)</option>
-        </select>
+        </NativeSelect>
       </label>
       <label className="mt-3 flex items-center gap-2">
         <input

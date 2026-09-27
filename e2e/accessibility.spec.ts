@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { midYear, openApp, publishedYear, visit } from './support';
 
 test.skip(
@@ -25,6 +25,20 @@ async function scan(page: Page, name: string) {
   expect(violations, `${name}: ${JSON.stringify(violations, null, 2)}`).toEqual(
     [],
   );
+}
+
+/** Waits for an opening animation to finish, so contrast is measured at full opacity. */
+async function settled(locator: Locator) {
+  await expect(locator).toBeVisible();
+  await expect
+    .poll(() =>
+      locator.evaluate((element) =>
+        element
+          .getAnimations({ subtree: true })
+          .every((animation) => animation.playState === 'finished'),
+      ),
+    )
+    .toBe(true);
 }
 
 test('public pages', async ({ page }) => {
@@ -134,4 +148,43 @@ test('year-end screens for every role', async ({ page }) => {
     await page.waitForLoadState('networkidle');
     await scan(page, name);
   }
+});
+
+test('configuration dialogs and searchable selects', async ({ page }) => {
+  await openApp(page);
+  await visit(page, 'administrator', '/admin/people');
+  await scan(page, 'institutions tab');
+  await page.getByRole('tab', { name: /Users/ }).click();
+  await scan(page, 'users tab');
+  await page.getByRole('tab', { name: /Institutions/ }).click();
+  await page.getByRole('button', { name: 'Import from CSV' }).click();
+  await page
+    .getByRole('dialog')
+    .getByLabel('CSV file')
+    .setInputFiles({
+      name: 'institutions.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        'institution_id,name,type,officer_email\nMDA-401,Demo Board,State agency,officer.a@example.invalid\nDEMO-001,Duplicate,State agency,nobody@example.invalid\n',
+      ),
+    });
+  await expect(page.getByText(/1 ready, 1 row needs attention/)).toBeVisible();
+  await scan(page, 'import preview dialog');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Add institution' }).click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'add institution dialog');
+  await page.keyboard.press('Escape');
+
+  await visit(page, 'administrator', '/admin/assignments');
+  await page
+    .getByRole('combobox', { name: 'Institution', exact: true })
+    .click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'open searchable select');
+  await page.keyboard.press('Escape');
+
+  await visit(page, 'administrator', '/admin/calendar');
+  await page.getByRole('radio', { name: 'Working days' }).click();
+  await scan(page, 'calendar with working days');
 });

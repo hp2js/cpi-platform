@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatDateTime } from '@/lib/dates';
+import { formatDateTime, formatDays } from '@/lib/dates';
 
 type Evaluation = Pick<
   AnnualEvaluation,
@@ -184,8 +184,8 @@ export function AnnualResultView({
                   {quarter.late ? (
                     <span className="inline-flex items-center gap-1 font-medium">
                       <AlarmClock className="size-4" aria-hidden="true" />
-                      Late by {quarter.daysLate}{' '}
-                      {quarter.daysLate === 1 ? 'day' : 'days'}
+                      Late by{' '}
+                      {formatDays(quarter.daysLate ?? 0, quarter.daysLateUnit)}
                     </span>
                   ) : quarter.firstSubmittedAt ? (
                     'On time'

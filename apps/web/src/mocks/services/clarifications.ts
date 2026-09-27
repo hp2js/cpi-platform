@@ -1,29 +1,23 @@
-import type { Clarification, ReportAnswers } from '@cpi/contracts';
+import type { Clarification, DayCounting, ReportAnswers } from '@cpi/contracts';
+import { endOfDay, localDate, shiftDays } from './days';
 import { getDb, type MockDb, type MockSubmission } from '../db';
 
-const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-
 /**
- * Seven calendar days from the later of portal availability and in-app notification, ending
- * 23:59:59 Africa/Nairobi on the seventh day after that event's local date (PRD §7.3).
+ * The response window from the later of portal availability and in-app notification: the
+ * configured number of counted days after that event's local date, ending 23:59:59
+ * Africa/Nairobi (PRD §7.3: seven calendar days by default; working days if enforced).
  */
-export function responseDueAt(availableAt: string, notifiedAt: string) {
+export function responseDueAt(
+  availableAt: string,
+  notifiedAt: string,
+  counting: DayCounting = getDb().cycle.dayCounting,
+) {
   const start = Math.max(Date.parse(availableAt), Date.parse(notifiedAt));
-  const local = new Date(start + EAT_OFFSET_MS);
-  const due = new Date(
-    Date.UTC(
-      local.getUTCFullYear(),
-      local.getUTCMonth(),
-      local.getUTCDate() + 7,
-      23,
-      59,
-      59,
-    ),
+  return endOfDay(
+    shiftDays(localDate(start), counting.clarificationDays, counting),
   );
-  return `${due.toISOString().slice(0, 19)}+03:00`;
 }
 
-/** The cutoff that applies to an institution: the cycle's, or an authorized extension (§7.3). */
 export function effectiveCutoff(institutionId: string, db: MockDb = getDb()) {
   const extension = db.extensions.find(
     (candidate) => candidate.institutionId === institutionId,

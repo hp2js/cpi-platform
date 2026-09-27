@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 import { indicatorWeightsSchema } from './forms.js';
 import { componentScoreSchema, fractionSchema } from './review.js';
@@ -56,6 +57,7 @@ export const quarterDispositionSchema = z.object({
   implementation: fractionSchema.nullable(),
   late: z.boolean(),
   daysLate: z.number().int().nonnegative().nullable(),
+  daysLateUnit: dayCountingModeSchema,
   firstSubmittedAt: instantSchema.nullable(),
   firstCompleteEvidenceAt: instantSchema.nullable(),
   revision: z.number().int().positive().nullable(),

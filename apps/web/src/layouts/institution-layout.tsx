@@ -14,7 +14,7 @@ import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
 import { institutionQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
-import { SkipLink, type NavItem } from './shared';
+import { SkipLink, useMeasuredHeight, type NavItem } from './shared';
 
 // `short` labels fit six items in the phone bottom bar; the full label stays the accessible name.
 const nav = [
@@ -70,11 +70,19 @@ export function InstitutionLayout() {
   const session = useSession();
   const institutionId = session.user.institutionId ?? '';
   const institution = useQuery(institutionQuery(institutionId));
+  const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
+  const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
     <div className="min-h-svh bg-background pb-20 md:pb-0">
       <SkipLink />
-      <SimulationBanner session={session} />
-      <header className="border-b bg-card">
+      <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
+        <SimulationBanner session={session} />
+      </div>
+      <header
+        ref={headerRef}
+        data-sticky
+        className="sticky top-(--banner-h) z-30 border-b bg-card"
+      >
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-3 sm:px-6">
           <Link
             to="/institution"
@@ -88,17 +96,17 @@ export function InstitutionLayout() {
             <AccountMenu session={session} />
           </div>
         </div>
-        <div className="mx-auto max-w-5xl px-4 pt-3 pb-1 sm:px-6">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <p className="mx-auto max-w-5xl px-4 pt-2 pb-1 sm:px-6">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Reporting for
-          </p>
-          <p className="text-lg font-semibold">
-            {institution.data?.name ?? institutionId}{' '}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({institutionId})
-            </span>
-          </p>
-        </div>
+          </span>{' '}
+          <span className="font-semibold">
+            {institution.data?.name ?? institutionId}
+          </span>{' '}
+          <span className="text-sm text-muted-foreground">
+            ({institutionId})
+          </span>
+        </p>
         <nav
           aria-label="Institution"
           className="mx-auto hidden max-w-5xl px-4 sm:px-6 md:block"

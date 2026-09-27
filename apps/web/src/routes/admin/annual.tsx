@@ -1,7 +1,12 @@
 import type { AnnualEvaluation } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+} from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -32,6 +37,7 @@ import {
 import { invalidateEvents } from '@/features/events/queries';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { NativeSelect } from '@/components/ui/native-select';
 
 function status(evaluation: AnnualEvaluation) {
   if (evaluation.correction)
@@ -153,9 +159,8 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
       <Label htmlFor={`corr-period-${evaluation.institutionId}`}>
         Quarter to correct
       </Label>
-      <select
+      <NativeSelect
         id={`corr-period-${evaluation.institutionId}`}
-        className="h-9 rounded-md border bg-background px-2 text-sm"
         value={periodId}
         onChange={(event) => setPeriodId(event.target.value)}
       >
@@ -164,7 +169,7 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
             {quarter.periodLabel}
           </option>
         ))}
-      </select>
+      </NativeSelect>
       <Label htmlFor={`corr-reason-${evaluation.institutionId}`}>Reason</Label>
       <Textarea
         id={`corr-reason-${evaluation.institutionId}`}
@@ -186,6 +191,178 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
           Cancel
         </Button>
       </div>
+    </div>
+  );
+}
+
+type Evaluation = AnnualEvaluation;
+const stateOf = (evaluation: Evaluation) =>
+  evaluation.publication
+    ? evaluation.correction
+      ? 'correction'
+      : 'published'
+    : evaluation.releasable
+      ? 'ready'
+      : 'pending';
+
+/** Filtered and paged: the full list can hold every institution in the cycle. */
+function EvaluationList({
+  evaluations,
+  selectable,
+  selected,
+  setSelected,
+  cutoffPassed,
+}: {
+  evaluations: Evaluation[];
+  selectable: Evaluation[];
+  selected: string[];
+  setSelected: Dispatch<SetStateAction<string[]>>;
+  cutoffPassed: boolean;
+}) {
+  const data = { cutoffPassed };
+  const [state, setState] = useState('');
+  const byState = useMemo(
+    () =>
+      state
+        ? evaluations.filter((evaluation) => stateOf(evaluation) === state)
+        : evaluations,
+    [evaluations, state],
+  );
+  const controls = useListControls(
+    byState,
+    (evaluation) =>
+      `${evaluation.institutionId} ${evaluation.institutionName} ${evaluation.officerName}`,
+    20,
+  );
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-start gap-4">
+        <ListSearch
+          controls={controls}
+          label="Find an institution"
+          placeholder="ID, name or officer"
+        />
+        <div className="grid w-52 gap-1.5">
+          <Label htmlFor="annual-state">Status</Label>
+          <NativeSelect
+            id="annual-state"
+            value={state}
+            onChange={(event) => setState(event.target.value)}
+          >
+            <option value="">All ({evaluations.length})</option>
+            {(
+              [
+                ['ready', 'Ready for release'],
+                ['pending', 'Not ready'],
+                ['published', 'Published'],
+                ['correction', 'Correction open'],
+              ] as const
+            ).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label} (
+                {
+                  evaluations.filter(
+                    (evaluation) => stateOf(evaluation) === value,
+                  ).length
+                }
+                )
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+      </div>
+      <ul className="grid gap-3">
+        {controls.visible.map((evaluation) => {
+          const canSelect = selectable.includes(evaluation);
+          return (
+            <li
+              key={evaluation.institutionId}
+              className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[auto_1fr_auto] md:items-start"
+            >
+              <Checkbox
+                id={`publish-${evaluation.institutionId}`}
+                aria-label={`Select ${evaluation.institutionId} for publication`}
+                disabled={!canSelect || !data.cutoffPassed}
+                checked={selected.includes(evaluation.institutionId)}
+                onCheckedChange={(checked) =>
+                  setSelected((current) =>
+                    checked === true
+                      ? [...current, evaluation.institutionId]
+                      : current.filter((id) => id !== evaluation.institutionId),
+                  )
+                }
+                className="mt-1"
+              />
+              <div className="grid gap-1 text-sm">
+                <p className="font-semibold">
+                  {evaluation.institutionId}{' '}
+                  <span className="font-normal text-muted-foreground">
+                    {evaluation.institutionName} · {evaluation.officerName}
+                  </span>
+                </p>
+                <div>
+                  {evaluation.total.status === 'calculated' ? (
+                    <>
+                      <span className="font-semibold tabular-nums">
+                        {evaluation.total.points}
+                      </span>{' '}
+                      / 100 · {status(evaluation)}
+                    </>
+                  ) : (
+                    <details>
+                      <summary className="cursor-pointer">
+                        Pending · {evaluation.total.reasons.length}{' '}
+                        {evaluation.total.reasons.length === 1
+                          ? 'item'
+                          : 'items'}{' '}
+                        outstanding
+                      </summary>
+                      <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                        {evaluation.total.reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {evaluation.quarters
+                    .map(
+                      (quarter) =>
+                        `${quarter.periodLabel} ${quarter.implementation ? `${quarter.implementation.numerator}/${quarter.implementation.denominator}` : quarter.status.replaceAll('_', ' ')}${quarter.late ? ' (late)' : ''}`,
+                    )
+                    .join(' · ')}
+                </p>
+              </div>
+              {(evaluation.holds.length > 0 || evaluation.extension) && (
+                <div className="grid gap-1 text-sm">
+                  {evaluation.holds.map((hold) => (
+                    <p key={hold} className="font-medium">
+                      {hold}
+                    </p>
+                  ))}
+                  {evaluation.extension && (
+                    <p className="text-muted-foreground">
+                      Extension authorized by{' '}
+                      {evaluation.extension.authorizedBy}, recorded by{' '}
+                      {evaluation.extension.recordedBy}{' '}
+                      {formatDateTime(evaluation.extension.recordedAt)}:{' '}
+                      {evaluation.extension.reason}
+                    </p>
+                  )}
+                </div>
+              )}
+              {evaluation.extensionRequired && (
+                <ExtensionForm evaluation={evaluation} />
+              )}
+              {evaluation.publication && !evaluation.correction && (
+                <CorrectionForm evaluation={evaluation} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <ListPager controls={controls} noun="institutions" />
     </div>
   );
 }
@@ -251,101 +428,13 @@ export function AnnualPage() {
                   <AlertDescription>{publish.error.message}</AlertDescription>
                 </Alert>
               )}
-              <ul className="grid gap-3">
-                {data.institutions.map((evaluation) => {
-                  const canSelect = selectable.includes(evaluation);
-                  return (
-                    <li
-                      key={evaluation.institutionId}
-                      className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[auto_1fr_auto] md:items-start"
-                    >
-                      <Checkbox
-                        id={`publish-${evaluation.institutionId}`}
-                        aria-label={`Select ${evaluation.institutionId} for publication`}
-                        disabled={!canSelect || !data.cutoffPassed}
-                        checked={selected.includes(evaluation.institutionId)}
-                        onCheckedChange={(checked) =>
-                          setSelected((current) =>
-                            checked === true
-                              ? [...current, evaluation.institutionId]
-                              : current.filter(
-                                  (id) => id !== evaluation.institutionId,
-                                ),
-                          )
-                        }
-                        className="mt-1"
-                      />
-                      <div className="grid gap-1 text-sm">
-                        <p className="font-semibold">
-                          {evaluation.institutionId}{' '}
-                          <span className="font-normal text-muted-foreground">
-                            {evaluation.institutionName} ·{' '}
-                            {evaluation.officerName}
-                          </span>
-                        </p>
-                        <div>
-                          {evaluation.total.status === 'calculated' ? (
-                            <>
-                              <span className="font-semibold tabular-nums">
-                                {evaluation.total.points}
-                              </span>{' '}
-                              / 100 · {status(evaluation)}
-                            </>
-                          ) : (
-                            <details>
-                              <summary className="cursor-pointer">
-                                Pending · {evaluation.total.reasons.length}{' '}
-                                {evaluation.total.reasons.length === 1
-                                  ? 'item'
-                                  : 'items'}{' '}
-                                outstanding
-                              </summary>
-                              <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                                {evaluation.total.reasons.map((reason) => (
-                                  <li key={reason}>{reason}</li>
-                                ))}
-                              </ul>
-                            </details>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {evaluation.quarters
-                            .map(
-                              (quarter) =>
-                                `${quarter.periodLabel} ${quarter.implementation ? `${quarter.implementation.numerator}/${quarter.implementation.denominator}` : quarter.status.replaceAll('_', ' ')}${quarter.late ? ' (late)' : ''}`,
-                            )
-                            .join(' · ')}
-                        </p>
-                      </div>
-                      {(evaluation.holds.length > 0 ||
-                        evaluation.extension) && (
-                        <div className="grid gap-1 text-sm">
-                          {evaluation.holds.map((hold) => (
-                            <p key={hold} className="font-medium">
-                              {hold}
-                            </p>
-                          ))}
-                          {evaluation.extension && (
-                            <p className="text-muted-foreground">
-                              Extension authorized by{' '}
-                              {evaluation.extension.authorizedBy}, recorded by{' '}
-                              {evaluation.extension.recordedBy}{' '}
-                              {formatDateTime(evaluation.extension.recordedAt)}:{' '}
-                              {evaluation.extension.reason}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {evaluation.extensionRequired && (
-                        <ExtensionForm evaluation={evaluation} />
-                      )}
-                      {evaluation.publication && !evaluation.correction && (
-                        <CorrectionForm evaluation={evaluation} />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <EvaluationList
+                evaluations={data.institutions}
+                selectable={selectable}
+                selected={selected}
+                setSelected={setSelected}
+                cutoffPassed={data.cutoffPassed}
+              />
               <div className="flex flex-wrap items-center gap-3">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

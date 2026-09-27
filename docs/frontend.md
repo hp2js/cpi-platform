@@ -49,6 +49,12 @@ pnpm dlx shadcn@4.21.0 add <component> -c apps/web
 
 Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. The pinned CLI currently installs an unrelated npm package named `cn` and imports `cn` from it: remove it with `pnpm --filter @cpi/web remove cn` and point the imports back to `@/lib/utils`. If it offers to overwrite an existing component, decline and write the new wrapper by hand (as done for `alert-dialog.tsx`). Avoid installing another form/router/table system alongside the agreed libraries.
 
+## Selects, long lists and fixed chrome
+
+- **Choosing a control.** Use `NativeSelect` (`components/ui/native-select.tsx`) for short, fixed lists such as a quarter, role or category. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type.
+- **Long lists.** Anything sized by institutions (up to 500+) uses `useListControls` with `ListSearch` and `ListPager` from `components/list-controls.tsx`: filter by typed words, 20–50 rows a page. A printable list pages on screen and uses `usePrinting()` so the printed copy is complete.
+- **Fixed chrome.** Layouts pin the simulation banner, header and desktop sidebar with `sticky`. `useMeasuredHeight` writes their heights to `--banner-h` and `--header-h`; in-page sticky bars use `top-(--sticky-top)`, and `scroll-padding-top` keeps anchors and focused fields clear of the header. Mark sticky elements with `data-sticky` so print resets them.
+
 ## Adili palette source
 
 The public [Adili portal](https://adili.eacc.go.ke/) supplies the visual reference. Its [stylesheet](https://adili.eacc.go.ke/css/app.css) defines primary `#530b61` and button hover `#470952`; the portal welcome text uses `#ffe79b`. The app uses that purple for primary actions and gold as a light accent with dark text. Neutral/background/destructive colours are local supporting tokens, not claimed official brand specifications. No EACC logo or official endorsement is reproduced.

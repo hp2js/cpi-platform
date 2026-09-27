@@ -1,8 +1,16 @@
+import type { assignmentHistorySchema } from '@cpi/contracts';
+import type { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/combobox';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+} from '@/components/list-controls';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -21,6 +29,69 @@ import {
 } from '@/features/simulation/queries';
 import { peopleQuery } from '@/features/settings/queries';
 import { formatDateTime } from '@/lib/dates';
+
+type HistoryRow = z.infer<typeof assignmentHistorySchema>[number];
+
+function History({ list }: { list: HistoryRow[] }) {
+  const sorted = useMemo(
+    () =>
+      [...list].sort(
+        (a, b) =>
+          a.institutionId.localeCompare(b.institutionId) ||
+          a.validFrom.localeCompare(b.validFrom),
+      ),
+    [list],
+  );
+  const controls = useListControls(
+    sorted,
+    (row) => `${row.institutionId} ${row.officerName} ${row.reason ?? ''}`,
+    50,
+  );
+  return (
+    <section aria-labelledby="history-heading" className="grid gap-3">
+      <h2 id="history-heading" className="font-semibold">
+        Assignment history
+      </h2>
+      <ListSearch
+        controls={controls}
+        label="Filter the history"
+        placeholder="Institution ID, officer or reason"
+      />
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <Table className="min-w-[44rem]">
+          <TableCaption className="sr-only">Assignment history</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Institution</TableHead>
+              <TableHead scope="col">Officer</TableHead>
+              <TableHead scope="col">From</TableHead>
+              <TableHead scope="col">To</TableHead>
+              <TableHead scope="col">Reason</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {controls.visible.map((row) => (
+              <TableRow key={`${row.institutionId}-${row.validFrom}`}>
+                <TableHead scope="row">{row.institutionId}</TableHead>
+                <TableCell>{row.officerName}</TableCell>
+                <TableCell className="text-sm">
+                  {formatDateTime(row.validFrom)}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {row.validTo ? formatDateTime(row.validTo) : 'Current'}
+                </TableCell>
+                <TableCell className="text-sm whitespace-normal">
+                  {row.reason ?? 'Initial assignment'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ListPager controls={controls} noun="assignments" />
+    </section>
+  );
+}
 
 export function AssignmentsPage() {
   const queryClient = useQueryClient();
@@ -68,38 +139,34 @@ export function AssignmentsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label htmlFor="assign-institution">Institution</Label>
-            <select
+            <Combobox
               id="assign-institution"
-              className="h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm"
+              searchPlaceholder="Search institutions"
               value={institutionId}
-              onChange={(event) => setInstitutionId(event.target.value)}
-            >
-              {institutions.data?.map((institution) => (
-                <option key={institution.id} value={institution.id}>
-                  {institution.id} {institution.name}
-                </option>
-              ))}
-            </select>
+              onChange={setInstitutionId}
+              options={(institutions.data ?? []).map((institution) => ({
+                value: institution.id,
+                label: institution.id,
+                description: institution.name,
+              }))}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="assign-officer">New officer</Label>
-            <select
+            <Combobox
               id="assign-officer"
-              className="h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm"
+              searchPlaceholder="Search officers"
               value={newOfficerId}
-              onChange={(event) => setOfficerId(event.target.value)}
-            >
-              {officers.map((officer) => (
-                <option
-                  key={officer.id}
-                  value={officer.id}
-                  disabled={officer.id === currentOfficerId}
-                >
-                  {officer.name}
-                  {officer.id === currentOfficerId ? ' (current)' : ''}
-                </option>
-              ))}
-            </select>
+              onChange={setOfficerId}
+              options={officers.map((officer) => ({
+                value: officer.id,
+                label:
+                  officer.id === currentOfficerId
+                    ? `${officer.name} (current)`
+                    : officer.name,
+                disabled: officer.id === currentOfficerId,
+              }))}
+            />
           </div>
         </div>
         <Label htmlFor="assign-reason">Reason</Label>
@@ -125,47 +192,7 @@ export function AssignmentsPage() {
         </div>
       </section>
       <QueryView query={history} label="assignment history">
-        {(list) => (
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <Table className="min-w-[44rem]">
-              <TableCaption className="sr-only">
-                Assignment history
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">Institution</TableHead>
-                  <TableHead scope="col">Officer</TableHead>
-                  <TableHead scope="col">From</TableHead>
-                  <TableHead scope="col">To</TableHead>
-                  <TableHead scope="col">Reason</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...list]
-                  .sort(
-                    (a, b) =>
-                      a.institutionId.localeCompare(b.institutionId) ||
-                      a.validFrom.localeCompare(b.validFrom),
-                  )
-                  .map((row) => (
-                    <TableRow key={`${row.institutionId}-${row.validFrom}`}>
-                      <TableHead scope="row">{row.institutionId}</TableHead>
-                      <TableCell>{row.officerName}</TableCell>
-                      <TableCell className="text-sm">
-                        {formatDateTime(row.validFrom)}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {row.validTo ? formatDateTime(row.validTo) : 'Current'}
-                      </TableCell>
-                      <TableCell className="text-sm whitespace-normal">
-                        {row.reason ?? 'Initial assignment'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        {(list) => <History list={list} />}
       </QueryView>
     </div>
   );

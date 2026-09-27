@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 
 export const institutionSchema = z.object({
@@ -48,6 +49,7 @@ export const obligationSchema = z.object({
   firstCompleteEvidenceAt: instantSchema.nullable(),
   /** Calendar days (Africa/Nairobi) the first submission came after the deadline; 0 on time. */
   daysLate: z.number().int().nonnegative().nullable(),
+  daysLateUnit: dayCountingModeSchema,
   lastReceiptAt: instantSchema.nullable(),
 });
 export type Obligation = z.infer<typeof obligationSchema>;

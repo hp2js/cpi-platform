@@ -104,7 +104,7 @@ function milestone(
   return { id: `${institutionId}:${code}`, code, weight: 1, ...fields };
 }
 
-function committee(
+export function committee(
   institutionId: string,
   cpc: string,
   iao: string,

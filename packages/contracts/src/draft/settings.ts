@@ -5,6 +5,7 @@ import {
   instantSchema,
   roleSchema,
 } from './common.js';
+import { dayCountingSchema } from './cycle.js';
 import { indicatorWeightsSchema } from './forms.js';
 
 /**
@@ -106,6 +107,9 @@ export const calendarSettingsSchema = z.object({
   evaluationCutoffDate: calendarDateSchema,
   cutoffLock: lockSchema,
   reminders: reminderScheduleSchema,
+  dayCounting: dayCountingSchema,
+  /** Deadlines the saved rule gives each quarter, for comparison with the stored dates. */
+  ruleDeadlines: z.record(z.string(), calendarDateSchema),
   changes: z.array(
     z.object({
       at: instantSchema,
@@ -122,6 +126,9 @@ export const calendarUpdateSchema = z.object({
   foundationDeadlineDate: calendarDateSchema,
   evaluationCutoffDate: calendarDateSchema,
   reminders: reminderScheduleSchema,
+  dayCounting: dayCountingSchema,
+  /** Recalculate the deadlines of quarters that have not opened from the saved rule. */
+  applyRuleToDeadlines: z.boolean(),
   reason: z.string().trim().min(10).max(500),
 });
 export type CalendarUpdate = z.infer<typeof calendarUpdateSchema>;
@@ -188,3 +195,76 @@ export const institutionUpdateSchema = z.object({
   accountingOfficerContact: z.string().trim().max(200),
 });
 export type InstitutionUpdate = z.infer<typeof institutionUpdateSchema>;
+
+const focalUserSchema = z.object({
+  displayName: z.string().trim().min(3).max(80),
+  email: z
+    .string()
+    .trim()
+    .regex(
+      /^[^@\s]+@example\.invalid$/,
+      'Use a fictional @example.invalid address.',
+    ),
+});
+
+/** A new institution (FR01). Stable IDs follow the pattern ABC-123. */
+export const institutionCreateSchema = institutionUpdateSchema.extend({
+  id: z
+    .string()
+    .trim()
+    .regex(
+      /^[A-Z]+-\d{3}$/,
+      'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
+    ),
+  officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  focalUser: focalUserSchema.nullable(),
+  /**
+   * Simulation only (PRD §10.4): quarters that have already opened get a SEEDED HISTORICAL
+   * BASELINE of the mandatory committee milestones, awaiting officer confirmation.
+   */
+  seedOpenedQuarters: z.boolean(),
+});
+export type InstitutionCreate = z.infer<typeof institutionCreateSchema>;
+
+/** Bulk import: CSV text, validated as a whole before anything is created. */
+export const institutionImportRequestSchema = z.object({
+  csv: z.string().min(1).max(2_000_000),
+  seedOpenedQuarters: z.boolean(),
+});
+export const institutionImportColumns = [
+  'institution_id',
+  'name',
+  'type',
+  'officer_email',
+  'focal_name',
+  'focal_email',
+  'focal_contact',
+  'accounting_officer_contact',
+] as const;
+export const institutionImportPreviewSchema = z.object({
+  /** Problems with the file itself, such as missing columns. */
+  fileErrors: z.array(z.string()),
+  rows: z.array(
+    z.object({
+      line: z.number().int().positive(),
+      institutionId: z.string(),
+      name: z.string(),
+      type: z.string(),
+      officerName: z.string().nullable(),
+      focalEmail: z.string().nullable(),
+      errors: z.array(z.string()),
+    }),
+  ),
+  valid: z.number().int().nonnegative(),
+  invalid: z.number().int().nonnegative(),
+});
+export type InstitutionImportPreview = z.infer<
+  typeof institutionImportPreviewSchema
+>;
+export const institutionImportResultSchema = z.object({
+  created: z.array(institutionIdSchema),
+  focalUsers: z.number().int().nonnegative(),
+});
+export type InstitutionImportResult = z.infer<
+  typeof institutionImportResultSchema
+>;

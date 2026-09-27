@@ -229,7 +229,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {

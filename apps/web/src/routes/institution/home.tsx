@@ -10,7 +10,7 @@ import { formsQuery } from '@/features/forms/queries';
 import { receiptsQuery, reportQuery } from '@/features/reporting/queries';
 import { cycleQuery, obligationsQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
-import { formatDateRange, formatDateTime } from '@/lib/dates';
+import { formatDateRange, formatDateTime, formatDays } from '@/lib/dates';
 
 /** The earliest obligation that is open for reporting and not yet submitted. */
 function nextObligation(obligations: Obligation[]) {
@@ -185,9 +185,10 @@ function Overview({
           {cycle.label} reporting obligations
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quarterly reports are due within 15 days of each quarter's end.
-          Procedures, the risk assessment and the mitigation plan have their own
-          deadline,{' '}
+          Quarterly reports are due{' '}
+          {formatDays(cycle.dayCounting.reportingDays, cycle.dayCounting.mode)}{' '}
+          after each quarter ends. Procedures, the risk assessment and the
+          mitigation plan have their own deadline,{' '}
           <time dateTime={cycle.foundationDeadline}>
             {formatDateTime(cycle.foundationDeadline)}
           </time>

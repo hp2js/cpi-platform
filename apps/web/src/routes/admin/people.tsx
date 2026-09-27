@@ -8,6 +8,12 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Combobox } from '@/components/combobox';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+} from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +29,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -39,6 +47,10 @@ import {
   setUserActive,
   updateInstitution,
 } from '@/features/settings/queries';
+import {
+  AddInstitution,
+  ImportInstitutions,
+} from '@/features/settings/onboarding';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 
@@ -48,9 +60,6 @@ const roleLabel: Record<Role, string> = {
   supervisor: 'Supervisor',
   administrator: 'Administrator',
 };
-
-const selectClass =
-  'h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm';
 
 function StatusChange({ user }: { user: ManagedUser }) {
   const queryClient = useQueryClient();
@@ -177,9 +186,8 @@ function AddUser({ institutions }: { institutions: ManagedInstitution[] }) {
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-user-role">Role</Label>
-          <select
+          <NativeSelect
             id="new-user-role"
-            className={selectClass}
             value={values.role}
             onChange={(event) => {
               const role = event.target.value as Role;
@@ -196,25 +204,24 @@ function AddUser({ institutions }: { institutions: ManagedInstitution[] }) {
                 {roleLabel[role]}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         {values.role === 'institution' && (
           <div className="grid gap-1.5">
             <Label htmlFor="new-user-institution">Institution</Label>
-            <select
+            <Combobox
               id="new-user-institution"
-              className={selectClass}
+              searchPlaceholder="Search institutions"
               value={values.institutionId ?? ''}
-              onChange={(event) =>
-                setValues({ ...values, institutionId: event.target.value })
+              onChange={(institutionId) =>
+                setValues({ ...values, institutionId })
               }
-            >
-              {institutions.map((institution) => (
-                <option key={institution.id} value={institution.id}>
-                  {institution.id} {institution.name}
-                </option>
-              ))}
-            </select>
+              options={institutions.map((institution) => ({
+                value: institution.id,
+                label: institution.id,
+                description: institution.name,
+              }))}
+            />
             {errors.institutionId && (
               <p className="text-sm text-destructive">{errors.institutionId}</p>
             )}
@@ -336,136 +343,200 @@ function EditInstitution({ institution }: { institution: ManagedInstitution }) {
   );
 }
 
+function officerScope(user: ManagedUser) {
+  const ids = user.assignedInstitutionIds;
+  if (!ids.length) return 'No institutions assigned';
+  return ids.length <= 6
+    ? ids.join(', ')
+    : `${ids.length} institutions (${ids.slice(0, 3).join(', ')}, …)`;
+}
+
+function UsersTab({
+  users,
+  institutions,
+  selfId,
+}: {
+  users: ManagedUser[];
+  institutions: ManagedInstitution[];
+  selfId: string;
+}) {
+  const controls = useListControls(
+    users,
+    (user) =>
+      `${user.displayName} ${user.email} ${roleLabel[user.role]} ${user.institutionId ?? ''} ${user.active ? 'active' : 'deactivated'}`,
+  );
+  return (
+    <div className="grid grid-cols-1 gap-4">
+      <ListSearch
+        controls={controls}
+        label="Find a user"
+        placeholder="Name, email, role or institution ID"
+      />
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <Table>
+          <TableCaption className="sr-only">Users</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Name</TableHead>
+              <TableHead scope="col">Role</TableHead>
+              <TableHead scope="col">Scope</TableHead>
+              <TableHead scope="col">Status</TableHead>
+              <TableHead scope="col">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {controls.visible.map((user) => (
+              <TableRow key={user.id}>
+                <TableHead scope="row" className="whitespace-normal">
+                  <span className="block font-medium">{user.displayName}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </span>
+                </TableHead>
+                <TableCell>{roleLabel[user.role]}</TableCell>
+                <TableCell className="text-sm whitespace-normal">
+                  {user.role === 'institution'
+                    ? user.institutionId
+                    : user.role === 'officer'
+                      ? officerScope(user)
+                      : 'All institutions'}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={user.active ? 'outline' : 'secondary'}>
+                    {user.active ? 'Active' : 'Deactivated'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {user.id === selfId ? (
+                    <span className="text-sm text-muted-foreground">You</span>
+                  ) : (
+                    <StatusChange user={user} />
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ListPager controls={controls} noun="users" />
+      <AddUser institutions={institutions} />
+    </div>
+  );
+}
+
+function InstitutionsTab({
+  institutions,
+  officers,
+}: {
+  institutions: ManagedInstitution[];
+  officers: ManagedUser[];
+}) {
+  const controls = useListControls(
+    institutions,
+    (institution) =>
+      `${institution.id} ${institution.name} ${institution.type} ${institution.focalContact}`,
+  );
+  return (
+    <div className="grid grid-cols-1 gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <ListSearch
+          controls={controls}
+          label="Find an institution"
+          placeholder="ID, name, type or contact"
+        />
+        <div className="flex flex-wrap gap-2">
+          <AddInstitution officers={officers} />
+          <ImportInstitutions />
+        </div>
+      </div>
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <Table>
+          <TableCaption className="sr-only">Institutions</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Institution</TableHead>
+              <TableHead scope="col">Type</TableHead>
+              <TableHead scope="col">Contacts</TableHead>
+              <TableHead scope="col">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {controls.visible.map((institution) => (
+              <TableRow key={institution.id}>
+                <TableHead scope="row" className="whitespace-normal">
+                  <span className="block font-medium">{institution.id}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {institution.name}
+                  </span>
+                </TableHead>
+                <TableCell className="whitespace-normal">
+                  {institution.type}
+                </TableCell>
+                <TableCell className="text-sm whitespace-normal">
+                  <span className="block">{institution.focalContact}</span>
+                  <span className="block text-muted-foreground">
+                    {institution.accountingOfficerContact}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <EditInstitution institution={institution} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ListPager controls={controls} noun="institutions" />
+    </div>
+  );
+}
+
 export function PeoplePage() {
   const session = useSession();
   const people = useQuery(peopleQuery);
+  const [tab, setTab] = useState('institutions');
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
         eyebrow="Setup"
         title="Users and institutions"
-        description="Accounts, their role and scope, and institution details (FR01). Deactivating an account ends its session at once and keeps everything it recorded."
+        description="Institutions, accounts, their role and scope (FR01). Add institutions one at a time or import a CSV. Deactivating an account ends its session at once and keeps everything it recorded."
       />
       <QueryView query={people} label="users and institutions">
         {(data) => (
-          <div className="grid grid-cols-1 gap-8">
-            <section
-              aria-labelledby="users-heading"
-              className="grid grid-cols-1 gap-4"
-            >
-              <h2 id="users-heading" className="text-lg font-semibold">
-                Users
-              </h2>
-              <div className="overflow-x-auto rounded-lg border bg-card">
-                <Table>
-                  <TableCaption className="sr-only">Users</TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Name</TableHead>
-                      <TableHead scope="col">Role</TableHead>
-                      <TableHead scope="col">Scope</TableHead>
-                      <TableHead scope="col">Status</TableHead>
-                      <TableHead scope="col">
-                        <span className="sr-only">Actions</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableHead scope="row" className="whitespace-normal">
-                          <span className="block font-medium">
-                            {user.displayName}
-                          </span>
-                          <span className="block text-xs font-normal text-muted-foreground">
-                            {user.email}
-                          </span>
-                        </TableHead>
-                        <TableCell>{roleLabel[user.role]}</TableCell>
-                        <TableCell className="text-sm whitespace-normal">
-                          {user.role === 'institution'
-                            ? user.institutionId
-                            : user.role === 'officer'
-                              ? user.assignedInstitutionIds.join(', ') ||
-                                'No institutions assigned'
-                              : 'All institutions'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={user.active ? 'outline' : 'secondary'}
-                          >
-                            {user.active ? 'Active' : 'Deactivated'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {user.id === session.user.id ? (
-                            <span className="text-sm text-muted-foreground">
-                              You
-                            </span>
-                          ) : (
-                            <StatusChange user={user} />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <AddUser institutions={data.institutions} />
-            </section>
-
-            <section
-              aria-labelledby="institutions-heading"
-              className="grid grid-cols-1 gap-4"
-            >
-              <h2 id="institutions-heading" className="text-lg font-semibold">
-                Institutions
-              </h2>
-              <div className="overflow-x-auto rounded-lg border bg-card">
-                <Table>
-                  <TableCaption className="sr-only">Institutions</TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Institution</TableHead>
-                      <TableHead scope="col">Type</TableHead>
-                      <TableHead scope="col">Contacts</TableHead>
-                      <TableHead scope="col">
-                        <span className="sr-only">Actions</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.institutions.map((institution) => (
-                      <TableRow key={institution.id}>
-                        <TableHead scope="row" className="whitespace-normal">
-                          <span className="block font-medium">
-                            {institution.id}
-                          </span>
-                          <span className="block text-xs font-normal text-muted-foreground">
-                            {institution.name}
-                          </span>
-                        </TableHead>
-                        <TableCell className="whitespace-normal">
-                          {institution.type}
-                        </TableCell>
-                        <TableCell className="text-sm whitespace-normal">
-                          <span className="block">
-                            {institution.focalContact}
-                          </span>
-                          <span className="block text-muted-foreground">
-                            {institution.accountingOfficerContact}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <EditInstitution institution={institution} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </section>
-          </div>
+          <Tabs
+            value={tab}
+            onValueChange={setTab}
+            className="grid grid-cols-1 gap-4"
+          >
+            <TabsList>
+              <TabsTrigger value="institutions">
+                Institutions ({data.institutions.length})
+              </TabsTrigger>
+              <TabsTrigger value="users">
+                Users ({data.users.length})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="institutions">
+              <InstitutionsTab
+                institutions={data.institutions}
+                officers={data.users.filter(
+                  (user) => user.role === 'officer' && user.active,
+                )}
+              />
+            </TabsContent>
+            <TabsContent value="users">
+              <UsersTab
+                users={data.users}
+                institutions={data.institutions}
+                selfId={session.user.id}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </QueryView>
     </div>

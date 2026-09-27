@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { useLayoutEffect, useRef, type ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
 export function SkipLink() {
@@ -54,4 +54,30 @@ export function NavList({
       ))}
     </ul>
   );
+}
+
+/**
+ * Measures an element into a CSS variable on the root, so the fixed banner and header can be
+ * stacked and in-page sticky bars can sit below them (`top-(--sticky-top)`).
+ */
+export function useMeasuredHeight<T extends HTMLElement>(
+  variable: '--banner-h' | '--header-h',
+) {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const root = document.documentElement;
+    const update = () =>
+      root.style.setProperty(variable, `${element.offsetHeight}px`);
+    update();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty(variable);
+    };
+  }, [variable]);
+  return ref;
 }

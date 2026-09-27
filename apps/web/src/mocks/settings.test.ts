@@ -141,6 +141,8 @@ describe('reporting calendar (FR02)', () => {
       foundationDeadlineDate: current.foundationDeadlineDate,
       evaluationCutoffDate: current.evaluationCutoffDate,
       reminders: current.reminders,
+      dayCounting: current.dayCounting,
+      applyRuleToDeadlines: false,
       reason: 'Public holiday moves the Q2 deadline.',
     };
     await expect(
@@ -178,6 +180,8 @@ describe('reporting calendar (FR02)', () => {
       foundationDeadlineDate: current.foundationDeadlineDate,
       evaluationCutoffDate: current.evaluationCutoffDate,
       reminders: { daysBefore: [14, 7, 1], overdueNotice: true },
+      dayCounting: current.dayCounting,
+      applyRuleToDeadlines: false,
       reason: 'Institutions asked for an earlier reminder.',
     });
     const boundaries = (

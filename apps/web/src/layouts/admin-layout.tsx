@@ -26,7 +26,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, type NavItem } from './shared';
+import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
 
 const sections = [
   {
@@ -77,7 +77,7 @@ const sections = [
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex h-full flex-col gap-6 bg-primary p-4 text-primary-foreground">
+    <div className="flex min-h-full flex-col gap-6 bg-primary p-4 text-primary-foreground">
       <Link
         to="/admin"
         activeOptions={{ exact: true }}
@@ -113,16 +113,27 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
 export function AdminLayout() {
   const session = useSession();
   const [open, setOpen] = useState(false);
+  const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
+  const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <SkipLink />
-      <SimulationBanner session={session} />
+      <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
+        <SimulationBanner session={session} />
+      </div>
       <div className="flex flex-1">
-        <aside className="hidden w-64 shrink-0 lg:block">
+        <aside
+          data-sticky
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto bg-primary lg:block"
+        >
           <AdminSidebar />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end">
+          <header
+            ref={headerRef}
+            data-sticky
+            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end"
+          >
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">

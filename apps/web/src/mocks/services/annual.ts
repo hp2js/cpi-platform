@@ -67,6 +67,7 @@ function quarterDisposition(
     daysLate: obligation.firstSubmittedAt
       ? daysLate(obligation.firstSubmittedAt, period.submissionDeadline)
       : null,
+    daysLateUnit: db.cycle.dayCounting.mode,
     firstSubmittedAt: obligation.firstSubmittedAt,
     firstCompleteEvidenceAt: obligation.firstCompleteEvidenceAt,
     revision: obligation.currentRevision,

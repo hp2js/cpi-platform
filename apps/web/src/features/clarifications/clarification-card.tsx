@@ -5,7 +5,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { formatDateTime } from '@/lib/dates';
+import { formatDateTime, formatDays } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 const statusLabel: Record<Clarification['status'], string> = {
@@ -86,7 +86,8 @@ export function ClarificationCard({
           </time>
         </p>
         <p className="text-xs text-muted-foreground">
-          Seven calendar days from when the request was available and notified (
+          {formatDays(clarification.windowDays, clarification.windowUnit)} from
+          when the request was available and notified (
           {formatDateTime(clarification.notifiedAt)}). The window is for
           evidence and explanations; it does not extend the time to complete the
           work itself.

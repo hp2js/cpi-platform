@@ -41,6 +41,25 @@ export const cycle: Cycle = {
       submissionDeadline: '2027-07-15T23:59:59+03:00',
     },
   ],
+  // PRD §9.1 proposes calendar days with no weekend or holiday extension. The holidays are
+  // used only when the administrator switches to working days; confirm them against the
+  // Kenya Gazette before relying on them.
+  dayCounting: {
+    mode: 'calendar',
+    reportingDays: 15,
+    clarificationDays: 7,
+    holidays: [
+      { date: '2026-10-20', name: 'Mashujaa Day' },
+      { date: '2026-12-12', name: 'Jamhuri Day' },
+      { date: '2026-12-25', name: 'Christmas Day' },
+      { date: '2026-12-26', name: 'Boxing Day' },
+      { date: '2027-01-01', name: 'New Year’s Day' },
+      { date: '2027-03-26', name: 'Good Friday' },
+      { date: '2027-03-29', name: 'Easter Monday' },
+      { date: '2027-05-01', name: 'Labour Day' },
+      { date: '2027-06-01', name: 'Madaraka Day' },
+    ],
+  },
 };
 
 /** The demo opens on the first day of Q1 reporting. */

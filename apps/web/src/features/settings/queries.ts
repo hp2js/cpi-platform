@@ -4,7 +4,10 @@ import {
   profilesStateSchema,
   scoringProfileSchema,
   simulationStateSchema,
+  institutionImportPreviewSchema,
+  institutionImportResultSchema,
   type CalendarUpdate,
+  type InstitutionCreate,
   type InstitutionUpdate,
   type ProfileUpdate,
   type UserCreate,
@@ -86,3 +89,24 @@ export const updateInstitution = (id: string, update: InstitutionUpdate) =>
     peopleSchema,
     { method: 'PUT', json: update },
   );
+
+export const createInstitution = (institution: InstitutionCreate) =>
+  request('/api/settings/institutions', peopleSchema, {
+    method: 'POST',
+    json: institution,
+  });
+export const previewInstitutionImport = (
+  csv: string,
+  seedOpenedQuarters: boolean,
+) =>
+  request(
+    '/api/settings/institutions/import/preview',
+    institutionImportPreviewSchema,
+    { method: 'POST', json: { csv, seedOpenedQuarters } },
+  );
+export const importInstitutions = (csv: string, seedOpenedQuarters: boolean) =>
+  request('/api/settings/institutions/import', institutionImportResultSchema, {
+    method: 'POST',
+    json: { csv, seedOpenedQuarters },
+    timeoutMs: 30_000,
+  });

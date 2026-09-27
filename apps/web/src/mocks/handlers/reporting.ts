@@ -398,6 +398,7 @@ export const reportingHandlers = [
             ? 'late'
             : 'on_time',
         daysLate: daysLate(db.businessTime, period.submissionDeadline),
+        daysLateUnit: db.cycle.dayCounting.mode,
         evidenceComplete,
         submittedBy: user.displayName,
         submitterRole: parsed.data.attestation.submitterRole,

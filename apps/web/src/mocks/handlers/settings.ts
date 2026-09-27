@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import {
   calendarUpdateSchema,
+  institutionCreateSchema,
+  institutionImportRequestSchema,
   institutionUpdateSchema,
   profileUpdateSchema,
   userCreateSchema,
@@ -14,6 +16,24 @@ import { commit, getDb, nextId, type MockDb } from '../db';
 import type { MockUser } from '../seed/cast';
 import type { MockProfile } from '../seed/profiles';
 import { skipPastBoundaries } from '../services/clock';
+import {
+  createInstitution,
+  fromCreateRequest,
+  institutionProblems,
+  previewImport,
+  type NewInstitution,
+} from '../services/institutions';
+import { endOfDay, shiftDays } from '../services/days';
+
+/** PRD §9.1: the deadline is a number of counted days after the quarter ends. */
+const ruleDeadline = (
+  endsOn: string,
+  counting: {
+    mode: 'calendar' | 'working';
+    reportingDays: number;
+    holidays: { date: string; name: string }[];
+  },
+) => shiftDays(endsOn, counting.reportingDays, counting);
 import {
   assignedOfficers,
   audit,
@@ -79,7 +99,6 @@ function uniqueName(db: MockDb, base: string) {
 
 /* ---------- Calendar ---------- */
 
-const endOfDay = (date: string) => `${date}T23:59:59+03:00`;
 const dateOf = (instant: string) => instant.slice(0, 10);
 const opensAt = (endsOn: string) =>
   Date.parse(`${endsOn}T23:59:59+03:00`) + 1000;
@@ -130,11 +149,48 @@ function calendar(): CalendarSettings {
           }
         : { editable: true, reason: null },
     reminders: structuredClone(db.reminders),
+    dayCounting: structuredClone(cycle.dayCounting),
+    ruleDeadlines: Object.fromEntries(
+      cycle.periods.map((period) => [
+        period.id,
+        ruleDeadline(period.endsOn, cycle.dayCounting),
+      ]),
+    ),
     changes: [...db.calendarChanges].reverse(),
   };
 }
 
 /* ---------- People ---------- */
+
+/** One notice per officer for everything assigned to them in this change. */
+function notifyOfficers(db: MockDb, rows: NewInstitution[]) {
+  const byOfficer = new Map<string, NewInstitution[]>();
+  for (const row of rows)
+    byOfficer.set(row.officer!.id, [
+      ...(byOfficer.get(row.officer!.id) ?? []),
+      row,
+    ]);
+  for (const [officerId, assigned] of byOfficer) {
+    const officer = db.users.find((user) => user.id === officerId)!;
+    notify(
+      db,
+      `onboard:${officerId}:${db.sequence}`,
+      'assignment.changed',
+      [officer],
+      {
+        title:
+          assigned.length === 1
+            ? `${assigned[0]!.id} assigned to you`
+            : `${assigned.length} new institutions assigned to you`,
+        body: 'New institutions start with proposed baselines of the committee milestones for you to review before each quarter opens.',
+        link:
+          assigned.length === 1
+            ? `/officer/institutions/${assigned[0]!.id}`
+            : '/officer',
+      },
+    );
+  }
+}
 
 function people(): People {
   const db = getDb();
@@ -328,9 +384,41 @@ export const settingsHandlers = [
     const errors: Record<string, string> = {};
     const changes: string[] = [];
     const periods = getDb().cycle.periods;
+    const counting = {
+      ...update.dayCounting,
+      holidays: [...update.dayCounting.holidays].sort((a, b) =>
+        a.date.localeCompare(b.date),
+      ),
+    };
+    if (
+      new Set(counting.holidays.map((day) => day.date)).size !==
+      counting.holidays.length
+    )
+      errors['dayCounting.holidays'] = 'Each holiday date can be listed once.';
+    const before = current.dayCounting;
+    if (before.mode !== counting.mode)
+      changes.push(`Day counting ${before.mode} → ${counting.mode} days`);
+    if (before.reportingDays !== counting.reportingDays)
+      changes.push(
+        `Deadline rule ${before.reportingDays} → ${counting.reportingDays} days after quarter end`,
+      );
+    if (before.clarificationDays !== counting.clarificationDays)
+      changes.push(
+        `Clarification window ${before.clarificationDays} → ${counting.clarificationDays} days (new requests only)`,
+      );
+    if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
+      changes.push(
+        `Public holidays updated (${counting.holidays.length} listed)`,
+      );
+    // Unopened quarters can take their deadline from the rule; opened ones are fixed (FR02).
+    const deadlines: Record<string, string> = { ...update.deadlines };
+    if (update.applyRuleToDeadlines)
+      for (const period of current.periods)
+        if (period.lock.editable)
+          deadlines[period.id] = ruleDeadline(period.endsOn, counting);
     let previousDeadline: string | null = null;
     for (const period of current.periods) {
-      const next = update.deadlines[period.id] ?? period.deadlineDate;
+      const next = deadlines[period.id] ?? period.deadlineDate;
       if (next !== period.deadlineDate) {
         if (!period.lock.editable)
           errors[`deadlines.${period.id}`] = period.lock.reason!;
@@ -363,8 +451,7 @@ export const settingsHandlers = [
           `Evaluation cutoff ${current.evaluationCutoffDate} → ${update.evaluationCutoffDate}`,
         );
     }
-    const q4 =
-      update.deadlines[periods[3]!.id] ?? current.periods[3]!.deadlineDate;
+    const q4 = deadlines[periods[3]!.id] ?? current.periods[3]!.deadlineDate;
     if (update.evaluationCutoffDate <= q4)
       errors.evaluationCutoffDate =
         'The evaluation cutoff must fall after the Q4 deadline.';
@@ -384,9 +471,10 @@ export const settingsHandlers = [
     const deadlineMoved = changes.some((change) => change.includes('deadline'));
     commit((db) => {
       for (const period of db.cycle.periods) {
-        const next = update.deadlines[period.id];
+        const next = deadlines[period.id];
         if (next) period.submissionDeadline = endOfDay(next);
       }
+      db.cycle.dayCounting = counting;
       db.cycle.foundationDeadline = endOfDay(update.foundationDeadlineDate);
       db.cycle.evaluationCutoff = endOfDay(update.evaluationCutoffDate);
       db.reminders = {
@@ -530,6 +618,82 @@ export const settingsHandlers = [
       return HttpResponse.json(people());
     },
   ),
+
+  http.post('/api/settings/institutions', async ({ request }) => {
+    await networkDelay();
+    const admin = requireRole('administrator');
+    const input = await body(request, institutionCreateSchema);
+    const db = getDb();
+    const candidate = fromCreateRequest(db, input);
+    const problems = institutionProblems(db, candidate);
+    if (problems.length)
+      return apiError(422, problems.join(' '), 'invalid_institution');
+    commit((store) => {
+      createInstitution(
+        store,
+        admin,
+        { ...candidate, officer: candidate.officer! },
+        input.seedOpenedQuarters,
+        nextId,
+      );
+      audit(
+        store,
+        admin,
+        'institution.create',
+        { type: 'institution', id: candidate.id },
+        `${candidate.name} (${candidate.type}), reviewed by ${candidate.officer!.displayName}`,
+      );
+      notifyOfficers(store, [candidate]);
+    });
+    return HttpResponse.json(people(), { status: 201 });
+  }),
+
+  http.post(
+    '/api/settings/institutions/import/preview',
+    async ({ request }) => {
+      await networkDelay();
+      requireRole('administrator');
+      const input = await body(request, institutionImportRequestSchema);
+      return HttpResponse.json(previewImport(getDb(), input.csv).preview);
+    },
+  ),
+
+  // All or nothing: one invalid row means nothing is created, so a file can be fixed and re-run.
+  http.post('/api/settings/institutions/import', async ({ request }) => {
+    await networkDelay();
+    const admin = requireRole('administrator');
+    const input = await body(request, institutionImportRequestSchema);
+    const { preview, rows } = previewImport(getDb(), input.csv);
+    if (preview.fileErrors.length || preview.invalid)
+      return apiError(
+        422,
+        preview.fileErrors[0] ??
+          `${preview.invalid} ${preview.invalid === 1 ? 'row needs' : 'rows need'} attention; nothing was imported.`,
+        'import_invalid',
+      );
+    commit((store) => {
+      for (const row of rows)
+        createInstitution(
+          store,
+          admin,
+          { ...row, officer: row.officer! },
+          input.seedOpenedQuarters,
+          nextId,
+        );
+      audit(
+        store,
+        admin,
+        'institution.import',
+        { type: 'institution', id: `${rows[0]!.id}…${rows.at(-1)!.id}` },
+        `${rows.length} institutions imported`,
+      );
+      notifyOfficers(store, rows);
+    });
+    return HttpResponse.json({
+      created: rows.map((row) => row.id),
+      focalUsers: rows.filter((row) => row.focalUser).length,
+    });
+  }),
 
   http.put(
     '/api/settings/institutions/:institutionId',
