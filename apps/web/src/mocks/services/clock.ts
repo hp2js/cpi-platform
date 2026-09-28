@@ -332,21 +332,24 @@ export function advanceTo(db: MockDb, target: string) {
     throw new Error(
       'The demo clock only moves forward; reset the run to start again.',
     );
+  // Digests summarize where things stand once per move, keyed by the last new boundary crossed,
+  // so a move across several boundaries sends one digest and a replay sends none.
+  let lastFresh: string | null = null;
   for (const boundary of boundaries()) {
     const at = Date.parse(boundary.at);
     if (at > to) continue;
     // Each boundary's notifications and audit entries carry the time it occurred.
     if (at > Date.parse(db.businessTime)) db.businessTime = boundary.at;
     const key = `${db.runId}:${boundary.id}`;
-    const fresh = !db.processedEvents.includes(key);
+    if (!db.processedEvents.includes(key)) lastFresh = key;
     process(db, boundary);
-    if (fresh) {
-      sendOversightDigests(db, key);
-      sendOfficerDigests(db, key);
-    }
   }
   db.businessTime = target;
   endExpiredCover(db);
+  if (lastFresh) {
+    sendOversightDigests(db, lastFresh);
+    sendOfficerDigests(db, lastFresh);
+  }
 }
 
 export function boundaryState(): ClockBoundary[] {

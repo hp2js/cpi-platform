@@ -150,7 +150,8 @@ export function Trends({
       </div>
       <div className="grid gap-6 rounded-lg border bg-card p-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <TrendChart points={data.trends} />
-        <div className="overflow-x-auto">
+        {/* The table's own container scrolls and joins the tab order when it overflows. */}
+        <div className="min-w-0">
           <Table className="min-w-[40rem]">
             <TableCaption className="text-left">
               The chart shows the on-time and finalized rates from this table.

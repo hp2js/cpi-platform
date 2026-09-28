@@ -96,10 +96,17 @@ export function FinalizedComparison({
           impact.
         </p>
       </div>
-      <ComparisonTable
-        rows={data.comparison}
-        maxPoints={data.averageReviewed.maxPoints}
-      />
+      {data.comparison.length === 0 ? (
+        <p className="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground">
+          No quarter has been finalized yet. Results appear here as reviews are
+          finalized.
+        </p>
+      ) : (
+        <ComparisonTable
+          rows={data.comparison}
+          maxPoints={data.averageReviewed.maxPoints}
+        />
+      )}
     </section>
   );
 }
