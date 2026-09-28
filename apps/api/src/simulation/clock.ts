@@ -15,6 +15,7 @@ import {
   type Events,
 } from '../events/events';
 import { ApiError } from '../http/api-error';
+import { endExpiredCover } from '../supervision/assignments';
 
 /*
  * Server-side demo clock (FR14). Advancing crosses named boundaries in order, and each boundary
@@ -165,4 +166,6 @@ export async function advanceTo(tx: Tx, events: Events, target: string) {
     await process(tx, events, state.runId, now, cycle, reminders, boundary);
   }
   await tx.update(systemState).set({ businessTime: target });
+  // Temporary cover that ended in the crossed interval returns to the officer who was away.
+  await endExpiredCover(tx, events, target);
 }

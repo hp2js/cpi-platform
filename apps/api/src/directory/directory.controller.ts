@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Assignment, Cycle, Institution } from '@cpi/contracts';
 import { canReadInstitution, readableInstitutionIds } from '../auth/scope';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
@@ -12,6 +12,7 @@ import {
 import { loadCycle } from '../database/state';
 import { notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import { toAssignments } from '../supervision/assignments';
 import { toObligations } from './obligations';
 
 const institutionColumns = {
@@ -91,23 +92,20 @@ export class DirectoryController {
   @Get('assignments')
   @Roles('officer', 'supervisor', 'administrator')
   async assignments(@CurrentUser() user: User): Promise<Assignment[]> {
+    const readable = await readableInstitutionIds(this.db, user);
+    if (readable.length === 0) return [];
     const rows = await this.db
-      .select({
-        institutionId: assignments.institutionId,
-        officerId: assignments.officerId,
-        officerName: users.displayName,
-        validFrom: assignments.validFrom,
-        validTo: assignments.validTo,
-      })
+      .select()
       .from(assignments)
-      .innerJoin(users, eq(users.id, assignments.officerId))
       .where(
-        user.role === 'officer'
-          ? eq(assignments.officerId, user.id)
-          : undefined,
+        and(
+          inArray(assignments.institutionId, readable),
+          user.role === 'officer'
+            ? eq(assignments.officerId, user.id)
+            : undefined,
+        ),
       )
       .orderBy(asc(assignments.id));
-    // ponytail: temporary cover and handover notes are not implemented yet.
-    return rows.map((row) => ({ ...row, cover: null, handoverNote: null }));
+    return toAssignments(this.db, rows);
   }
 }

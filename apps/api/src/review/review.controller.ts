@@ -17,6 +17,7 @@ import {
   decisionRequestSchema,
   finalizeRequestSchema,
   oversightCommentRequestSchema,
+  oversightReplyRequestSchema,
   reopenRequestSchema,
   responseDueAt,
   suitabilityCheckKeys,
@@ -38,7 +39,12 @@ import {
   submissions,
   suitability,
 } from '../database/schema';
-import { Events, assignedOfficers, institutionUsers } from '../events/events';
+import {
+  Events,
+  assignedOfficers,
+  assignedSupervisors,
+  institutionUsers,
+} from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { effectiveCutoff } from './clarifications';
@@ -557,6 +563,108 @@ export class ReviewController {
           link: `/officer/reviews/${submission.id}`,
         },
       );
+      const fresh = await this.load(tx, user, id);
+      return reviewBundle(fresh.data, user, fresh.submission, tx);
+    });
+  }
+
+  /** A reply in an oversight comment's thread; the assigned officer may mark it addressed. */
+  @Post('reviews/:submissionId/comments/:commentId/replies')
+  @HttpCode(200)
+  @Roles('officer', 'supervisor')
+  reply(
+    @CurrentUser() user: User,
+    @Param('submissionId') id: string,
+    @Param('commentId') commentId: string,
+    @Body() body: unknown,
+  ): Promise<ReviewBundle> {
+    return write(this.db, async (tx, businessTime) => {
+      const { data, submission, obligation } = await this.load(tx, user, id);
+      if (
+        user.role === 'officer' &&
+        !(await assignedInstitutionIds(tx, user.id)).includes(
+          obligation.institutionId,
+        )
+      )
+        throw new ApiError(
+          403,
+          'Only the assigned officer can reply to oversight comments.',
+          'forbidden',
+        );
+      const parsed = oversightReplyRequestSchema.safeParse(body);
+      if (!parsed.success)
+        throw new ApiError(422, 'Write a reply.', 'invalid_reply', {
+          text: 'Write a reply.',
+        });
+      if (parsed.data.addressed && user.role !== 'officer')
+        throw new ApiError(
+          422,
+          'Only the officer marks a comment addressed.',
+          'invalid_reply',
+        );
+      const comment = data.comments.find(
+        (candidate) =>
+          candidate.id === commentId &&
+          candidate.obligationId === submission.obligationId,
+      );
+      if (!comment) throw notFound();
+      const replies = [
+        ...comment.replies,
+        {
+          author: user.displayName,
+          role: user.role as 'officer' | 'supervisor',
+          at: businessTime,
+          text: parsed.data.text,
+        },
+      ];
+      const addressing = parsed.data.addressed && comment.status === 'open';
+      await tx
+        .update(oversightComments)
+        .set({
+          replies,
+          ...(addressing
+            ? { status: 'addressed' as const, addressedAt: businessTime }
+            : {}),
+        })
+        .where(eq(oversightComments.id, comment.id));
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        parsed.data.addressed
+          ? 'review.comment_addressed'
+          : 'review.comment_reply',
+        { type: 'submission', id: submission.id, version: submission.revision },
+        `Reply on oversight comment ${comment.id}`,
+      );
+      const period = periodOf(data, obligation.periodId).label;
+      const key = `${comment.id}:reply:${replies.length}`;
+      if (user.role === 'officer')
+        await this.events.notify(
+          tx,
+          businessTime,
+          key,
+          'review.comment_reply',
+          await assignedSupervisors(tx, obligation.institutionId),
+          {
+            title: `${parsed.data.addressed ? 'Comment addressed' : 'Officer replied'}: ${obligation.institutionId} ${period}`,
+            body: parsed.data.text,
+            link: `/supervisor/reviews/${submission.id}`,
+          },
+        );
+      else
+        await this.events.notify(
+          tx,
+          businessTime,
+          key,
+          'review.comment_reply',
+          await assignedOfficers(tx, obligation.institutionId),
+          {
+            title: `Supervisor replied: ${obligation.institutionId} ${period}`,
+            body: 'The supervisor added to an oversight comment. It is guidance, not an approval step.',
+            link: `/officer/reviews/${submission.id}`,
+          },
+        );
       const fresh = await this.load(tx, user, id);
       return reviewBundle(fresh.data, user, fresh.submission, tx);
     });

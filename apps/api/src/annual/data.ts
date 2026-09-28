@@ -457,13 +457,21 @@ export function toPublished(
   };
 }
 
-export function consolidated(data: AnnualData): ConsolidatedReport {
+export function consolidated(
+  data: AnnualData,
+  scope: string[],
+): ConsolidatedReport {
   const released = data.publications
-    .filter((publication) => publication.supersededBy === null)
+    .filter(
+      (publication) =>
+        publication.supersededBy === null &&
+        scope.includes(publication.institutionId),
+    )
     .map((publication) => toPublished(data, publication));
   const unreleased = data.institutions
     .filter(
       (institution) =>
+        scope.includes(institution.id) &&
         !released.some((result) => result.institutionId === institution.id),
     )
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -573,6 +581,7 @@ const metric = (
 export function oversight(
   data: AnnualData,
   readable: string[],
+  isAdministrator: boolean,
   filters: {
     periodId: string | null;
     institutionId: string | null;
@@ -683,7 +692,10 @@ export function oversight(
       (candidate) =>
         candidate.role === 'officer' &&
         candidate.active &&
-        (!officerId || candidate.id === officerId),
+        (!officerId || candidate.id === officerId) &&
+        // A supervisor sees only the officers who review institutions in their scope.
+        (isAdministrator ||
+          institutions.some((id) => officerOf(id) === candidate.id)),
     )
     .map((officer) => {
       const mine = currentSubmissions.filter(

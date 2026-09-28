@@ -132,8 +132,11 @@ export async function decideAll(
 export async function emailedToken(admin: Client, email: string) {
   const mails =
     await admin.json<{ to: string; body: string }[]>('/admin/email-sink');
-  const mail = mails.find((candidate) => candidate.to === email);
-  const token = mail?.body.match(/token=([\w-]+)/)?.[1];
+  // The newest message to that address that carries a link (not later notices).
+  const token = mails
+    .filter((candidate) => candidate.to === email)
+    .map((candidate) => candidate.body.match(/token=([\w-]+)/)?.[1])
+    .find(Boolean);
   if (!token) throw new Error(`No link emailed to ${email}`);
   return token;
 }

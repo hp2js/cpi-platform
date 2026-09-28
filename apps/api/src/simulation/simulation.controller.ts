@@ -1,25 +1,22 @@
 import { Body, Controller, Get, HttpCode, Inject, Post } from '@nestjs/common';
-import { and, asc, count, eq, isNull } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import {
   advanceRequestSchema,
-  assignmentChangeRequestSchema,
   type ScenarioResult,
   type SimulationState,
 } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { CONFIG, type AppConfig } from '../config';
-import { nextId, write, type Db } from '../database/db';
+import { write, type Db } from '../database/db';
 import { loadFixtures } from '../database/fixtures';
 import {
-  assignments,
   cycles,
   formVersions,
   processedEvents,
   scoringProfiles,
-  users,
 } from '../database/schema';
 import { currentState } from '../database/state';
-import { Events, institutionUsers } from '../events/events';
+import { Events } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { advanceTo, boundaryState } from './clock';
@@ -147,111 +144,5 @@ export class SimulationController {
         'scenario_failed',
       );
     }
-  }
-
-  @Get('assignments/history')
-  @Roles('administrator', 'supervisor')
-  history() {
-    return this.db
-      .select({
-        institutionId: assignments.institutionId,
-        officerId: assignments.officerId,
-        officerName: users.displayName,
-        validFrom: assignments.validFrom,
-        validTo: assignments.validTo,
-        reason: assignments.reason,
-      })
-      .from(assignments)
-      .innerJoin(users, eq(users.id, assignments.officerId))
-      .orderBy(asc(assignments.id));
-  }
-
-  /** Reassignment takes effect immediately for access; history keeps earlier reviewers (FR01, AT22). */
-  @Post('assignments')
-  @HttpCode(200)
-  @Roles('administrator')
-  reassign(@CurrentUser() user: User, @Body() body: unknown) {
-    return write(this.db, async (tx, businessTime) => {
-      const parsed = assignmentChangeRequestSchema.safeParse(body);
-      if (!parsed.success)
-        throw new ApiError(
-          422,
-          'Choose an officer and give a reason of at least 10 characters.',
-          'invalid_request',
-          { reason: 'Give a reason of at least 10 characters.' },
-        );
-      const { institutionId, officerId } = parsed.data;
-      const reason = parsed.data.reason.trim();
-      const [officer] = await tx
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.id, officerId),
-            eq(users.role, 'officer'),
-            eq(users.active, true),
-          ),
-        );
-      const [current] = await tx
-        .select()
-        .from(assignments)
-        .where(
-          and(
-            eq(assignments.institutionId, institutionId),
-            isNull(assignments.validTo),
-          ),
-        );
-      if (!officer || !current) throw notFound();
-      if (current.officerId === officer.id)
-        throw new ApiError(
-          409,
-          'This officer is already assigned.',
-          'no_change',
-        );
-      await tx
-        .update(assignments)
-        .set({ validTo: businessTime })
-        .where(eq(assignments.id, current.id));
-      await tx.insert(assignments).values({
-        institutionId,
-        officerId: officer.id,
-        validFrom: businessTime,
-        validTo: null,
-        reason,
-      });
-      await this.events.audit(
-        tx,
-        businessTime,
-        user,
-        'assignment.change',
-        { type: 'assignment', id: institutionId },
-        `${institutionId} → ${officer.displayName}: ${reason}`,
-      );
-      await this.events.notify(
-        tx,
-        businessTime,
-        await nextId(tx, `${institutionId}:assigned`),
-        'assignment.changed',
-        [officer],
-        {
-          title: `${institutionId} assigned to you`,
-          body: 'You are now the reviewing officer for this institution. Earlier reviewers remain in the history.',
-          link: `/officer/institutions/${institutionId}`,
-        },
-      );
-      await this.events.notify(
-        tx,
-        businessTime,
-        await nextId(tx, `${institutionId}:assigned-inst`),
-        'assignment.changed',
-        await institutionUsers(tx, institutionId),
-        {
-          title: 'Your reviewing officer has changed',
-          body: `${officer.displayName} now reviews your reports.`,
-          link: null,
-        },
-      );
-      return { ok: true };
-    });
   }
 }

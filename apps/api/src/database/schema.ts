@@ -97,6 +97,39 @@ export const assignments = pgTable('assignments', {
   validFrom: instant().notNull(),
   validTo: instant(),
   reason: text(),
+  /** Temporary cover: returns to `returnToOfficerId` at the end of `until` (PRD §5.2). */
+  cover: jsonb().$type<{
+    until: string;
+    returnToOfficerId: string;
+    setById: string;
+  }>(),
+  /** What the previous officer or administrator left for the new officer. */
+  handoverNote: text(),
+});
+
+/**
+ * A supervisor's reassignment suggestion, or an officer's conflict-of-interest declaration.
+ * Only the administrator applies or dismisses it (PRD §5.2).
+ */
+export const suggestions = pgTable('suggestions', {
+  id: text().primaryKey(),
+  seq: serial(),
+  kind: text().$type<'suggestion' | 'conflict_of_interest'>().notNull(),
+  requestedByRole: text().$type<'supervisor' | 'officer'>().notNull(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  currentOfficerId: text(),
+  suggestedOfficerId: text(),
+  reason: text().notNull(),
+  suggestedById: text()
+    .notNull()
+    .references(() => users.id),
+  at: instant().notNull(),
+  status: text().$type<'open' | 'applied' | 'dismissed'>().notNull(),
+  resolvedById: text(),
+  resolvedAt: instant(),
+  resolutionNote: text(),
 });
 
 /** Supervisors are assigned institutions as officers are; history is kept (PRD §5.2). */

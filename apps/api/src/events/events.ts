@@ -10,6 +10,7 @@ import {
   deliveries,
   emailSink,
   notifications,
+  supervisions,
   systemState,
   users,
 } from '../database/schema';
@@ -207,6 +208,22 @@ export function institutionUsers(db: Db, institutionId: string) {
       ),
     )
     .orderBy(users.id);
+}
+
+/** The institution's current supervisor, as a recipient list. */
+export async function assignedSupervisors(db: Db, institutionId: string) {
+  const rows = await db
+    .select({ user: users })
+    .from(users)
+    .innerJoin(supervisions, eq(supervisions.supervisorId, users.id))
+    .where(
+      and(
+        eq(users.active, true),
+        eq(supervisions.institutionId, institutionId),
+        isNull(supervisions.validTo),
+      ),
+    );
+  return rows.map((row) => row.user);
 }
 
 export async function assignedOfficers(db: Db, institutionId: string) {

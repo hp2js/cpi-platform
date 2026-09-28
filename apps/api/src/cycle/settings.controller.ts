@@ -44,6 +44,7 @@ import {
 } from '../database/state';
 import { initialInstitutionTypes } from '@cpi/contracts/fixtures';
 import { accountStatus, newLink } from '../auth/passwords';
+import { supervisedInstitutionIds } from '../auth/scope';
 import { CONFIG, type AppConfig } from '../config';
 import {
   Events,
@@ -774,6 +775,23 @@ export class SettingsController {
             409,
             'At least one administrator must stay active.',
             'last_administrator',
+          );
+        // Oversight must not silently lapse: move a supervisor's institutions first.
+        const supervised = await supervisedInstitutionIds(tx, user.id);
+        if (user.role === 'supervisor' && supervised.length)
+          throw new ApiError(
+            409,
+            `Assign another supervisor to ${supervised.length > 4 ? `${supervised.length} institutions` : supervised.join(', ')} before deactivating ${user.displayName}.`,
+            'supervisor_has_institutions',
+          );
+        if (
+          user.role === 'supervisor' &&
+          (await usersWithRole(tx, 'supervisor')).length === 1
+        )
+          throw new ApiError(
+            409,
+            'At least one supervisor must stay active.',
+            'last_supervisor',
           );
       }
       await tx

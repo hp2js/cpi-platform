@@ -16,6 +16,7 @@ import { PlanningController } from './planning/planning.controller';
 import { ReportingController } from './reporting/reporting.controller';
 import { ReviewController } from './review/review.controller';
 import { SimulationController } from './simulation/simulation.controller';
+import { SupervisionController } from './supervision/supervision.controller';
 import { HealthController } from './health.controller';
 import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
@@ -37,6 +38,7 @@ import { Infrastructure } from './infrastructure';
     AnnualController,
     EventsController,
     SimulationController,
+    SupervisionController,
   ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },

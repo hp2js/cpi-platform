@@ -56,11 +56,6 @@ function sendCsv(response: Response, name: string, body: string) {
     .send(body);
 }
 
-const allInstitutions = async (db: Db) =>
-  (await db.query.institutions.findMany({ columns: { id: true } })).map(
-    (row) => row.id,
-  );
-
 /** Annual evaluation, publication and corrections (PRD §7.4, §7.6, FR12–FR13, FR16). */
 @Controller()
 export class AnnualController {
@@ -388,22 +383,22 @@ export class AnnualController {
 
   @Get('annual/report')
   @Roles('supervisor', 'administrator')
-  async report(): Promise<ConsolidatedReport> {
-    return consolidated(
-      await loadAnnualData(this.db, await allInstitutions(this.db)),
-    );
+  async report(@CurrentUser() user: User): Promise<ConsolidatedReport> {
+    const scope = await readableInstitutionIds(this.db, user);
+    return consolidated(await loadAnnualData(this.db, scope), scope);
   }
 
   @Get('annual/report.csv')
   @Roles('supervisor', 'administrator')
-  async reportCsv(@Res() response: Response) {
-    const data = await loadAnnualData(this.db, await allInstitutions(this.db));
+  async reportCsv(@CurrentUser() user: User, @Res() response: Response) {
+    const scope = await readableInstitutionIds(this.db, user);
+    const data = await loadAnnualData(this.db, scope);
     sendCsv(
       response,
       'cpi-consolidated-results.csv',
       toCsv(
         exportHeader,
-        exportRows(data.cycle.id, consolidated(data).released),
+        exportRows(data.cycle.id, consolidated(data, scope).released),
       ),
     );
   }
@@ -549,10 +544,15 @@ export class AnnualController {
     @Query() query: Record<string, string | undefined>,
   ): Promise<Oversight> {
     const readable = await readableInstitutionIds(this.db, user);
-    return oversight(await loadAnnualData(this.db, readable), readable, {
-      periodId: query.periodId || null,
-      institutionId: query.institutionId || null,
-      officerId: query.officerId || null,
-    });
+    return oversight(
+      await loadAnnualData(this.db, readable),
+      readable,
+      user.role === 'administrator',
+      {
+        periodId: query.periodId || null,
+        institutionId: query.institutionId || null,
+        officerId: query.officerId || null,
+      },
+    );
   }
 }
