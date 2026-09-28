@@ -19,13 +19,15 @@ import {
   institutionUpdateSchema,
   profileUpdateSchema,
   userCreateSchema,
+  userRoleChangeSchema,
   userStatusSchema,
+  userUpdateSchema,
   type CalendarSettings,
   type People,
   type ProfilesState,
   type ScoringProfile,
 } from '@cpi/contracts';
-import { CurrentUser, Roles, type User } from '../auth/sessions';
+import { CurrentUser, Roles, Sessions, type User } from '../auth/sessions';
 import { nextId, write, type Db, type Tx } from '../database/db';
 import {
   assignments,
@@ -48,7 +50,10 @@ import {
 } from '../database/state';
 import { sendInvitation } from '../auth/invitations';
 import { accountStatus } from '../auth/passwords';
-import { supervisedInstitutionIds } from '../auth/scope';
+import {
+  assignedInstitutionIds,
+  supervisedInstitutionIds,
+} from '../auth/scope';
 import { CONFIG, type AppConfig } from '../config';
 import {
   Events,
@@ -287,6 +292,7 @@ export class SettingsController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    private readonly sessions: Sessions,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -741,6 +747,155 @@ export class SettingsController {
       );
       return people(tx);
     });
+  }
+
+  @Put('users/:userId')
+  @Roles('administrator')
+  updateUser(
+    @CurrentUser() admin: User,
+    @Param('userId') id: string,
+    @Body() body: unknown,
+  ) {
+    return write(this.db, async (tx, businessTime) => {
+      const input = parse(userUpdateSchema, body);
+      const [user] = await tx.select().from(users).where(eq(users.id, id));
+      if (!user) throw notFound();
+      await tx
+        .update(users)
+        .set({ displayName: input.displayName, jobTitle: input.jobTitle })
+        .where(eq(users.id, id));
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'user.update',
+        { type: 'user', id },
+        user.displayName === input.displayName
+          ? 'Job title updated'
+          : `Renamed from ${user.displayName}`,
+      );
+      return people(tx);
+    });
+  }
+
+  /**
+   * Changes an account's role, keeping one identity and its history. Scope must be handed over
+   * first; the person's sessions end so the new permissions apply at the next sign-in.
+   */
+  @Put('users/:userId/role')
+  @Roles('administrator')
+  async changeRole(
+    @CurrentUser() admin: User,
+    @Param('userId') id: string,
+    @Body() body: unknown,
+  ) {
+    await write(this.db, async (tx, businessTime) => {
+      const parsed = userRoleChangeSchema.safeParse(body);
+      if (!parsed.success)
+        throw new ApiError(
+          422,
+          'Choose a role and give a reason of at least 10 characters.',
+          'invalid_request',
+        );
+      const [user] = await tx.select().from(users).where(eq(users.id, id));
+      if (!user) throw notFound();
+      const { role, institutionId, reason } = parsed.data;
+      if (user.id === admin.id)
+        throw new ApiError(
+          409,
+          'You cannot change your own role.',
+          'self_role_change',
+        );
+      if (
+        user.role === role &&
+        (role !== 'institution' || user.institutionId === institutionId)
+      )
+        throw new ApiError(409, 'That is already their role.', 'no_change');
+      if (role === 'institution') {
+        const [institution] = institutionId
+          ? await tx
+              .select({ id: institutions.id })
+              .from(institutions)
+              .where(eq(institutions.id, institutionId))
+          : [];
+        if (!institution)
+          throw new ApiError(
+            422,
+            'Choose the institution they will report for.',
+            'invalid_request',
+            { institutionId: 'Choose the institution they will report for.' },
+          );
+      }
+      const listed = (ids: string[]) =>
+        ids.length > 4 ? `${ids.length} institutions` : ids.join(', ');
+      const assigned = await assignedInstitutionIds(tx, user.id);
+      if (user.role === 'officer' && assigned.length)
+        throw new ApiError(
+          409,
+          `Reassign ${listed(assigned)} before changing ${user.displayName}’s role.`,
+          'officer_has_assignments',
+        );
+      const supervised = await supervisedInstitutionIds(tx, user.id);
+      if (user.role === 'supervisor' && supervised.length)
+        throw new ApiError(
+          409,
+          `Assign another supervisor to ${listed(supervised)} before changing ${user.displayName}’s role.`,
+          'supervisor_has_institutions',
+        );
+      for (const guarded of ['administrator', 'supervisor'] as const)
+        if (
+          user.role === guarded &&
+          user.active &&
+          (await usersWithRole(tx, guarded)).length === 1
+        )
+          throw new ApiError(
+            409,
+            `At least one ${guarded} must stay active.`,
+            `last_${guarded}`,
+          );
+      if (
+        user.role === 'institution' &&
+        user.institutionId &&
+        accountStatus(user) === 'active'
+      ) {
+        const colleagues = await tx
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.role, 'institution'),
+              eq(users.institutionId, user.institutionId),
+            ),
+          );
+        if (
+          colleagues.filter((person) => accountStatus(person) === 'active')
+            .length === 1
+        )
+          throw new ApiError(
+            409,
+            `${user.displayName} is the only active focal person for ${user.institutionId}. Set up another before changing their role.`,
+            'last_focal_person',
+          );
+      }
+      await tx
+        .update(users)
+        .set({
+          role,
+          institutionId: role === 'institution' ? institutionId : null,
+        })
+        .where(eq(users.id, id));
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'user.role_change',
+        { type: 'user', id },
+        `${user.displayName}: ${user.role} → ${role}${role === 'institution' ? ` (${institutionId})` : ''}. ${reason}`,
+      );
+    });
+    // New permissions apply from the next sign-in.
+    await this.sessions.endAllFor(id);
+    return { ok: true };
   }
 
   @Post('users/:userId/status')

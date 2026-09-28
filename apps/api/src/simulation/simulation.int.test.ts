@@ -1,7 +1,7 @@
 import { count } from 'drizzle-orm';
 import type {
   AnnualOverview,
-  AuditEvent,
+  AuditPage,
   CalendarSettings,
   Delivery,
   Inbox,
@@ -302,7 +302,7 @@ describe.skipIf(!integration)(
       ).toBe('delivered');
       // The submission itself was never undone by email failure (FR07).
       expect(await admin.json<unknown[]>('/admin/email-sink')).toHaveLength(1);
-      const events = await admin.json<AuditEvent[]>('/audit');
+      const { events } = await admin.json<AuditPage>('/audit?pageSize=200');
       expect(events.map((event) => event.action)).toEqual(
         expect.arrayContaining([
           'form.publish',

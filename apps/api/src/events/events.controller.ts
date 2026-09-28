@@ -1,14 +1,9 @@
 import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { and, desc, eq, isNull } from 'drizzle-orm';
-import type { AuditEvent, Delivery, Inbox } from '@cpi/contracts';
+import type { Delivery, Inbox } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { write } from '../database/db';
-import {
-  auditEvents,
-  deliveries,
-  emailSink,
-  notifications,
-} from '../database/schema';
+import { deliveries, emailSink, notifications } from '../database/schema';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { Events, attemptDelivery } from './events';
@@ -151,26 +146,5 @@ export class EventsController {
       })
       .from(emailSink)
       .orderBy(desc(emailSink.seq));
-  }
-
-  @Get('audit')
-  @Roles('administrator')
-  audit(@Query('objectType') objectType?: string): Promise<AuditEvent[]> {
-    return this.db
-      .select({
-        id: auditEvents.id,
-        actorName: auditEvents.actorName,
-        actorRole: auditEvents.actorRole,
-        action: auditEvents.action,
-        objectType: auditEvents.objectType,
-        objectId: auditEvents.objectId,
-        objectVersion: auditEvents.objectVersion,
-        summary: auditEvents.summary,
-        businessTime: auditEvents.businessTime,
-        actualTime: auditEvents.actualTime,
-      })
-      .from(auditEvents)
-      .where(objectType ? eq(auditEvents.objectType, objectType) : undefined)
-      .orderBy(desc(auditEvents.seq));
   }
 }

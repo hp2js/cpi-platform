@@ -1,6 +1,7 @@
 import { Module, type INestApplication } from '@nestjs/common';
 import helmet from 'helmet';
 import { APP_GUARD } from '@nestjs/core';
+import { AdminController } from './admin/admin.controller';
 import { AnnualController } from './annual/annual.controller';
 import { AccountController } from './auth/account.controller';
 import { SessionController } from './auth/session.controller';
@@ -39,6 +40,7 @@ import { Infrastructure } from './infrastructure';
     EventsController,
     SimulationController,
     SupervisionController,
+    AdminController,
   ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },

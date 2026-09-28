@@ -49,6 +49,8 @@ export class Sessions {
       'EX',
       this.config.SESSION_TTL_SECONDS,
     );
+    // An index of the user's sessions, so a role change can end them all.
+    await this.infrastructure.redis.sadd(`user-sessions:${userId}`, id);
     response.cookie(COOKIE, id, {
       httpOnly: true,
       sameSite: 'lax',
@@ -62,6 +64,13 @@ export class Sessions {
     const id = sessionIdFrom(request);
     if (id) await this.infrastructure.redis.del(key(id));
     response.clearCookie(COOKIE, { path: '/api' });
+  }
+
+  /** Ends every session of a user; their next request gets 401 `session_expired`. */
+  async endAllFor(userId: string) {
+    const redis = this.infrastructure.redis;
+    const ids = await redis.smembers(`user-sessions:${userId}`);
+    await redis.del(`user-sessions:${userId}`, ...ids.map(key));
   }
 
   /* Sign-in throttling per email, whether or not an account exists (PRD §13.1). */
