@@ -1,10 +1,10 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import type { Database } from '../database/fixtures';
+import type { Db } from '../database/db';
 import { assignments, institutions } from '../database/schema';
 import type { User } from './sessions';
 
 /** Current assignment only: reassignment removes access immediately (PRD §5.2). */
-export async function assignedInstitutionIds(db: Database, officerId: string) {
+export async function assignedInstitutionIds(db: Db, officerId: string) {
   const rows = await db
     .select({ id: assignments.institutionId })
     .from(assignments)
@@ -16,7 +16,7 @@ export async function assignedInstitutionIds(db: Database, officerId: string) {
 
 /** Institutions whose records the caller may read (the blueprint's access-when rules). */
 export async function readableInstitutionIds(
-  db: Database,
+  db: Db,
   user: User,
 ): Promise<string[]> {
   switch (user.role) {
@@ -33,7 +33,7 @@ export async function readableInstitutionIds(
 }
 
 export async function canReadInstitution(
-  db: Database,
+  db: Db,
   user: User,
   institutionId: string,
 ) {

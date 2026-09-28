@@ -11,6 +11,8 @@ const schema = z.object({
   REDIS_URL: z
     .url()
     .refine((value) => /^rediss?:/.test(value), 'Use a Redis URL'),
+  /** Where email links point (the web portal's origin). */
+  PORTAL_URL: z.url().default('http://localhost:5180'),
   /** Idle session lifetime; each authenticated request extends it. */
   SESSION_TTL_SECONDS: z.coerce
     .number()

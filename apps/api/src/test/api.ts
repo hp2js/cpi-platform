@@ -129,6 +129,10 @@ export class Client {
     });
   }
 
+  put(path: string, body: unknown) {
+    return this.request(path, { method: 'PUT', body: JSON.stringify(body) });
+  }
+
   async signIn(accountId: string) {
     const result = await this.post('/session', { accountId });
     if (result.status !== 200)

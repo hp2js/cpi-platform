@@ -5,12 +5,11 @@ import { canReadInstitution, readableInstitutionIds } from '../auth/scope';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import {
   assignments,
-  cycles,
   institutions,
   obligations,
-  periods,
   users,
 } from '../database/schema';
+import { loadCycle } from '../database/state';
 import { notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { toObligations } from './obligations';
@@ -31,29 +30,8 @@ export class DirectoryController {
   }
 
   @Get('cycles/current')
-  async cycle(): Promise<Cycle> {
-    const [cycle] = await this.db.select().from(cycles);
-    if (!cycle) throw notFound();
-    const rows = await this.db
-      .select()
-      .from(periods)
-      .where(eq(periods.cycleId, cycle.id))
-      .orderBy(asc(periods.quarter));
-    return {
-      id: cycle.id,
-      label: cycle.label,
-      timezone: cycle.timezone,
-      foundationDeadline: cycle.foundationDeadline,
-      evaluationCutoff: cycle.evaluationCutoff,
-      periods: rows.map((period) => ({
-        id: period.id,
-        quarter: period.quarter,
-        label: period.label,
-        startsOn: period.startsOn,
-        endsOn: period.endsOn,
-        submissionDeadline: period.submissionDeadline,
-      })),
-    };
+  cycle(): Promise<Cycle> {
+    return loadCycle(this.db);
   }
 
   @Get('institutions')

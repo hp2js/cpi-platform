@@ -1,6 +1,6 @@
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import { daysLate, type Obligation, type ObligationFlag } from '@cpi/contracts';
-import type { Database } from '../database/fixtures';
+import type { Db } from '../database/db';
 import { clarifications, obligations, periods } from '../database/schema';
 import { currentState } from '../database/state';
 
@@ -8,7 +8,7 @@ type ObligationRow = typeof obligations.$inferSelect;
 
 /** Flags are derived from business time on the server, never in the browser (FR02). */
 export async function toObligations(
-  db: Database,
+  db: Db,
   rows: ObligationRow[],
 ): Promise<Obligation[]> {
   if (rows.length === 0) return [];

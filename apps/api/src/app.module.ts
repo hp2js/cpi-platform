@@ -4,7 +4,10 @@ import { APP_GUARD } from '@nestjs/core';
 import { SessionController } from './auth/session.controller';
 import { AuthGuard, Sessions } from './auth/sessions';
 import { CONFIG, loadConfig } from './config';
+import { FormsController } from './cycle/forms.controller';
+import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
+import { Events } from './events/events';
 import { HealthController } from './health.controller';
 import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
@@ -12,11 +15,18 @@ import { ApiExceptionFilter } from './http/errors.filter';
 import { Infrastructure } from './infrastructure';
 
 @Module({
-  controllers: [HealthController, SessionController, DirectoryController],
+  controllers: [
+    HealthController,
+    SessionController,
+    DirectoryController,
+    FormsController,
+    SettingsController,
+  ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },
     Infrastructure,
     Sessions,
+    Events,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

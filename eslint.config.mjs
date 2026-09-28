@@ -37,6 +37,13 @@ export default tseslint.config(
       'e2e/**/*.ts',
     ],
     languageOptions: { globals: globals.node },
+    rules: {
+      // `const { internal, ...rest } = row` omits a column from a response.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { ignoreRestSiblings: true },
+      ],
+    },
   },
   {
     files: ['apps/web/src/**/*.{ts,tsx}'],

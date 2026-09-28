@@ -8,6 +8,13 @@
       "when": 1790569811778,
       "tag": "0000_married_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790571808692,
+      "tag": "0001_next_lady_vermin",
+      "breakpoints": true
     }
   ]
 }

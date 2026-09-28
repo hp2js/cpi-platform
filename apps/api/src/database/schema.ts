@@ -86,6 +86,8 @@ export const assignments = pgTable('assignments', {
 
 export const scoringProfiles = pgTable('scoring_profiles', {
   id: text().primaryKey(),
+  /** Library order: seeded profiles first, then copies as they are made. */
+  position: serial(),
   name: text().notNull(),
   version: integer().notNull(),
   status: text().$type<'draft' | 'approved' | 'reference'>().notNull(),

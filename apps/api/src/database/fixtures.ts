@@ -1,6 +1,5 @@
 import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   cycle,
   initialAssignments,
@@ -13,9 +12,8 @@ import {
   seedFoundations,
   users,
 } from '@cpi/contracts/fixtures';
+import type { Database } from './db';
 import * as schema from './schema';
-
-export type Database = NodePgDatabase<typeof schema>;
 
 const tables = Object.values(schema).filter((value) => is(value, PgTable));
 
@@ -29,7 +27,10 @@ export async function loadFixtures(
 ) {
   await db.transaction(async (tx) => {
     const keptProfiles = options.keepProfiles
-      ? await tx.select().from(schema.scoringProfiles)
+      ? await tx
+          .select()
+          .from(schema.scoringProfiles)
+          .orderBy(schema.scoringProfiles.position)
       : [];
     await tx.execute(
       sql.raw(
@@ -58,7 +59,11 @@ export async function loadFixtures(
 
     await tx
       .insert(schema.scoringProfiles)
-      .values(keptProfiles.length ? keptProfiles : initialProfiles);
+      .values(
+        keptProfiles.length
+          ? keptProfiles.map(({ position, ...profile }) => profile)
+          : initialProfiles,
+      );
     await tx.insert(schema.cycles).values({
       id: cycle.id,
       label: cycle.label,
