@@ -197,12 +197,13 @@ export function AuditPage() {
         empty="No events match these filters."
       >
         {(result) => (
-          <div className="grid grid-cols-1 gap-3">
+          // One column capped at the page width: the wide table scrolls inside its container.
+          <div className="grid min-w-0 grid-cols-1 gap-3">
             <p role="status" className="text-sm text-muted-foreground">
               {result.total} {result.total === 1 ? 'event' : 'events'}, newest
               first
             </p>
-            <div className="rounded-lg border bg-card">
+            <div className="min-w-0 rounded-lg border bg-card">
               <Table className="min-w-[60rem]">
                 <TableCaption className="sr-only">
                   Audit events, newest first

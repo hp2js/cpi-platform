@@ -1,7 +1,7 @@
 {
   "name": "cpi-platform",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "packageManager": "pnpm@10.32.0",
   "engines": {
     "node": ">=24.21.0 <25",
@@ -29,17 +29,21 @@
     "test:smoke": "node scripts/smoke.mjs",
     "docker:dev": "docker compose up --build --watch",
     "test:e2e": "playwright test",
-    "test:e2e:prod": "CPI_PRODUCTION=true playwright test"
+    "test:e2e:prod": "CPI_PRODUCTION=true playwright test",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run --ci"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
+    "@release-it/conventional-changelog": "12.0.2",
     "@types/node": "24.13.6",
     "eslint": "10.11.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.12.0",
     "prettier": "3.9.9",
+    "release-it": "21.1.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.1"
   }

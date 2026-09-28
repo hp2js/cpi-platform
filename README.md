@@ -92,6 +92,19 @@ This builds the production images and runs them hardened, on the same local port
 
 This is a **local check of the production images**, not a deployment configuration. Secrets management, TLS, access control and backups belong to deployment.
 
+## Releasing
+
+Releases use [release-it](https://github.com/release-it/release-it) with the conventional-changelog plugin (configuration in `.release-it.json`). From an up-to-date, clean `main`:
+
+```sh
+pnpm release:dry                                  # preview the version and changelog; changes nothing
+GITHUB_TOKEN=$(gh auth token) pnpm release        # run for real
+```
+
+A release runs `pnpm format:check` and `pnpm check` first, then picks the next version from the commit messages since the last `v*` tag: `feat` is a minor bump and `fix` or `perf` a patch (a breaking change is a major bump from 1.0.0). It prepends the entry to `CHANGELOG.md`, bumps the root `package.json`, commits `chore(release): vX.Y.Z`, tags `vX.Y.Z`, pushes, and creates the GitHub release. `docs` and `build` commits are listed but do not bump the version on their own; `chore`, `refactor`, `test`, `ci` and `style` are left out. Nothing is published to npm.
+
+The `main` branch is protected, so a release needs rights to push to it directly, or can be cut from a release pull request.
+
 ## Structure
 
 ```text
