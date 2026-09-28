@@ -11,6 +11,11 @@ const schema = z.object({
   REDIS_URL: z
     .url()
     .refine((value) => /^rediss?:/.test(value), 'Use a Redis URL'),
+  /**
+   * Demonstration deployment: lists the fictional accounts for one-click sign-in. Turn off
+   * (DEMO_MODE=false) anywhere real people sign in.
+   */
+  DEMO_MODE: z.stringbool().default(true),
   /** Where email links point (the web portal's origin). */
   PORTAL_URL: z.url().default('http://localhost:5180'),
   /** Idle session lifetime; each authenticated request extends it. */

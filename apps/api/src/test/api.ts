@@ -39,7 +39,7 @@ function freePort() {
   });
 }
 
-export async function startApi() {
+export async function startApi(env: Record<string, string> = {}) {
   const urls = testUrls();
   const admin = new Pool({ connectionString: urls.admin });
   try {
@@ -64,6 +64,7 @@ export async function startApi() {
       API_PORT: String(port),
       DATABASE_URL: urls.database,
       REDIS_URL: urls.redis,
+      ...env,
     },
     // API_LOG=1 shows the server's JSON log (for example a 500's cause).
     stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],

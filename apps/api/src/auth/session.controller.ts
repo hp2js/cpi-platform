@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   Post,
   Req,
   Res,
@@ -12,12 +13,14 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import {
   signInRequestSchema,
+  type AuthConfig,
   type DemoAccount,
   type Session,
 } from '@cpi/contracts';
 import { currentState } from '../database/state';
 import { institutions, users } from '../database/schema';
-import { ApiError } from '../http/api-error';
+import { CONFIG, type AppConfig } from '../config';
+import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { CurrentUser, Public, Sessions, type User } from './sessions';
 
@@ -26,12 +29,35 @@ export class SessionController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly sessions: Sessions,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
-  /** Demo-only account picker; must not ship with real authentication (HP2-13). */
+  /** How people can sign in on this deployment. */
+  @Public()
+  @Get('auth/config')
+  authConfig(): AuthConfig {
+    return {
+      // ponytail: password sign-in, invitations and resets are the next step (HP2-13).
+      passwordSignIn: false,
+      demoAccounts: this.config.DEMO_MODE,
+      demoPassword: null,
+      providers: [
+        {
+          id: 'ecitizen',
+          name: 'eCitizen',
+          status: 'planned',
+          description:
+            'Sign-in through the government eCitizen service is a planned option. It would use OpenID Connect: eCitizen confirms who the person is, and this platform still decides their role and institution. It is not connected in this demonstration, and no agreement with eCitizen is implied.',
+        },
+      ],
+    };
+  }
+
+  /** Demo mode only: the fictional accounts for one-click sign-in. */
   @Public()
   @Get('demo/accounts')
   async accounts(): Promise<DemoAccount[]> {
+    if (!this.config.DEMO_MODE) throw notFound();
     const rows = await this.infrastructure.database
       .select({ user: users, institutionName: institutions.name })
       .from(users)
@@ -60,6 +86,12 @@ export class SessionController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const parsed = signInRequestSchema.safeParse(body);
+    if (parsed.success && 'accountId' in parsed.data && !this.config.DEMO_MODE)
+      throw new ApiError(
+        422,
+        'Demo sign-in is not available on this deployment.',
+        'demo_disabled',
+      );
     // ponytail: demo sign-in only; password sign-in, invitations and resets are a follow-up.
     if (parsed.success && !('accountId' in parsed.data))
       throw new ApiError(

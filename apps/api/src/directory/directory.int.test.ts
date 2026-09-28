@@ -1,5 +1,7 @@
 import type {
   Assignment,
+  AuthConfig,
+  DemoAccount,
   Institution,
   Obligation,
   Session,
@@ -121,4 +123,47 @@ describe.skipIf(!integration)('session and directory', () => {
       ['not_yet_due'],
     ]);
   });
+});
+
+describe.skipIf(!integration)('sign-in configuration', () => {
+  it('describes demo sign-in and turns it off outside demo mode', async () => {
+    const demo = await startApi();
+    try {
+      const client = demo.client();
+      expect(await client.json<AuthConfig>('/auth/config')).toMatchObject({
+        passwordSignIn: false,
+        demoAccounts: true,
+        demoPassword: null,
+        providers: [{ id: 'ecitizen', status: 'planned' }],
+      });
+      expect(
+        (await client.json<DemoAccount[]>('/demo/accounts')).length,
+      ).toBeGreaterThan(0);
+      expect(
+        await client.post('/session', {
+          email: 'focal.demo-001@example.invalid',
+          password: 'Demo-Password-2026',
+        }),
+      ).toMatchObject({
+        status: 422,
+        body: { code: 'password_sign_in_unavailable' },
+      });
+    } finally {
+      await demo.stop();
+    }
+
+    const real = await startApi({ DEMO_MODE: 'false' });
+    try {
+      const client = real.client();
+      expect(await client.json<AuthConfig>('/auth/config')).toMatchObject({
+        demoAccounts: false,
+      });
+      expect((await client.request('/demo/accounts')).status).toBe(404);
+      expect(
+        await client.post('/session', { accountId: 'administrator' }),
+      ).toMatchObject({ status: 422, body: { code: 'demo_disabled' } });
+    } finally {
+      await real.stop();
+    }
+  }, 60_000);
 });
