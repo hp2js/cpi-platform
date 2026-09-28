@@ -133,11 +133,16 @@ export async function passSuitability(submissionId: string) {
 
 /** The single-use link most recently emailed to an address (from the demo email sink). */
 export function emailedLink(email: string) {
-  const deliveries = getDb().deliveries.filter(
-    (delivery) => delivery.recipientEmail === email,
-  );
-  const body = deliveries.at(-1)?.body ?? '';
-  const token = /set-password\?token=([\w-]+)/.exec(body)?.[1];
+  const pattern = /set-password\?token=([\w-]+)/;
+  // Other notices may arrive after the link, so look for the latest email that carries one.
+  const body =
+    getDb()
+      .deliveries.filter(
+        (delivery) =>
+          delivery.recipientEmail === email && pattern.test(delivery.body),
+      )
+      .at(-1)?.body ?? '';
+  const token = pattern.exec(body)?.[1];
   if (!token) throw new Error(`No link was emailed to ${email}`);
   return token;
 }

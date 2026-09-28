@@ -23,6 +23,7 @@ import {
   obligationsQuery,
 } from '@/features/directory/queries';
 import { MetricChart } from '@/features/oversight/metric-chart';
+import { Trends } from '@/features/oversight/trends';
 import {
   oversightQuery,
   type OversightSearch,
@@ -225,11 +226,16 @@ export function SupervisorHomePage() {
       <PageHeader
         eyebrow={cycle.data?.label}
         title="Oversight overview"
-        description="Reporting and review status for every institution and quarter. Pending work is shown as pending, never as zero."
+        description="Reporting and review status for the institutions assigned to you, by quarter. Pending work is shown as pending, never as zero."
       />
       <Filters search={search} />
       <QueryView query={oversight} label="oversight metrics">
-        {(data) => <Metrics data={data} />}
+        {(data) => (
+          <>
+            <Metrics data={data} />
+            <Trends data={data} />
+          </>
+        )}
       </QueryView>
       <section aria-labelledby="coverage-heading" className="grid gap-3">
         <h2 id="coverage-heading" className="text-lg font-semibold">
@@ -242,7 +248,8 @@ export function SupervisorHomePage() {
                 <QueryView query={obligations} label="reporting obligations">
                   {(obligationList) => (
                     <ObligationMatrix
-                      caption="All institutions by quarter, with assigned officer"
+                      linkToInstitution="supervisor"
+                      caption="Your institutions by quarter, with assigned officer"
                       cycle={{
                         ...cycleData,
                         periods: cycleData.periods.filter(

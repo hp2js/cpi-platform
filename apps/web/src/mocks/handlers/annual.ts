@@ -69,14 +69,20 @@ function overview(institutionIds: string[]): AnnualOverview {
   };
 }
 
-function consolidated(): ConsolidatedReport {
+/** Released and unreleased results within the caller's scope (a supervisor's institutions). */
+function consolidated(scope: string[]): ConsolidatedReport {
   const db = getDb();
   const released = db.publications
-    .filter((publication) => publication.supersededBy === null)
+    .filter(
+      (publication) =>
+        publication.supersededBy === null &&
+        scope.includes(publication.institutionId),
+    )
     .map(toPublished);
   const unreleased = db.institutions
     .filter(
       (institution) =>
+        scope.includes(institution.id) &&
         !released.some((result) => result.institutionId === institution.id),
     )
     .map((institution) => {
@@ -379,7 +385,7 @@ export const annualHandlers = [
           body: 'The extension lets evidence and review finish. It does not change other deadlines or lateness.',
           link: (recipient) =>
             recipient.role === 'institution'
-              ? '/institution/clarifications'
+              ? '/institution/reports'
               : `/officer/institutions/${institutionId}`,
         },
       );
@@ -464,15 +470,18 @@ export const annualHandlers = [
 
   http.get('/api/annual/report', async () => {
     await networkDelay();
-    requireRole('supervisor', 'administrator');
-    return HttpResponse.json(consolidated());
+    const user = requireRole('supervisor', 'administrator');
+    return HttpResponse.json(consolidated(readableInstitutionIds(user)));
   }),
   http.get('/api/annual/report.csv', async () => {
     await networkDelay();
-    requireRole('supervisor', 'administrator');
+    const user = requireRole('supervisor', 'administrator');
     return csvResponse(
       'cpi-consolidated-results.csv',
-      toCsv(exportHeader, exportRows(consolidated().released)),
+      toCsv(
+        exportHeader,
+        exportRows(consolidated(readableInstitutionIds(user)).released),
+      ),
     );
   }),
 
@@ -490,7 +499,7 @@ export const annualHandlers = [
       released: results.length > 0,
       message: results.length
         ? 'Your published results are shown below.'
-        : 'Results are published after annual evaluation. Until then you see the status of each report and any feedback.',
+        : 'Results are published after annual evaluation. Until then you see the status of each report; your reviewing officer contacts you through clarifications if anything needs fixing.',
       results,
     });
   }),

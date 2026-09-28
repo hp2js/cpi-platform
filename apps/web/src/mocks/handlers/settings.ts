@@ -18,12 +18,14 @@ import { commit, getDb, nextId, type MockDb } from '../db';
 import type { MockUser } from '../seed/cast';
 import type { MockProfile } from '../seed/profiles';
 import { accountStatus, prepareLink, sendLink } from '../services/auth';
+import { supervisedInstitutionIds, supervisorIdOf } from '../services/scope';
 import { skipPastBoundaries } from '../services/clock';
 import {
   accountingOfficerProblems,
   createInstitution,
   fromCreateRequest,
   institutionProblems,
+  activeFocalPersons,
   previewImport,
   type NewInstitution,
 } from '../services/institutions';
@@ -219,12 +221,16 @@ function people(): People {
         user.authLink?.purpose === 'invitation'
           ? user.authLink.expiresAt
           : null,
-      assignedInstitutionIds: db.assignments
-        .filter(
-          (assignment) =>
-            assignment.officerId === user.id && assignment.validTo === null,
-        )
-        .map((assignment) => assignment.institutionId),
+      assignedInstitutionIds:
+        user.role === 'supervisor'
+          ? supervisedInstitutionIds(user.id)
+          : db.assignments
+              .filter(
+                (assignment) =>
+                  assignment.officerId === user.id &&
+                  assignment.validTo === null,
+              )
+              .map((assignment) => assignment.institutionId),
     })),
     institutions: db.institutions.map((institution) => {
       const current = db.assignments.find(
@@ -233,6 +239,8 @@ function people(): People {
           assignment.validTo === null,
       );
       const officer = db.users.find((user) => user.id === current?.officerId);
+      const supervisorId = supervisorIdOf(institution.id);
+      const supervisor = db.users.find((user) => user.id === supervisorId);
       return {
         ...institution,
         focalPersons: db.users
@@ -254,6 +262,9 @@ function people(): People {
                 : null,
           })),
         officer: officer ? { id: officer.id, name: officer.displayName } : null,
+        supervisor: supervisor
+          ? { id: supervisor.id, name: supervisor.displayName }
+          : null,
       };
     }),
     institutionTypes: db.institutionTypes.map((type) => ({
@@ -266,10 +277,10 @@ function people(): People {
 }
 
 export const settingsHandlers = [
-  /* Scoring profiles: administrators manage them; supervisors can read the active rules. */
+  /* Scoring profiles: administrators manage them; officers and supervisors read the rules in use. */
   http.get('/api/settings/profiles', async () => {
     await networkDelay();
-    requireRole('administrator', 'supervisor');
+    requireRole('administrator', 'supervisor', 'officer');
     return HttpResponse.json(profilesState());
   }),
 
@@ -452,6 +463,10 @@ export const settingsHandlers = [
     if (before.clarificationDays !== counting.clarificationDays)
       changes.push(
         `Clarification window ${before.clarificationDays} → ${counting.clarificationDays} days (new requests only)`,
+      );
+    if (before.reviewTargetDays !== counting.reviewTargetDays)
+      changes.push(
+        `Officer review target ${before.reviewTargetDays} → ${counting.reviewTargetDays} days`,
       );
     if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
       changes.push(
@@ -645,6 +660,38 @@ export const settingsHandlers = [
             409,
             `Reassign ${assigned.map((item) => item.institutionId).join(', ')} before deactivating ${user.displayName}.`,
             'officer_has_assignments',
+          );
+        // Deactivating an institution's last active focal person is allowed (someone who leaves
+        // may need locking out at once) but must be confirmed: nobody can then report.
+        if (
+          user.role === 'institution' &&
+          user.institutionId &&
+          accountStatus(user) === 'active' &&
+          activeFocalPersons(db, user.institutionId).length === 1 &&
+          !input.confirmNoFocalPerson
+        )
+          return apiError(
+            409,
+            `${user.displayName} is the only active focal person for ${user.institutionId}. Afterwards nobody can report for it or receive its clarifications until someone else is set up.`,
+            'last_focal_person',
+          );
+        // Oversight must not silently lapse: move a supervisor's institutions first.
+        const supervised = supervisedInstitutionIds(user.id);
+        if (user.role === 'supervisor' && supervised.length)
+          return apiError(
+            409,
+            `Assign another supervisor to ${supervised.length > 4 ? `${supervised.length} institutions` : supervised.join(', ')} before deactivating ${user.displayName}.`,
+            'supervisor_has_institutions',
+          );
+        if (
+          user.role === 'supervisor' &&
+          db.users.filter((u) => u.role === 'supervisor' && u.active).length ===
+            1
+        )
+          return apiError(
+            409,
+            'At least one supervisor must stay active.',
+            'last_supervisor',
           );
         if (
           user.role === 'administrator' &&

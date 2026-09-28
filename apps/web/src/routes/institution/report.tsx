@@ -1,5 +1,5 @@
 import { useUnsavedWork } from '@/features/session/unsaved-work';
-import type { EvidenceItem, ReportBundle } from '@cpi/contracts';
+import type { EvidenceItem, ReportAnswers, ReportBundle } from '@cpi/contracts';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -31,6 +31,7 @@ import {
 import { useSavedDefaultsForm } from '@/features/reporting/use-report-form';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import {
   formatCalendarDate,
   formatDateRange,
@@ -38,6 +39,76 @@ import {
 } from '@/lib/dates';
 
 const route = getRouteApi('/authed/institution/reports/$periodId');
+
+/** Whether an answer has been given; a declared-unavailable document counts as answered. */
+function isAnswered(value: unknown) {
+  if (value === null || value === undefined || value === '') return false;
+  if (typeof value === 'object' && 'evidenceIds' in value) {
+    const answer = value as { evidenceIds: string[]; unavailable: unknown };
+    return answer.evidenceIds.length > 0 || answer.unavailable !== null;
+  }
+  return true;
+}
+
+/** Jump links to each section with how much of it is answered, updated as the person types. */
+function ReportContents({
+  bundle,
+  values,
+}: {
+  bundle: ReportBundle;
+  values: ReportAnswers;
+}) {
+  const form = bundle.form!;
+  return (
+    <nav aria-label="Report sections" className="grid gap-2 text-sm">
+      <p className="font-semibold">In this report</p>
+      <ol className="grid gap-1">
+        {form.sections.map((section) => {
+          let answered = 0;
+          let total = 0;
+          for (const question of section.questions) {
+            if (question.type === 'milestone_progress') {
+              for (const milestone of bundle.baseline.milestones) {
+                total += 1;
+                if (
+                  typeof values.milestones[milestone.id]?.completed ===
+                  'boolean'
+                )
+                  answered += 1;
+              }
+            } else {
+              total += 1;
+              if (isAnswered(values.questions[question.id])) answered += 1;
+            }
+          }
+          const done = total > 0 && answered === total;
+          return (
+            <li key={section.id}>
+              <a
+                href={`#section-${section.id}`}
+                className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+              >
+                <span>{section.title}</span>
+                <span
+                  className={cn(
+                    'shrink-0 tabular-nums',
+                    done ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  {done ? (
+                    <CircleCheck className="inline size-4" aria-hidden="true" />
+                  ) : null}{' '}
+                  {answered} of {total}
+                  <span className="sr-only"> answered</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
 
 /** Links from the review checklist carry the field's id; put the cursor in that field. */
 function useFocusLinkedField() {
@@ -72,7 +143,20 @@ function ReportEditor({
   );
   const [version, setVersion] = useState(bundle.draft?.version ?? 0);
   const [savedAt, setSavedAt] = useState(bundle.draft?.savedAt ?? null);
+  const [savedBy, setSavedBy] = useState(bundle.draft?.savedBy ?? null);
+  const session = useSession();
   const dirty = useStore(reportForm.store, (state) => state.isDirty);
+  const values = useStore(reportForm.store, (state) => state.values);
+  const openClarifications = bundle.clarifications.filter(
+    (clarification) => clarification.status === 'open',
+  );
+  const questionsFor = (milestoneId: string) =>
+    openClarifications.flatMap((clarification) =>
+      clarification.items.filter((item) => item.milestoneId === milestoneId),
+    );
+  const questioned = bundle.baseline.milestones.filter(
+    (milestone) => questionsFor(milestone.id).length > 0,
+  );
   useUnsavedWork(dirty);
   useFocusLinkedField();
 
@@ -81,6 +165,7 @@ function ReportEditor({
     onSuccess: async (draft) => {
       setVersion(draft.version);
       setSavedAt(draft.savedAt);
+      setSavedBy(draft.savedBy);
       markSaved(draft.answers);
       await queryClient.invalidateQueries({ queryKey: ['obligations'] });
     },
@@ -182,6 +267,9 @@ function ReportEditor({
             <span className="inline-flex items-center gap-1.5">
               <CircleCheck className="size-4 text-primary" aria-hidden="true" />
               Draft saved {formatDateTime(savedAt)}
+              {savedBy &&
+                savedBy !== session.user.displayName &&
+                ` by ${savedBy}`}
             </span>
           ) : bundle.draft ? (
             'Draft prepared from your last submitted revision'
@@ -250,15 +338,30 @@ function ReportEditor({
         )}
       </div>
 
-      {bundle.clarifications
-        .filter((clarification) => clarification.status === 'open')
-        .map((clarification) => (
-          <ClarificationCard
-            key={clarification.id}
-            clarification={clarification}
-            audience="institution"
-          />
-        ))}
+      {openClarifications.map((clarification) => (
+        <ClarificationCard
+          key={clarification.id}
+          clarification={clarification}
+          audience="institution"
+        />
+      ))}
+      {questioned.length > 0 && (
+        <nav
+          aria-label="Questioned milestones"
+          className="flex flex-wrap items-center gap-2 text-sm"
+        >
+          <span className="font-medium">Go to:</span>
+          {questioned.map((milestone) => (
+            <a
+              key={milestone.id}
+              href={`#milestone-${milestone.id}`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              {milestone.code} {milestone.title}
+            </a>
+          ))}
+        </nav>
+      )}
       {bundle.obligation.state === 'clarification_requested' && (
         <p className="text-sm text-muted-foreground">
           This draft starts from your last submitted revision. Change only what
@@ -268,50 +371,61 @@ function ReportEditor({
         </p>
       )}
 
-      {form.sections.map((section) => (
-        <section
-          key={section.id}
-          aria-labelledby={`section-${section.id}`}
-          className="grid gap-5"
-        >
-          <div>
-            <h2 id={`section-${section.id}`} className="text-lg font-semibold">
-              {section.title}
-            </h2>
-            {section.description && (
-              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                {section.description}
-              </p>
-            )}
-          </div>
-          {section.questions.map((question) =>
-            question.type === 'milestone_progress' ? (
-              <div key={question.id} className="grid gap-4">
-                {bundle.baseline.milestones.map((milestone) => (
-                  <MilestoneCard
-                    key={milestone.id}
-                    form={reportForm}
-                    milestone={milestone}
-                    evidence={bundle.evidence}
-                  />
-                ))}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
+        <aside className="rounded-lg border bg-card p-3 lg:sticky lg:top-[calc(var(--sticky-top)+5rem)] lg:order-last">
+          <ReportContents bundle={bundle} values={values} />
+        </aside>
+        <div className="grid gap-8">
+          {form.sections.map((section) => (
+            <section
+              key={section.id}
+              aria-labelledby={`section-${section.id}`}
+              className="grid scroll-mt-28 gap-5"
+            >
+              <div>
+                <h2
+                  id={`section-${section.id}`}
+                  className="text-lg font-semibold"
+                >
+                  {section.title}
+                </h2>
+                {section.description && (
+                  <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                    {section.description}
+                  </p>
+                )}
               </div>
-            ) : (
-              <div
-                key={question.id}
-                className="rounded-lg border bg-card p-4 sm:p-5"
-              >
-                <QuestionField
-                  form={reportForm}
-                  question={question}
-                  evidence={bundle.evidence}
-                  upload={upload}
-                />
-              </div>
-            ),
-          )}
-        </section>
-      ))}
+              {section.questions.map((question) =>
+                question.type === 'milestone_progress' ? (
+                  <div key={question.id} className="grid gap-4">
+                    {bundle.baseline.milestones.map((milestone) => (
+                      <MilestoneCard
+                        key={milestone.id}
+                        form={reportForm}
+                        milestone={milestone}
+                        evidence={bundle.evidence}
+                        questions={questionsFor(milestone.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    key={question.id}
+                    className="rounded-lg border bg-card p-4 sm:p-5"
+                  >
+                    <QuestionField
+                      form={reportForm}
+                      question={question}
+                      evidence={bundle.evidence}
+                      upload={upload}
+                    />
+                  </div>
+                ),
+              )}
+            </section>
+          ))}
+        </div>
+      </div>
     </form>
   );
 }

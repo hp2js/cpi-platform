@@ -1,7 +1,6 @@
 import type { FoundationIndicator } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -247,64 +246,55 @@ function Withdraw({
   );
 }
 
-export function FoundationsPage() {
+/** Procedures, risk assessment and mitigation plan: scored once for the year. */
+export function InstitutionFoundations() {
   const session = useSession();
   const institutionId = session.user.institutionId ?? '';
   const foundations = useQuery(foundationsQuery(institutionId));
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        eyebrow="Foundation documents"
-        title="Procedures, risk assessment and mitigation plan"
-        description={
-          foundations.data && (
-            <>
-              Due {formatDateTime(foundations.data.deadline)}. This deadline is
-              separate from quarterly reports. Your officer reviews each
-              document against four checks; results are released after annual
-              evaluation.
-            </>
-          )
-        }
-      />
-      <QueryView query={foundations} label="foundation documents">
-        {(data) => (
-          <div className="grid gap-6">
-            {data.indicators.map((indicator) => {
-              const active = indicator.versions.find(
-                (version) => version.status === 'active',
-              );
-              return (
-                <section
-                  key={indicator.kind}
-                  aria-labelledby={`f-${indicator.kind}`}
-                  className="grid gap-4 rounded-lg border bg-card p-5"
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2
-                      id={`f-${indicator.kind}`}
-                      className="text-lg font-semibold"
-                    >
-                      {indicator.label}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {indicator.review
-                        ? `Reviewed ${formatDateTime(indicator.review.reviewedAt)}`
-                        : 'Not yet reviewed'}
-                    </p>
-                  </div>
-                  <VersionList indicator={indicator} />
-                  <VersionActions
-                    institutionId={institutionId}
-                    indicator={indicator}
-                    activeVersionId={active?.id}
-                  />
-                </section>
-              );
-            })}
-          </div>
-        )}
-      </QueryView>
-    </div>
+    <QueryView query={foundations} label="foundation documents">
+      {(data) => (
+        <div className="grid gap-6">
+          <p className="text-sm text-muted-foreground">
+            Procedures, the risk assessment and the mitigation plan are due{' '}
+            {formatDateTime(data.deadline)}, separately from quarterly reports.
+            Your officer reviews each document against four checks; results are
+            released after annual evaluation.
+          </p>
+          {data.indicators.map((indicator) => {
+            const active = indicator.versions.find(
+              (version) => version.status === 'active',
+            );
+            return (
+              <section
+                key={indicator.kind}
+                aria-labelledby={`f-${indicator.kind}`}
+                className="grid gap-4 rounded-lg border bg-card p-5"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2
+                    id={`f-${indicator.kind}`}
+                    className="text-lg font-semibold"
+                  >
+                    {indicator.label}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {indicator.review
+                      ? `Reviewed ${formatDateTime(indicator.review.reviewedAt)}`
+                      : 'Not yet reviewed'}
+                  </p>
+                </div>
+                <VersionList indicator={indicator} />
+                <VersionActions
+                  institutionId={institutionId}
+                  indicator={indicator}
+                  activeVersionId={active?.id}
+                />
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </QueryView>
   );
 }

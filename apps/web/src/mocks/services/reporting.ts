@@ -95,7 +95,7 @@ export function reportBundle(obligation: MockObligation): ReportBundle {
   const form = formForObligation(obligation) ?? null;
   const baseline = baselineOf(obligation.institutionId, obligation.periodId);
   return {
-    obligation: toObligation(obligation),
+    obligation: toObligation(obligation, 'institution'),
     period: periodOf(obligation.periodId),
     form,
     baseline: {

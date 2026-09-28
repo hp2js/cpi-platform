@@ -1,5 +1,6 @@
 import {
   institutionImportColumns,
+  institutionImportOptionalColumns,
   type InstitutionCreate,
   type InstitutionType,
   type InstitutionImportPreview,
@@ -10,6 +11,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Download, Plus, Upload } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Combobox } from '@/components/combobox';
+import { SelectField } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -83,11 +85,15 @@ function SeedOption({
   );
 }
 
-const blank = (officerId: string): InstitutionCreate => ({
+const blank = (
+  officerId: string,
+  supervisorId: string | null,
+): InstitutionCreate => ({
   id: '',
   name: '',
   typeId: '',
   officerId,
+  supervisorId,
   accountingOfficer: emptyAccountingOfficer,
   focalUser: null,
   seedOpenedQuarters: true,
@@ -95,16 +101,23 @@ const blank = (officerId: string): InstitutionCreate => ({
 
 export function AddInstitution({
   officers,
+  supervisors,
   types,
 }: {
   officers: ManagedUser[];
+  supervisors: ManagedUser[];
   types: InstitutionType[];
 }) {
+  // With one supervisor, new institutions go to them unless the administrator says otherwise.
+  const defaultSupervisor =
+    supervisors.length === 1 ? supervisors[0]!.id : null;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState(() => blank(officers[0]?.id ?? ''));
+  const [values, setValues] = useState(() =>
+    blank(officers[0]?.id ?? '', defaultSupervisor),
+  );
   const [withFocal, setWithFocal] = useState(true);
   const [focal, setFocal] = useState({
     displayName: '',
@@ -143,7 +156,7 @@ export function AddInstitution({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setValues(blank(officers[0]?.id ?? ''));
+          setValues(blank(officers[0]?.id ?? '', defaultSupervisor));
           setFocal({
             displayName: '',
             email: '',
@@ -215,6 +228,30 @@ export function AddInstitution({
                   description: `${officer.assignedInstitutionIds.length} institutions`,
                 }))}
               />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-supervisor`}>Supervisor</Label>
+              <SelectField
+                id={`${id}-supervisor`}
+                value={values.supervisorId ?? ''}
+                onChange={(supervisorId) =>
+                  setValues({ ...values, supervisorId: supervisorId || null })
+                }
+                options={[
+                  { value: '', label: 'No supervisor yet' },
+                  ...supervisors.map((supervisor) => ({
+                    value: supervisor.id,
+                    label: `${supervisor.displayName} (${supervisor.assignedInstitutionIds.length} institutions)`,
+                  })),
+                ]}
+                describedBy={`${id}-supervisor-hint`}
+              />
+              <p
+                id={`${id}-supervisor-hint`}
+                className="text-xs text-muted-foreground"
+              >
+                Supervisors see only the institutions assigned to them.
+              </p>
             </div>
           </fieldset>
 
@@ -303,9 +340,9 @@ export function AddInstitution({
 }
 
 const template = [
-  institutionImportColumns.join(','),
-  'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,Accounting Officer MDA-201,Managing Director,ao.mda-201@example.invalid,,Focal person MDA-201,focal.mda-201@example.invalid',
-  '"MDA-202","Demo Fisheries Service, Coast",State agency,officer.b@example.invalid,Accounting Officer MDA-202,Director General,,,,',
+  [...institutionImportColumns, ...institutionImportOptionalColumns].join(','),
+  'MDA-201,Demo Tea Board,State corporation,officer.a@example.invalid,Accounting Officer MDA-201,Managing Director,ao.mda-201@example.invalid,,Focal person MDA-201,focal.mda-201@example.invalid,supervisor@example.invalid',
+  '"MDA-202","Demo Fisheries Service, Coast",State agency,officer.b@example.invalid,Accounting Officer MDA-202,Director General,,,,,',
 ].join('\r\n');
 
 function downloadTemplate() {
@@ -335,6 +372,7 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
             <TableHead scope="col">Line</TableHead>
             <TableHead scope="col">Institution</TableHead>
             <TableHead scope="col">Officer</TableHead>
+            <TableHead scope="col">Supervisor</TableHead>
             <TableHead scope="col">Check</TableHead>
           </TableRow>
         </TableHeader>
@@ -352,6 +390,9 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
               </TableHead>
               <TableCell className="text-sm">
                 {row.officerName ?? '—'}
+              </TableCell>
+              <TableCell className="text-sm">
+                {row.supervisorName ?? 'None'}
               </TableCell>
               <TableCell className="text-sm whitespace-normal">
                 {row.errors.length ? (
@@ -450,7 +491,10 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
               <p>
                 Columns:{' '}
                 <code className="text-xs">
-                  {institutionImportColumns.join(', ')}
+                  {[
+                    ...institutionImportColumns,
+                    ...institutionImportOptionalColumns,
+                  ].join(', ')}
                 </code>
                 . Required:{' '}
                 <code className="text-xs">
@@ -462,7 +506,9 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
                   .filter((type) => type.active)
                   .map((type) => type.label)
                   .join(', ')}
-                ).
+                ). Supervisors are matched by email; leave{' '}
+                <code className="text-xs">supervisor_email</code> blank to use
+                the only active supervisor, if there is exactly one.
               </p>
               <div>
                 <Button

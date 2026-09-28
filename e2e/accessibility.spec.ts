@@ -91,13 +91,18 @@ test('mid-year screens for every role', async ({ page }) => {
     ],
     [
       'focal-demo-002',
-      '/institution/clarifications',
-      'institution clarifications',
+      '/institution/reports',
+      'institution reports with a clarification',
     ],
-    ['focal-demo-001', '/institution/receipts', 'institution receipts'],
+    ['focal-demo-001', '/institution/reports', 'institution reports'],
     ['focal-demo-001', '/institution/plan', 'institution plan'],
-    ['focal-demo-001', '/institution/foundations', 'institution foundations'],
+    [
+      'focal-demo-001',
+      '/institution/plan?tab=documents',
+      'institution foundation documents',
+    ],
     ['focal-demo-002', '/institution/inbox', 'institution inbox'],
+    ['focal-demo-002', '/institution/profile', 'our institution'],
     [
       'focal-demo-001',
       '/institution/results',
@@ -106,6 +111,8 @@ test('mid-year screens for every role', async ({ page }) => {
     ['officer-a', '/officer', 'officer queue'],
     ['officer-a', `/officer/reviews/${review}`, 'officer review workspace'],
     ['officer-a', '/officer/evidence', 'officer evidence lookup'],
+    ['officer-a', '/officer/portfolio', 'officer portfolio'],
+    ['officer-a', '/officer/rules', 'officer rules in use'],
     ['supervisor', '/supervisor/submissions', 'supervisor submissions'],
     [
       'supervisor',
@@ -113,6 +120,14 @@ test('mid-year screens for every role', async ({ page }) => {
       'supervisor review (read only)',
     ],
     ['supervisor', '/supervisor/evidence', 'supervisor evidence lookup'],
+    ['supervisor', '/supervisor/institutions', 'supervisor institutions'],
+    [
+      'supervisor',
+      '/supervisor/institutions/DEMO-003',
+      'supervisor institution page',
+    ],
+    ['supervisor', '/supervisor/assignments', 'supervisor assignments'],
+    ['supervisor', '/supervisor/rules', 'supervisor rules'],
     [
       'officer-a',
       '/officer/institutions/DEMO-004',
@@ -202,6 +217,7 @@ test('configuration dialogs and searchable selects', async ({ page }) => {
 
   await visit(page, 'administrator', '/admin/assignments');
   await page
+    .getByRole('region', { name: 'Reassign an institution' })
     .getByRole('combobox', { name: 'Institution', exact: true })
     .click();
   await settled(page.getByRole('dialog'));

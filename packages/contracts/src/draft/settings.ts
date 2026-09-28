@@ -170,6 +170,8 @@ export const managedInstitutionSchema = z.object({
     }),
   ),
   officer: z.object({ id: z.string(), name: z.string() }).nullable(),
+  /** Null when no supervisor is assigned: no supervisor can see the institution. */
+  supervisor: z.object({ id: z.string(), name: z.string() }).nullable(),
 });
 export type ManagedInstitution = z.infer<typeof managedInstitutionSchema>;
 
@@ -223,6 +225,11 @@ export type UserCreate = z.infer<typeof userCreateSchema>;
 export const userStatusSchema = z.object({
   active: z.boolean(),
   reason: z.string().trim().min(10).max(500),
+  /**
+   * Required when deactivating an institution's last active focal person: nobody can then
+   * report or receive its clarifications until someone else is set up.
+   */
+  confirmNoFocalPerson: z.boolean().optional(),
 });
 
 /** What an administrator may change on someone else's account; email is the sign-in identity. */
@@ -282,6 +289,8 @@ export const institutionCreateSchema = institutionUpdateSchema.extend({
       'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
     ),
   officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  /** Null leaves the institution without a supervisor until one is assigned. */
+  supervisorId: z.string().nullable(),
   focalUser: focalUserSchema.nullable(),
   /**
    * Simulation only (PRD §10.4): quarters that have already opened get a SEEDED HISTORICAL
@@ -308,6 +317,11 @@ export const institutionImportColumns = [
   'focal_name',
   'focal_email',
 ] as const;
+/**
+ * Optional: when the column is absent or blank and exactly one supervisor is active, that
+ * supervisor is assigned.
+ */
+export const institutionImportOptionalColumns = ['supervisor_email'] as const;
 export const institutionImportPreviewSchema = z.object({
   /** Problems with the file itself, such as missing columns. */
   fileErrors: z.array(z.string()),
@@ -318,6 +332,7 @@ export const institutionImportPreviewSchema = z.object({
       name: z.string(),
       type: z.string(),
       officerName: z.string().nullable(),
+      supervisorName: z.string().nullable(),
       focalEmail: z.string().nullable(),
       errors: z.array(z.string()),
     }),
@@ -335,3 +350,31 @@ export const institutionImportResultSchema = z.object({
 export type InstitutionImportResult = z.infer<
   typeof institutionImportResultSchema
 >;
+
+/** What needs the administrator now; each item links to where it is handled (PRD §9). */
+export const adminAttentionSchema = z.array(
+  z.object({
+    id: z.string(),
+    title: z.string(),
+    detail: z.string(),
+    count: z.number().int().positive(),
+    link: z.string(),
+  }),
+);
+export type AdminAttention = z.infer<typeof adminAttentionSchema>;
+
+/**
+ * Changing an account's role keeps one identity and its history. Scope must be handed over
+ * first; an institution role needs an institution.
+ */
+export const userRoleChangeSchema = z.object({
+  role: roleSchema,
+  institutionId: institutionIdSchema.nullable(),
+  reason: z.string().trim().min(10).max(500),
+});
+export type UserRoleChange = z.infer<typeof userRoleChangeSchema>;
+
+/** Read-only support access to an institution's draft (PRD §5.2): justified and audited. */
+export const supportAccessRequestSchema = z.object({
+  reason: z.string().trim().min(20).max(500),
+});

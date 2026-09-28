@@ -66,6 +66,17 @@ export const addOversightComment = (submissionId: string, text: string) =>
     { method: 'POST', json: { text } },
   );
 
+export const replyToComment = (
+  submissionId: string,
+  commentId: string,
+  reply: { text: string; addressed: boolean },
+) =>
+  request(
+    `/api/reviews/${encodeURIComponent(submissionId)}/comments/${encodeURIComponent(commentId)}/replies`,
+    reviewBundleSchema,
+    { method: 'POST', json: reply },
+  );
+
 export const closeClarification = (
   submissionId: string,
   clarificationId: string,
