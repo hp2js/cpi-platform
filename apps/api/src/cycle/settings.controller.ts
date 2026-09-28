@@ -13,6 +13,9 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 import {
   calendarUpdateSchema,
+  institutionCreateSchema,
+  institutionImportRequestSchema,
+  institutionTypeUpdateSchema,
   institutionUpdateSchema,
   profileUpdateSchema,
   userCreateSchema,
@@ -29,6 +32,7 @@ import {
   calendarChanges,
   cycles,
   formVersions,
+  institutionTypes,
   institutions,
   periods,
   processedEvents,
@@ -42,19 +46,27 @@ import {
   loadForms,
   loadProfiles,
 } from '../database/state';
-import { initialInstitutionTypes } from '@cpi/contracts/fixtures';
-import { accountStatus, newLink } from '../auth/passwords';
+import { sendInvitation } from '../auth/invitations';
+import { accountStatus } from '../auth/passwords';
 import { supervisedInstitutionIds } from '../auth/scope';
 import { CONFIG, type AppConfig } from '../config';
 import {
   Events,
-  sendEmail,
   assignedOfficers,
   institutionUsers,
   usersWithRole,
 } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import {
+  accountingOfficerProblems,
+  createInstitution,
+  directorySnapshot,
+  fromCreateRequest,
+  institutionProblems,
+  previewImport,
+  type NewInstitution,
+} from './onboarding';
 import {
   boundaries,
   calendarSettings,
@@ -144,21 +156,29 @@ async function calendar(db: Db): Promise<CalendarSettings> {
   );
 }
 
-/**
- * ponytail: institution types are the fixture list, read-only; managing them (Settings →
- * Institution types) comes with institution onboarding.
- */
-function institutionType(typeId: string) {
-  return initialInstitutionTypes.find((type) => type.id === typeId);
+function typeLabelTaken(
+  types: { id: string; label: string }[],
+  label: string,
+  exceptId?: string,
+) {
+  const key = label.trim().toLowerCase();
+  return types.some(
+    (type) => type.id !== exceptId && type.label.toLowerCase() === key,
+  );
 }
 
 async function people(db: Db): Promise<People> {
-  const [userRows, current, supervised, institutionRows] = await Promise.all([
-    db.select().from(users).orderBy(asc(users.id)),
-    db.select().from(assignments).where(isNull(assignments.validTo)),
-    db.select().from(supervisions).where(isNull(supervisions.validTo)),
-    db.select().from(institutions).orderBy(asc(institutions.id)),
-  ]);
+  const [userRows, current, supervised, institutionRows, typeRows] =
+    await Promise.all([
+      db.select().from(users).orderBy(asc(users.id)),
+      db.select().from(assignments).where(isNull(assignments.validTo)),
+      db.select().from(supervisions).where(isNull(supervisions.validTo)),
+      db.select().from(institutions).orderBy(asc(institutions.id)),
+      db
+        .select()
+        .from(institutionTypes)
+        .orderBy(asc(institutionTypes.position)),
+    ]);
   const invitationExpiresAt = (user: (typeof userRows)[number]) =>
     accountStatus(user) === 'invited' && user.authLink?.purpose === 'invitation'
       ? user.authLink.expiresAt
@@ -216,7 +236,7 @@ async function people(db: Db): Promise<People> {
         supervisor: supervisorOf(institution.id),
       };
     }),
-    institutionTypes: initialInstitutionTypes.map((type) => ({
+    institutionTypes: typeRows.map(({ position, ...type }) => ({
       ...type,
       institutionCount: institutionRows.filter(
         (institution) => institution.typeId === type.id,
@@ -669,7 +689,13 @@ export class SettingsController {
           passwordHash: null,
         })
         .returning();
-      await this.invite(tx, businessTime, user!, admin);
+      await sendInvitation(
+        tx,
+        businessTime,
+        this.config.PORTAL_URL,
+        user!,
+        admin,
+      );
       await this.events.audit(
         tx,
         businessTime,
@@ -680,28 +706,6 @@ export class SettingsController {
       );
       return people(tx);
     });
-  }
-
-  /** Stores a new single-use invitation link (replacing any earlier one) and emails it. */
-  private async invite(tx: Tx, businessTime: string, user: User, admin: User) {
-    const link = newLink('invitation');
-    await tx
-      .update(users)
-      .set({ authLink: link.stored })
-      .where(eq(users.id, user.id));
-    await sendEmail(
-      tx,
-      businessTime,
-      this.config.PORTAL_URL,
-      `invitation:${user.id}:${link.stored.tokenHash.slice(0, 12)}`,
-      'account.invitation',
-      user,
-      {
-        subject: 'You are invited to the CPI Platform',
-        body: `${admin.displayName} created an account for you (${user.email}). Set your password to sign in. The link works once and expires in 7 days.`,
-        link: `/set-password?token=${link.token}`,
-      },
-    );
   }
 
   /** A new invitation link replaces the earlier one (e.g. it expired or the email was lost). */
@@ -720,7 +724,13 @@ export class SettingsController {
             : 'Reactivate the account before inviting again.',
           'not_invited',
         );
-      await this.invite(tx, businessTime, user, admin);
+      await sendInvitation(
+        tx,
+        businessTime,
+        this.config.PORTAL_URL,
+        user,
+        admin,
+      );
       await this.events.audit(
         tx,
         businessTime,
@@ -824,35 +834,51 @@ export class SettingsController {
         .from(institutions)
         .where(eq(institutions.id, id));
       if (!institution) throw notFound();
-      const type = institutionType(input.typeId);
-      if (!type)
+      const [type] = await tx
+        .select()
+        .from(institutionTypes)
+        .where(eq(institutionTypes.id, input.typeId));
+      // A retired type may stay on an institution that already has it, but is not newly chosen.
+      if (!type || (!type.active && type.id !== institution.typeId))
         throw new ApiError(
           422,
-          'Some values need attention.',
+          'Choose an active institution type.',
           'invalid_settings',
-          {
-            typeId: 'Choose the institution type.',
-          },
+          { typeId: 'Choose an active institution type.' },
         );
+      const problems = accountingOfficerProblems(input.accountingOfficer);
+      if (problems.length)
+        throw new ApiError(422, problems.join(' '), 'invalid_settings');
+      const renamed = institution.name !== input.name;
+      const changed = [
+        renamed && `renamed from ${institution.name}`,
+        institution.typeId !== type.id &&
+          `type ${institution.type} → ${type.label}`,
+        JSON.stringify(institution.accountingOfficer) !==
+          JSON.stringify(input.accountingOfficer) &&
+          'Accounting Officer contact updated',
+      ].filter(Boolean);
       await tx
         .update(institutions)
         .set({
           name: input.name,
           typeId: type.id,
           type: type.label,
-          accountingOfficer: input.accountingOfficer,
+          accountingOfficer: {
+            ...input.accountingOfficer,
+            email: input.accountingOfficer.email.toLowerCase(),
+          },
         })
         .where(eq(institutions.id, id));
-      const renamed = institution.name !== input.name;
       await this.events.audit(
         tx,
         businessTime,
         admin,
         'institution.update',
         { type: 'institution', id },
-        renamed
-          ? `Renamed from ${institution.name}; the stable ID ${id} is unchanged`
-          : 'Details updated',
+        changed.length
+          ? `${changed.join('; ')}; the stable ID ${id} is unchanged`
+          : 'No changes',
       );
       if (renamed)
         await this.events.notify(
@@ -872,5 +898,213 @@ export class SettingsController {
         );
       return people(tx);
     });
+  }
+
+  /* Institution types: a managed list; retiring keeps history, renaming updates labels. */
+
+  @Post('institution-types')
+  @Roles('administrator')
+  createType(@CurrentUser() admin: User, @Body() body: unknown) {
+    return write(this.db, async (tx, businessTime) => {
+      const input = parse(institutionTypeUpdateSchema, body);
+      const types = await tx.select().from(institutionTypes);
+      if (typeLabelTaken(types, input.label))
+        throw new ApiError(
+          422,
+          'That type already exists.',
+          'invalid_settings',
+          { label: 'That type already exists.' },
+        );
+      const slug = input.label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      const id = types.some((type) => type.id === slug)
+        ? await nextId(tx, slug)
+        : slug;
+      await tx
+        .insert(institutionTypes)
+        .values({ id, label: input.label, active: input.active });
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'institution_type.create',
+        { type: 'institution_type', id },
+        input.label,
+      );
+      return people(tx);
+    });
+  }
+
+  @Put('institution-types/:typeId')
+  @Roles('administrator')
+  updateType(
+    @CurrentUser() admin: User,
+    @Param('typeId') id: string,
+    @Body() body: unknown,
+  ) {
+    return write(this.db, async (tx, businessTime) => {
+      const input = parse(institutionTypeUpdateSchema, body);
+      const types = await tx.select().from(institutionTypes);
+      const type = types.find((item) => item.id === id);
+      if (!type) throw notFound();
+      if (typeLabelTaken(types, input.label, type.id))
+        throw new ApiError(
+          422,
+          'That type already exists.',
+          'invalid_settings',
+          { label: 'That type already exists.' },
+        );
+      if (
+        !input.active &&
+        types.filter((item) => item.active && item.id !== type.id).length === 0
+      )
+        throw new ApiError(
+          409,
+          'At least one type must stay active.',
+          'last_type',
+        );
+      const changes = [
+        type.label !== input.label && `renamed from ${type.label}`,
+        type.active !== input.active &&
+          (input.active ? 'reactivated' : 'retired'),
+      ].filter(Boolean);
+      await tx
+        .update(institutionTypes)
+        .set({ label: input.label, active: input.active })
+        .where(eq(institutionTypes.id, id));
+      // Institutions show the current label; their type ID never changes.
+      await tx
+        .update(institutions)
+        .set({ type: input.label })
+        .where(eq(institutions.typeId, id));
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'institution_type.update',
+        { type: 'institution_type', id },
+        `${input.label}: ${changes.join(', ') || 'no changes'}`,
+      );
+      return people(tx);
+    });
+  }
+
+  /* Onboarding institutions (FR01) */
+
+  @Post('institutions')
+  @Roles('administrator')
+  createInstitution(@CurrentUser() admin: User, @Body() body: unknown) {
+    return write(this.db, async (tx, businessTime) => {
+      const input = parse(institutionCreateSchema, body);
+      const snapshot = await directorySnapshot(tx);
+      const candidate = fromCreateRequest(snapshot, input);
+      const problems = institutionProblems(snapshot, candidate);
+      if (problems.length)
+        throw new ApiError(422, problems.join(' '), 'invalid_institution');
+      await createInstitution(
+        tx,
+        businessTime,
+        this.config.PORTAL_URL,
+        admin,
+        snapshot,
+        { ...candidate, officer: candidate.officer! },
+        input.seedOpenedQuarters,
+      );
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'institution.create',
+        { type: 'institution', id: candidate.id },
+        `${candidate.name}, reviewed by ${candidate.officer!.displayName}; Accounting Officer ${candidate.accountingOfficer.name}`,
+      );
+      await this.notifyOfficers(tx, businessTime, [candidate]);
+      return people(tx);
+    });
+  }
+
+  @Post('institutions/import/preview')
+  @HttpCode(200)
+  @Roles('administrator')
+  async previewImport(@Body() body: unknown) {
+    const input = parse(institutionImportRequestSchema, body);
+    return previewImport(await directorySnapshot(this.db), input.csv).preview;
+  }
+
+  /** All or nothing: one invalid row means nothing is created, so a file can be fixed and re-run. */
+  @Post('institutions/import')
+  @HttpCode(200)
+  @Roles('administrator')
+  importInstitutions(@CurrentUser() admin: User, @Body() body: unknown) {
+    return write(this.db, async (tx, businessTime) => {
+      const input = parse(institutionImportRequestSchema, body);
+      const snapshot = await directorySnapshot(tx);
+      const { preview, rows } = previewImport(snapshot, input.csv);
+      if (preview.fileErrors.length || preview.invalid)
+        throw new ApiError(
+          422,
+          preview.fileErrors[0] ??
+            `${preview.invalid} ${preview.invalid === 1 ? 'row needs' : 'rows need'} attention; nothing was imported.`,
+          'import_invalid',
+        );
+      for (const row of rows)
+        await createInstitution(
+          tx,
+          businessTime,
+          this.config.PORTAL_URL,
+          admin,
+          snapshot,
+          { ...row, officer: row.officer! },
+          input.seedOpenedQuarters,
+        );
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'institution.import',
+        { type: 'institution', id: `${rows[0]!.id}…${rows.at(-1)!.id}` },
+        `${rows.length} institutions imported`,
+      );
+      await this.notifyOfficers(tx, businessTime, rows);
+      return {
+        created: rows.map((row) => row.id),
+        focalUsers: rows.filter((row) => row.focalUser).length,
+      };
+    });
+  }
+
+  /** One notice per officer for everything assigned to them in this change. */
+  private async notifyOfficers(
+    tx: Tx,
+    businessTime: string,
+    rows: NewInstitution[],
+  ) {
+    const byOfficer = new Map<string, NewInstitution[]>();
+    for (const row of rows)
+      byOfficer.set(row.officer!.id, [
+        ...(byOfficer.get(row.officer!.id) ?? []),
+        row,
+      ]);
+    for (const assigned of byOfficer.values())
+      await this.events.notify(
+        tx,
+        businessTime,
+        await nextId(tx, `onboard:${assigned[0]!.officer!.id}`),
+        'assignment.changed',
+        [assigned[0]!.officer!],
+        {
+          title:
+            assigned.length === 1
+              ? `${assigned[0]!.id} assigned to you`
+              : `${assigned.length} new institutions assigned to you`,
+          body: 'New institutions start with proposed baselines of the committee milestones for you to review before each quarter opens.',
+          link:
+            assigned.length === 1
+              ? `/officer/institutions/${assigned[0]!.id}`
+              : '/officer',
+        },
+      );
   }
 }

@@ -57,6 +57,14 @@ export const recordIds = pgSequence('record_ids');
 
 /* Directory (FR01, PRD §5.2) */
 
+/** Managed list (Settings → Institution types); retiring keeps history, renaming relabels. */
+export const institutionTypes = pgTable('institution_types', {
+  id: text().primaryKey(),
+  position: serial(),
+  label: text().notNull(),
+  active: boolean().notNull().default(true),
+});
+
 export const institutions = pgTable('institutions', {
   id: text().primaryKey(),
   name: text().notNull(),

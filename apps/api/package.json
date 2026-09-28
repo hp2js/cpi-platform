@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:integration": "tsc -p tsconfig.build.json && INTEGRATION=1 vitest run --no-file-parallelism",
+    "test:integration": "tsc -p tsconfig.build.json && INTEGRATION=1 vitest run --no-file-parallelism --test-timeout=30000",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/database/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts"

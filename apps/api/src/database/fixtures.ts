@@ -6,6 +6,7 @@ import {
   initialBaselines,
   initialBusinessTime,
   initialForm,
+  initialInstitutionTypes,
   initialProfiles,
   initialSupervisions,
   initialRisks,
@@ -40,6 +41,7 @@ export async function loadFixtures(
     );
     await tx.execute(sql`ALTER SEQUENCE record_ids RESTART WITH 1`);
 
+    await tx.insert(schema.institutionTypes).values(initialInstitutionTypes);
     await tx.insert(schema.institutions).values(institutions);
     await tx.insert(schema.users).values(
       users.map((user) => ({
