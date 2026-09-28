@@ -72,7 +72,7 @@ import {
 import { ComponentScoreValue } from '@/features/review/score-display';
 import { useSession } from '@/features/session/use-session';
 import { isApiError, setOverrideReason } from '@/lib/api';
-import { cycleQuery } from '@/features/directory/queries';
+import { cycleQuery, institutionQuery } from '@/features/directory/queries';
 import { formatDateTime, formatDays } from '@/lib/dates';
 
 /** Officers review their assigned work; the supervisor reads every submission (PRD §5.2). */
@@ -755,6 +755,8 @@ interface ClarificationDraft {
 /** Targeted clarification: one question per criterion, without deleting accepted evidence (FR09). */
 function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
   const cycle = useQuery(cycleQuery);
+  const institution = useQuery(institutionQuery(bundle.item.institutionId));
+  const unreachable = institution.data?.activeFocalPersons === 0;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ClarificationDraft[]>(() => [
     ...bundle.milestones.map((milestone) => ({
@@ -819,6 +821,16 @@ function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
           to respond.
         </p>
       </div>
+      {unreachable && (
+        <Alert variant="destructive">
+          <AlertTitle>Nobody can receive this clarification</AlertTitle>
+          <AlertDescription>
+            {bundle.item.institutionId} has no active focal person, so the
+            request would reach no one while its response window runs. Ask the
+            administrator to set up a focal person first.
+          </AlertDescription>
+        </Alert>
+      )}
       <ul className="grid gap-3">
         {items.map((item, index) => (
           <li key={item.label} className="grid gap-2 rounded-md border p-3">

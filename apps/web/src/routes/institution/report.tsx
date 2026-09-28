@@ -72,6 +72,8 @@ function ReportEditor({
   );
   const [version, setVersion] = useState(bundle.draft?.version ?? 0);
   const [savedAt, setSavedAt] = useState(bundle.draft?.savedAt ?? null);
+  const [savedBy, setSavedBy] = useState(bundle.draft?.savedBy ?? null);
+  const session = useSession();
   const dirty = useStore(reportForm.store, (state) => state.isDirty);
   useUnsavedWork(dirty);
   useFocusLinkedField();
@@ -81,6 +83,7 @@ function ReportEditor({
     onSuccess: async (draft) => {
       setVersion(draft.version);
       setSavedAt(draft.savedAt);
+      setSavedBy(draft.savedBy);
       markSaved(draft.answers);
       await queryClient.invalidateQueries({ queryKey: ['obligations'] });
     },
@@ -182,6 +185,9 @@ function ReportEditor({
             <span className="inline-flex items-center gap-1.5">
               <CircleCheck className="size-4 text-primary" aria-hidden="true" />
               Draft saved {formatDateTime(savedAt)}
+              {savedBy &&
+                savedBy !== session.user.displayName &&
+                ` by ${savedBy}`}
             </span>
           ) : bundle.draft ? (
             'Draft prepared from your last submitted revision'

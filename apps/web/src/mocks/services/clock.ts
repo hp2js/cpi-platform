@@ -2,6 +2,7 @@ import type { ClockBoundary } from '@cpi/contracts';
 import { getDb, type MockDb } from '../db';
 import { endOfDay, localDate, shiftDays } from './days';
 import { endExpiredCover } from './assignments';
+import { activeFocalPersons } from './institutions';
 import { toClarification } from './clarifications';
 import {
   assignedOfficers,
@@ -187,6 +188,9 @@ function sendOversightDigests(db: MockDb, key: string) {
         .filter((item) => item.extensionRequired)
         .map((item) => item.institutionId),
     );
+    const unreachable = scope.filter(
+      (institutionId) => activeFocalPersons(db, institutionId).length === 0,
+    );
     const lines = [
       missing.length &&
         `${plural(missing.length, 'report', 'reports')} missing after the deadline`,
@@ -196,6 +200,8 @@ function sendOversightDigests(db: MockDb, key: string) {
         `${plural(overdue.length, 'clarification', 'clarifications')} past the response window`,
       extensions.size &&
         `${plural(extensions.size, 'institution needs', 'institutions need')} an extension decision`,
+      unreachable.length &&
+        `${plural(unreachable.length, 'institution has', 'institutions have')} no active focal person (${unreachable.slice(0, 3).join(', ')}${unreachable.length > 3 ? ', …' : ''})`,
     ].filter(Boolean) as string[];
     if (!lines.length) continue;
     notify(
@@ -271,6 +277,9 @@ function sendOfficerDigests(db: MockDb, key: string) {
       .filter((clarification) => scope.includes(clarification.institutionId))
       .map(toClarification)
       .filter((clarification) => clarification.overdue);
+    const noFocal = scope.filter(
+      (institutionId) => activeFocalPersons(db, institutionId).length === 0,
+    );
     const undisposed = cutoffPassed
       ? obligations.filter(
           (obligation) =>
@@ -291,6 +300,8 @@ function sendOfficerDigests(db: MockDb, key: string) {
         `${plural(windowsEnded.length, 'clarification window has', 'clarification windows have')} ended without a response`,
       undisposed.length &&
         `${plural(undisposed.length, 'quarter needs', 'quarters need')} a final disposition after the cutoff`,
+      noFocal.length &&
+        `${plural(noFocal.length, 'institution has', 'institutions have')} no active focal person to report or answer clarifications (${noFocal.slice(0, 3).join(', ')}${noFocal.length > 3 ? ', …' : ''})`,
     ].filter(Boolean) as string[];
     if (!lines.length) continue;
     notify(

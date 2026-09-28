@@ -977,6 +977,7 @@ export const reviewHandlers = [
           answers: copyAnswers(submission.answers),
           version: 1,
           savedAt: null,
+          savedBy: null,
         });
         audit(
           db,

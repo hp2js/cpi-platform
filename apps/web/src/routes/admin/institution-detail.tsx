@@ -449,6 +449,20 @@ function FocalPersonsCard({
         </Alert>
       ) : (
         <ul className="grid gap-2">
+          {!institution.focalPersons.some(
+            (person) => person.status === 'active',
+          ) && (
+            <li>
+              <Alert>
+                <AlertTitle>No active focal person</AlertTitle>
+                <AlertDescription>
+                  Nobody can report for this institution or receive its
+                  clarifications until someone below finishes setting up, or a
+                  new focal person is added.
+                </AlertDescription>
+              </Alert>
+            </li>
+          )}
           {institution.focalPersons.map((person) => (
             <li
               key={person.id}

@@ -28,7 +28,8 @@ export const accountingOfficerSchema = z.object({
 });
 export type AccountingOfficer = z.infer<typeof accountingOfficerSchema>;
 
-export const institutionSchema = z.object({
+/** The stored institution record. */
+export const institutionRecordSchema = z.object({
   id: institutionIdSchema,
   name: z.string(),
   /** Managed list (Settings → Institution types); `type` is its current label. */
@@ -37,7 +38,33 @@ export const institutionSchema = z.object({
   active: z.boolean(),
   accountingOfficer: accountingOfficerSchema.nullable(),
 });
+export type InstitutionRecord = z.infer<typeof institutionRecordSchema>;
+
+/** An institution as the API returns it. */
+export const institutionSchema = institutionRecordSchema.extend({
+  /**
+   * Focal persons who have set up their account and can sign in. Zero means nobody can report
+   * for the institution or receive its clarifications.
+   */
+  activeFocalPersons: z.number().int().nonnegative(),
+});
 export type Institution = z.infer<typeof institutionSchema>;
+
+/** What a focal person sees about their own institution. */
+export const institutionProfileSchema = z.object({
+  institution: institutionSchema,
+  reviewingOfficer: z.string().nullable(),
+  focalPersons: z.array(
+    z.object({
+      id: z.string(),
+      displayName: z.string(),
+      jobTitle: z.string(),
+      email: z.string(),
+      status: z.enum(['active', 'invited', 'deactivated']),
+    }),
+  ),
+});
+export type InstitutionProfile = z.infer<typeof institutionProfileSchema>;
 export const institutionsSchema = z.array(institutionSchema);
 
 /** Workflow state of an institution-quarter obligation (PRD §7.5). */

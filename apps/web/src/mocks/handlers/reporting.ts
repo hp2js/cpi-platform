@@ -75,6 +75,7 @@ export const reportingHandlers = [
     async ({ params, request }) => {
       await networkDelay();
       const obligation = ownObligation(params.obligationId);
+      const user = requireRole('institution');
       const bundle = reportBundle(obligation);
       if (!bundle.editable || !bundle.form)
         return apiError(
@@ -93,9 +94,14 @@ export const reportingHandlers = [
         );
       const current = bundle.draft?.version ?? 0;
       if (parsed.data.baseVersion !== current) {
+        const by = bundle.draft?.savedBy;
+        const at = bundle.draft?.savedAt;
+        // Several focal persons can work on one report: say who saved, not just "another tab".
         return apiError(
           409,
-          'This draft was changed in another tab or window. Reload to see the latest version before saving.',
+          by && by !== user.displayName
+            ? `${by} saved this report${at ? ` at ${at.slice(11, 16)} EAT on ${at.slice(0, 10)}` : ''}. Reload to see their changes before saving yours.`
+            : 'This draft was changed in another tab or window. Reload to see the latest version before saving.',
           'version_conflict',
         );
       }
@@ -105,6 +111,7 @@ export const reportingHandlers = [
         answers: parsed.data.answers,
         version: current + 1,
         savedAt: getDb().businessTime,
+        savedBy: user.displayName,
       };
       commit((db) => {
         db.drafts = db.drafts.filter(

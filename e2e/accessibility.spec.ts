@@ -98,6 +98,7 @@ test('mid-year screens for every role', async ({ page }) => {
     ['focal-demo-001', '/institution/plan', 'institution plan'],
     ['focal-demo-001', '/institution/foundations', 'institution foundations'],
     ['focal-demo-002', '/institution/inbox', 'institution inbox'],
+    ['focal-demo-002', '/institution/profile', 'our institution'],
     [
       'focal-demo-001',
       '/institution/results',

@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -63,17 +64,31 @@ function StatusChange({ user }: { user: ManagedUser }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
   const next = !user.active;
   const mutation = useMutation({
-    mutationFn: () => setUserActive(user.id, next, reason),
+    mutationFn: () => setUserActive(user.id, next, reason, confirmed),
     onSuccess: async () => {
       setOpen(false);
       setReason('');
+      setConfirmed(false);
       await queryClient.invalidateQueries();
     },
   });
+  // The server says when this is the institution's last active focal person.
+  const lastFocal =
+    isApiError(mutation.error) && mutation.error.code === 'last_focal_person';
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+        if (value) {
+          setConfirmed(false);
+          mutation.reset();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           {user.active ? 'Deactivate' : 'Reactivate'}
@@ -101,10 +116,33 @@ function StatusChange({ user }: { user: ManagedUser }) {
           <p className="text-sm text-muted-foreground">
             At least 10 characters; kept in the audit log.
           </p>
-          {mutation.isError && (
-            <p role="alert" className="text-sm text-destructive">
-              {mutation.error.message}
-            </p>
+          {lastFocal ? (
+            <div
+              role="alert"
+              className="grid gap-2 rounded-md border border-destructive/40 p-3 text-sm"
+            >
+              <p>{mutation.error?.message}</p>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id={`status-confirm-${user.id}`}
+                  checked={confirmed}
+                  onCheckedChange={(value) => setConfirmed(value === true)}
+                  className="mt-0.5"
+                />
+                <Label
+                  htmlFor={`status-confirm-${user.id}`}
+                  className="font-normal"
+                >
+                  Deactivate anyway. I will add or invite another focal person.
+                </Label>
+              </div>
+            </div>
+          ) : (
+            mutation.isError && (
+              <p role="alert" className="text-sm text-destructive">
+                {mutation.error.message}
+              </p>
+            )
           )}
         </div>
         <DialogFooter>
@@ -113,7 +151,11 @@ function StatusChange({ user }: { user: ManagedUser }) {
           </Button>
           <Button
             variant={user.active ? 'destructive' : 'default'}
-            disabled={reason.trim().length < 10 || mutation.isPending}
+            disabled={
+              reason.trim().length < 10 ||
+              (lastFocal && !confirmed) ||
+              mutation.isPending
+            }
             onClick={() => mutation.mutate()}
           >
             {user.active ? 'Deactivate' : 'Reactivate'}

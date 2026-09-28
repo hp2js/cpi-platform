@@ -3,11 +3,12 @@ import {
   type AccountingOfficer,
   type InstitutionCreate,
   type InstitutionImportPreview,
+  type Institution,
 } from '@cpi/contracts';
 import type { MockDb } from '../db';
 import { committee, type MockBaseline } from '../seed/baselines';
 import type { MockUser } from '../seed/cast';
-import { sendLink, type PreparedLink } from './auth';
+import { accountStatus, sendLink, type PreparedLink } from './auth';
 import { parseCsv } from './csv';
 
 /**
@@ -365,4 +366,24 @@ export function previewImport(
     },
     rows,
   };
+}
+
+/** Focal persons who have set up their account and can sign in (invited ones cannot yet). */
+export function activeFocalPersons(db: MockDb, institutionId: string) {
+  return db.users.filter(
+    (user) =>
+      user.role === 'institution' &&
+      user.institutionId === institutionId &&
+      accountStatus(user) === 'active',
+  );
+}
+
+export function toInstitution(
+  db: MockDb,
+  record: MockDb['institutions'][number],
+): Institution {
+  return {
+    ...record,
+    activeFocalPersons: activeFocalPersons(db, record.id).length,
+  } as Institution;
 }

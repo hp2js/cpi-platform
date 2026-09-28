@@ -141,9 +141,16 @@ function InstitutionsTable({
                   )}
                 </TableCell>
                 <TableCell className="text-sm">
-                  {institution.focalPersons.filter((person) => person.active)
-                    .length || (
-                    <span className="text-destructive">None active</span>
+                  {/* Invited accounts cannot sign in until they set a password. */}
+                  {institution.focalPersons.filter(
+                    (person) => person.status === 'active',
+                  ).length || (
+                    <span className="text-destructive">
+                      None active
+                      {institution.focalPersons.some(
+                        (person) => person.status === 'invited',
+                      ) && ' (invited)'}
+                    </span>
                   )}
                 </TableCell>
               </TableRow>

@@ -1,4 +1,4 @@
-import type { Institution, Role } from '@cpi/contracts';
+import type { InstitutionRecord, Role } from '@cpi/contracts';
 
 /** Fictional cast from PRD §17.1. No record represents a real institution or person. */
 export interface MockUser {
@@ -43,7 +43,7 @@ export const initialInstitutionTypes: MockInstitutionType[] = [
 const typeId = (label: string) =>
   initialInstitutionTypes.find((type) => type.label === label)!.id;
 
-export const institutions: Institution[] = [
+export const institutions: InstitutionRecord[] = [
   {
     id: 'DEMO-001',
     name: 'Demo Appointments Service Agency',

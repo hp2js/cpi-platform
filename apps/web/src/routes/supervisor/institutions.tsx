@@ -9,6 +9,7 @@ import {
   useListControls,
 } from '@/components/list-controls';
 import { FlagList, WorkflowStateBadge, flagLabel } from '@/components/status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -128,8 +129,15 @@ export function SupervisorInstitutionsPage() {
                       </TableCell>
                       <TableCell>{officer}</TableCell>
                       <TableCell className="text-sm whitespace-normal">
+                        {institution.activeFocalPersons === 0 && (
+                          <span className="block font-medium text-destructive">
+                            No active focal person
+                          </span>
+                        )}
                         {flags.length === 0
-                          ? 'Nothing'
+                          ? institution.activeFocalPersons === 0
+                            ? null
+                            : 'Nothing'
                           : flags
                               .map(
                                 ([flag, count]) =>
@@ -330,6 +338,15 @@ export function SupervisorInstitutionPage() {
               />
             }
           />
+          {data.activeFocalPersons === 0 && (
+            <Alert variant="destructive">
+              <AlertTitle>No active focal person</AlertTitle>
+              <AlertDescription>
+                Nobody can report for {data.id} or receive its clarifications
+                until the administrator sets someone up.
+              </AlertDescription>
+            </Alert>
+          )}
           <dl className="grid gap-x-6 gap-y-2 rounded-lg border bg-card p-5 text-sm sm:grid-cols-[12rem_1fr]">
             {[
               ['Reviewing officer', officer?.officerName ?? 'Unassigned'],

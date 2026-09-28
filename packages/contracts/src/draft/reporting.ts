@@ -85,6 +85,8 @@ export const draftSchema = z.object({
   /** Optimistic-concurrency token; a save with a stale version is refused with 409. */
   version: z.number().int().nonnegative(),
   savedAt: instantSchema.nullable(),
+  /** Who saved it last: an institution can have several focal persons. */
+  savedBy: z.string().nullable(),
 });
 export type Draft = z.infer<typeof draftSchema>;
 

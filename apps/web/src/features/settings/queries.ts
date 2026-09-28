@@ -81,11 +81,12 @@ export const setUserActive = (
   userId: string,
   active: boolean,
   reason: string,
+  confirmNoFocalPerson = false,
 ) =>
   request(
     `/api/settings/users/${encodeURIComponent(userId)}/status`,
     peopleSchema,
-    { method: 'POST', json: { active, reason } },
+    { method: 'POST', json: { active, reason, confirmNoFocalPerson } },
   );
 /** Sends a fresh invitation link; the earlier link stops working. */
 export const resendInvitation = (userId: string) =>

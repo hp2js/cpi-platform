@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { institutionQuery } from '@/features/directory/queries';
 import { assignmentHistoryQuery } from '@/features/simulation/queries';
 import { formatDateTime } from '@/lib/dates';
 import {
@@ -113,6 +114,7 @@ export function OfficerAssignment({
   const history = useQuery(assignmentHistoryQuery);
   const supervision = useQuery(supervisionQuery);
   const requests = useQuery(suggestionsQuery);
+  const institution = useQuery(institutionQuery(institutionId));
   const records = (history.data ?? [])
     .filter((row) => row.institutionId === institutionId)
     .sort((a, b) => a.validFrom.localeCompare(b.validFrom));
@@ -167,6 +169,15 @@ export function OfficerAssignment({
           </dd>
         </div>
       </dl>
+      {institution.data?.activeFocalPersons === 0 && (
+        <Alert variant="destructive">
+          <AlertTitle>No active focal person</AlertTitle>
+          <AlertDescription>
+            Nobody can report for {institutionId} or receive its clarifications.
+            The administrator needs to set someone up.
+          </AlertDescription>
+        </Alert>
+      )}
       {current.cover && (
         <Alert>
           <AlertTitle>

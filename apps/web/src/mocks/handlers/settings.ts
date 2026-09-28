@@ -25,6 +25,7 @@ import {
   createInstitution,
   fromCreateRequest,
   institutionProblems,
+  activeFocalPersons,
   previewImport,
   type NewInstitution,
 } from '../services/institutions';
@@ -659,6 +660,20 @@ export const settingsHandlers = [
             409,
             `Reassign ${assigned.map((item) => item.institutionId).join(', ')} before deactivating ${user.displayName}.`,
             'officer_has_assignments',
+          );
+        // Deactivating an institution's last active focal person is allowed (someone who leaves
+        // may need locking out at once) but must be confirmed: nobody can then report.
+        if (
+          user.role === 'institution' &&
+          user.institutionId &&
+          accountStatus(user) === 'active' &&
+          activeFocalPersons(db, user.institutionId).length === 1 &&
+          !input.confirmNoFocalPerson
+        )
+          return apiError(
+            409,
+            `${user.displayName} is the only active focal person for ${user.institutionId}. Afterwards nobody can report for it or receive its clarifications until someone else is set up.`,
+            'last_focal_person',
           );
         // Oversight must not silently lapse: move a supervisor's institutions first.
         const supervised = supervisedInstitutionIds(user.id);

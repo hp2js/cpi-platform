@@ -8,7 +8,7 @@ import type {
   OversightComment,
   ReassignmentSuggestion,
   FormVersion,
-  Institution,
+  InstitutionRecord,
   Receipt,
   ReportAnswers,
 } from '@cpi/contracts';
@@ -118,7 +118,7 @@ export interface MockDb {
   runId: string;
   businessTime: string;
   cycle: Cycle;
-  institutions: Institution[];
+  institutions: InstitutionRecord[];
   users: MockUser[];
   assignments: typeof initialAssignments;
   /** Supervisor per institution, with history (a supervisor sees only these institutions). */

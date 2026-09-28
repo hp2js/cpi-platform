@@ -225,6 +225,11 @@ export type UserCreate = z.infer<typeof userCreateSchema>;
 export const userStatusSchema = z.object({
   active: z.boolean(),
   reason: z.string().trim().min(10).max(500),
+  /**
+   * Required when deactivating an institution's last active focal person: nobody can then
+   * report or receive its clarifications until someone else is set up.
+   */
+  confirmNoFocalPerson: z.boolean().optional(),
 });
 
 /** What an administrator may change on someone else's account; email is the sign-in identity. */

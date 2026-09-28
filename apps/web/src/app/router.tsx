@@ -442,6 +442,14 @@ const accountPage = page(
   () => import('@/routes/shared/account'),
   'AccountPage',
 );
+const institutionProfileRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'profile',
+  component: page(
+    () => import('@/routes/institution/profile'),
+    'InstitutionProfilePage',
+  ),
+});
 const institutionAccountRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'account',
@@ -518,6 +526,7 @@ export const routeTree = rootRoute.addChildren([
       institutionInboxRoute,
       institutionResultsRoute,
       institutionAccountRoute,
+      institutionProfileRoute,
     ]),
     officerRoute.addChildren([
       officerHomeRoute,
