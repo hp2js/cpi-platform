@@ -65,7 +65,8 @@ export async function startApi() {
       DATABASE_URL: urls.database,
       REDIS_URL: urls.redis,
     },
-    stdio: ['ignore', 'ignore', 'inherit'],
+    // API_LOG=1 shows the server's JSON log (for example a 500's cause).
+    stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],
   });
   const url = `http://127.0.0.1:${port}`;
   for (let attempt = 0; ; attempt += 1) {

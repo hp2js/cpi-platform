@@ -16,6 +16,7 @@ import type {
   Attestation,
   AuditEvent,
   ClarificationItem,
+  OversightComment,
   DayCounting,
   DayCountingMode,
   FoundationKind,
@@ -89,6 +90,20 @@ export const assignments = pgTable('assignments', {
   reason: text(),
 });
 
+/** Supervisors are assigned institutions as officers are; history is kept (PRD §5.2). */
+export const supervisions = pgTable('supervisions', {
+  id: serial().primaryKey(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  supervisorId: text()
+    .notNull()
+    .references(() => users.id),
+  validFrom: instant().notNull(),
+  validTo: instant(),
+  reason: text(),
+});
+
 /* Reporting cycle (FR02, FR03, PRD §7.1) */
 
 export const scoringProfiles = pgTable('scoring_profiles', {
@@ -128,6 +143,7 @@ export const cycles = pgTable('cycles', {
     mode: 'calendar',
     reportingDays: 15,
     clarificationDays: 7,
+    reviewTargetDays: 10,
     holidays: [],
   }),
 });
@@ -371,6 +387,8 @@ export const drafts = pgTable('drafts', {
   /** Optimistic-concurrency token. */
   version: integer().notNull(),
   savedAt: instant(),
+  /** Who saved it last: an institution can have several focal persons. */
+  savedBy: text(),
 });
 
 /** An immutable submitted revision (PRD §7.2). */
@@ -496,6 +514,9 @@ export const oversightComments = pgTable('oversight_comments', {
   author: text().notNull(),
   at: instant().notNull(),
   text: text().notNull(),
+  status: text().$type<'open' | 'addressed'>().notNull().default('open'),
+  addressedAt: instant(),
+  replies: jsonb().$type<OversightComment['replies']>().notNull().default([]),
 });
 
 export const reopenings = pgTable('reopenings', {

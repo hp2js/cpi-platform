@@ -1,18 +1,46 @@
 import { and, eq, inArray, lt } from 'drizzle-orm';
-import { daysLate, type Obligation, type ObligationFlag } from '@cpi/contracts';
+import {
+  daysLate,
+  type DayCounting,
+  type Obligation,
+  type ObligationFlag,
+} from '@cpi/contracts';
+import { endOfDay, localDate, shiftDays } from '../cycle/days';
 import type { Db } from '../database/db';
 import { clarifications, obligations, periods } from '../database/schema';
 import { currentState } from '../database/state';
 
 type ObligationRow = typeof obligations.$inferSelect;
 
+/** When a review of a report received at `receivedAt` passes the officer review target. */
+export function reviewDueAt(receivedAt: string, dayCounting: DayCounting) {
+  return endOfDay(
+    shiftDays(localDate(receivedAt), dayCounting.reviewTargetDays, dayCounting),
+  );
+}
+
+/** Awaiting the officer's decision on the current revision beyond the review target (PRD §7.3). */
+export function isReviewOverdue(
+  obligation: ObligationRow,
+  businessTime: string,
+  dayCounting: DayCounting,
+) {
+  return (
+    (obligation.state === 'submitted' || obligation.state === 'under_review') &&
+    obligation.lastReceiptAt !== null &&
+    Date.parse(businessTime) >
+      Date.parse(reviewDueAt(obligation.lastReceiptAt, dayCounting))
+  );
+}
+
 /** Flags are derived from business time on the server, never in the browser (FR02). */
 export async function toObligations(
   db: Db,
   rows: ObligationRow[],
+  audience: 'internal' | 'institution' = 'internal',
 ): Promise<Obligation[]> {
   if (rows.length === 0) return [];
-  const { state } = await currentState(db);
+  const { state, cycle } = await currentState(db);
   const now = Date.parse(state.businessTime);
   const periodById = new Map(
     (await db.select().from(periods)).map((period) => [period.id, period]),
@@ -51,6 +79,12 @@ export async function toObligations(
     )
       flags.push('late');
     if (overdue.has(row.id)) flags.push('clarification_overdue');
+    // Officer review timing is internal: institutions never see `review_overdue`.
+    if (
+      audience === 'internal' &&
+      isReviewOverdue(row, state.businessTime, cycle.dayCounting)
+    )
+      flags.push('review_overdue');
     return {
       ...row,
       flags,

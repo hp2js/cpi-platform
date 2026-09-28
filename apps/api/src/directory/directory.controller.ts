@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Assignment, Cycle, Institution } from '@cpi/contracts';
 import { canReadInstitution, readableInstitutionIds } from '../auth/scope';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
@@ -21,6 +21,12 @@ const institutionColumns = {
   type: institutions.type,
   active: institutions.active,
   accountingOfficer: institutions.accountingOfficer,
+  /** Focal persons who can sign in; zero means nobody can report for the institution. */
+  activeFocalPersons: sql<number>`(
+    SELECT count(*)::int FROM ${users}
+    WHERE ${users.institutionId} = "institutions"."id"
+      AND ${users.role} = 'institution' AND ${users.active}
+  )`,
 };
 
 @Controller()
@@ -75,13 +81,17 @@ export class DirectoryController {
       .from(obligations)
       .where(inArray(obligations.institutionId, scope))
       .orderBy(asc(obligations.id));
-    return toObligations(this.db, rows);
+    return toObligations(
+      this.db,
+      rows,
+      user.role === 'institution' ? 'institution' : 'internal',
+    );
   }
 
   @Get('assignments')
   @Roles('officer', 'supervisor', 'administrator')
   async assignments(@CurrentUser() user: User): Promise<Assignment[]> {
-    return this.db
+    const rows = await this.db
       .select({
         institutionId: assignments.institutionId,
         officerId: assignments.officerId,
@@ -97,5 +107,7 @@ export class DirectoryController {
           : undefined,
       )
       .orderBy(asc(assignments.id));
+    // ponytail: temporary cover and handover notes are not implemented yet.
+    return rows.map((row) => ({ ...row, cover: null, handoverNote: null }));
   }
 }

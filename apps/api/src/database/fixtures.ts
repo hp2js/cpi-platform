@@ -7,6 +7,7 @@ import {
   initialBusinessTime,
   initialForm,
   initialProfiles,
+  initialSupervisions,
   initialRisks,
   institutions,
   seedFoundations,
@@ -48,6 +49,7 @@ export async function loadFixtures(
       })),
     );
     await tx.insert(schema.assignments).values(initialAssignments);
+    await tx.insert(schema.supervisions).values(initialSupervisions);
 
     await tx
       .insert(schema.scoringProfiles)

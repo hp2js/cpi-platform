@@ -1,4 +1,5 @@
 import {
+  adminAttentionSchema,
   calendarSettingsSchema,
   peopleSchema,
   profilesStateSchema,
@@ -15,8 +16,10 @@ import {
   type InstitutionTypeUpdate,
   accountSchema,
   type AccountUpdate,
+  type UserRoleChange,
 } from '@cpi/contracts';
 import { queryOptions } from '@tanstack/react-query';
+import { z } from 'zod';
 import { request } from '@/lib/api';
 
 export const settingsKeys = {
@@ -81,11 +84,12 @@ export const setUserActive = (
   userId: string,
   active: boolean,
   reason: string,
+  confirmNoFocalPerson = false,
 ) =>
   request(
     `/api/settings/users/${encodeURIComponent(userId)}/status`,
     peopleSchema,
-    { method: 'POST', json: { active, reason } },
+    { method: 'POST', json: { active, reason, confirmNoFocalPerson } },
   );
 /** Sends a fresh invitation link; the earlier link stops working. */
 export const resendInvitation = (userId: string) =>
@@ -143,3 +147,17 @@ export const accountQuery = queryOptions({
 });
 export const saveAccount = (update: AccountUpdate) =>
   request('/api/account', accountSchema, { method: 'PUT', json: update });
+
+export const adminAttentionQuery = queryOptions({
+  queryKey: ['admin', 'attention'] as const,
+  queryFn: ({ signal }) =>
+    request('/api/admin/attention', adminAttentionSchema, { signal }),
+});
+
+/** Keeps one identity and its history; scope must be handed over first. */
+export const changeUserRole = (userId: string, change: UserRoleChange) =>
+  request(
+    `/api/settings/users/${encodeURIComponent(userId)}/role`,
+    z.object({ ok: z.boolean() }),
+    { method: 'PUT', json: change },
+  );

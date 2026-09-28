@@ -33,6 +33,7 @@ import {
   peopleQuery,
   updateInstitution,
 } from '@/features/settings/queries';
+import { SupportView } from '@/features/support/support-view';
 import { isApiError } from '@/lib/api';
 import {
   InvitationNotice,
@@ -449,6 +450,20 @@ function FocalPersonsCard({
         </Alert>
       ) : (
         <ul className="grid gap-2">
+          {!institution.focalPersons.some(
+            (person) => person.status === 'active',
+          ) && (
+            <li>
+              <Alert>
+                <AlertTitle>No active focal person</AlertTitle>
+                <AlertDescription>
+                  Nobody can report for this institution or receive its
+                  clarifications until someone below finishes setting up, or a
+                  new focal person is added.
+                </AlertDescription>
+              </Alert>
+            </li>
+          )}
           {institution.focalPersons.map((person) => (
             <li
               key={person.id}
@@ -495,14 +510,18 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
             Reporting and review
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Reviewed by {institution.officer?.name ?? 'nobody (unassigned)'}.
+            Reviewed by {institution.officer?.name ?? 'nobody (unassigned)'};
+            supervised by{' '}
+            {institution.supervisor?.name ??
+              'nobody, so no supervisor can see it'}
+            .
           </p>
         </div>
         <Link
           to="/admin/assignments"
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
-          Change officer
+          Change officer or supervisor
         </Link>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
@@ -519,6 +538,16 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
                   <FlagList flags={obligation.flags} />
                 </span>
               )}
+              {obligation &&
+                (obligation.state === 'draft' ||
+                  obligation.state === 'clarification_requested') && (
+                  <span>
+                    <SupportView
+                      obligationId={obligation.id}
+                      periodLabel={period.label}
+                    />
+                  </span>
+                )}
             </li>
           );
         })}

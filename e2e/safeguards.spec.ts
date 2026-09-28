@@ -167,7 +167,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
     .getByRole('button', { name: /^Open/ })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Clarification requests' }),
+    page.getByRole('heading', { name: 'Quarterly reports' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Prepare a revised report' }).click();
   await expect(

@@ -48,6 +48,8 @@ export const cycle: Cycle = {
     mode: 'calendar',
     reportingDays: 15,
     clarificationDays: 7,
+    // No PRD figure: ten days from receipt to a final decision, adjustable by the administrator.
+    reviewTargetDays: 10,
     holidays: [
       { date: '2026-10-20', name: 'Mashujaa Day' },
       { date: '2026-12-12', name: 'Jamhuri Day' },

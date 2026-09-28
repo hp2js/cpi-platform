@@ -1,4 +1,5 @@
 import type {
+  ClarificationItem,
   EvidenceAnswer,
   EvidenceItem,
   EvidenceReference,
@@ -16,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import { evidenceCategoryLabel, fieldDomId, formatBytes } from './answers';
 
 // The form type is derived from the hook so field names and values stay checked.
@@ -606,18 +608,40 @@ export function MilestoneCard({
   form,
   milestone,
   evidence,
+  questions = [],
 }: {
   form: ReportForm;
   milestone: Milestone;
   evidence: EvidenceItem[];
+  /** Open clarification questions about this milestone, shown where they apply. */
+  questions?: ClarificationItem[];
 }) {
   const completedName = `milestones.${milestone.id}.completed` as const;
   const completedId = fieldDomId(completedName);
   return (
     <article
+      id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
-      className="grid gap-4 rounded-lg border bg-card p-4 sm:p-5"
+      className={cn(
+        'grid scroll-mt-28 gap-4 rounded-lg border bg-card p-4 sm:p-5',
+        questions.length > 0 && 'border-amber-500/60 ring-1 ring-amber-500/30',
+      )}
     >
+      {questions.length > 0 && (
+        <div className="grid gap-2 rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-500/10 dark:text-amber-100">
+          <p className="font-medium">Your officer asked about this milestone</p>
+          {questions.map((question) => (
+            <div key={question.question}>
+              <p>{question.question}</p>
+              {question.requestedEvidence && (
+                <p className="text-xs">
+                  Requested: {question.requestedEvidence}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <header>
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           {milestone.code}

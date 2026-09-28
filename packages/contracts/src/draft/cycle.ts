@@ -29,6 +29,11 @@ export const dayCountingSchema = z.object({
   reportingDays: z.number().int().min(1).max(60),
   /** The clarification response window (PRD §7.3: 7). */
   clarificationDays: z.number().int().min(1).max(30),
+  /**
+   * Officer review target: counted days from receipt to a final decision. Past it, the quarter
+   * is flagged `review_overdue` for supervisors. A target, never a gate (PRD §7.3).
+   */
+  reviewTargetDays: z.number().int().min(1).max(60),
   holidays: z.array(holidaySchema).max(60),
 });
 export type DayCounting = z.infer<typeof dayCountingSchema>;

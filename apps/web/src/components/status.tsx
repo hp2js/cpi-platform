@@ -9,6 +9,7 @@ import {
   FileWarning,
   MessageCircleQuestion,
   PencilLine,
+  Hourglass,
   RefreshCcw,
   ScanSearch,
   TriangleAlert,
@@ -111,6 +112,11 @@ const flags: Record<
   needs_re_review: {
     label: 'Needs re-review',
     icon: RefreshCcw,
+    tone: 'warning',
+  },
+  review_overdue: {
+    label: 'Review past target',
+    icon: Hourglass,
     tone: 'warning',
   },
 };

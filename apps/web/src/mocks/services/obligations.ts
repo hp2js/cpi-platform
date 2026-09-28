@@ -1,7 +1,7 @@
 import type { Obligation, ObligationFlag } from '@cpi/contracts';
 import { getDb, type MockObligation } from '../db';
 import { clarificationsFor } from './clarifications';
-import { countDays, localDate } from './days';
+import { countDays, endOfDay, localDate, shiftDays } from './days';
 
 /** Counted days (the cycle's rule) after the deadline date; at least 1 when late, 0 on time. */
 export function daysLate(submittedAt: string, deadline: string) {
@@ -16,8 +16,32 @@ export function daysLate(submittedAt: string, deadline: string) {
   );
 }
 
-/** Flags are derived from business time on the server, never in the browser (FR02). */
-export function toObligation(obligation: MockObligation): Obligation {
+/** When a review of a report received at `receivedAt` passes the officer review target. */
+export function reviewDueAt(receivedAt: string) {
+  const { dayCounting } = getDb().cycle;
+  return endOfDay(
+    shiftDays(localDate(receivedAt), dayCounting.reviewTargetDays, dayCounting),
+  );
+}
+
+/** Awaiting the officer's decision on the current revision beyond the review target. */
+export function isReviewOverdue(obligation: MockObligation) {
+  return (
+    (obligation.state === 'submitted' || obligation.state === 'under_review') &&
+    obligation.lastReceiptAt !== null &&
+    Date.parse(getDb().businessTime) >
+      Date.parse(reviewDueAt(obligation.lastReceiptAt))
+  );
+}
+
+/**
+ * Flags are derived from business time on the server, never in the browser (FR02). Officer
+ * review timing is internal: institutions never see `review_overdue`.
+ */
+export function toObligation(
+  obligation: MockObligation,
+  audience: 'internal' | 'institution' = 'internal',
+): Obligation {
   const { cycle, businessTime } = getDb();
   const period = cycle.periods.find(
     (candidate) => candidate.id === obligation.periodId,
@@ -43,6 +67,8 @@ export function toObligation(obligation: MockObligation): Obligation {
     )
   )
     flags.push('clarification_overdue');
+  if (audience === 'internal' && isReviewOverdue(obligation))
+    flags.push('review_overdue');
   return {
     ...obligation,
     flags,

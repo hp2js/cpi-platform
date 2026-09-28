@@ -28,7 +28,8 @@ export const accountingOfficerSchema = z.object({
 });
 export type AccountingOfficer = z.infer<typeof accountingOfficerSchema>;
 
-export const institutionSchema = z.object({
+/** The stored institution record. */
+export const institutionRecordSchema = z.object({
   id: institutionIdSchema,
   name: z.string(),
   /** Managed list (Settings → Institution types); `type` is its current label. */
@@ -37,7 +38,33 @@ export const institutionSchema = z.object({
   active: z.boolean(),
   accountingOfficer: accountingOfficerSchema.nullable(),
 });
+export type InstitutionRecord = z.infer<typeof institutionRecordSchema>;
+
+/** An institution as the API returns it. */
+export const institutionSchema = institutionRecordSchema.extend({
+  /**
+   * Focal persons who have set up their account and can sign in. Zero means nobody can report
+   * for the institution or receive its clarifications.
+   */
+  activeFocalPersons: z.number().int().nonnegative(),
+});
 export type Institution = z.infer<typeof institutionSchema>;
+
+/** What a focal person sees about their own institution. */
+export const institutionProfileSchema = z.object({
+  institution: institutionSchema,
+  reviewingOfficer: z.string().nullable(),
+  focalPersons: z.array(
+    z.object({
+      id: z.string(),
+      displayName: z.string(),
+      jobTitle: z.string(),
+      email: z.string(),
+      status: z.enum(['active', 'invited', 'deactivated']),
+    }),
+  ),
+});
+export type InstitutionProfile = z.infer<typeof institutionProfileSchema>;
 export const institutionsSchema = z.array(institutionSchema);
 
 /** Workflow state of an institution-quarter obligation (PRD §7.5). */
@@ -59,6 +86,8 @@ export const obligationFlagSchema = z.enum([
   'evidence_incomplete',
   'clarification_overdue',
   'needs_re_review',
+  /** Awaiting the officer beyond the review target. Internal: never shown to institutions. */
+  'review_overdue',
 ]);
 export type ObligationFlag = z.infer<typeof obligationFlagSchema>;
 
@@ -84,12 +113,47 @@ export const obligationSchema = z.object({
 export type Obligation = z.infer<typeof obligationSchema>;
 export const obligationsSchema = z.array(obligationSchema);
 
+/**
+ * Temporary cover (leave): the covering officer holds the institution until `until`, then it
+ * returns to `returnToOfficerId` automatically. Null for an ordinary assignment.
+ */
+export const assignmentCoverSchema = z
+  .object({
+    until: instantSchema,
+    returnToOfficerId: z.string(),
+    returnToOfficerName: z.string(),
+  })
+  .nullable();
+
 export const assignmentSchema = z.object({
   institutionId: institutionIdSchema,
   officerId: z.string(),
   officerName: z.string(),
   validFrom: instantSchema,
   validTo: instantSchema.nullable(),
+  cover: assignmentCoverSchema,
+  /** What the previous officer or administrator left for the new officer. */
+  handoverNote: z.string().nullable(),
 });
 export type Assignment = z.infer<typeof assignmentSchema>;
 export const assignmentsSchema = z.array(assignmentSchema);
+
+/**
+ * Supervisors are assigned institutions, as officers are; a supervisor sees only the
+ * institutions currently assigned to them. `validTo` is null for the current record.
+ */
+export const supervisionSchema = z.object({
+  institutionId: institutionIdSchema,
+  supervisorId: z.string(),
+  supervisorName: z.string(),
+  validFrom: instantSchema,
+  validTo: instantSchema.nullable(),
+  reason: z.string().nullable(),
+});
+export type Supervision = z.infer<typeof supervisionSchema>;
+export const supervisionsSchema = z.array(supervisionSchema);
+export const supervisionChangeRequestSchema = z.object({
+  institutionId: institutionIdSchema,
+  supervisorId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+});

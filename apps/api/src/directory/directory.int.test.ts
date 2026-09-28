@@ -4,7 +4,9 @@ import type {
   Obligation,
   Session,
 } from '@cpi/contracts';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { supervisions } from '../database/schema';
 import { integration, startApi } from '../test/api';
 
 /** Ported from apps/web/src/mocks/scope.test.ts (PRD §5.2, AT01, AT02). */
@@ -46,6 +48,20 @@ describe.skipIf(!integration)('session and directory', () => {
     expect(
       new Set(assignments.map((assignment) => assignment.officerId)),
     ).toEqual(new Set(['officer-a']));
+  });
+
+  it('limits a supervisor to currently supervised institutions (PRD §5.2)', async () => {
+    await api.db
+      .update(supervisions)
+      .set({ validTo: '2026-09-01T00:00:00+03:00' })
+      .where(eq(supervisions.institutionId, 'DEMO-008'));
+    const client = await api.client().signIn('supervisor');
+    const institutions = await client.json<Institution[]>('/institutions');
+    expect(institutions.map((institution) => institution.id)).not.toContain(
+      'DEMO-008',
+    );
+    expect(institutions[0]).toMatchObject({ activeFocalPersons: 1 });
+    expect((await client.request('/institutions/DEMO-008')).status).toBe(404);
   });
 
   it('gives the supervisor all 32 institution-quarter obligations', async () => {

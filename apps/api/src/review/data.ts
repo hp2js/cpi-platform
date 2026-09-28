@@ -319,6 +319,9 @@ export async function reviewBundle(
         author: comment.author,
         at: comment.at,
         text: comment.text,
+        status: comment.status,
+        addressedAt: comment.addressedAt,
+        replies: comment.replies,
       })),
     decisions: decided.map(toDecision),
     score: scoreSummary(

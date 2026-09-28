@@ -81,7 +81,7 @@ export function OfficerHomePage() {
                 <QueryView query={obligations} label="reporting obligations">
                   {(obligationList) => (
                     <ObligationMatrix
-                      linkToInstitution
+                      linkToInstitution="officer"
                       caption="Assigned institutions by quarter"
                       cycle={cycleData}
                       institutions={list}

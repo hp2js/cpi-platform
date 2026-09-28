@@ -1,4 +1,4 @@
-import type { Institution, Role } from '../index.js';
+import type { InstitutionRecord, Role } from '../index.js';
 
 /** Fictional cast from PRD §17.1. No record represents a real institution or person. */
 export interface MockUser {
@@ -43,7 +43,7 @@ export const initialInstitutionTypes: MockInstitutionType[] = [
 const typeId = (label: string) =>
   initialInstitutionTypes.find((type) => type.label === label)!.id;
 
-export const institutions: Institution[] = [
+export const institutions: InstitutionRecord[] = [
   {
     id: 'DEMO-001',
     name: 'Demo Appointments Service Agency',
@@ -201,6 +201,15 @@ export const users: MockUser[] = [
   },
 ];
 
+/** The one supervisor oversees all eight institutions (PRD §4.1 scenario). */
+export const initialSupervisions = institutions.map((institution) => ({
+  institutionId: institution.id,
+  supervisorId: 'supervisor',
+  validFrom: '2026-07-01T00:00:00+03:00',
+  validTo: null as string | null,
+  reason: null as string | null,
+}));
+
 /** Officer A owns DEMO-001–004 and Officer B owns DEMO-005–008 (PRD §17.1). */
 export const initialAssignments = institutions.map((institution, index) => ({
   institutionId: institution.id,
@@ -208,4 +217,11 @@ export const initialAssignments = institutions.map((institution, index) => ({
   validFrom: '2026-07-01T00:00:00+03:00',
   validTo: null as string | null,
   reason: null as string | null,
+  /** Temporary cover: returns to `returnToOfficerId` at `until`. */
+  cover: null as {
+    until: string;
+    returnToOfficerId: string;
+    setById: string;
+  } | null,
+  handoverNote: null as string | null,
 }));

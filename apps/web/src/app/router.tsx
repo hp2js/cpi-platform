@@ -190,13 +190,18 @@ const institutionSubmitRoute = createRoute({
     'ReviewSubmitPage',
   ),
 });
+const institutionReportsRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'reports',
+  component: page(() => import('@/routes/institution/reports'), 'ReportsPage'),
+});
+// Earlier addresses, still used by bookmarks and older notifications.
 const institutionReceiptsRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'receipts',
-  component: page(
-    () => import('@/routes/institution/receipts'),
-    'ReceiptsPage',
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: '/institution/reports' });
+  },
 });
 const institutionReceiptRoute = createRoute({
   getParentRoute: () => institutionRoute,
@@ -206,23 +211,23 @@ const institutionReceiptRoute = createRoute({
 const institutionClarificationsRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'clarifications',
-  component: page(
-    () => import('@/routes/institution/clarifications'),
-    'ClarificationsPage',
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: '/institution/reports' });
+  },
 });
 const institutionPlanRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'plan',
+  validateSearch: (search: Record<string, unknown>): { tab?: 'documents' } =>
+    search.tab === 'documents' ? { tab: 'documents' } : {},
   component: page(() => import('@/routes/institution/plan'), 'PlanPage'),
 });
 const institutionFoundationsRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'foundations',
-  component: page(
-    () => import('@/routes/institution/foundations'),
-    'FoundationsPage',
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: '/institution/plan', search: { tab: 'documents' } });
+  },
 });
 const institutionInboxRoute = createRoute({
   getParentRoute: () => institutionRoute,
@@ -339,6 +344,45 @@ const supervisorReportsRoute = createRoute({
   path: 'reports',
   component: page(() => import('@/routes/supervisor/reports'), 'ReportsPage'),
 });
+const officerPortfolioRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'portfolio',
+  component: page(() => import('@/routes/officer/portfolio'), 'PortfolioPage'),
+});
+const officerRulesRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'rules',
+  component: page(() => import('@/routes/shared/rules'), 'RulesPage'),
+});
+const supervisorInstitutionsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'institutions',
+  component: page(
+    () => import('@/routes/supervisor/institutions'),
+    'SupervisorInstitutionsPage',
+  ),
+});
+const supervisorInstitutionRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'institutions/$institutionId',
+  component: page(
+    () => import('@/routes/supervisor/institutions'),
+    'SupervisorInstitutionPage',
+  ),
+});
+const supervisorAssignmentsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'assignments',
+  component: page(
+    () => import('@/routes/supervisor/assignments'),
+    'SupervisorAssignmentsPage',
+  ),
+});
+const supervisorRulesRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'rules',
+  component: page(() => import('@/routes/shared/rules'), 'RulesPage'),
+});
 const adminSimulationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'simulation',
@@ -403,6 +447,14 @@ const accountPage = page(
   () => import('@/routes/shared/account'),
   'AccountPage',
 );
+const institutionProfileRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'profile',
+  component: page(
+    () => import('@/routes/institution/profile'),
+    'InstitutionProfilePage',
+  ),
+});
 const institutionAccountRoute = createRoute({
   getParentRoute: () => institutionRoute,
   path: 'account',
@@ -471,6 +523,7 @@ export const routeTree = rootRoute.addChildren([
       institutionHomeRoute,
       institutionReportRoute,
       institutionSubmitRoute,
+      institutionReportsRoute,
       institutionReceiptsRoute,
       institutionReceiptRoute,
       institutionClarificationsRoute,
@@ -479,6 +532,7 @@ export const routeTree = rootRoute.addChildren([
       institutionInboxRoute,
       institutionResultsRoute,
       institutionAccountRoute,
+      institutionProfileRoute,
     ]),
     officerRoute.addChildren([
       officerHomeRoute,
@@ -487,6 +541,8 @@ export const routeTree = rootRoute.addChildren([
       officerInstitutionRoute,
       officerInboxRoute,
       officerAccountRoute,
+      officerPortfolioRoute,
+      officerRulesRoute,
     ]),
     supervisorRoute.addChildren([
       supervisorHomeRoute,
@@ -498,6 +554,10 @@ export const routeTree = rootRoute.addChildren([
       supervisorWorkloadRoute,
       supervisorAnnualRoute,
       supervisorReportsRoute,
+      supervisorInstitutionsRoute,
+      supervisorInstitutionRoute,
+      supervisorAssignmentsRoute,
+      supervisorRulesRoute,
     ]),
     adminRoute.addChildren([
       adminHomeRoute,

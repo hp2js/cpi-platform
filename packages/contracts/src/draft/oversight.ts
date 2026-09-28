@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { institutionIdSchema, instantSchema } from './common.js';
+import {
+  calendarDateSchema,
+  institutionIdSchema,
+  instantSchema,
+} from './common.js';
+import { assignmentCoverSchema } from './institutions.js';
 import { fractionSchema } from './review.js';
 
 /** A dashboard metric always carries its numerator, denominator and as-of time (PRD §4.3). */
@@ -40,6 +45,25 @@ export const comparisonRowSchema = z.object({
   planSize: z.number().int().positive(),
 });
 
+/**
+ * One quarter of the trend series (PRD §4.1: coverage, trends and review backlog). Counts are
+ * in the caller's scope; quarters not yet due report `due: 0` and are shown as not applicable.
+ */
+export const trendPointSchema = z.object({
+  periodId: z.string(),
+  periodLabel: z.string(),
+  /** Reports whose deadline has passed. */
+  due: z.number().int().nonnegative(),
+  submitted: z.number().int().nonnegative(),
+  onTime: z.number().int().nonnegative(),
+  finalized: z.number().int().nonnegative(),
+  awaitingOfficer: z.number().int().nonnegative(),
+  reviewOverdue: z.number().int().nonnegative(),
+  /** Mean reviewed implementation points of finalized reports; null when none. */
+  averagePoints: z.string().nullable(),
+});
+export type TrendPoint = z.infer<typeof trendPointSchema>;
+
 export const oversightSchema = z.object({
   asOf: instantSchema,
   profileName: z.string(),
@@ -60,6 +84,12 @@ export const oversightSchema = z.object({
   }),
   workload: z.array(officerWorkloadSchema),
   comparison: z.array(comparisonRowSchema),
+  trends: z.array(trendPointSchema),
+  /** The officer review target the `review_overdue` flag uses. */
+  reviewTarget: z.object({
+    days: z.number().int().positive(),
+    unit: z.enum(['calendar', 'working']),
+  }),
 });
 export type Oversight = z.infer<typeof oversightSchema>;
 
@@ -67,6 +97,12 @@ export const assignmentChangeRequestSchema = z.object({
   institutionId: institutionIdSchema,
   officerId: z.string(),
   reason: z.string().min(10).max(1000),
+  /** The reassignment request this change applies, if any. */
+  suggestionId: z.string().optional(),
+  /** Temporary cover: the institution returns to its current officer at the end of this date. */
+  coverUntil: calendarDateSchema.optional(),
+  /** Shown to the new officer on the institution's page and in their notification. */
+  handoverNote: z.string().trim().max(2000).optional(),
 });
 export const assignmentHistorySchema = z.array(
   z.object({
@@ -76,5 +112,66 @@ export const assignmentHistorySchema = z.array(
     validFrom: instantSchema,
     validTo: instantSchema.nullable(),
     reason: z.string().nullable(),
+    cover: assignmentCoverSchema,
+    handoverNote: z.string().nullable(),
   }),
 );
+
+/**
+ * A request that an institution move to another officer: a supervisor's suggestion, or an
+ * officer's conflict-of-interest declaration about their own institution. Only the
+ * administrator changes assignments (PRD §5.2); applying or dismissing is recorded here.
+ */
+export const reassignmentSuggestionSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['suggestion', 'conflict_of_interest']),
+  requestedByRole: z.enum(['supervisor', 'officer']),
+  institutionId: institutionIdSchema,
+  institutionName: z.string(),
+  currentOfficerId: z.string().nullable(),
+  currentOfficerName: z.string().nullable(),
+  suggestedOfficerId: z.string().nullable(),
+  suggestedOfficerName: z.string().nullable(),
+  reason: z.string(),
+  suggestedBy: z.string(),
+  at: instantSchema,
+  status: z.enum(['open', 'applied', 'dismissed']),
+  resolvedBy: z.string().nullable(),
+  resolvedAt: instantSchema.nullable(),
+  resolutionNote: z.string().nullable(),
+});
+export type ReassignmentSuggestion = z.infer<
+  typeof reassignmentSuggestionSchema
+>;
+export const reassignmentSuggestionsSchema = z.array(
+  reassignmentSuggestionSchema,
+);
+export const reassignmentSuggestionRequestSchema = z.object({
+  /** Officers may only declare a conflict of interest about their own institution. */
+  kind: z.enum(['suggestion', 'conflict_of_interest']).default('suggestion'),
+  institutionId: institutionIdSchema,
+  /** Null when the supervisor asks the administrator to choose. */
+  suggestedOfficerId: z.string().nullable(),
+  reason: z.string().trim().min(10).max(1000),
+});
+export const suggestionDismissRequestSchema = z.object({
+  note: z.string().trim().min(10).max(1000),
+});
+
+/** Many institutions to one officer, each with its own history entry (500+ institutions). */
+export const bulkAssignmentRequestSchema = z.object({
+  institutionIds: z.array(institutionIdSchema).min(1).max(1000),
+  officerId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+  handoverNote: z.string().trim().max(2000).optional(),
+});
+export const bulkSupervisionRequestSchema = z.object({
+  institutionIds: z.array(institutionIdSchema).min(1).max(1000),
+  supervisorId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+});
+export const bulkChangeResultSchema = z.object({
+  changed: z.array(institutionIdSchema),
+  /** Already with that officer or supervisor: nothing to change. */
+  unchanged: z.array(institutionIdSchema),
+});

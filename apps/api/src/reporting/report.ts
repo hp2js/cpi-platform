@@ -103,7 +103,7 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
     .where(eq(drafts.obligationId, obligation.id));
   const [[view], [period], form, baseline, clarifications, items, issued] =
     await Promise.all([
-      toObligations(db, [obligation]),
+      toObligations(db, [obligation], 'institution'),
       db.select().from(periods).where(eq(periods.id, obligation.periodId)),
       formFor(db, obligation, draftRow?.formVersionId),
       latestBaseline(db, obligation.institutionId, obligation.periodId),

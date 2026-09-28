@@ -5,13 +5,15 @@ import {
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import Redis from 'ioredis';
 import type { ReadinessResponse } from '@cpi/contracts';
 import { CONFIG, type AppConfig } from './config';
 import * as schema from './database/schema';
 import { errorCode } from './http/diagnostics';
+
+// node-postgres honours a per-query `query_timeout`; @types/pg does not declare it.
+const readinessProbe = { text: 'select 1', query_timeout: 1500 };
 
 @Injectable()
 export class Infrastructure implements OnApplicationShutdown {
@@ -28,7 +30,9 @@ export class Infrastructure implements OnApplicationShutdown {
     this.pool = new Pool({
       connectionString: config.DATABASE_URL,
       connectionTimeoutMillis: 1500,
-      query_timeout: 1500,
+      // Counted from submission, including time queued behind the transaction's other
+      // queries, so it must cover a whole burst of reads, not one query.
+      query_timeout: 10_000,
       max: 10,
     });
     this.pool.on('error', (error) => this.reportFailure('database', error));
@@ -49,7 +53,8 @@ export class Infrastructure implements OnApplicationShutdown {
 
   async readiness(): Promise<ReadinessResponse> {
     const results = await Promise.allSettled([
-      this.database.execute(sql`select 1`),
+      // Readiness keeps its own short timeout, so an unresponsive database reports quickly.
+      this.pool.query(readinessProbe),
       this.redis.ping(),
     ]);
     for (const [index, result] of results.entries()) {

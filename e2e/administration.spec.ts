@@ -110,9 +110,13 @@ test('the header and sidebar stay in place while the page scrolls', async ({
   const account = page.getByRole('button', { name: /Account menu/ });
   const before = await account.boundingBox();
   await page.mouse.move(900, 400);
-  await page.mouse.wheel(0, 1500);
+  // Keep scrolling until the page moves: a single wheel event can land before the content
+  // below the fold has rendered, and is then lost.
   await expect
-    .poll(() => page.evaluate(() => window.scrollY))
+    .poll(async () => {
+      await page.mouse.wheel(0, 600);
+      return page.evaluate(() => window.scrollY);
+    })
     .toBeGreaterThan(150);
   expect((await account.boundingBox())?.y).toBe(before?.y);
   // The sidebar does not move with the page; on a short screen it scrolls on its own.

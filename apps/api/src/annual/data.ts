@@ -30,6 +30,7 @@ import {
 } from '../database/schema';
 import { loadCycle } from '../database/state';
 import { foundationLabels } from '../planning/foundations';
+import { isReviewOverdue } from '../directory/obligations';
 import {
   activeDecisions,
   baselineOf,
@@ -715,10 +716,93 @@ export function oversight(
       };
     });
 
+  // Quarter by quarter across the whole cycle, independent of the quarter filter.
+  const inScope = data.obligations.filter((obligation) =>
+    institutions.includes(obligation.institutionId),
+  );
+  const reviewedPoints = (
+    obligation: (typeof obligations)[number],
+    submission: (typeof currentSubmissions)[number]['submission'],
+  ) => {
+    const score = scoreSummary(
+      implementation,
+      baselineOf(data, obligation.institutionId, obligation.periodId)
+        ?.milestones ?? [],
+      submission.answers,
+      submission.evidenceIds,
+      activeDecisions(data, submission).map(toDecision),
+      submission.revision,
+      data.profile.name,
+    ).reviewed;
+    return score.status === 'calculated'
+      ? mul(
+          rational(implementation),
+          rational(score.fraction.numerator, score.fraction.denominator),
+        )
+      : rational(0);
+  };
+  const trends = data.cycle.periods.map((period) => {
+    const quarter = inScope.filter(
+      (obligation) => obligation.periodId === period.id,
+    );
+    const periodDeadline = Date.parse(period.submissionDeadline);
+    const dueHere = periodDeadline < now ? quarter : [];
+    const current = quarter.flatMap((obligation) => {
+      const submission = data.submissions.find(
+        (candidate) =>
+          candidate.obligationId === obligation.id &&
+          candidate.revision === obligation.currentRevision,
+      );
+      return submission ? [{ obligation, submission }] : [];
+    });
+    const done = current.filter(
+      ({ obligation }) => obligation.state === 'finalized',
+    );
+    return {
+      periodId: period.id,
+      periodLabel: period.label,
+      due: dueHere.length,
+      submitted: dueHere.filter(
+        (obligation) => obligation.currentRevision !== null,
+      ).length,
+      onTime: dueHere.filter(
+        (obligation) =>
+          obligation.firstSubmittedAt !== null &&
+          Date.parse(obligation.firstSubmittedAt) <= periodDeadline,
+      ).length,
+      finalized: done.length,
+      awaitingOfficer: current.filter(
+        ({ obligation }) =>
+          obligation.state === 'submitted' ||
+          obligation.state === 'under_review',
+      ).length,
+      reviewOverdue: quarter.filter((obligation) =>
+        isReviewOverdue(obligation, data.businessTime, data.cycle.dayCounting),
+      ).length,
+      averagePoints: done.length
+        ? format2(
+            mul(
+              sum(
+                done.map(({ obligation, submission }) =>
+                  reviewedPoints(obligation, submission),
+                ),
+              ),
+              rational(1, done.length),
+            ),
+          )
+        : null,
+    };
+  });
+
   return {
     asOf: data.businessTime,
     profileName: data.profile.name,
     simulation: true,
+    trends,
+    reviewTarget: {
+      days: data.cycle.dayCounting.reviewTargetDays,
+      unit: data.cycle.dayCounting.mode,
+    },
     filters: {
       periodId,
       institutionId: institutionFilter as Oversight['filters']['institutionId'],

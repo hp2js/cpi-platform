@@ -32,6 +32,7 @@ import {
   periods,
   processedEvents,
   scoringProfiles,
+  supervisions,
   users,
 } from '../database/schema';
 import {
@@ -147,9 +148,10 @@ function institutionType(typeId: string) {
 }
 
 async function people(db: Db): Promise<People> {
-  const [userRows, current, institutionRows] = await Promise.all([
+  const [userRows, current, supervised, institutionRows] = await Promise.all([
     db.select().from(users).orderBy(asc(users.id)),
     db.select().from(assignments).where(isNull(assignments.validTo)),
+    db.select().from(supervisions).where(isNull(supervisions.validTo)),
     db.select().from(institutions).orderBy(asc(institutions.id)),
   ]);
   // ponytail: no invitations yet, so every account is active or deactivated.
@@ -171,6 +173,13 @@ async function people(db: Db): Promise<People> {
         .map((assignment) => assignment.institutionId),
     })),
     institutions: institutionRows.map((institution) => {
+      const supervisorOf = (institutionId: string) => {
+        const id = supervised.find(
+          (row) => row.institutionId === institutionId,
+        )?.supervisorId;
+        const person = userRows.find((user) => user.id === id);
+        return person ? { id: person.id, name: person.displayName } : null;
+      };
       const officerId = current.find(
         (assignment) => assignment.institutionId === institution.id,
       )?.officerId;
@@ -198,6 +207,7 @@ async function people(db: Db): Promise<People> {
             invitationExpiresAt: null,
           })),
         officer: officer ? { id: officer.id, name: officer.displayName } : null,
+        supervisor: supervisorOf(institution.id),
       };
     }),
     institutionTypes: initialInstitutionTypes.map((type) => ({

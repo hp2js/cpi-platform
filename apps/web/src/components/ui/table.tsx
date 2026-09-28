@@ -31,7 +31,9 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
       tabIndex={scrollable ? 0 : undefined}
       role={scrollable ? 'region' : undefined}
       aria-label={scrollable ? 'Scrollable table' : undefined}
-      className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      // Only horizontal scrolling: a screen-reader-only caption sits just outside a short table
+      // and would otherwise make an unfocusable vertical scroll area.
+      className="relative w-full overflow-x-auto overflow-y-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <table
         data-slot="table"

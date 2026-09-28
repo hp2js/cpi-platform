@@ -695,6 +695,7 @@ export class ReviewController {
         answers: submission.answers,
         version: 1,
         savedAt: null,
+        savedBy: null,
       };
       await tx
         .insert(drafts)

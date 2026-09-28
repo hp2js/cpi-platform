@@ -113,6 +113,7 @@ export class ReportingController {
         answers: parsed.data.answers,
         version: current + 1,
         savedAt: businessTime,
+        savedBy: user.displayName,
       };
       await tx
         .insert(drafts)
