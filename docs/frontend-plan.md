@@ -19,7 +19,7 @@ These shape every screen and are checked at each review point.
 
 ## 2. Personas, accounts and layouts
 
-The mock seeds the fixture cast from PRD §17.1. Sign-in is a labelled demo account picker; it will be replaced by real authentication (HP2-13/HP2-14).
+The mock seeds the fixture cast from PRD §17.1. Sign-in is by email and password, with invitations and resets by emailed link; a floating "Explore with a demonstration account" button opens an overlay with one-click accounts per role (and the published demo password); it does not ship (HP2-13/HP2-14).
 
 | Persona                  | Demo accounts                                 | Layout                                                                                                                                                                              | Lands on                                                                        |
 | ------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -35,7 +35,8 @@ All layouts share: skip link, simulation banner (business time + run ID), inbox 
 Code-based TanStack Router, one subtree per role. `beforeLoad` redirects signed-out users to `/sign-in` and wrong-role users to a _forbidden_ page. Filters, tabs, quarter and revision selections live in validated search params so views survive refresh and can be shared.
 
 ```text
-/sign-in                                  demo account picker
+/sign-in                                  email and password; ?demo=open shows demo accounts
+/forgot-password, /set-password?token=    reset request; set a password from an invitation or reset link
 /                                         redirect to the signed-in role's home
 /forbidden, /session-expired, 404
 

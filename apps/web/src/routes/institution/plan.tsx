@@ -22,9 +22,7 @@ import {
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
-
-const selectClass =
-  'h-9 w-full max-w-md rounded-md border bg-background px-2 text-sm';
+import { SelectField } from '@/components/select-field';
 
 function latestBaselines(plan: Plan) {
   const byPeriod = new Map<string, Plan['baselines'][number]>();
@@ -97,37 +95,33 @@ function AmendmentForm({ plan }: { plan: Plan }) {
       </p>
       <div className="grid gap-1.5">
         <Label htmlFor="amend-period">Period</Label>
-        <select
+        <SelectField
+          className="max-w-md"
           id="amend-period"
-          className={selectClass}
           value={periodId}
-          onChange={(event) => {
-            setPeriodId(event.target.value);
+          onChange={(value) => {
+            setPeriodId(value);
             setMilestoneId('');
           }}
-        >
-          {open.map((candidate) => (
-            <option key={candidate.periodId} value={candidate.periodId}>
-              {candidate.periodLabel}
-            </option>
-          ))}
-        </select>
+          options={open.map((candidate) => ({
+            value: candidate.periodId,
+            label: candidate.periodLabel,
+          }))}
+        />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="amend-milestone">Milestone</Label>
-        <select
+        <SelectField
+          className="max-w-md"
           id="amend-milestone"
-          className={selectClass}
           value={milestoneId}
-          onChange={(event) => setMilestoneId(event.target.value)}
-        >
-          <option value="">Choose a milestone</option>
-          {candidates.map((milestone) => (
-            <option key={milestone.id} value={milestone.id}>
-              {milestone.code} {milestone.title}
-            </option>
-          ))}
-        </select>
+          onChange={setMilestoneId}
+          placeholder="Choose a milestone"
+          options={candidates.map((milestone) => ({
+            value: milestone.id,
+            label: `${milestone.code} ${milestone.title}`,
+          }))}
+        />
       </div>
       <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">Change</legend>
@@ -153,19 +147,17 @@ function AmendmentForm({ plan }: { plan: Plan }) {
       {change === 'reschedule' && (
         <div className="grid gap-1.5">
           <Label htmlFor="amend-target">Move to</Label>
-          <select
+          <SelectField
+            className="max-w-md"
             id="amend-target"
-            className={selectClass}
             value={toPeriodId}
-            onChange={(event) => setToPeriodId(event.target.value)}
-          >
-            <option value="">Choose a later period</option>
-            {later.map((candidate) => (
-              <option key={candidate.periodId} value={candidate.periodId}>
-                {candidate.periodLabel}
-              </option>
-            ))}
-          </select>
+            onChange={setToPeriodId}
+            placeholder="Choose a later period"
+            options={later.map((candidate) => ({
+              value: candidate.periodId,
+              label: candidate.periodLabel,
+            }))}
+          />
         </div>
       )}
       <div className="grid gap-1.5">

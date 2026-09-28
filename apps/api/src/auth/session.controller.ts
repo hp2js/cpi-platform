@@ -60,13 +60,22 @@ export class SessionController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const parsed = signInRequestSchema.safeParse(body);
-    const [user] = parsed.success
+    // ponytail: demo sign-in only; password sign-in, invitations and resets are a follow-up.
+    if (parsed.success && !('accountId' in parsed.data))
+      throw new ApiError(
+        422,
+        'Password sign-in is not available on this server yet. Use a demo account.',
+        'password_sign_in_unavailable',
+      );
+    const accountId =
+      parsed.success && 'accountId' in parsed.data
+        ? parsed.data.accountId
+        : undefined;
+    const [user] = accountId
       ? await this.infrastructure.database
           .select()
           .from(users)
-          .where(
-            and(eq(users.id, parsed.data.accountId), eq(users.active, true)),
-          )
+          .where(and(eq(users.id, accountId), eq(users.active, true)))
       : [];
     if (!user)
       throw new ApiError(

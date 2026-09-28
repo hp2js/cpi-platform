@@ -1,9 +1,23 @@
-import type { Clarification, ReportAnswers } from '@cpi/contracts';
+import type { Clarification, DayCounting, ReportAnswers } from '@cpi/contracts';
+import { endOfDay, localDate, shiftDays } from './days';
 import { getDb, type MockDb, type MockSubmission } from '../db';
 
-export { responseDueAt } from '@cpi/contracts';
+/**
+ * The response window from the later of portal availability and in-app notification: the
+ * configured number of counted days after that event's local date, ending 23:59:59
+ * Africa/Nairobi (PRD §7.3: seven calendar days by default; working days if enforced).
+ */
+export function responseDueAt(
+  availableAt: string,
+  notifiedAt: string,
+  counting: DayCounting = getDb().cycle.dayCounting,
+) {
+  const start = Math.max(Date.parse(availableAt), Date.parse(notifiedAt));
+  return endOfDay(
+    shiftDays(localDate(start), counting.clarificationDays, counting),
+  );
+}
 
-/** The cutoff that applies to an institution: the cycle's, or an authorized extension (§7.3). */
 export function effectiveCutoff(institutionId: string, db: MockDb = getDb()) {
   const extension = db.extensions.find(
     (candidate) => candidate.institutionId === institutionId,

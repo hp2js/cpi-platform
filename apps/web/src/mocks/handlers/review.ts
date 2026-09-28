@@ -856,6 +856,8 @@ export const reviewHandlers = [
           availableAt: now,
           notifiedAt: now,
           responseDueAt: responseDueAt(now, now),
+          windowDays: db.cycle.dayCounting.clarificationDays,
+          windowUnit: db.cycle.dayCounting.mode,
           status: 'open' as const,
           response: null,
           closure: null,

@@ -50,3 +50,8 @@ export function formatCalendarDate(date: string) {
 export function formatDateRange(start: string, end: string) {
   return `${formatCalendarDate(start)} – ${formatCalendarDate(end)}`;
 }
+
+/** "3 days" or "3 working days", following the cycle's day-counting rule. */
+export function formatDays(days: number, unit: 'calendar' | 'working') {
+  return `${days} ${unit === 'working' ? 'working ' : ''}${days === 1 ? 'day' : 'days'}`;
+}

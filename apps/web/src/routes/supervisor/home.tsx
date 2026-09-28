@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
+import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
+import { SelectField } from '@/components/select-field';
 import {
   Table,
   TableBody,
@@ -49,13 +51,24 @@ function Filters({ search }: { search: OversightSearch }) {
   const navigate = useNavigate();
   const cycle = useQuery(cycleQuery);
   const institutions = useQuery(institutionsQuery);
+  const assignments = useQuery(assignmentsQuery);
   const set = (patch: Partial<OversightSearch>) =>
     void navigate({
       to: '/supervisor',
       search: { ...search, ...patch },
       replace: true,
     });
-  const select = 'h-9 rounded-md border bg-background px-2 text-sm';
+  // Officers who currently hold a portfolio; the supervisor reads assignments, not accounts.
+  const officers = [
+    ...new Map(
+      (assignments.data ?? [])
+        .filter((assignment) => !assignment.validTo)
+        .map((assignment) => [
+          assignment.officerId,
+          { value: assignment.officerId, label: assignment.officerName },
+        ]),
+    ).values(),
+  ].sort((a, b) => a.label.localeCompare(b.label));
   return (
     <form
       role="search"
@@ -63,56 +76,46 @@ function Filters({ search }: { search: OversightSearch }) {
       className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4"
       onSubmit={(event) => event.preventDefault()}
     >
-      <div className="grid gap-1.5">
+      <div className="grid w-40 gap-1.5">
         <Label htmlFor="filter-period">Quarter</Label>
-        <select
+        <SelectField
           id="filter-period"
-          className={select}
           value={search.periodId ?? ''}
-          onChange={(event) =>
-            set({ periodId: event.target.value || undefined })
-          }
-        >
-          <option value="">All quarters</option>
-          {cycle.data?.periods.map((period) => (
-            <option key={period.id} value={period.id}>
-              {period.label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => set({ periodId: value || undefined })}
+          options={[
+            { value: '', label: 'All quarters' },
+            ...(cycle.data?.periods ?? []).map((period) => ({
+              value: period.id,
+              label: period.label,
+            })),
+          ]}
+        />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid w-full gap-1.5 sm:w-80">
         <Label htmlFor="filter-institution">Institution</Label>
-        <select
+        <Combobox
           id="filter-institution"
-          className={select}
+          allOption="All institutions"
+          searchPlaceholder="Search institutions"
           value={search.institutionId ?? ''}
-          onChange={(event) =>
-            set({ institutionId: event.target.value || undefined })
-          }
-        >
-          <option value="">All institutions</option>
-          {institutions.data?.map((institution) => (
-            <option key={institution.id} value={institution.id}>
-              {institution.id}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => set({ institutionId: value || undefined })}
+          options={(institutions.data ?? []).map((institution) => ({
+            value: institution.id,
+            label: institution.id,
+            description: institution.name,
+          }))}
+        />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid w-full gap-1.5 sm:w-64">
         <Label htmlFor="filter-officer">Officer</Label>
-        <select
+        <Combobox
           id="filter-officer"
-          className={select}
+          allOption="All officers"
+          searchPlaceholder="Search officers"
           value={search.officerId ?? ''}
-          onChange={(event) =>
-            set({ officerId: event.target.value || undefined })
-          }
-        >
-          <option value="">All officers</option>
-          <option value="officer-a">Prevention Officer A</option>
-          <option value="officer-b">Prevention Officer B</option>
-        </select>
+          onChange={(value) => set({ officerId: value || undefined })}
+          options={officers}
+        />
       </div>
     </form>
   );

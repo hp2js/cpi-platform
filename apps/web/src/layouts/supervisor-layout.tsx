@@ -12,7 +12,7 @@ import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
 import { useSession } from '@/features/session/use-session';
-import { SkipLink, type NavItem } from './shared';
+import { SkipLink, useMeasuredHeight, type NavItem } from './shared';
 
 const nav = [
   { to: '/supervisor', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -44,11 +44,19 @@ const nav = [
  */
 export function SupervisorLayout() {
   const session = useSession();
+  const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
+  const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
     <div className="min-h-svh bg-background">
       <SkipLink />
-      <SimulationBanner session={session} />
-      <header className="border-b bg-card">
+      <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
+        <SimulationBanner session={session} />
+      </div>
+      <header
+        ref={headerRef}
+        data-sticky
+        className="sticky top-(--banner-h) z-30 border-b bg-card"
+      >
         <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
           <Link
             to="/supervisor"

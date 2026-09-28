@@ -5,6 +5,8 @@ import {
   instantSchema,
   roleSchema,
 } from './common.js';
+import { dayCountingSchema } from './cycle.js';
+import { accountingOfficerSchema } from './institutions.js';
 import { indicatorWeightsSchema } from './forms.js';
 
 /**
@@ -106,6 +108,9 @@ export const calendarSettingsSchema = z.object({
   evaluationCutoffDate: calendarDateSchema,
   cutoffLock: lockSchema,
   reminders: reminderScheduleSchema,
+  dayCounting: dayCountingSchema,
+  /** Deadlines the saved rule gives each quarter, for comparison with the stored dates. */
+  ruleDeadlines: z.record(z.string(), calendarDateSchema),
   changes: z.array(
     z.object({
       at: instantSchema,
@@ -122,6 +127,9 @@ export const calendarUpdateSchema = z.object({
   foundationDeadlineDate: calendarDateSchema,
   evaluationCutoffDate: calendarDateSchema,
   reminders: reminderScheduleSchema,
+  dayCounting: dayCountingSchema,
+  /** Recalculate the deadlines of quarters that have not opened from the saved rule. */
+  applyRuleToDeadlines: z.boolean(),
   reason: z.string().trim().min(10).max(500),
 });
 export type CalendarUpdate = z.infer<typeof calendarUpdateSchema>;
@@ -131,8 +139,12 @@ export const managedUserSchema = z.object({
   displayName: z.string(),
   email: z.string(),
   role: roleSchema,
+  jobTitle: z.string(),
   institutionId: institutionIdSchema.nullable(),
   active: z.boolean(),
+  /** `invited`: the account exists but its password has not been set yet. */
+  status: z.enum(['active', 'invited', 'deactivated']),
+  invitationExpiresAt: instantSchema.nullable(),
   /** Institutions currently assigned to an officer. */
   assignedInstitutionIds: z.array(institutionIdSchema),
 });
@@ -141,29 +153,61 @@ export type ManagedUser = z.infer<typeof managedUserSchema>;
 export const managedInstitutionSchema = z.object({
   id: institutionIdSchema,
   name: z.string(),
+  typeId: z.string(),
   type: z.string(),
   active: z.boolean(),
-  focalContact: z.string(),
-  accountingOfficerContact: z.string(),
+  accountingOfficer: accountingOfficerSchema.nullable(),
+  /** Focal persons are the institution's platform accounts (the PRD allows several). */
+  focalPersons: z.array(
+    z.object({
+      id: z.string(),
+      displayName: z.string(),
+      email: z.string(),
+      jobTitle: z.string(),
+      active: z.boolean(),
+      status: z.enum(['active', 'invited', 'deactivated']),
+      invitationExpiresAt: instantSchema.nullable(),
+    }),
+  ),
+  officer: z.object({ id: z.string(), name: z.string() }).nullable(),
 });
 export type ManagedInstitution = z.infer<typeof managedInstitutionSchema>;
+
+export const institutionTypeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  /** Retired types stay on existing institutions but are not offered for new ones. */
+  active: z.boolean(),
+  institutionCount: z.number().int().nonnegative(),
+});
+export type InstitutionType = z.infer<typeof institutionTypeSchema>;
 
 export const peopleSchema = z.object({
   users: z.array(managedUserSchema),
   institutions: z.array(managedInstitutionSchema),
+  institutionTypes: z.array(institutionTypeSchema),
 });
 export type People = z.infer<typeof peopleSchema>;
+
+export const institutionTypeUpdateSchema = z.object({
+  label: z.string().trim().min(3).max(60),
+  active: z.boolean(),
+});
+export type InstitutionTypeUpdate = z.infer<typeof institutionTypeUpdateSchema>;
+
+const fictional = z
+  .string()
+  .trim()
+  .regex(
+    /^[^@\s]+@example\.invalid$/,
+    'Use a fictional @example.invalid address.',
+  );
 
 export const userCreateSchema = z
   .object({
     displayName: z.string().trim().min(3).max(80),
-    email: z
-      .string()
-      .trim()
-      .regex(
-        /^[^@\s]+@example\.invalid$/,
-        'Use a fictional @example.invalid address.',
-      ),
+    email: fictional,
+    jobTitle: z.string().trim().max(80),
     role: roleSchema,
     institutionId: institutionIdSchema.nullable(),
   })
@@ -181,10 +225,113 @@ export const userStatusSchema = z.object({
   reason: z.string().trim().min(10).max(500),
 });
 
+/** What an administrator may change on someone else's account; email is the sign-in identity. */
+export const userUpdateSchema = z.object({
+  displayName: z.string().trim().min(3).max(80),
+  jobTitle: z.string().trim().max(80),
+});
+export type UserUpdate = z.infer<typeof userUpdateSchema>;
+
 export const institutionUpdateSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  type: z.string().trim().min(3).max(80),
-  focalContact: z.string().trim().max(200),
-  accountingOfficerContact: z.string().trim().max(200),
+  typeId: z.string().min(1, 'Choose the institution type.'),
+  accountingOfficer: accountingOfficerSchema,
 });
 export type InstitutionUpdate = z.infer<typeof institutionUpdateSchema>;
+
+/** The signed-in user's own profile (My account). */
+export const accountSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  email: z.string(),
+  role: roleSchema,
+  jobTitle: z.string(),
+  phone: z.string(),
+  institution: z
+    .object({ id: institutionIdSchema, name: z.string() })
+    .nullable(),
+  /** For an institution: who reviews its reports. For an officer: their portfolio size. */
+  reviewingOfficer: z.string().nullable(),
+  portfolioSize: z.number().int().nonnegative().nullable(),
+});
+export type Account = z.infer<typeof accountSchema>;
+export const accountUpdateSchema = z.object({
+  displayName: z.string().trim().min(3, 'Give your name.').max(80),
+  jobTitle: z.string().trim().max(80),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^[+\d\s()-]*$/, 'Use digits, spaces and + ( ) - only.'),
+});
+export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+
+const focalUserSchema = z.object({
+  displayName: z.string().trim().min(3).max(80),
+  email: fictional,
+  jobTitle: z.string().trim().max(80),
+});
+
+/** A new institution (FR01). Stable IDs follow the pattern ABC-123. */
+export const institutionCreateSchema = institutionUpdateSchema.extend({
+  id: z
+    .string()
+    .trim()
+    .regex(
+      /^[A-Z]+-\d{3}$/,
+      'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
+    ),
+  officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  focalUser: focalUserSchema.nullable(),
+  /**
+   * Simulation only (PRD §10.4): quarters that have already opened get a SEEDED HISTORICAL
+   * BASELINE of the mandatory committee milestones, awaiting officer confirmation.
+   */
+  seedOpenedQuarters: z.boolean(),
+});
+export type InstitutionCreate = z.infer<typeof institutionCreateSchema>;
+
+/** Bulk import: CSV text, validated as a whole before anything is created. */
+export const institutionImportRequestSchema = z.object({
+  csv: z.string().min(1).max(2_000_000),
+  seedOpenedQuarters: z.boolean(),
+});
+export const institutionImportColumns = [
+  'institution_id',
+  'name',
+  'type',
+  'officer_email',
+  'ao_name',
+  'ao_designation',
+  'ao_email',
+  'ao_phone',
+  'focal_name',
+  'focal_email',
+] as const;
+export const institutionImportPreviewSchema = z.object({
+  /** Problems with the file itself, such as missing columns. */
+  fileErrors: z.array(z.string()),
+  rows: z.array(
+    z.object({
+      line: z.number().int().positive(),
+      institutionId: z.string(),
+      name: z.string(),
+      type: z.string(),
+      officerName: z.string().nullable(),
+      focalEmail: z.string().nullable(),
+      errors: z.array(z.string()),
+    }),
+  ),
+  valid: z.number().int().nonnegative(),
+  invalid: z.number().int().nonnegative(),
+});
+export type InstitutionImportPreview = z.infer<
+  typeof institutionImportPreviewSchema
+>;
+export const institutionImportResultSchema = z.object({
+  created: z.array(institutionIdSchema),
+  focalUsers: z.number().int().nonnegative(),
+});
+export type InstitutionImportResult = z.infer<
+  typeof institutionImportResultSchema
+>;

@@ -1,5 +1,7 @@
 import type { Delivery } from '@cpi/contracts';
+import { Fragment } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { RefreshCcw } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
@@ -122,7 +124,32 @@ function DeliveryTable({
   );
 }
 
+/**
+ * Turns this portal's own URLs in a demo email into links, as a mail client would. Other
+ * URLs stay plain text.
+ */
+function LinkedText({ text }: { text: string }) {
+  const origin = globalThis.location.origin;
+  return text.split(/(https?:\/\/\S+)/g).map((part, index) =>
+    part.startsWith(`${origin}/`) ? (
+      <a
+        key={index}
+        href={part}
+        className="text-primary underline underline-offset-4"
+      >
+        {part}
+      </a>
+    ) : (
+      <Fragment key={index}>{part}</Fragment>
+    ),
+  );
+}
+
+const route = getRouteApi('/authed/admin/notifications');
+
 export function NotificationsPage() {
+  const { tab = 'failed' } = route.useSearch();
+  const navigate = useNavigate();
   const failed = useQuery(deliveriesQuery('failed'));
   const all = useQuery(deliveriesQuery(null));
   const sink = useQuery(emailSinkQuery);
@@ -131,9 +158,21 @@ export function NotificationsPage() {
       <PageHeader
         eyebrow="Operations"
         title="Notification delivery"
-        description="In-app notifications are always recorded. Email goes to a demo sink, never to real recipients; each message retries three times before appearing in the failure queue."
+        description="In-app notifications are always recorded. Email goes to a demo sink, never to real recipients; each message retries three times before appearing in the failure queue. Opening an invitation or reset link from the sink continues as that person, as they would from their inbox."
       />
-      <Tabs defaultValue="failed" className="grid gap-4">
+      <Tabs
+        value={tab}
+        onValueChange={(next) =>
+          void navigate({
+            to: '/admin/notifications',
+            search: {
+              tab: next === 'all' || next === 'sink' ? next : undefined,
+            },
+            replace: true,
+          })
+        }
+        className="grid gap-4"
+      >
         <TabsList className="w-fit">
           <TabsTrigger value="failed">
             Failure queue{failed.data?.length ? ` (${failed.data.length})` : ''}
@@ -190,7 +229,9 @@ export function NotificationsPage() {
                     <p className="text-xs text-muted-foreground">
                       To {message.to} · {formatDateTime(message.deliveredAt)}
                     </p>
-                    <p className="mt-2 whitespace-pre-line">{message.body}</p>
+                    <p className="mt-2 whitespace-pre-line break-words">
+                      <LinkedText text={message.body} />
+                    </p>
                   </li>
                 ))}
               </ul>

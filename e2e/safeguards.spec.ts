@@ -8,7 +8,7 @@ test.skip(
 
 /** Loads the app and waits until the mock API worker is serving requests. */
 async function openApp(page: Page) {
-  await page.goto('/sign-in');
+  await page.goto('/sign-in?demo=open');
   // The app renders only after the worker has started, so this proves the mock is live.
   await expect(
     page.getByRole('heading', { name: 'Prevention officer' }),

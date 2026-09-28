@@ -1,8 +1,20 @@
-import { daysLate, type Obligation, type ObligationFlag } from '@cpi/contracts';
+import type { Obligation, ObligationFlag } from '@cpi/contracts';
 import { getDb, type MockObligation } from '../db';
 import { clarificationsFor } from './clarifications';
+import { countDays, localDate } from './days';
 
-export { daysLate };
+/** Counted days (the cycle's rule) after the deadline date; at least 1 when late, 0 on time. */
+export function daysLate(submittedAt: string, deadline: string) {
+  if (Date.parse(submittedAt) <= Date.parse(deadline)) return 0;
+  return Math.max(
+    1,
+    countDays(
+      localDate(deadline),
+      localDate(submittedAt),
+      getDb().cycle.dayCounting,
+    ),
+  );
+}
 
 /** Flags are derived from business time on the server, never in the browser (FR02). */
 export function toObligation(obligation: MockObligation): Obligation {
@@ -37,5 +49,6 @@ export function toObligation(obligation: MockObligation): Obligation {
     daysLate: obligation.firstSubmittedAt
       ? daysLate(obligation.firstSubmittedAt, period.submissionDeadline)
       : null,
+    daysLateUnit: getDb().cycle.dayCounting.mode,
   };
 }

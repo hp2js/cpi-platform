@@ -1,6 +1,9 @@
 import {
+  authConfigSchema,
+  authTokenSchema,
   demoAccountsSchema,
   sessionSchema,
+  type PasswordSignIn,
   type Role,
   type Session,
 } from '@cpi/contracts';
@@ -26,19 +29,70 @@ export const demoAccountsQuery = queryOptions({
     request('/api/demo/accounts', demoAccountsSchema, { signal }),
 });
 
+export const authConfigQuery = queryOptions({
+  queryKey: ['auth', 'config'],
+  queryFn: ({ signal }) =>
+    request('/api/auth/config', authConfigSchema, { signal }),
+  staleTime: Infinity,
+});
+
+/** A demonstration account ID, or an email and password. */
+export type Credentials = { accountId: string } | PasswordSignIn;
+
 export async function signIn(
   queryClient: QueryClient,
-  accountId: string,
+  credentials: Credentials | string,
 ): Promise<Session> {
   const session = await request('/api/session', sessionSchema, {
     method: 'POST',
-    json: { accountId },
+    json:
+      typeof credentials === 'string'
+        ? { accountId: credentials }
+        : credentials,
   });
   // Drop everything cached for the previous identity before storing the new session.
   queryClient.clear();
   queryClient.setQueryData(sessionKeys.session, session);
   return session;
 }
+
+/** Stores a session obtained another way (e.g. setting a password from an emailed link). */
+export function adoptSession(queryClient: QueryClient, session: Session) {
+  queryClient.clear();
+  queryClient.setQueryData(sessionKeys.session, session);
+}
+
+export const requestPasswordReset = (email: string) =>
+  request('/api/auth/password-reset', z.object({ message: z.string() }), {
+    method: 'POST',
+    json: { email },
+  });
+
+export const authTokenQuery = (token: string) =>
+  queryOptions({
+    queryKey: ['auth', 'token', token],
+    queryFn: ({ signal }) =>
+      request(
+        `/api/auth/tokens/${encodeURIComponent(token)}`,
+        authTokenSchema,
+        {
+          signal,
+        },
+      ),
+    retry: false,
+  });
+
+export const setPasswordWithToken = (token: string, password: string) =>
+  request(`/api/auth/tokens/${encodeURIComponent(token)}`, sessionSchema, {
+    method: 'POST',
+    json: { password },
+  });
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  request('/api/account/password', z.undefined(), {
+    method: 'POST',
+    json: { currentPassword, newPassword },
+  });
 
 export async function signOut(queryClient: QueryClient) {
   try {

@@ -62,6 +62,7 @@ import { profilesQuery } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
 import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
+import { SelectField } from '@/components/select-field';
 
 const route = getRouteApi('/authed/admin/forms/$formId');
 
@@ -297,7 +298,10 @@ function DraftEditor({ form }: { form: FormVersion }) {
 
   return (
     <Tabs defaultValue="edit" className="grid gap-6">
-      <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur lg:-mx-8 lg:px-8">
+      <div
+        data-sticky
+        className="sticky top-(--sticky-top) z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur lg:-mx-8 lg:px-8"
+      >
         <TabsList>
           <TabsTrigger value="edit">Edit</TabsTrigger>
           <TabsTrigger value="preview">Preview as institution</TabsTrigger>
@@ -581,18 +585,16 @@ function AddQuestion({ onAdd }: { onAdd: (type: QuestionType) => void }) {
         <Label htmlFor={selectId} className="text-sm">
           New question type
         </Label>
-        <select
+        <SelectField
+          className="w-48"
           id={selectId}
-          className="h-9 rounded-md border bg-background px-2 text-sm"
           value={type}
-          onChange={(event) => setType(event.target.value as QuestionType)}
-        >
-          {addableTypes.map((option) => (
-            <option key={option} value={option}>
-              {typeLabels[option]}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => setType(value as QuestionType)}
+          options={addableTypes.map((option) => ({
+            value: option,
+            label: typeLabels[option],
+          }))}
+        />
       </div>
       <Button variant="outline" size="sm" onClick={() => onAdd(type)}>
         <Plus aria-hidden="true" />
@@ -739,26 +741,19 @@ function QuestionEditor({
             {(field) => (
               <div className="grid gap-1.5">
                 <Label htmlFor={`${domId}-category`}>Evidence category</Label>
-                <select
+                <SelectField
+                  className="w-48"
                   id={`${domId}-category`}
-                  className="h-9 rounded-md border bg-background px-2 text-sm"
                   value={field.state.value ?? 'other'}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     field.handleChange(
-                      event.target.value as NonNullable<
-                        Question['evidenceCategory']
-                      >,
+                      value as NonNullable<Question['evidenceCategory']>,
                     )
                   }
-                >
-                  {Object.entries(evidenceCategoryLabel).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ),
+                  options={Object.entries(evidenceCategoryLabel).map(
+                    ([value, label]) => ({ value, label }),
                   )}
-                </select>
+                />
               </div>
             )}
           </editor.Field>

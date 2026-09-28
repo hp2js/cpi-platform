@@ -12,9 +12,12 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 import type {
+  AccountingOfficer,
   Attestation,
   AuditEvent,
   ClarificationItem,
+  DayCounting,
+  DayCountingMode,
   FoundationKind,
   FormSection,
   IndicatorWeights,
@@ -58,8 +61,9 @@ export const institutions = pgTable('institutions', {
   name: text().notNull(),
   type: text().notNull(),
   active: boolean().notNull().default(true),
-  focalContact: text().notNull().default(''),
-  accountingOfficerContact: text().notNull().default(''),
+  /** Managed institution type; `type` is its label (Settings → Institution types). */
+  typeId: text().notNull().default(''),
+  accountingOfficer: jsonb().$type<AccountingOfficer>(),
 });
 
 export const users = pgTable('users', {
@@ -67,6 +71,7 @@ export const users = pgTable('users', {
   displayName: text().notNull(),
   email: text().notNull().unique(),
   role: text().$type<Role>().notNull(),
+  jobTitle: text().notNull().default(''),
   institutionId: text().references(() => institutions.id),
   active: boolean().notNull().default(true),
 });
@@ -118,6 +123,13 @@ export const cycles = pgTable('cycles', {
     .references(() => scoringProfiles.id),
   reminderDaysBefore: jsonb().$type<number[]>().notNull(),
   overdueNotice: boolean().notNull(),
+  /** Deadline rule, clarification window and public holidays (FR02, PRD §9.1). */
+  dayCounting: jsonb().$type<DayCounting>().notNull().default({
+    mode: 'calendar',
+    reportingDays: 15,
+    clarificationDays: 7,
+    holidays: [],
+  }),
 });
 
 export const periods = pgTable('periods', {
@@ -466,6 +478,9 @@ export const clarifications = pgTable('clarifications', {
   availableAt: instant().notNull(),
   notifiedAt: instant().notNull(),
   responseDueAt: instant().notNull(),
+  /** The window as issued; a later rule change never shortens it. */
+  windowDays: integer().notNull().default(7),
+  windowUnit: text().$type<DayCountingMode>().notNull().default('calendar'),
   status: text().$type<'open' | 'responded' | 'closed_unanswered'>().notNull(),
   response: jsonb().$type<{ revision: number; submittedAt: string }>(),
   closure: jsonb().$type<{ reason: string; by: string; at: string }>(),

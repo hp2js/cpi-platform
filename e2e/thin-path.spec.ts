@@ -13,7 +13,7 @@ const pdf = (name: string) => ({
 });
 
 async function signIn(page: Page, role: string, account: RegExp) {
-  await page.goto('/sign-in');
+  await page.goto('/sign-in?demo=open');
   await page
     .getByRole('region', { name: role })
     .getByRole('button', { name: account })

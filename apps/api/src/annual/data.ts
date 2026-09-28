@@ -135,6 +135,7 @@ function quarterDisposition(
     daysLate: obligation.firstSubmittedAt
       ? daysLate(obligation.firstSubmittedAt, period.submissionDeadline)
       : null,
+    daysLateUnit: 'calendar' as const,
     firstSubmittedAt: obligation.firstSubmittedAt,
     firstCompleteEvidenceAt: obligation.firstCompleteEvidenceAt,
     revision: obligation.currentRevision,

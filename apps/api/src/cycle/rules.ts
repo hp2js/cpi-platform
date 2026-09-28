@@ -1,3 +1,4 @@
+import { shiftDays } from './days';
 import type {
   CalendarSettings,
   ClockBoundary,
@@ -325,6 +326,10 @@ export const nextDay = (date: string) =>
     .toISOString()
     .slice(0, 10);
 
+/** PRD §9.1: the deadline is a number of counted days after the quarter ends. */
+export const ruleDeadline = (endsOn: string, counting: Cycle['dayCounting']) =>
+  shiftDays(endsOn, counting.reportingDays, counting);
+
 export function calendarSettings(
   cycle: Cycle,
   businessTime: string,
@@ -333,6 +338,13 @@ export function calendarSettings(
 ): CalendarSettings {
   const now = Date.parse(businessTime);
   return {
+    dayCounting: structuredClone(cycle.dayCounting),
+    ruleDeadlines: Object.fromEntries(
+      cycle.periods.map((period) => [
+        period.id,
+        ruleDeadline(period.endsOn, cycle.dayCounting),
+      ]),
+    ),
     cycleId: cycle.id,
     label: cycle.label,
     timezone: cycle.timezone,

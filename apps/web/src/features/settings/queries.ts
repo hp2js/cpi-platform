@@ -4,10 +4,17 @@ import {
   profilesStateSchema,
   scoringProfileSchema,
   simulationStateSchema,
+  institutionImportPreviewSchema,
+  institutionImportResultSchema,
   type CalendarUpdate,
+  type InstitutionCreate,
   type InstitutionUpdate,
   type ProfileUpdate,
   type UserCreate,
+  type UserUpdate,
+  type InstitutionTypeUpdate,
+  accountSchema,
+  type AccountUpdate,
 } from '@cpi/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import { request } from '@/lib/api';
@@ -80,9 +87,59 @@ export const setUserActive = (
     peopleSchema,
     { method: 'POST', json: { active, reason } },
   );
+/** Sends a fresh invitation link; the earlier link stops working. */
+export const resendInvitation = (userId: string) =>
+  request(
+    `/api/settings/users/${encodeURIComponent(userId)}/invitation`,
+    peopleSchema,
+    { method: 'POST' },
+  );
 export const updateInstitution = (id: string, update: InstitutionUpdate) =>
   request(
     `/api/settings/institutions/${encodeURIComponent(id)}`,
     peopleSchema,
     { method: 'PUT', json: update },
   );
+
+export const createInstitution = (institution: InstitutionCreate) =>
+  request('/api/settings/institutions', peopleSchema, {
+    method: 'POST',
+    json: institution,
+  });
+export const previewInstitutionImport = (
+  csv: string,
+  seedOpenedQuarters: boolean,
+) =>
+  request(
+    '/api/settings/institutions/import/preview',
+    institutionImportPreviewSchema,
+    { method: 'POST', json: { csv, seedOpenedQuarters } },
+  );
+export const importInstitutions = (csv: string, seedOpenedQuarters: boolean) =>
+  request('/api/settings/institutions/import', institutionImportResultSchema, {
+    method: 'POST',
+    json: { csv, seedOpenedQuarters },
+    timeoutMs: 30_000,
+  });
+
+export const updateUser = (userId: string, update: UserUpdate) =>
+  request(`/api/settings/users/${encodeURIComponent(userId)}`, peopleSchema, {
+    method: 'PUT',
+    json: update,
+  });
+export const saveInstitutionType = (
+  update: InstitutionTypeUpdate,
+  typeId?: string,
+) =>
+  request(
+    `/api/settings/institution-types${typeId ? `/${encodeURIComponent(typeId)}` : ''}`,
+    peopleSchema,
+    { method: typeId ? 'PUT' : 'POST', json: update },
+  );
+
+export const accountQuery = queryOptions({
+  queryKey: ['account'],
+  queryFn: ({ signal }) => request('/api/account', accountSchema, { signal }),
+});
+export const saveAccount = (update: AccountUpdate) =>
+  request('/api/account', accountSchema, { method: 'PUT', json: update });

@@ -1,5 +1,10 @@
 import type { AnnualEvaluation } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+} from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { annualQuery } from '@/features/annual/queries';
@@ -11,6 +16,57 @@ function notReady(total: AnnualEvaluation['total']) {
   if (total.status !== 'pending') return 'not ready';
   const count = total.reasons.length;
   return `not ready · ${count} ${count === 1 ? 'item' : 'items'} outstanding`;
+}
+
+/** Filtered and paged: each row expands into a full result explanation. */
+function ReadinessList({
+  evaluations,
+  profileName,
+  simulation,
+}: {
+  evaluations: AnnualEvaluation[];
+  profileName: string;
+  simulation: boolean;
+}) {
+  const controls = useListControls(
+    evaluations,
+    (evaluation) =>
+      `${evaluation.institutionId} ${evaluation.institutionName} ${evaluation.officerName} ${evaluation.releasable ? 'ready' : 'not ready'} ${evaluation.publication ? 'published' : ''}`,
+    20,
+  );
+  return (
+    <div className="grid gap-4">
+      <ListSearch
+        controls={controls}
+        label="Find an institution"
+        placeholder="ID, name, officer, ready or published"
+      />
+      {controls.visible.map((evaluation) => (
+        <details
+          key={evaluation.institutionId}
+          className="rounded-lg border bg-card p-4"
+        >
+          <summary className="cursor-pointer text-sm">
+            <span className="font-semibold">{evaluation.institutionId}</span>{' '}
+            {evaluation.institutionName} ·{' '}
+            {evaluation.publication
+              ? `published v${evaluation.publication.version}${evaluation.publication.stale ? ' (out of date)' : ''}`
+              : evaluation.releasable
+                ? 'ready for release'
+                : notReady(evaluation.total)}
+          </summary>
+          <div className="mt-4">
+            <AnnualResultView
+              evaluation={evaluation}
+              profileName={profileName}
+              simulation={simulation}
+            />
+          </div>
+        </details>
+      ))}
+      <ListPager controls={controls} noun="institutions" />
+    </div>
+  );
 }
 
 export function SupervisorAnnualPage() {
@@ -30,31 +86,11 @@ export function SupervisorAnnualPage() {
               {data.cutoffPassed ? 'passed' : 'not yet passed'}) · as of{' '}
               {formatDateTime(data.asOf)}
             </p>
-            {data.institutions.map((evaluation) => (
-              <details
-                key={evaluation.institutionId}
-                className="rounded-lg border bg-card p-4"
-              >
-                <summary className="cursor-pointer text-sm">
-                  <span className="font-semibold">
-                    {evaluation.institutionId}
-                  </span>{' '}
-                  {evaluation.institutionName} ·{' '}
-                  {evaluation.publication
-                    ? `published v${evaluation.publication.version}${evaluation.publication.stale ? ' (out of date)' : ''}`
-                    : evaluation.releasable
-                      ? 'ready for release'
-                      : notReady(evaluation.total)}
-                </summary>
-                <div className="mt-4">
-                  <AnnualResultView
-                    evaluation={evaluation}
-                    profileName={data.profileName}
-                    simulation={data.simulation}
-                  />
-                </div>
-              </details>
-            ))}
+            <ReadinessList
+              evaluations={data.institutions}
+              profileName={data.profileName}
+              simulation={data.simulation}
+            />
           </div>
         )}
       </QueryView>

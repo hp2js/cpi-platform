@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 
 export const clarificationItemSchema = z.object({
@@ -26,6 +27,9 @@ export const clarificationSchema = z.object({
   availableAt: instantSchema,
   notifiedAt: instantSchema,
   responseDueAt: instantSchema,
+  /** The window as issued; a later change to the day-counting rule never shortens it. */
+  windowDays: z.number().int().positive(),
+  windowUnit: dayCountingModeSchema,
   status: z.enum(['open', 'responded', 'closed_unanswered']),
   overdue: z.boolean(),
   /** The window ends after the evaluation cutoff: adverse closure is blocked until an authorized decision. */

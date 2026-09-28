@@ -40,6 +40,7 @@ import {
   loadForms,
   loadProfiles,
 } from '../database/state';
+import { initialInstitutionTypes } from '@cpi/contracts/fixtures';
 import {
   Events,
   assignedOfficers,
@@ -55,6 +56,7 @@ import {
   nextDay,
   profileIssues,
   profileLockReason,
+  ruleDeadline,
   type Profile,
 } from './rules';
 
@@ -136,25 +138,74 @@ async function calendar(db: Db): Promise<CalendarSettings> {
   );
 }
 
+/**
+ * ponytail: institution types are the fixture list, read-only; managing them (Settings →
+ * Institution types) comes with institution onboarding.
+ */
+function institutionType(typeId: string) {
+  return initialInstitutionTypes.find((type) => type.id === typeId);
+}
+
 async function people(db: Db): Promise<People> {
   const [userRows, current, institutionRows] = await Promise.all([
     db.select().from(users).orderBy(asc(users.id)),
     db.select().from(assignments).where(isNull(assignments.validTo)),
     db.select().from(institutions).orderBy(asc(institutions.id)),
   ]);
+  // ponytail: no invitations yet, so every account is active or deactivated.
+  const status = (active: boolean): 'active' | 'deactivated' =>
+    active ? 'active' : 'deactivated';
   return {
     users: userRows.map((user) => ({
       id: user.id,
       displayName: user.displayName,
       email: user.email,
       role: user.role,
+      jobTitle: user.jobTitle,
       institutionId: user.institutionId,
       active: user.active,
+      status: status(user.active),
+      invitationExpiresAt: null,
       assignedInstitutionIds: current
         .filter((assignment) => assignment.officerId === user.id)
         .map((assignment) => assignment.institutionId),
     })),
-    institutions: institutionRows,
+    institutions: institutionRows.map((institution) => {
+      const officerId = current.find(
+        (assignment) => assignment.institutionId === institution.id,
+      )?.officerId;
+      const officer = userRows.find((user) => user.id === officerId);
+      return {
+        id: institution.id,
+        name: institution.name,
+        typeId: institution.typeId,
+        type: institution.type,
+        active: institution.active,
+        accountingOfficer: institution.accountingOfficer,
+        focalPersons: userRows
+          .filter(
+            (user) =>
+              user.role === 'institution' &&
+              user.institutionId === institution.id,
+          )
+          .map((user) => ({
+            id: user.id,
+            displayName: user.displayName,
+            email: user.email,
+            jobTitle: user.jobTitle,
+            active: user.active,
+            status: status(user.active),
+            invitationExpiresAt: null,
+          })),
+        officer: officer ? { id: officer.id, name: officer.displayName } : null,
+      };
+    }),
+    institutionTypes: initialInstitutionTypes.map((type) => ({
+      ...type,
+      institutionCount: institutionRows.filter(
+        (institution) => institution.typeId === type.id,
+      ).length,
+    })),
   };
 }
 
@@ -406,9 +457,42 @@ export class SettingsController {
       const current = await calendar(tx);
       const errors: Record<string, string> = {};
       const changes: string[] = [];
+      const counting = {
+        ...update.dayCounting,
+        holidays: [...update.dayCounting.holidays].sort((a, b) =>
+          a.date.localeCompare(b.date),
+        ),
+      };
+      if (
+        new Set(counting.holidays.map((day) => day.date)).size !==
+        counting.holidays.length
+      )
+        errors['dayCounting.holidays'] =
+          'Each holiday date can be listed once.';
+      const before = current.dayCounting;
+      if (before.mode !== counting.mode)
+        changes.push(`Day counting ${before.mode} → ${counting.mode} days`);
+      if (before.reportingDays !== counting.reportingDays)
+        changes.push(
+          `Deadline rule ${before.reportingDays} → ${counting.reportingDays} days after quarter end`,
+        );
+      if (before.clarificationDays !== counting.clarificationDays)
+        changes.push(
+          `Clarification window ${before.clarificationDays} → ${counting.clarificationDays} days (new requests only)`,
+        );
+      if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
+        changes.push(
+          `Public holidays updated (${counting.holidays.length} listed)`,
+        );
+      // Unopened quarters can take their deadline from the rule; opened ones are fixed (FR02).
+      const deadlines: Record<string, string> = { ...update.deadlines };
+      if (update.applyRuleToDeadlines)
+        for (const period of current.periods)
+          if (period.lock.editable)
+            deadlines[period.id] = ruleDeadline(period.endsOn, counting);
       let previousDeadline: string | null = null;
       for (const period of current.periods) {
-        const next = update.deadlines[period.id] ?? period.deadlineDate;
+        const next = deadlines[period.id] ?? period.deadlineDate;
         if (next !== period.deadlineDate) {
           if (!period.lock.editable)
             errors[`deadlines.${period.id}`] = period.lock.reason!;
@@ -442,10 +526,7 @@ export class SettingsController {
           );
       }
       const q4 = current.periods[3]!;
-      if (
-        update.evaluationCutoffDate <=
-        (update.deadlines[q4.id] ?? q4.deadlineDate)
-      )
+      if (update.evaluationCutoffDate <= (deadlines[q4.id] ?? q4.deadlineDate))
         errors.evaluationCutoffDate =
           'The evaluation cutoff must fall after the Q4 deadline.';
       if (
@@ -465,7 +546,7 @@ export class SettingsController {
         throw new ApiError(422, 'Nothing has changed.', 'no_change');
 
       for (const period of current.periods) {
-        const next = update.deadlines[period.id];
+        const next = deadlines[period.id];
         if (next)
           await tx
             .update(periods)
@@ -481,6 +562,7 @@ export class SettingsController {
             (a, b) => b - a,
           ),
           overdueNotice: update.reminders.overdueNotice,
+          dayCounting: counting,
         })
         .where(eq(cycles.id, current.cycleId));
       await skipPastBoundaries(tx);
@@ -563,6 +645,7 @@ export class SettingsController {
           displayName: input.displayName,
           email: input.email,
           role: input.role,
+          jobTitle: input.jobTitle,
           institutionId: input.institutionId,
           active: true,
         })
@@ -653,7 +736,25 @@ export class SettingsController {
         .from(institutions)
         .where(eq(institutions.id, id));
       if (!institution) throw notFound();
-      await tx.update(institutions).set(input).where(eq(institutions.id, id));
+      const type = institutionType(input.typeId);
+      if (!type)
+        throw new ApiError(
+          422,
+          'Some values need attention.',
+          'invalid_settings',
+          {
+            typeId: 'Choose the institution type.',
+          },
+        );
+      await tx
+        .update(institutions)
+        .set({
+          name: input.name,
+          typeId: type.id,
+          type: type.label,
+          accountingOfficer: input.accountingOfficer,
+        })
+        .where(eq(institutions.id, id));
       const renamed = institution.name !== input.name;
       await this.events.audit(
         tx,

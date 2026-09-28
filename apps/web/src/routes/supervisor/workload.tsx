@@ -1,4 +1,10 @@
+import type { Oversight } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+} from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import {
@@ -11,6 +17,68 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { oversightQuery } from '@/features/oversight/queries';
+
+function ComparisonTable({
+  rows,
+  maxPoints,
+}: {
+  rows: Oversight['comparison'];
+  maxPoints: number;
+}) {
+  const controls = useListControls(
+    rows,
+    (row) => `${row.institutionId} ${row.institutionName} ${row.periodLabel}`,
+    40,
+  );
+  return (
+    <div className="grid gap-3">
+      {rows.length > controls.pageSize && (
+        <ListSearch
+          controls={controls}
+          label="Find an institution"
+          placeholder="ID, name or quarter"
+        />
+      )}
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <Table className="min-w-[40rem]">
+          <TableCaption className="sr-only">
+            Finalized reviewed implementation by institution and quarter
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Institution</TableHead>
+              <TableHead scope="col">Quarter</TableHead>
+              <TableHead scope="col">Accepted</TableHead>
+              <TableHead scope="col">Points (of {maxPoints})</TableHead>
+              <TableHead scope="col">Plan size</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {controls.visible.map((row) => (
+              <TableRow key={`${row.institutionId}-${row.periodLabel}`}>
+                <TableHead scope="row">
+                  {row.institutionId}{' '}
+                  <span className="font-normal text-muted-foreground">
+                    {row.institutionName}
+                  </span>
+                </TableHead>
+                <TableCell>{row.periodLabel}</TableCell>
+                <TableCell className="tabular-nums">
+                  {row.reviewed.numerator} of {row.reviewed.denominator}
+                </TableCell>
+                <TableCell className="tabular-nums">{row.points}</TableCell>
+                <TableCell className="tabular-nums">
+                  {row.planSize} milestones
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <ListPager controls={controls} noun="rows" />
+    </div>
+  );
+}
 
 export function WorkloadPage() {
   const oversight = useQuery(oversightQuery({}));
@@ -86,46 +154,10 @@ export function WorkloadPage() {
                   equal prevention impact.
                 </p>
               </div>
-              <div className="overflow-x-auto rounded-lg border bg-card">
-                <Table className="min-w-[40rem]">
-                  <TableCaption className="sr-only">
-                    Finalized reviewed implementation by institution and quarter
-                  </TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Institution</TableHead>
-                      <TableHead scope="col">Quarter</TableHead>
-                      <TableHead scope="col">Accepted</TableHead>
-                      <TableHead scope="col">
-                        Points (of {data.averageReviewed.maxPoints})
-                      </TableHead>
-                      <TableHead scope="col">Plan size</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.comparison.map((row) => (
-                      <TableRow key={`${row.institutionId}-${row.periodLabel}`}>
-                        <TableHead scope="row">
-                          {row.institutionId}{' '}
-                          <span className="font-normal text-muted-foreground">
-                            {row.institutionName}
-                          </span>
-                        </TableHead>
-                        <TableCell>{row.periodLabel}</TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.reviewed.numerator} of {row.reviewed.denominator}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.points}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.planSize} milestones
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <ComparisonTable
+                rows={data.comparison}
+                maxPoints={data.averageReviewed.maxPoints}
+              />
             </section>
           </div>
         )}

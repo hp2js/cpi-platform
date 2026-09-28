@@ -228,7 +228,7 @@ function SeedConfirmation({ baseline }: { baseline: Baseline }) {
       <div>
         <Button
           variant="outline"
-          className="h-auto py-2 text-left whitespace-normal"
+          className="h-auto max-w-full shrink py-2 text-left whitespace-normal"
           disabled={confirm.isPending}
           onClick={() => confirm.mutate(undefined)}
         >

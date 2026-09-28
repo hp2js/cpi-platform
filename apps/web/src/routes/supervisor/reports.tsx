@@ -1,5 +1,12 @@
+import type { ConsolidatedReport } from '@cpi/contracts';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Download, Printer } from 'lucide-react';
+import {
+  ListPager,
+  ListSearch,
+  useListControls,
+  usePrinting,
+} from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,6 +17,95 @@ import {
 } from '@/features/annual/queries';
 import { AnnualResultView } from '@/features/annual/result-view';
 import { formatDateTime } from '@/lib/dates';
+
+/**
+ * Paged on screen (the report can cover every institution); printing expands to the whole
+ * report so the printed copy stays complete.
+ */
+function ReportBody({ data }: { data: ConsolidatedReport }) {
+  const printing = usePrinting();
+  const unreleased = useListControls(
+    data.unreleased,
+    (row) => `${row.institutionId} ${row.institutionName}`,
+    25,
+  );
+  const released = useListControls(
+    data.released,
+    (result) => `${result.institutionId} ${result.institutionName}`,
+    10,
+  );
+  return (
+    <>
+      {data.unreleased.length > 0 && (
+        <section
+          aria-labelledby="unreleased-heading"
+          className="grid gap-3 rounded-lg border bg-card p-5"
+        >
+          <h2 id="unreleased-heading" className="font-semibold">
+            Not released ({data.unreleased.length})
+          </h2>
+          {data.unreleased.length > unreleased.pageSize && (
+            <div data-print-hide>
+              <ListSearch
+                controls={unreleased}
+                label="Find an unreleased institution"
+                placeholder="ID or name"
+              />
+            </div>
+          )}
+          <ul className="grid gap-3 text-sm">
+            {(printing ? data.unreleased : unreleased.visible).map((row) => (
+              <li key={row.institutionId} className="break-inside-avoid">
+                <span className="font-medium">{row.institutionId}</span>{' '}
+                {row.institutionName}
+                <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                  {row.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          <div data-print-hide>
+            <ListPager controls={unreleased} noun="institutions" />
+          </div>
+        </section>
+      )}
+      {data.released.length > released.pageSize && (
+        <div data-print-hide>
+          <ListSearch
+            controls={released}
+            label="Find a released result"
+            placeholder="ID or name"
+          />
+        </div>
+      )}
+      {(printing ? data.released : released.visible).map((result) => (
+        <section
+          key={result.id}
+          aria-labelledby={`rel-${result.id}`}
+          className="grid gap-3 break-inside-avoid"
+        >
+          <h2 id={`rel-${result.id}`} className="text-lg font-semibold">
+            {result.institutionId} {result.institutionName}{' '}
+            <span className="text-sm font-normal text-muted-foreground">
+              · version {result.version}, published{' '}
+              {formatDateTime(result.publishedAt)}
+            </span>
+          </h2>
+          <AnnualResultView
+            evaluation={result.evaluation}
+            profileName={result.profileName}
+            simulation={result.simulation}
+          />
+        </section>
+      ))}
+      <div data-print-hide>
+        <ListPager controls={released} noun="released results" />
+      </div>
+    </>
+  );
+}
 
 export function ReportsPage() {
   const report = useQuery(consolidatedReportQuery);
@@ -79,49 +175,7 @@ export function ReportsPage() {
               {data.released.length + data.unreleased.length} institutions
               released
             </p>
-            {data.unreleased.length > 0 && (
-              <section
-                aria-labelledby="unreleased-heading"
-                className="rounded-lg border bg-card p-5"
-              >
-                <h2 id="unreleased-heading" className="font-semibold">
-                  Not released
-                </h2>
-                <ul className="mt-3 grid gap-3 text-sm">
-                  {data.unreleased.map((row) => (
-                    <li key={row.institutionId} className="break-inside-avoid">
-                      <span className="font-medium">{row.institutionId}</span>{' '}
-                      {row.institutionName}
-                      <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                        {row.reasons.map((reason) => (
-                          <li key={reason}>{reason}</li>
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {data.released.map((result) => (
-              <section
-                key={result.id}
-                aria-labelledby={`rel-${result.id}`}
-                className="grid gap-3 break-inside-avoid"
-              >
-                <h2 id={`rel-${result.id}`} className="text-lg font-semibold">
-                  {result.institutionId} {result.institutionName}{' '}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    · version {result.version}, published{' '}
-                    {formatDateTime(result.publishedAt)}
-                  </span>
-                </h2>
-                <AnnualResultView
-                  evaluation={result.evaluation}
-                  profileName={result.profileName}
-                  simulation={result.simulation}
-                />
-              </section>
-            ))}
+            <ReportBody data={data} />
           </div>
         )}
       </QueryView>

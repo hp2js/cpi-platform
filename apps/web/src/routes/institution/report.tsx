@@ -169,7 +169,10 @@ function ReportEditor({
         save.mutate();
       }}
     >
-      <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+      <div
+        data-sticky
+        className="sticky top-(--sticky-top) z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6"
+      >
         <p className="text-sm" aria-live="polite">
           {save.isPending ? (
             'Saving…'

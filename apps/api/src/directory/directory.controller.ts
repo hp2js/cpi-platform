@@ -17,8 +17,10 @@ import { toObligations } from './obligations';
 const institutionColumns = {
   id: institutions.id,
   name: institutions.name,
+  typeId: institutions.typeId,
   type: institutions.type,
   active: institutions.active,
+  accountingOfficer: institutions.accountingOfficer,
 };
 
 @Controller()

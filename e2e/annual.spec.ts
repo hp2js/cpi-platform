@@ -6,7 +6,7 @@ test.skip(
 );
 
 async function openApp(page: Page) {
-  await page.goto('/sign-in');
+  await page.goto('/sign-in?demo=open');
   await expect(
     page.getByRole('heading', { name: 'Prevention officer' }),
   ).toBeVisible();
@@ -98,9 +98,8 @@ test('scripted year, withheld results, batch publication and oversight (AT13–A
       .getByRole('cell')
       .nth(2),
   ).toHaveText('100%');
-  await page
-    .getByLabel('Quarter', { exact: true })
-    .selectOption({ label: 'Q3' });
+  await page.getByRole('combobox', { name: 'Quarter', exact: true }).click();
+  await page.getByRole('option', { name: 'Q3' }).click();
   await expect(page).toHaveURL(/periodId=FY2026-27-Q3/);
   await expect(
     page
@@ -109,9 +108,9 @@ test('scripted year, withheld results, batch publication and oversight (AT13–A
       .nth(0),
   ).toHaveText('7');
   await page.reload();
-  await expect(page.getByLabel('Quarter', { exact: true })).toHaveValue(
-    'FY2026-27-Q3',
-  );
+  await expect(
+    page.getByRole('combobox', { name: 'Quarter', exact: true }),
+  ).toHaveText('Q3');
   await page.getByRole('link', { name: 'Reports' }).click();
   await expect(page.getByText(/8 of 8 institutions released/)).toBeVisible();
 });
@@ -144,7 +143,8 @@ test('a published result is corrected only through a case and keeps its history 
   await as(page, 'administrator', '/admin/annual');
   const demo8 = page.getByRole('listitem').filter({ hasText: 'DEMO-008' });
   await demo8.getByRole('button', { name: 'Open correction case' }).click();
-  await demo8.getByLabel('Quarter to correct').selectOption({ label: 'Q4' });
+  await demo8.getByRole('combobox', { name: 'Quarter to correct' }).click();
+  await page.getByRole('option', { name: 'Q4' }).click();
   await demo8
     .getByLabel('Reason')
     .fill('Later evidence shows the Q4 exception review was not done.');

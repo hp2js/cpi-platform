@@ -70,7 +70,8 @@ import {
 import { ComponentScoreValue } from '@/features/review/score-display';
 import { useSession } from '@/features/session/use-session';
 import { isApiError, setOverrideReason } from '@/lib/api';
-import { formatDateTime } from '@/lib/dates';
+import { cycleQuery } from '@/features/directory/queries';
+import { formatDateTime, formatDays } from '@/lib/dates';
 
 /** Officers review their assigned work; the supervisor reads every submission (PRD §5.2). */
 const reviewPath = (role: string) =>
@@ -562,7 +563,7 @@ function PriorDecision({
           <Button
             size="sm"
             variant="outline"
-            className="h-auto py-1.5 text-left whitespace-normal"
+            className="h-auto max-w-full shrink py-1.5 text-left whitespace-normal"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate(undefined)}
           >
@@ -751,6 +752,7 @@ interface ClarificationDraft {
 
 /** Targeted clarification: one question per criterion, without deleting accepted evidence (FR09). */
 function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
+  const cycle = useQuery(cycleQuery);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ClarificationDraft[]>(() => [
     ...bundle.milestones.map((milestone) => ({
@@ -807,8 +809,12 @@ function RequestClarification({ bundle }: { bundle: ReviewBundle }) {
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Choose the criteria you are questioning. Decisions already recorded
-          stay in the history; the institution will have seven calendar days to
-          respond.
+          stay in the history; the institution will have{' '}
+          {formatDays(
+            cycle.data?.dayCounting.clarificationDays ?? 7,
+            cycle.data?.dayCounting.mode ?? 'calendar',
+          )}{' '}
+          to respond.
         </p>
       </div>
       <ul className="grid gap-3">
@@ -1220,7 +1226,7 @@ export function ReviewPage() {
               Received {formatDateTime(review.data.receipt.receivedAt)} (
               {review.data.receipt.timeliness === 'on_time'
                 ? 'on time'
-                : `late by ${review.data.receipt.daysLate} ${review.data.receipt.daysLate === 1 ? 'day' : 'days'}`}
+                : `late by ${formatDays(review.data.receipt.daysLate, review.data.receipt.daysLateUnit)}`}
               {!review.data.receipt.evidenceComplete &&
                 '; some evidence declared unavailable'}
               )

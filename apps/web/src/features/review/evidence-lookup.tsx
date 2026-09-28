@@ -3,7 +3,9 @@ import { queryOptions, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { QueryView } from '@/components/query-view';
+import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
+import { SelectField } from '@/components/select-field';
 import {
   Table,
   TableBody,
@@ -44,9 +46,6 @@ const suitabilityLabel = {
   deficient: 'Deficient',
 } as const;
 
-const selectClass =
-  'h-9 w-full min-w-0 rounded-md border bg-background px-2 text-sm';
-
 /**
  * Basic evidence lookup (FR15). Results come from the server already limited to the caller's
  * institutions; there is no free-text search across all documents.
@@ -74,33 +73,36 @@ export function EvidenceLookup({
   ) => (
     <div className="grid gap-1.5">
       <Label htmlFor={`filter-${key}`}>{label}</Label>
-      <select
+      <SelectField
         id={`filter-${key}`}
-        className={selectClass}
         value={filters[key]}
-        onChange={(event) => set(key)(event.target.value)}
-      >
-        <option value="">All</option>
-        {options.map(([value, text]) => (
-          <option key={value} value={value}>
-            {text}
-          </option>
-        ))}
-      </select>
+        onChange={set(key)}
+        options={[
+          { value: '', label: 'All' },
+          ...options.map(([value, text]) => ({ value, label: text })),
+        ]}
+      />
     </div>
   );
 
   return (
     <div className="grid grid-cols-1 gap-4">
       <div className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
-        {select(
-          'institutionId',
-          'Institution',
-          (institutions.data ?? []).map((item) => [
-            item.id,
-            `${item.id} ${item.name}`,
-          ]),
-        )}
+        <div className="grid gap-1.5">
+          <Label htmlFor="filter-institutionId">Institution</Label>
+          <Combobox
+            id="filter-institutionId"
+            allOption="All institutions"
+            searchPlaceholder="Search institutions"
+            value={filters.institutionId}
+            onChange={set('institutionId')}
+            options={(institutions.data ?? []).map((item) => ({
+              value: item.id,
+              label: item.id,
+              description: item.name,
+            }))}
+          />
+        </div>
         {select(
           'periodId',
           'Quarter',

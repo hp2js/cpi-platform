@@ -1,7 +1,7 @@
 import type { Session } from '@cpi/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, UserCog, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,6 +76,21 @@ export function AccountMenu({
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() =>
+            void navigate({
+              to: {
+                institution: '/institution/account',
+                officer: '/officer/account',
+                supervisor: '/supervisor/account',
+                administrator: '/admin/account',
+              }[user.role],
+            })
+          }
+        >
+          <UserCog aria-hidden="true" />
+          My account
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={pending}
           onSelect={() => void handleSignOut()}

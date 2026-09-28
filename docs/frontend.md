@@ -2,7 +2,7 @@
 
 ## Entry points
 
-`src/main.tsx` starts the mock API (development only), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
+`src/main.tsx` starts the mock API (development only), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forgot password, set password from an emailed link, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
 
 Route guards only improve navigation. The API is the authority: every screen must handle 401, 403 and 404 responses, and `src/app/query-client.ts` sends the user to the session-expired or sign-in page when any request reports the session is gone.
 
@@ -48,6 +48,12 @@ pnpm dlx shadcn@4.21.0 add <component> -c apps/web
 ```
 
 Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. The pinned CLI currently installs an unrelated npm package named `cn` and imports `cn` from it: remove it with `pnpm --filter @cpi/web remove cn` and point the imports back to `@/lib/utils`. If it offers to overwrite an existing component, decline and write the new wrapper by hand (as done for `alert-dialog.tsx`). Avoid installing another form/router/table system alongside the agreed libraries.
+
+## Selects, long lists and fixed chrome
+
+- **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type.
+- **Long lists.** Anything sized by institutions (up to 500+) uses `useListControls` with `ListSearch` and `ListPager` from `components/list-controls.tsx`: filter by typed words, 20–50 rows a page. A printable list pages on screen and uses `usePrinting()` so the printed copy is complete.
+- **Fixed chrome.** Layouts pin the simulation banner, header and desktop sidebar with `sticky`. `useMeasuredHeight` writes their heights to `--banner-h` and `--header-h`; in-page sticky bars use `top-(--sticky-top)`, and `scroll-padding-top` keeps anchors and focused fields clear of the header. Mark sticky elements with `data-sticky` so print resets them.
 
 ## Adili palette source
 

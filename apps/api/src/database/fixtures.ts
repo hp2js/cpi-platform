@@ -39,20 +39,12 @@ export async function loadFixtures(
     );
     await tx.execute(sql`ALTER SEQUENCE record_ids RESTART WITH 1`);
 
-    await tx.insert(schema.institutions).values(
-      institutions.map((institution) => {
-        const slug = institution.id.toLowerCase();
-        return {
-          ...institution,
-          focalContact: `Focal person, ${institution.id} · focal.${slug}@example.invalid`,
-          accountingOfficerContact: `Accounting Officer, ${institution.id} · ao.${slug}@example.invalid`,
-        };
-      }),
-    );
+    await tx.insert(schema.institutions).values(institutions);
     await tx.insert(schema.users).values(
       users.map((user) => ({
         ...user,
         institutionId: user.institutionId ?? null,
+        jobTitle: user.jobTitle ?? '',
       })),
     );
     await tx.insert(schema.assignments).values(initialAssignments);
@@ -73,6 +65,7 @@ export async function loadFixtures(
       profileId: 'hackathon-mock-v1',
       reminderDaysBefore: [7, 1],
       overdueNotice: true,
+      dayCounting: cycle.dayCounting,
     });
     await tx
       .insert(schema.periods)

@@ -18,7 +18,13 @@ const DevToolbar = mockMode
     )
   : null;
 
-const publicPaths = new Set(['/sign-in', '/session-expired', '/forbidden']);
+const publicPaths = new Set([
+  '/sign-in',
+  '/forgot-password',
+  '/set-password',
+  '/session-expired',
+  '/forbidden',
+]);
 const queryClient = makeQueryClient((code) => {
   if (publicPaths.has(router.state.location.pathname)) return;
   // Never navigate away from unsaved input; the editor shows how to sign in again.

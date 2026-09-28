@@ -9,6 +9,7 @@ import {
   setLatencyMode,
   type LatencyMode,
 } from './services/latency';
+import { SelectField } from '@/components/select-field';
 
 /**
  * Development-only controls for the mock API, used to exercise loading, expired-session
@@ -112,22 +113,25 @@ export function DevToolbar({ router }: { router: AppRouter }) {
       <p className="mt-1 text-xs text-muted-foreground">
         Development only. Data is fictional and stored in this browser.
       </p>
-      <label className="mt-3 grid gap-1">
-        <span className="font-medium">Network latency</span>
-        <select
-          className="h-9 rounded-md border bg-background px-2"
+      <div className="mt-3 grid gap-1">
+        <label htmlFor="dev-latency" className="font-medium">
+          Network latency
+        </label>
+        <SelectField
+          id="dev-latency"
           value={latency}
-          onChange={(event) => {
-            const mode = event.target.value as LatencyMode;
+          onChange={(value) => {
+            const mode = value as LatencyMode;
             setLatency(mode);
             setLatencyMode(mode);
           }}
-        >
-          <option value="off">Off</option>
-          <option value="realistic">Realistic (0.1–0.4 s)</option>
-          <option value="slow">Slow (1.5–2.5 s)</option>
-        </select>
-      </label>
+          options={[
+            { value: 'off', label: 'Off' },
+            { value: 'realistic', label: 'Realistic (0.1–0.4 s)' },
+            { value: 'slow', label: 'Slow (1.5–2.5 s)' },
+          ]}
+        />
+      </div>
       <label className="mt-3 flex items-center gap-2">
         <input
           type="checkbox"

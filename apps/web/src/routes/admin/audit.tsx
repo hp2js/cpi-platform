@@ -15,6 +15,7 @@ import {
 import { auditQuery } from '@/features/events/queries';
 import { roleLabel } from '@/features/session/queries';
 import { formatDateTime } from '@/lib/dates';
+import { SelectField } from '@/components/select-field';
 
 const objectTypes = [
   'form',
@@ -40,19 +41,15 @@ export function AuditPage() {
       />
       <div className="grid max-w-xs gap-1.5">
         <Label htmlFor="audit-type">Object type</Label>
-        <select
+        <SelectField
           id="audit-type"
-          className="h-9 rounded-md border bg-background px-2 text-sm"
           value={objectType ?? ''}
-          onChange={(event) => setObjectType(event.target.value || null)}
-        >
-          <option value="">All</option>
-          {objectTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => setObjectType(value || null)}
+          options={[
+            { value: '', label: 'All' },
+            ...objectTypes.map((type) => ({ value: type, label: type })),
+          ]}
+        />
       </div>
       <QueryView
         query={events}

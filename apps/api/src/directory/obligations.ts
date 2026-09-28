@@ -57,6 +57,8 @@ export async function toObligations(
       daysLate: row.firstSubmittedAt
         ? daysLate(row.firstSubmittedAt, period.submissionDeadline)
         : null,
+      // ponytail: calendar days only; working-day counting (PRD §9.1) is a follow-up.
+      daysLateUnit: 'calendar' as const,
     };
   });
 }

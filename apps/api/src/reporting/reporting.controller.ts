@@ -421,6 +421,7 @@ export class ReportingController {
             ? 'late'
             : 'on_time',
         daysLate: daysLate(businessTime, period.submissionDeadline),
+        daysLateUnit: 'calendar',
         evidenceComplete,
         submittedBy: user.displayName,
         submitterRole: parsed.data.attestation.submitterRole,

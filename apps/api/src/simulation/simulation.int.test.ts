@@ -361,6 +361,8 @@ describe.skipIf(!integration)(
         foundationDeadlineDate: current.foundationDeadlineDate,
         evaluationCutoffDate: current.evaluationCutoffDate,
         reminders: { daysBefore: [14, 7, 1], overdueNotice: true },
+        dayCounting: current.dayCounting,
+        applyRuleToDeadlines: false,
         reason: 'Institutions asked for an earlier reminder.',
       });
       const state = await admin.json<SimulationState>('/simulation');

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { institutionIdSchema, instantSchema } from './common.js';
-import { periodSchema } from './cycle.js';
+import { dayCountingModeSchema, periodSchema } from './cycle.js';
 import { evidenceCategorySchema, formVersionSchema } from './forms.js';
 import { obligationSchema } from './institutions.js';
 import { clarificationSchema } from './clarifications.js';
@@ -147,6 +147,8 @@ export const receiptSchema = z.object({
   timeliness: z.enum(['on_time', 'late']),
   /** Calendar days after the deadline; 0 when on time (§10.2). */
   daysLate: z.number().int().nonnegative(),
+  /** The day-counting rule in force when the receipt was issued. */
+  daysLateUnit: dayCountingModeSchema,
   /** True when every required document was supplied, none declared unavailable. */
   evidenceComplete: z.boolean(),
   submittedBy: z.string(),

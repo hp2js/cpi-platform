@@ -48,10 +48,37 @@ async function loadSession(queryClient: QueryClient) {
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'sign-in',
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect: string | undefined; demo?: 'open' } => ({
     redirect: safeRedirect(search.redirect),
+    ...(search.demo === 'open' ? { demo: 'open' as const } : {}),
   }),
   component: lazyRouteComponent(() => import('@/routes/sign-in'), 'SignInPage'),
+});
+const optionalText = (value: unknown) =>
+  typeof value === 'string' && value ? value.slice(0, 256) : undefined;
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'forgot-password',
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: optionalText(search.email),
+  }),
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'ForgotPasswordPage',
+  ),
+});
+const setPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'set-password',
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: optionalText(search.token),
+  }),
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'SetPasswordPage',
+  ),
 });
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -274,6 +301,10 @@ const adminFormRoute = createRoute({
 const adminNotificationsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'notifications',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: 'all' | 'sink' } =>
+    search.tab === 'all' || search.tab === 'sink' ? { tab: search.tab } : {},
   component: page(
     () => import('@/routes/admin/notifications'),
     'NotificationsPage',
@@ -345,12 +376,53 @@ const adminCalendarRoute = createRoute({
   path: 'calendar',
   component: page(() => import('@/routes/admin/calendar'), 'CalendarPage'),
 });
-const adminPeopleRoute = createRoute({
+const adminInstitutionsRoute = createRoute({
   getParentRoute: () => adminRoute,
-  path: 'people',
-  component: page(() => import('@/routes/admin/people'), 'PeoplePage'),
+  path: 'institutions',
+  validateSearch: (search: Record<string, unknown>): { tab?: 'types' } =>
+    search.tab === 'types' ? { tab: 'types' } : {},
+  component: page(
+    () => import('@/routes/admin/institutions'),
+    'InstitutionsPage',
+  ),
 });
-
+const adminInstitutionRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'institutions/$institutionId',
+  component: page(
+    () => import('@/routes/admin/institution-detail'),
+    'InstitutionDetailPage',
+  ),
+});
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'users',
+  component: page(() => import('@/routes/admin/users'), 'UsersPage'),
+});
+const accountPage = page(
+  () => import('@/routes/shared/account'),
+  'AccountPage',
+);
+const institutionAccountRoute = createRoute({
+  getParentRoute: () => institutionRoute,
+  path: 'account',
+  component: accountPage,
+});
+const officerAccountRoute = createRoute({
+  getParentRoute: () => officerRoute,
+  path: 'account',
+  component: accountPage,
+});
+const supervisorAccountRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'account',
+  component: accountPage,
+});
+const adminAccountRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'account',
+  component: accountPage,
+});
 const supervisorSubmissionsRoute = createRoute({
   getParentRoute: () => supervisorRoute,
   path: 'submissions',
@@ -390,6 +462,8 @@ const adminReviewRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
+  forgotPasswordRoute,
+  setPasswordRoute,
   forbiddenRoute,
   sessionExpiredRoute,
   authedRoute.addChildren([
@@ -404,6 +478,7 @@ export const routeTree = rootRoute.addChildren([
       institutionFoundationsRoute,
       institutionInboxRoute,
       institutionResultsRoute,
+      institutionAccountRoute,
     ]),
     officerRoute.addChildren([
       officerHomeRoute,
@@ -411,6 +486,7 @@ export const routeTree = rootRoute.addChildren([
       officerEvidenceRoute,
       officerInstitutionRoute,
       officerInboxRoute,
+      officerAccountRoute,
     ]),
     supervisorRoute.addChildren([
       supervisorHomeRoute,
@@ -418,6 +494,7 @@ export const routeTree = rootRoute.addChildren([
       supervisorReviewRoute,
       supervisorEvidenceRoute,
       supervisorInboxRoute,
+      supervisorAccountRoute,
       supervisorWorkloadRoute,
       supervisorAnnualRoute,
       supervisorReportsRoute,
@@ -428,7 +505,10 @@ export const routeTree = rootRoute.addChildren([
       adminAnnualRoute,
       adminAssignmentsRoute,
       adminCalendarRoute,
-      adminPeopleRoute,
+      adminInstitutionsRoute,
+      adminInstitutionRoute,
+      adminUsersRoute,
+      adminAccountRoute,
       adminProfilesRoute,
       adminProfileRoute,
       adminFormsRoute,

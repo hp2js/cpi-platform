@@ -16,7 +16,9 @@ import {
 } from '@/components/ui/sheet';
 import { institutionsQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, type NavItem } from './shared';
+import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const nav = [
   { to: '/officer', label: 'Assigned work', icon: ClipboardList, exact: true },
@@ -31,8 +33,16 @@ const nav = [
 
 function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
   const portfolio = useQuery(institutionsQuery);
+  // Large portfolios get a filter; the rail scrolls on its own.
+  const [filter, setFilter] = useState('');
+  const terms = filter.trim().toLowerCase();
+  const shown = (portfolio.data ?? []).filter(
+    (institution) =>
+      !terms ||
+      `${institution.id} ${institution.name}`.toLowerCase().includes(terms),
+  );
   return (
-    <div className="flex h-full flex-col gap-6 p-4">
+    <div className="flex min-h-full flex-col gap-6 p-4">
       <Link
         to="/officer"
         activeOptions={{ exact: true }}
@@ -50,9 +60,25 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
           className="px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
         >
           My portfolio
+          {portfolio.data && ` (${portfolio.data.length})`}
         </h2>
+        {(portfolio.data?.length ?? 0) > 8 && (
+          <div className="mt-2 px-1">
+            <Label htmlFor="portfolio-filter" className="sr-only">
+              Filter my portfolio
+            </Label>
+            <Input
+              id="portfolio-filter"
+              type="search"
+              placeholder="Filter institutions"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              className="h-8"
+            />
+          </div>
+        )}
         <ul className="mt-2 grid gap-1 text-sm">
-          {portfolio.data?.map((institution) => (
+          {shown.map((institution) => (
             <li key={institution.id}>
               <Link
                 to="/officer/institutions/$institutionId"
@@ -85,16 +111,27 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
 export function OfficerLayout() {
   const session = useSession();
   const [open, setOpen] = useState(false);
+  const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
+  const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <SkipLink />
-      <SimulationBanner session={session} />
+      <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
+        <SimulationBanner session={session} />
+      </div>
       <div className="flex flex-1">
-        <aside className="hidden w-64 shrink-0 border-r bg-card lg:block">
+        <aside
+          data-sticky
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-card lg:block"
+        >
           <OfficerRail />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end">
+          <header
+            ref={headerRef}
+            data-sticky
+            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end"
+          >
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">

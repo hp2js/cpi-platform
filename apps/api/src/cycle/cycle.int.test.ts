@@ -206,6 +206,8 @@ describe.skipIf(!integration)('reporting cycle', () => {
           foundationDeadlineDate: current.foundationDeadlineDate,
           evaluationCutoffDate: current.evaluationCutoffDate,
           reminders: current.reminders,
+          dayCounting: current.dayCounting,
+          applyRuleToDeadlines: false,
           reason,
         },
       };
@@ -269,6 +271,7 @@ describe.skipIf(!integration)('reporting cycle', () => {
         await admin.post('/settings/users', {
           displayName: 'Deputy focal person, DEMO-001',
           email: 'deputy.demo-001@example.invalid',
+          jobTitle: 'Deputy Integrity Officer',
           role: 'institution',
           institutionId: 'DEMO-001',
         })
@@ -281,6 +284,7 @@ describe.skipIf(!integration)('reporting cycle', () => {
         await admin.post('/settings/users', {
           displayName: 'Duplicate',
           email: 'DEPUTY.demo-001@example.invalid',
+          jobTitle: '',
           role: 'supervisor',
           institutionId: null,
         }),
@@ -322,9 +326,13 @@ describe.skipIf(!integration)('reporting cycle', () => {
       const people = (
         await admin.put('/settings/institutions/DEMO-002', {
           name: 'Demo Water and Sanitation Board',
-          type: 'State corporation',
-          focalContact: 'Focal person, DEMO-002',
-          accountingOfficerContact: 'Accounting Officer, DEMO-002',
+          typeId: 'state-corporation',
+          accountingOfficer: {
+            name: 'Accounting Officer, DEMO-002',
+            designation: 'Managing Director',
+            email: '',
+            phone: '',
+          },
         })
       ).body as People;
       expect(

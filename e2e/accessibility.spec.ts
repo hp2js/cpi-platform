@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { midYear, openApp, publishedYear, visit } from './support';
 
 test.skip(
@@ -27,9 +27,47 @@ async function scan(page: Page, name: string) {
   );
 }
 
+/** Waits for an opening animation to finish, so contrast is measured at full opacity. */
+async function settled(locator: Locator) {
+  await expect(locator).toBeVisible();
+  await expect
+    .poll(() =>
+      locator.evaluate((element) =>
+        element
+          .getAnimations({ subtree: true })
+          .every((animation) => animation.playState === 'finished'),
+      ),
+    )
+    .toBe(true);
+}
+
 test('public pages', async ({ page }) => {
   await openApp(page);
+  await page.goto('/sign-in');
+  await expect(
+    page.getByRole('button', { name: /Explore with a demonstration account/ }),
+  ).toBeVisible();
   await scan(page, 'sign-in');
+  await page
+    .getByRole('button', { name: /Explore with a demonstration account/ })
+    .click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'demonstration accounts');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Sign in with eCitizen/ }).click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'eCitizen dialog');
+  await page.keyboard.press('Escape');
+  await page.goto('/forgot-password');
+  await expect(
+    page.getByRole('heading', { name: 'Reset your password' }),
+  ).toBeVisible();
+  await scan(page, 'forgot-password');
+  await page.goto('/set-password?token=not-a-real-token');
+  await expect(
+    page.getByRole('heading', { name: 'This link cannot be used' }),
+  ).toBeVisible();
+  await scan(page, 'set-password (invalid link)');
   await page.goto('/forbidden');
   await scan(page, 'forbidden');
   await page.goto('/session-expired');
@@ -102,7 +140,11 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/profiles', 'admin scoring profiles'],
     ['/admin/profiles/hackathon-mock-v1', 'admin profile detail'],
     ['/admin/calendar', 'admin reporting calendar'],
-    ['/admin/people', 'admin users and institutions'],
+    ['/admin/institutions', 'admin institutions'],
+    ['/admin/institutions?tab=types', 'admin institution types'],
+    ['/admin/institutions/DEMO-001', 'admin institution page'],
+    ['/admin/users', 'admin users'],
+    ['/admin/account', 'my account'],
     ['/admin/reviews', 'admin reviews'],
   ] as const) {
     await visit(page, 'administrator', path);
@@ -134,4 +176,39 @@ test('year-end screens for every role', async ({ page }) => {
     await page.waitForLoadState('networkidle');
     await scan(page, name);
   }
+});
+
+test('configuration dialogs and searchable selects', async ({ page }) => {
+  await openApp(page);
+  await visit(page, 'administrator', '/admin/institutions');
+  await page.getByRole('button', { name: 'Import from CSV' }).click();
+  await page
+    .getByRole('dialog')
+    .getByLabel('CSV file')
+    .setInputFiles({
+      name: 'institutions.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        'institution_id,name,type,officer_email,ao_name,ao_designation\nMDA-401,Demo Board,State agency,officer.a@example.invalid,AO MDA-401,Director\nDEMO-001,Duplicate,State agency,nobody@example.invalid,AO,Director\n',
+      ),
+    });
+  await expect(page.getByText(/1 ready, 1 row needs attention/)).toBeVisible();
+  await scan(page, 'import preview dialog');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Add institution' }).click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'add institution dialog');
+  await page.keyboard.press('Escape');
+
+  await visit(page, 'administrator', '/admin/assignments');
+  await page
+    .getByRole('combobox', { name: 'Institution', exact: true })
+    .click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'open searchable select');
+  await page.keyboard.press('Escape');
+
+  await visit(page, 'administrator', '/admin/calendar');
+  await page.getByRole('radio', { name: 'Working days' }).click();
+  await scan(page, 'calendar with working days');
 });

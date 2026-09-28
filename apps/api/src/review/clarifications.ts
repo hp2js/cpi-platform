@@ -53,6 +53,8 @@ export async function toClarifications(
       availableAt: row.availableAt,
       notifiedAt: row.notifiedAt,
       responseDueAt: row.responseDueAt,
+      windowDays: row.windowDays,
+      windowUnit: row.windowUnit,
       status: row.status,
       overdue: row.status === 'open' && now > due,
       // Never shortened automatically: an authorized extension or a pending result is required.

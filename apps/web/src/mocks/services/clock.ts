@@ -1,5 +1,6 @@
 import type { ClockBoundary } from '@cpi/contracts';
 import { getDb, type MockDb } from '../db';
+import { endOfDay, localDate, shiftDays } from './days';
 import { assignedOfficers, institutionUsers, notify } from './events';
 
 /**
@@ -7,7 +8,6 @@ import { assignedOfficers, institutionUsers, notify } from './events';
  * event is processed once per run, so repeating an advance cannot duplicate notifications.
  */
 
-const DAY = 86_400_000;
 const iso = (ms: number) =>
   `${new Date(ms + 3 * 3_600_000).toISOString().slice(0, 19)}+03:00`;
 
@@ -24,11 +24,13 @@ export function boundaries(): Omit<ClockBoundary, 'passed'>[] {
       kind: 'reporting_open',
     });
     // The reminder schedule is an administrator setting (FR02; PRD §9.1 defaults 7 and 1).
+    // Counted in the cycle's day rule: working days skip weekends and public holidays.
+    const unit = cycle.dayCounting.mode === 'working' ? 'working ' : '';
     for (const days of reminders.daysBefore) {
       list.push({
         id: `${period.label}-reminder-${days}`,
-        label: `${period.label} reminder: ${days} ${days === 1 ? 'day' : 'days'} to deadline`,
-        at: iso(deadline - days * DAY),
+        label: `${period.label} reminder: ${days} ${unit}${days === 1 ? 'day' : 'days'} to deadline`,
+        at: endOfDay(shiftDays(localDate(deadline), -days, cycle.dayCounting)),
         kind: 'reminder',
       });
     }

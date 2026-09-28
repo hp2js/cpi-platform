@@ -33,6 +33,7 @@ export function toSession(user: MockUser): Session {
       email: user.email,
       role: user.role,
       ...(user.institutionId ? { institutionId: user.institutionId } : {}),
+      ...(user.jobTitle ? { jobTitle: user.jobTitle } : {}),
     },
     clock: {
       runId: db.runId,

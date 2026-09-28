@@ -1,7 +1,7 @@
 import type { Receipt } from '@cpi/contracts';
 import { FileText } from 'lucide-react';
 import { evidenceCategoryLabel, formatBytes } from './answers';
-import { formatDateTime } from '@/lib/dates';
+import { formatDateTime, formatDays } from '@/lib/dates';
 
 /** The immutable acknowledgement of one submitted revision (FR07). No score is shown. */
 export function ReceiptView({ receipt }: { receipt: Receipt }) {
@@ -15,7 +15,7 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
       'Timeliness',
       receipt.timeliness === 'on_time'
         ? 'On time'
-        : `Late by ${receipt.daysLate} ${receipt.daysLate === 1 ? 'day' : 'days'}; no penalty is applied in this demonstration`,
+        : `Late by ${formatDays(receipt.daysLate, receipt.daysLateUnit)}; no penalty is applied in this demonstration`,
     ],
     [
       'Evidence',
