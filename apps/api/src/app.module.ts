@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import { APP_GUARD } from '@nestjs/core';
 import { AdminController } from './admin/admin.controller';
 import { AnnualController } from './annual/annual.controller';
+import { DevController } from './dev/dev.controller';
 import { AccountController } from './auth/account.controller';
 import { SessionController } from './auth/session.controller';
 import { AuthGuard, Sessions } from './auth/sessions';
@@ -41,6 +42,7 @@ import { Infrastructure } from './infrastructure';
     SimulationController,
     SupervisionController,
     AdminController,
+    DevController,
   ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },

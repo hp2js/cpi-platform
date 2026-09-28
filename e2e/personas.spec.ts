@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './test';
 
 // Journeys run against the development server's mock API; production builds have no mocks.
 test.skip(
@@ -99,7 +99,7 @@ test('an expired session leads to a clear sign-in path', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Oversight overview' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Mock API' }).click();
+  await page.getByRole('button', { name: /^(Mock API|Dev controls)$/ }).click();
   await page.getByRole('button', { name: 'Expire my session' }).click();
   await expect(
     page.getByRole('heading', { name: 'Your session has expired' }),

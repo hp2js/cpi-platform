@@ -217,7 +217,9 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       view.metrics.find((row) => row.id === 'submission-coverage'),
     ).toMatchObject({ numerator: 0, denominator: 4 });
     const officer = await api.client().signIn('officer-a');
-    expect((await officer.request('/oversight')).status).toBe(403);
+    // Officers see the dashboard for their own portfolio only.
+    const own = await officer.json<Oversight>('/oversight');
+    expect(own.workload.map((row) => row.officerId)).toEqual(['officer-a']);
     // Officers see the annual view for their own institutions only.
     expect(
       (await officer.json<AnnualOverview>('/annual')).institutions.map(

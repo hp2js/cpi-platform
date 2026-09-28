@@ -197,7 +197,7 @@ export function AuditPage() {
         empty="No events match these filters."
       >
         {(result) => (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <p role="status" className="text-sm text-muted-foreground">
               {result.total} {result.total === 1 ? 'event' : 'events'}, newest
               first

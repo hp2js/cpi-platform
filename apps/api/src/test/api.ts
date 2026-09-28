@@ -15,7 +15,8 @@ import * as schema from '../database/schema';
  */
 export const integration = process.env.INTEGRATION === '1';
 
-config({ path: '../../.env', quiet: true });
+// The example's values are the local Docker services, for checkouts without a .env (and CI).
+config({ path: ['../../.env', '../../.env.example'], quiet: true });
 
 function testUrls() {
   const database = new URL(process.env.DATABASE_URL ?? '');

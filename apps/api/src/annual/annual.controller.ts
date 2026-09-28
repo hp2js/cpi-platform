@@ -538,7 +538,8 @@ export class AnnualController {
 
   /** Dashboard metrics as defined in PRD §4.3, filtered to the caller's authorized scope. */
   @Get('oversight')
-  @Roles('supervisor', 'administrator')
+  // Officers see their own portfolio: the scope limits them to it (PRD §5.2).
+  @Roles('officer', 'supervisor', 'administrator')
   async oversight(
     @CurrentUser() user: User,
     @Query() query: Record<string, string | undefined>,

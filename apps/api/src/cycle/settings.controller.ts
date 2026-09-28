@@ -287,6 +287,29 @@ function uniqueName(profiles: Profile[], base: string) {
   }
 }
 
+/** An active focal person who is the only one for their institution. */
+async function isLastFocalPerson(tx: Tx, user: User) {
+  if (
+    user.role !== 'institution' ||
+    !user.institutionId ||
+    accountStatus(user) !== 'active'
+  )
+    return false;
+  const colleagues = await tx
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.role, 'institution'),
+        eq(users.institutionId, user.institutionId),
+      ),
+    );
+  return (
+    colleagues.filter((person) => accountStatus(person) === 'active').length ===
+    1
+  );
+}
+
 @Controller('settings')
 export class SettingsController {
   constructor(
@@ -300,10 +323,10 @@ export class SettingsController {
     return this.infrastructure.database;
   }
 
-  /* Scoring profiles: administrators manage them; supervisors can read the active rules. */
+  /* Scoring profiles: administrators manage them; supervisors and officers read the rules in use. */
 
   @Get('profiles')
-  @Roles('administrator', 'supervisor')
+  @Roles('administrator', 'supervisor', 'officer')
   profiles() {
     return profilesState(this.db);
   }
@@ -853,30 +876,12 @@ export class SettingsController {
             `At least one ${guarded} must stay active.`,
             `last_${guarded}`,
           );
-      if (
-        user.role === 'institution' &&
-        user.institutionId &&
-        accountStatus(user) === 'active'
-      ) {
-        const colleagues = await tx
-          .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.role, 'institution'),
-              eq(users.institutionId, user.institutionId),
-            ),
-          );
-        if (
-          colleagues.filter((person) => accountStatus(person) === 'active')
-            .length === 1
-        )
-          throw new ApiError(
-            409,
-            `${user.displayName} is the only active focal person for ${user.institutionId}. Set up another before changing their role.`,
-            'last_focal_person',
-          );
-      }
+      if (await isLastFocalPerson(tx, user))
+        throw new ApiError(
+          409,
+          `${user.displayName} is the only active focal person for ${user.institutionId}. Set up another before changing their role.`,
+          'last_focal_person',
+        );
       await tx
         .update(users)
         .set({
@@ -940,6 +945,14 @@ export class SettingsController {
             409,
             'At least one administrator must stay active.',
             'last_administrator',
+          );
+        // Deactivating an institution's last active focal person is allowed (someone who leaves
+        // may need locking out at once) but must be confirmed: nobody can then report.
+        if (!input.confirmNoFocalPerson && (await isLastFocalPerson(tx, user)))
+          throw new ApiError(
+            409,
+            `${user.displayName} is the only active focal person for ${user.institutionId}. Afterwards nobody can report for it or receive its clarifications until someone else is set up.`,
+            'last_focal_person',
           );
         // Oversight must not silently lapse: move a supervisor's institutions first.
         const supervised = await supervisedInstitutionIds(tx, user.id);

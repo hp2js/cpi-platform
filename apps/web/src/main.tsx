@@ -8,9 +8,10 @@ import { makeRouter } from './app/router';
 import { hasUnsavedWork } from './features/session/unsaved-work';
 import './styles.css';
 
+/** The real API by default; VITE_API_MODE=mock runs the in-browser mock instead (dev only). */
 const mockMode =
-  import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
-const DevToolbar = mockMode
+  import.meta.env.DEV && import.meta.env.VITE_API_MODE === 'mock';
+const DevToolbar = import.meta.env.DEV
   ? lazy(() =>
       import('./mocks/dev-toolbar').then((module) => ({
         default: module.DevToolbar,
@@ -42,9 +43,11 @@ const queryClient = makeQueryClient((code) => {
 const router = makeRouter(queryClient);
 
 async function start() {
-  if (mockMode) {
+  // In development the service worker also injects network faults for recovery rehearsals;
+  // against the real API it handles nothing else.
+  if (import.meta.env.DEV) {
     const { startMockApi } = await import('./mocks/browser');
-    await startMockApi();
+    await startMockApi(mockMode ? 'mock' : 'faults-only');
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -53,7 +56,7 @@ async function start() {
           <RouterProvider router={router} />
           {DevToolbar && (
             <Suspense fallback={null}>
-              <DevToolbar router={router} />
+              <DevToolbar router={router} live={!mockMode} />
             </Suspense>
           )}
         </TooltipProvider>

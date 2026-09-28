@@ -66,6 +66,12 @@ export class Sessions {
     response.clearCookie(COOKIE, { path: '/api' });
   }
 
+  /** Development control: drops the caller's session but keeps the cookie (session_expired). */
+  async expire(request: Request) {
+    const id = sessionIdFrom(request);
+    if (id) await this.infrastructure.redis.del(key(id));
+  }
+
   /** Ends every session of a user; their next request gets 401 `session_expired`. */
   async endAllFor(userId: string) {
     const redis = this.infrastructure.redis;
