@@ -8,11 +8,13 @@ import { CONFIG, loadConfig } from './config';
 import { FormsController } from './cycle/forms.controller';
 import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
+import { EventsController } from './events/events.controller';
 import { Events } from './events/events';
 import { FoundationsController } from './planning/foundations.controller';
 import { PlanningController } from './planning/planning.controller';
 import { ReportingController } from './reporting/reporting.controller';
 import { ReviewController } from './review/review.controller';
+import { SimulationController } from './simulation/simulation.controller';
 import { HealthController } from './health.controller';
 import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
@@ -31,6 +33,8 @@ import { Infrastructure } from './infrastructure';
     PlanningController,
     FoundationsController,
     AnnualController,
+    EventsController,
+    SimulationController,
   ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },
