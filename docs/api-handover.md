@@ -37,9 +37,9 @@ Roles: **I** institution, **O** officer (assigned), **S** supervisor, **A** admi
 | `GET /api/cycles/current`             | any     | Cycle with four periods, foundation deadline and evaluation cutoff.                                                                                            |
 | `GET /api/institutions`, `/:id`       | scoped  | 404 outside scope.                                                                                                                                             |
 | `GET /api/obligations?institutionId=` | scoped  | Flags derived from business time: `not_yet_due`, `late`, `clarification_overdue`.                                                                              |
-| `GET /api/assignments`                | O, S, A | Officers see their own; supervisors, those of their institutions. 403 for institutions.                                                                        |
-| `GET /api/assignments/history`        | S, A    | Includes ended assignments with reasons; supervisors see their institutions only.                                                                              |
-| `POST /api/assignments`               | A       | Reassign with reason; access changes immediately, history kept (AT22). Optional `suggestionId` marks a supervisor suggestion applied and tells the supervisor. |
+| `GET /api/assignments` | O, S, A | Officers see their own; supervisors, those of their institutions. 403 for institutions. Each record carries `cover` (temporary cover: `until`, `returnToOfficerId`, `returnToOfficerName`, or null) and `handoverNote`. |
+| `GET /api/assignments/history` | O, S, A | Includes ended assignments with reasons. Officers and supervisors see the full history of their current institutions only, so a new officer knows who reviewed before. |
+| `POST /api/assignments` | A | `{ institutionId, officerId, reason, suggestionId?, coverUntil?, handoverNote? }`. Access changes immediately, history kept (AT22). `suggestionId` marks a reassignment request applied and tells whoever raised it. `coverUntil` (a date after today, else `422`) makes it temporary cover: at the end of that day the institution returns automatically to the officer who was away (if they are no longer active, the cover officer keeps it and administrators are told). The new officer, the previous officer and the institution are notified; the handover note goes to the new officer. |
 
 ### Authentication (PRD §13.1)
 
@@ -160,13 +160,21 @@ Supervisors oversee the officers who review their institutions. Each institution
 | ---------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/supervision`                         | O, S, A | `Supervision[]` (`institutionId`, `supervisorId`, `supervisorName`, `validFrom`, `validTo`, `reason`). Administrators: all records. Supervisors: history of their current institutions. Officers: the current supervisor of their own institutions. |
 | `POST /api/supervision`                        | A       | `{ institutionId, supervisorId, reason }`. Ends the current record and starts a new one; access follows at once. `409 no_change` for the current supervisor. Notifies the new supervisor.                                                           |
-| `GET /api/assignment-suggestions`              | S, A    | Supervisors see their own suggestions; administrators, all.                                                                                                                                                                                         |
-| `POST /api/assignment-suggestions`             | S       | `{ institutionId, suggestedOfficerId \| null, reason }` for one of the supervisor's institutions (`404` otherwise). One open suggestion per institution (`409 suggestion_open`). Notifies administrators; nothing changes until they act.           |
-| `POST /api/assignment-suggestions/:id/dismiss` | A       | `{ note }`. Keeps the current officer and tells the supervisor why. Applying goes through `POST /api/assignments` with `suggestionId`.                                                                                                              |
+| `GET /api/assignment-suggestions` | O, S, A | Reassignment requests (`kind`: `suggestion` or `conflict_of_interest`; `requestedByRole`). Officers see their own; supervisors, their own plus officers' declarations about their institutions; administrators, all. |
+| `POST /api/assignment-suggestions` | O, S | `{ kind, institutionId, suggestedOfficerId \| null, reason }`. Supervisors suggest for their institutions; officers may only declare a `conflict_of_interest` about their own (`403` for a suggestion). `404` outside scope. One open request per institution (`409 suggestion_open`). Notifies administrators, and for a declaration the supervisor; nothing changes until the administrator acts. |
+| `POST /api/assignment-suggestions/:id/dismiss` | A | `{ note }`. Keeps the current officer and tells the requester why. Applying goes through `POST /api/assignments` with `suggestionId`. |
 
 - **Institution setup:** `POST /api/settings/institutions` takes `supervisorId` (nullable). CSV import accepts an optional `supervisor_email` column; when it is absent or blank and exactly one supervisor is active, that supervisor is assigned. `ManagedInstitution.supervisor` and `ManagedUser.assignedInstitutionIds` (a supervisor's institutions) expose the result.
 - **Safeguards:** a supervisor with current institutions cannot be deactivated (`409 supervisor_has_institutions`), and the last active supervisor cannot be deactivated (`409 last_supervisor`).
 - **Oversight digest:** as the clock crosses each boundary, every supervisor with something needing attention gets one `oversight.digest` notification summarizing missing reports, reviews past the target, clarifications past their window and institutions needing an extension decision. A live system would send it daily; replayed boundaries never repeat it.
+
+### Prevention officers (PRD §5.1, §5.2, §10.4)
+
+Officers review only the institutions currently assigned to them. Beyond the review endpoints they read: the rules in use (`GET /api/settings/profiles` and published forms, read only), their own portfolio through `GET /api/oversight` (scoped to their institutions; the workload row is theirs alone), the assignment history and current supervisor of their institutions, and their own reassignment requests.
+
+- **Review digest:** as the clock crosses each boundary, each officer with something in their portfolio gets one `review.digest` notification: baselines still to approve for quarters starting within 14 days (a quarter's baseline must be approved before it opens), seeded baselines to confirm, reviews past or within 2 days of the review target, clarification windows that ended without a response, and quarters needing a final disposition after the cutoff.
+- **Temporary cover and handover:** see `POST /api/assignments`. The covering officer sees who they cover for and until when; the handover note appears on the institution's page.
+- **Conflict of interest:** an officer declares one with `POST /api/assignment-suggestions` (`kind: conflict_of_interest`). They keep access until the administrator reassigns.
 
 ### Day counting (PRD §9.1, FR02)
 

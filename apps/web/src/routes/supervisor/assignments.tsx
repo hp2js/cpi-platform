@@ -125,12 +125,15 @@ function Suggestions({ list }: { list: ReassignmentSuggestion[] }) {
   return (
     <section aria-labelledby="suggestions-heading" className="grid gap-3">
       <h2 id="suggestions-heading" className="text-lg font-semibold">
-        Your reassignment suggestions
+        Reassignment requests
       </h2>
+      <p className="text-sm text-muted-foreground">
+        Your suggestions, and conflicts of interest declared by officers about
+        your institutions. The administrator decides.
+      </p>
       {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          None yet. Suggest a reassignment from the table above; the
-          administrator decides.
+          None yet. Suggest a reassignment from the table above.
         </p>
       ) : (
         <ul className="grid gap-3">
@@ -141,10 +144,9 @@ function Suggestions({ list }: { list: ReassignmentSuggestion[] }) {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">
-                  {suggestion.institutionId}:{' '}
-                  {suggestion.currentOfficerName ?? 'no officer'} →{' '}
-                  {suggestion.suggestedOfficerName ??
-                    'the administrator’s choice'}
+                  {suggestion.kind === 'conflict_of_interest'
+                    ? `${suggestion.institutionId}: conflict of interest declared by ${suggestion.suggestedBy}`
+                    : `${suggestion.institutionId}: ${suggestion.currentOfficerName ?? 'no officer'} → ${suggestion.suggestedOfficerName ?? 'the administrator’s choice'}`}
                 </span>
                 <Badge
                   variant={
@@ -198,7 +200,17 @@ export function SupervisorAssignmentsPage() {
           <QueryView query={history} label="assignment history">
             {(list) => (
               <AssignmentHistory
-                list={list.map((row) => ({ ...row, name: row.officerName }))}
+                list={list.map((row) => ({
+                  ...row,
+                  name: row.officerName,
+                  reason: [
+                    row.reason ?? 'Initial assignment',
+                    row.cover &&
+                      `Cover until ${formatDateTime(row.cover.until)}, then back to ${row.cover.returnToOfficerName}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                }))}
                 who="Officer"
                 headingId="history-heading"
                 title="Officer assignment history"

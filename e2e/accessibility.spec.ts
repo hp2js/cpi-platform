@@ -106,6 +106,8 @@ test('mid-year screens for every role', async ({ page }) => {
     ['officer-a', '/officer', 'officer queue'],
     ['officer-a', `/officer/reviews/${review}`, 'officer review workspace'],
     ['officer-a', '/officer/evidence', 'officer evidence lookup'],
+    ['officer-a', '/officer/portfolio', 'officer portfolio'],
+    ['officer-a', '/officer/rules', 'officer rules in use'],
     ['supervisor', '/supervisor/submissions', 'supervisor submissions'],
     [
       'supervisor',

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { institutionIdSchema, instantSchema } from './common.js';
+import {
+  calendarDateSchema,
+  institutionIdSchema,
+  instantSchema,
+} from './common.js';
+import { assignmentCoverSchema } from './institutions.js';
 import { fractionSchema } from './review.js';
 
 /** A dashboard metric always carries its numerator, denominator and as-of time (PRD §4.3). */
@@ -92,8 +97,12 @@ export const assignmentChangeRequestSchema = z.object({
   institutionId: institutionIdSchema,
   officerId: z.string(),
   reason: z.string().min(10).max(1000),
-  /** The supervisor suggestion this change applies, if any. */
+  /** The reassignment request this change applies, if any. */
   suggestionId: z.string().optional(),
+  /** Temporary cover: the institution returns to its current officer at the end of this date. */
+  coverUntil: calendarDateSchema.optional(),
+  /** Shown to the new officer on the institution's page and in their notification. */
+  handoverNote: z.string().trim().max(2000).optional(),
 });
 export const assignmentHistorySchema = z.array(
   z.object({
@@ -103,15 +112,20 @@ export const assignmentHistorySchema = z.array(
     validFrom: instantSchema,
     validTo: instantSchema.nullable(),
     reason: z.string().nullable(),
+    cover: assignmentCoverSchema,
+    handoverNote: z.string().nullable(),
   }),
 );
 
 /**
- * A supervisor's suggestion that an institution move to another officer. Only the administrator
- * changes assignments (PRD §5.2); applying or dismissing a suggestion is recorded here.
+ * A request that an institution move to another officer: a supervisor's suggestion, or an
+ * officer's conflict-of-interest declaration about their own institution. Only the
+ * administrator changes assignments (PRD §5.2); applying or dismissing is recorded here.
  */
 export const reassignmentSuggestionSchema = z.object({
   id: z.string(),
+  kind: z.enum(['suggestion', 'conflict_of_interest']),
+  requestedByRole: z.enum(['supervisor', 'officer']),
   institutionId: institutionIdSchema,
   institutionName: z.string(),
   currentOfficerId: z.string().nullable(),
@@ -133,6 +147,8 @@ export const reassignmentSuggestionsSchema = z.array(
   reassignmentSuggestionSchema,
 );
 export const reassignmentSuggestionRequestSchema = z.object({
+  /** Officers may only declare a conflict of interest about their own institution. */
+  kind: z.enum(['suggestion', 'conflict_of_interest']).default('suggestion'),
   institutionId: institutionIdSchema,
   /** Null when the supervisor asks the administrator to choose. */
   suggestedOfficerId: z.string().nullable(),

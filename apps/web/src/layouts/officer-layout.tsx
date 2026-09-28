@@ -1,7 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Bell, ClipboardList, FileSearch, Menu } from 'lucide-react';
+import {
+  Bell,
+  ChartColumn,
+  ClipboardList,
+  FileSearch,
+  Menu,
+  Scale,
+} from 'lucide-react';
 import { useState } from 'react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
@@ -23,11 +30,18 @@ import { Label } from '@/components/ui/label';
 const nav = [
   { to: '/officer', label: 'Assigned work', icon: ClipboardList, exact: true },
   {
+    to: '/officer/portfolio',
+    label: 'My portfolio',
+    icon: ChartColumn,
+    exact: false,
+  },
+  {
     to: '/officer/evidence',
     label: 'Evidence',
     icon: FileSearch,
     exact: false,
   },
+  { to: '/officer/rules', label: 'Rules in use', icon: Scale, exact: false },
   { to: '/officer/inbox', label: 'Inbox', icon: Bell, exact: false },
 ] as const satisfies readonly NavItem[];
 

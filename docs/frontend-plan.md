@@ -60,6 +60,8 @@ Code-based TanStack Router, one subtree per role. `beforeLoad` redirects signed-
 /officer/clarifications
 /officer/inbox
 
+/officer/portfolio                        officer's trends and finalized comparison
+/officer/rules                            rules in use (shared with supervisors)
 /supervisor                               overview metrics, trends, institution-quarter matrix
 /supervisor/institutions                  the supervisor's institutions
 /supervisor/institutions/$institutionId   read-only drilldown: quarters, trend, baselines

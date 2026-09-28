@@ -276,10 +276,10 @@ function people(): People {
 }
 
 export const settingsHandlers = [
-  /* Scoring profiles: administrators manage them; supervisors can read the active rules. */
+  /* Scoring profiles: administrators manage them; officers and supervisors read the rules in use. */
   http.get('/api/settings/profiles', async () => {
     await networkDelay();
-    requireRole('administrator', 'supervisor');
+    requireRole('administrator', 'supervisor', 'officer');
     return HttpResponse.json(profilesState());
   }),
 

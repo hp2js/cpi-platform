@@ -6,9 +6,11 @@ import {
 } from '@cpi/contracts';
 import { commit, getDb, resetDb } from '../db';
 import { advanceTo, boundaryState } from '../services/clock';
-import { audit, institutionUsers, notify } from '../services/events';
+import { audit } from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
+import { reassignInstitution, toAssignment } from '../services/assignments';
+import { localDate } from '../services/days';
 import { readableInstitutionIds } from '../services/scope';
 import { requireRole, requireUser } from '../services/session';
 import { applySuggestion } from './supervision';
@@ -111,20 +113,16 @@ export const simulationHandlers = [
     }
   }),
 
+  /** Officers see the history of their current institutions, so they know who came before. */
   http.get('/api/assignments/history', async () => {
     await networkDelay();
-    const user = requireRole('administrator', 'supervisor');
+    const user = requireRole('administrator', 'supervisor', 'officer');
     const db = getDb();
     const readable = readableInstitutionIds(user);
     return HttpResponse.json(
       db.assignments
         .filter((assignment) => readable.includes(assignment.institutionId))
-        .map((assignment) => ({
-          ...assignment,
-          officerName:
-            db.users.find((candidate) => candidate.id === assignment.officerId)
-              ?.displayName ?? assignment.officerId,
-        })),
+        .map((assignment) => toAssignment(db, assignment)),
     );
   }),
 
@@ -157,52 +155,29 @@ export const simulationHandlers = [
     if (!officer || !current) return notFound();
     if (current.officerId === officer.id)
       return apiError(409, 'This officer is already assigned.', 'no_change');
-    commit((store) => {
-      current.validTo = store.businessTime;
-      store.assignments.push({
-        institutionId: parsed.data.institutionId,
-        officerId: officer.id,
-        validFrom: store.businessTime,
-        validTo: null,
-        reason: parsed.data.reason.trim(),
+    const { coverUntil, handoverNote, reason, suggestionId, institutionId } =
+      parsed.data;
+    if (coverUntil && coverUntil <= localDate(db.businessTime))
+      return apiError(422, 'Cover must end after today.', 'invalid_request', {
+        coverUntil: 'Choose a date after today.',
       });
-      audit(
-        store,
-        user,
-        'assignment.change',
-        { type: 'assignment', id: parsed.data.institutionId },
-        `${parsed.data.institutionId} → ${officer.displayName}: ${parsed.data.reason.trim()}`,
-      );
-      if (parsed.data.suggestionId)
+    commit((store) => {
+      reassignInstitution(store, {
+        institutionId,
+        officer,
+        reason: reason.trim(),
+        actor: user,
+        coverUntil,
+        handoverNote,
+      });
+      if (suggestionId)
         applySuggestion(
           store,
-          parsed.data.suggestionId,
-          parsed.data.institutionId,
+          suggestionId,
+          institutionId,
           user.id,
-          `${parsed.data.institutionId} now goes to ${officer.displayName}. ${parsed.data.reason.trim()}`,
+          `${institutionId} now goes to ${officer.displayName}. ${reason.trim()}`,
         );
-      notify(
-        store,
-        `${parsed.data.institutionId}:assigned:${store.sequence}`,
-        'assignment.changed',
-        [officer],
-        {
-          title: `${parsed.data.institutionId} assigned to you`,
-          body: 'You are now the reviewing officer for this institution. Earlier reviewers remain in the history.',
-          link: `/officer/institutions/${parsed.data.institutionId}`,
-        },
-      );
-      notify(
-        store,
-        `${parsed.data.institutionId}:assigned-inst:${store.sequence}`,
-        'assignment.changed',
-        institutionUsers(parsed.data.institutionId),
-        {
-          title: 'Your reviewing officer has changed',
-          body: `${officer.displayName} now reviews your reports.`,
-          link: null,
-        },
-      );
     });
     return HttpResponse.json({ ok: true });
   }),

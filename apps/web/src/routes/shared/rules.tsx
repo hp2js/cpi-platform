@@ -135,8 +135,8 @@ function Form({
 }
 
 /**
- * The rules officers apply, read only (PRD §5.2: supervisors read the active form version and
- * scoring rules). Only the administrator changes them.
+ * The rules reviews apply, read only (PRD §5.2: officers and supervisors read the active form
+ * version and scoring rules). Only the administrator changes them.
  */
 export function RulesPage() {
   const profiles = useQuery(profilesQuery);
@@ -147,9 +147,9 @@ export function RulesPage() {
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
-        eyebrow="Oversight"
+        eyebrow="Reference"
         title="Rules in use"
-        description="The scoring profile and published form versions officers apply this cycle. Read only: the administrator changes them."
+        description="The scoring profile and published form versions that reviews apply this cycle. Read only: the administrator changes them."
       />
       <QueryView query={profiles} label="scoring profile">
         {(state) => {

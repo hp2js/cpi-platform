@@ -7,7 +7,12 @@ import {
   type Supervision,
 } from '@cpi/contracts';
 import { commit, getDb, nextId, type MockDb, type MockSuggestion } from '../db';
-import { audit, notify, usersWithRole } from '../services/events';
+import {
+  assignedSupervisors,
+  audit,
+  notify,
+  usersWithRole,
+} from '../services/events';
 import { apiError, forbidden, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import {
@@ -45,6 +50,11 @@ export function toSuggestion(
   };
 }
 
+const requesterLink = (suggestion: MockSuggestion) =>
+  suggestion.requestedByRole === 'officer'
+    ? `/officer/institutions/${suggestion.institutionId}`
+    : '/supervisor/assignments';
+
 /** Marks an open suggestion for the institution applied; call inside `commit`. */
 export function applySuggestion(
   db: MockDb,
@@ -76,7 +86,7 @@ export function applySuggestion(
       {
         title: `Reassignment applied: ${institutionId}`,
         body: `The administrator applied your suggestion. ${note}`,
-        link: '/supervisor/assignments',
+        link: requesterLink(suggestion),
       },
     );
 }
@@ -177,24 +187,31 @@ export const supervisionHandlers = [
 
   http.get('/api/assignment-suggestions', async () => {
     await networkDelay();
-    const user = requireRole('supervisor', 'administrator');
+    const user = requireRole('officer', 'supervisor', 'administrator');
     const db = getDb();
+    // Supervisors also see officers' declarations about their institutions.
+    const supervised =
+      user.role === 'supervisor' ? supervisedInstitutionIds(user.id) : [];
     return HttpResponse.json(
       db.suggestions
         .filter(
           (suggestion) =>
             user.role === 'administrator' ||
-            suggestion.suggestedById === user.id,
+            suggestion.suggestedById === user.id ||
+            supervised.includes(suggestion.institutionId),
         )
         .map((suggestion) => toSuggestion(db, suggestion))
         .reverse(),
     );
   }),
 
-  /** A supervisor suggests a reassignment; only the administrator can apply it. */
+  /**
+   * A supervisor suggests a reassignment, or an officer declares a conflict of interest about
+   * their own institution. Only the administrator can apply either.
+   */
   http.post('/api/assignment-suggestions', async ({ request }) => {
     await networkDelay();
-    const user = requireRole('supervisor');
+    const user = requireRole('supervisor', 'officer');
     const parsed = reassignmentSuggestionRequestSchema.safeParse(
       await request.json().catch(() => undefined),
     );
@@ -205,9 +222,18 @@ export const supervisionHandlers = [
         'invalid_request',
         { reason: 'Give a reason of at least 10 characters.' },
       );
-    const { institutionId, suggestedOfficerId, reason } = parsed.data;
-    if (!supervisedInstitutionIds(user.id).includes(institutionId))
-      return notFound();
+    const { kind, institutionId, suggestedOfficerId, reason } = parsed.data;
+    const inScope =
+      user.role === 'officer'
+        ? assignedInstitutionIds(user.id)
+        : supervisedInstitutionIds(user.id);
+    if (!inScope.includes(institutionId)) return notFound();
+    if (user.role === 'officer' && kind !== 'conflict_of_interest')
+      return apiError(
+        403,
+        'Officers can declare a conflict of interest; reassignment suggestions come from supervisors.',
+        'forbidden',
+      );
     const db = getDb();
     const current = currentOfficerId(db, institutionId);
     if (suggestedOfficerId !== null) {
@@ -238,13 +264,15 @@ export const supervisionHandlers = [
     )
       return apiError(
         409,
-        'A suggestion for this institution is already waiting for the administrator.',
+        'A request for this institution is already waiting for the administrator.',
         'suggestion_open',
       );
     const id = nextId('sug');
     commit((store) => {
       store.suggestions.push({
         id,
+        kind,
+        requestedByRole: user.role as 'supervisor' | 'officer',
         institutionId,
         currentOfficerId: current,
         suggestedOfficerId,
@@ -256,12 +284,13 @@ export const supervisionHandlers = [
         resolvedAt: null,
         resolutionNote: null,
       });
+      const conflict = kind === 'conflict_of_interest';
       audit(
         store,
         user,
-        'assignment.suggest',
+        conflict ? 'assignment.conflict_declared' : 'assignment.suggest',
         { type: 'assignment', id: institutionId },
-        `Suggested reassignment of ${institutionId}: ${reason}`,
+        `${conflict ? 'Conflict of interest declared for' : 'Suggested reassignment of'} ${institutionId}: ${reason}`,
       );
       notify(
         store,
@@ -269,11 +298,27 @@ export const supervisionHandlers = [
         'assignment.suggested',
         usersWithRole('administrator'),
         {
-          title: `Reassignment suggested: ${institutionId}`,
-          body: `${user.displayName} suggests a different officer. Review it under Assignments.`,
+          title: conflict
+            ? `Conflict of interest declared: ${institutionId}`
+            : `Reassignment suggested: ${institutionId}`,
+          body: conflict
+            ? `${user.displayName} asks not to review ${institutionId}. Reassign it under Assignments.`
+            : `${user.displayName} suggests a different officer. Review it under Assignments.`,
           link: '/admin/assignments',
         },
       );
+      if (conflict)
+        notify(
+          store,
+          `${id}:supervisor`,
+          'assignment.suggested',
+          assignedSupervisors(institutionId),
+          {
+            title: `Conflict of interest declared: ${institutionId}`,
+            body: `${user.displayName} asks not to review ${institutionId}. The administrator decides.`,
+            link: '/supervisor/assignments',
+          },
+        );
     });
     return HttpResponse.json(
       toSuggestion(
@@ -335,7 +380,7 @@ export const supervisionHandlers = [
             {
               title: `Reassignment not applied: ${target.institutionId}`,
               body: parsed.data.note,
-              link: '/supervisor/assignments',
+              link: requesterLink(target),
             },
           );
       });

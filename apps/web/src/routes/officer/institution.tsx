@@ -1,4 +1,5 @@
 import { QuarterDispositions } from '@/features/annual/quarter-dispositions';
+import { OfficerAssignment } from '@/features/supervision/officer-assignment';
 import {
   type Baseline,
   type BaselineChecks,
@@ -591,6 +592,7 @@ export function OfficerInstitutionPage() {
         title={plan.data?.institutionName ?? 'Institution'}
         description={plan.data?.approvedPlanReference}
       />
+      <OfficerAssignment institutionId={institutionId} />
       <Tabs defaultValue="baselines" className="grid grid-cols-1 gap-4">
         <TabsList className="h-auto w-fit max-w-full flex-wrap justify-start">
           <TabsTrigger value="quarters">Quarters</TabsTrigger>

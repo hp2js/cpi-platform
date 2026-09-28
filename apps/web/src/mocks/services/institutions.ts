@@ -178,6 +178,8 @@ export function createInstitution(
     validFrom: db.businessTime,
     validTo: null,
     reason: 'Initial assignment on onboarding',
+    cover: null,
+    handoverNote: null,
   });
   if (input.supervisor)
     db.supervisions.push({

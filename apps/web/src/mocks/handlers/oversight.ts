@@ -32,7 +32,8 @@ const metric = (
 export const oversightHandlers = [
   http.get('/api/oversight', async ({ request }) => {
     await networkDelay();
-    const user = requireRole('supervisor', 'administrator');
+    // Officers see their own portfolio: the scope below limits them to it (PRD §5.2).
+    const user = requireRole('officer', 'supervisor', 'administrator');
     const url = new URL(request.url);
     const periodId = url.searchParams.get('periodId');
     const institutionFilter = url.searchParams.get('institutionId');

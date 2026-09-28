@@ -38,6 +38,7 @@ export const changeSupervisor = (
   });
 
 export const suggestReassignment = (input: {
+  kind?: 'suggestion' | 'conflict_of_interest';
   institutionId: string;
   suggestedOfficerId: string | null;
   reason: string;

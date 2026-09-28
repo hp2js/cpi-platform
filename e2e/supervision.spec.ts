@@ -40,7 +40,7 @@ test('a supervisor drills into an institution and suggests a reassignment the ad
 
   await visit(page, 'administrator', '/admin/assignments');
   const suggestions = page.getByRole('region', {
-    name: /Suggestions from supervisors/,
+    name: /Reassignment requests/,
   });
   await expect(suggestions).toContainText(
     'DEMO-001 Demo Appointments Service Agency: Prevention Officer A → Prevention Officer B',
@@ -55,7 +55,7 @@ test('a supervisor drills into an institution and suggests a reassignment the ad
 
   await visit(page, 'supervisor', '/supervisor/assignments');
   await expect(
-    page.getByRole('region', { name: 'Your reassignment suggestions' }),
+    page.getByRole('region', { name: 'Reassignment requests' }),
   ).toContainText('Applied');
 });
 

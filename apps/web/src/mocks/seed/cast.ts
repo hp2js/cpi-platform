@@ -217,4 +217,11 @@ export const initialAssignments = institutions.map((institution, index) => ({
   validFrom: '2026-07-01T00:00:00+03:00',
   validTo: null as string | null,
   reason: null as string | null,
+  /** Temporary cover: returns to `returnToOfficerId` at `until`. */
+  cover: null as {
+    until: string;
+    returnToOfficerId: string;
+    setById: string;
+  } | null,
+  handoverNote: null as string | null,
 }));

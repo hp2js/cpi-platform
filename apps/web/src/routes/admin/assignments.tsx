@@ -14,6 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -117,10 +119,11 @@ function Suggestions({
       className="grid gap-3 rounded-lg border border-primary/30 bg-card p-5"
     >
       <h2 id="suggestions-heading" className="font-semibold">
-        Suggestions from supervisors ({open.length})
+        Reassignment requests ({open.length})
       </h2>
       <p className="text-sm text-muted-foreground">
-        Supervisors can suggest a reassignment; only you can make it.
+        Supervisors suggest reassignments and officers declare conflicts of
+        interest; only you can reassign.
       </p>
       <ul className="grid gap-3">
         {open.map((suggestion) => (
@@ -128,11 +131,19 @@ function Suggestions({
             key={suggestion.id}
             className="grid gap-2 rounded-md border p-3 text-sm"
           >
-            <p className="font-medium">
-              {suggestion.institutionId} {suggestion.institutionName}:{' '}
-              {suggestion.currentOfficerName ?? 'no officer'} →{' '}
-              {suggestion.suggestedOfficerName ?? 'an officer you choose'}
-            </p>
+            {suggestion.kind === 'conflict_of_interest' ? (
+              <p className="font-medium">
+                Conflict of interest: {suggestion.institutionId}{' '}
+                {suggestion.institutionName}. {suggestion.suggestedBy} asks not
+                to review it.
+              </p>
+            ) : (
+              <p className="font-medium">
+                {suggestion.institutionId} {suggestion.institutionName}:{' '}
+                {suggestion.currentOfficerName ?? 'no officer'} →{' '}
+                {suggestion.suggestedOfficerName ?? 'an officer you choose'}
+              </p>
+            )}
             <p>{suggestion.reason}</p>
             <p className="text-xs text-muted-foreground">
               {suggestion.suggestedBy}, {formatDateTime(suggestion.at)}
@@ -142,7 +153,7 @@ function Suggestions({
                 Apply
                 <span className="sr-only">
                   {' '}
-                  the suggestion for {suggestion.institutionId}
+                  the request for {suggestion.institutionId}
                 </span>
               </Button>
               <DismissSuggestion suggestion={suggestion} />
@@ -271,6 +282,9 @@ export function AssignmentsPage() {
   const [officerId, setOfficerId] = useState('officer-b');
   const [reason, setReason] = useState('');
   const [suggestionId, setSuggestionId] = useState<string | undefined>();
+  const [temporary, setTemporary] = useState(false);
+  const [coverUntil, setCoverUntil] = useState('');
+  const [handoverNote, setHandoverNote] = useState('');
   const formRef = useRef<HTMLElement>(null);
   const currentOfficerId = history.data?.find(
     (row) => row.institutionId === institutionId && row.validTo === null,
@@ -284,10 +298,17 @@ export function AssignmentsPage() {
   const reasonTooShort = reason.trim().length < 10;
   const mutation = useMutation({
     mutationFn: () =>
-      reassign(institutionId, newOfficerId, reason, suggestionId),
+      reassign(institutionId, newOfficerId, reason, {
+        suggestionId,
+        coverUntil: temporary ? coverUntil : undefined,
+        handoverNote: handoverNote.trim() || undefined,
+      }),
     onSuccess: async () => {
       setReason('');
       setSuggestionId(undefined);
+      setTemporary(false);
+      setCoverUntil('');
+      setHandoverNote('');
       await queryClient.invalidateQueries();
     },
   });
@@ -327,8 +348,11 @@ export function AssignmentsPage() {
           </h2>
           {applying && (
             <p role="status" className="rounded-md bg-muted p-2 text-sm">
-              Applying {applying.suggestedBy}’s suggestion for{' '}
-              {applying.institutionId}. Check the officer and reason, then
+              Applying {applying.suggestedBy}’s{' '}
+              {applying.kind === 'conflict_of_interest'
+                ? 'conflict-of-interest declaration'
+                : 'suggestion'}{' '}
+              for {applying.institutionId}. Check the officer and reason, then
               reassign.{' '}
               <button
                 type="button"
@@ -386,15 +410,64 @@ export function AssignmentsPage() {
             At least 10 characters. The reason is kept in the assignment
             history.
           </p>
+          <div className="grid gap-2 rounded-md border bg-muted/40 p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="assign-temporary"
+                checked={temporary}
+                onCheckedChange={(value) => setTemporary(value === true)}
+              />
+              <Label htmlFor="assign-temporary" className="font-normal">
+                Temporary cover, for example while the officer is on leave
+              </Label>
+            </div>
+            {temporary && (
+              <div className="grid gap-1.5 sm:max-w-xs">
+                <Label htmlFor="assign-cover-until">Cover ends on</Label>
+                <Input
+                  id="assign-cover-until"
+                  type="date"
+                  value={coverUntil}
+                  onChange={(event) => setCoverUntil(event.target.value)}
+                  aria-describedby="assign-cover-hint"
+                />
+                <p
+                  id="assign-cover-hint"
+                  className="text-xs text-muted-foreground"
+                >
+                  After that day the institution returns to its current officer
+                  automatically.
+                </p>
+              </div>
+            )}
+          </div>
+          <Label htmlFor="assign-handover">Handover note (optional)</Label>
+          <Textarea
+            id="assign-handover"
+            value={handoverNote}
+            aria-describedby="assign-handover-hint"
+            onChange={(event) => setHandoverNote(event.target.value)}
+          />
+          <p
+            id="assign-handover-hint"
+            className="text-sm text-muted-foreground"
+          >
+            What the new officer should know: reviews in progress, promises
+            made, anything unusual. They see it on the institution’s page.
+          </p>
           {mutation.isError && (
             <p className="text-sm text-destructive">{mutation.error.message}</p>
           )}
           <div>
             <Button
-              disabled={reasonTooShort || mutation.isPending}
+              disabled={
+                reasonTooShort ||
+                (temporary && !coverUntil) ||
+                mutation.isPending
+              }
               onClick={() => mutation.mutate()}
             >
-              Reassign
+              {temporary ? 'Start cover' : 'Reassign'}
             </Button>
           </div>
         </section>
@@ -409,7 +482,18 @@ export function AssignmentsPage() {
           <QueryView query={history} label="assignment history">
             {(list) => (
               <AssignmentHistory
-                list={list.map((row) => ({ ...row, name: row.officerName }))}
+                list={list.map((row) => ({
+                  ...row,
+                  name: row.officerName,
+                  reason: [
+                    row.reason ?? 'Initial assignment',
+                    row.cover &&
+                      `Cover until ${formatDateTime(row.cover.until)}, then back to ${row.cover.returnToOfficerName}`,
+                    row.handoverNote && `Handover note: ${row.handoverNote}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                }))}
                 who="Officer"
                 headingId="history-heading"
                 title="Officer assignment history"

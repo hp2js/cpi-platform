@@ -86,12 +86,27 @@ export const obligationSchema = z.object({
 export type Obligation = z.infer<typeof obligationSchema>;
 export const obligationsSchema = z.array(obligationSchema);
 
+/**
+ * Temporary cover (leave): the covering officer holds the institution until `until`, then it
+ * returns to `returnToOfficerId` automatically. Null for an ordinary assignment.
+ */
+export const assignmentCoverSchema = z
+  .object({
+    until: instantSchema,
+    returnToOfficerId: z.string(),
+    returnToOfficerName: z.string(),
+  })
+  .nullable();
+
 export const assignmentSchema = z.object({
   institutionId: institutionIdSchema,
   officerId: z.string(),
   officerName: z.string(),
   validFrom: instantSchema,
   validTo: instantSchema.nullable(),
+  cover: assignmentCoverSchema,
+  /** What the previous officer or administrator left for the new officer. */
+  handoverNote: z.string().nullable(),
 });
 export type Assignment = z.infer<typeof assignmentSchema>;
 export const assignmentsSchema = z.array(assignmentSchema);

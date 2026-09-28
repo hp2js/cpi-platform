@@ -39,11 +39,16 @@ export const reassign = (
   institutionId: string,
   officerId: string,
   reason: string,
-  suggestionId?: string,
+  options: {
+    suggestionId?: string;
+    /** Temporary cover ending on this local date (YYYY-MM-DD). */
+    coverUntil?: string;
+    handoverNote?: string;
+  } = {},
 ) =>
   request('/api/assignments', z.object({ ok: z.boolean() }), {
     method: 'POST',
-    json: { institutionId, officerId, reason, suggestionId },
+    json: { institutionId, officerId, reason, ...options },
   });
 
 /** Business time and run changes affect every screen: refetch everything, including the session clock. */

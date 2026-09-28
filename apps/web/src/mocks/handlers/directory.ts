@@ -3,6 +3,7 @@ import type { Assignment } from '@cpi/contracts';
 import { getDb } from '../db';
 import { forbidden, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
+import { toAssignment } from '../services/assignments';
 import { toObligation } from '../services/obligations';
 import { canReadInstitution, readableInstitutionIds } from '../services/scope';
 import { requireUser } from '../services/session';
@@ -57,20 +58,16 @@ export const directoryHandlers = [
     await networkDelay();
     const user = requireUser();
     if (user.role === 'institution') return forbidden();
-    const { assignments, users } = getDb();
+    const { assignments } = getDb();
     const readable = readableInstitutionIds(user);
     const visible = assignments.filter(
       (assignment) =>
         (user.role !== 'officer' || assignment.officerId === user.id) &&
         readable.includes(assignment.institutionId),
     );
+    const db = getDb();
     return HttpResponse.json(
-      visible.map((assignment): Assignment => ({
-        ...assignment,
-        officerName:
-          users.find((candidate) => candidate.id === assignment.officerId)
-            ?.displayName ?? assignment.officerId,
-      })),
+      visible.map((assignment): Assignment => toAssignment(db, assignment)),
     );
   }),
 ];
