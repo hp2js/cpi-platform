@@ -1,11 +1,13 @@
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import {
   daysLate,
+  endOfDay,
+  localDate,
+  shiftDays,
   type DayCounting,
   type Obligation,
   type ObligationFlag,
 } from '@cpi/contracts';
-import { endOfDay, localDate, shiftDays } from '../cycle/days';
 import type { Db } from '../database/db';
 import { clarifications, obligations, periods } from '../database/schema';
 import { currentState } from '../database/state';
@@ -89,10 +91,13 @@ export async function toObligations(
       ...row,
       flags,
       daysLate: row.firstSubmittedAt
-        ? daysLate(row.firstSubmittedAt, period.submissionDeadline)
+        ? daysLate(
+            row.firstSubmittedAt,
+            period.submissionDeadline,
+            cycle.dayCounting,
+          )
         : null,
-      // ponytail: calendar days only; working-day counting (PRD §9.1) is a follow-up.
-      daysLateUnit: 'calendar' as const,
+      daysLateUnit: cycle.dayCounting.mode,
     };
   });
 }

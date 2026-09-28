@@ -1,4 +1,4 @@
-import type { DayCounting } from '@cpi/contracts';
+import type { DayCounting } from '../draft/index.js';
 
 /**
  * Day counting in Africa/Nairobi (UTC+03:00, no DST). Calendar mode counts every day; working

@@ -1,7 +1,6 @@
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import type { Assignment } from '@cpi/contracts';
+import { endOfDay, type Assignment } from '@cpi/contracts';
 import type { User } from '../auth/sessions';
-import { endOfDay } from '../cycle/days';
 import { nextId, type Db, type Tx } from '../database/db';
 import { assignments, users } from '../database/schema';
 import { institutionUsers, usersWithRole, type Events } from '../events/events';

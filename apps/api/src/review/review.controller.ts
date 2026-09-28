@@ -47,6 +47,7 @@ import {
 } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import { currentState } from '../database/state';
 import { effectiveCutoff } from './clarifications';
 import {
   acceptBlocker,
@@ -773,6 +774,7 @@ export class ReviewController {
         };
       });
       const period = periodOf(data, obligation.periodId);
+      const counting = (await currentState(tx)).cycle.dayCounting;
       const clarificationId = await nextId(tx, 'clar');
       await tx.insert(clarifications).values({
         id: clarificationId,
@@ -787,7 +789,10 @@ export class ReviewController {
         // In-app notification is recorded in the same transaction, so both times are now.
         availableAt: businessTime,
         notifiedAt: businessTime,
-        responseDueAt: responseDueAt(businessTime, businessTime),
+        responseDueAt: responseDueAt(businessTime, businessTime, counting),
+        // The window as issued; a later change to the rule never shortens it.
+        windowDays: counting.clarificationDays,
+        windowUnit: counting.mode,
         status: 'open',
         response: null,
         closure: null,

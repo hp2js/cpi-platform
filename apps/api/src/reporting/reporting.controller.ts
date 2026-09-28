@@ -39,6 +39,7 @@ import {
   submissions,
 } from '../database/schema';
 import { toNairobi } from '../database/schema';
+import { currentState } from '../database/state';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
@@ -406,6 +407,7 @@ export class ReportingController {
       const evidenceComplete = !check.declarations.some((declaration) =>
         /unavailable$/i.test(declaration.field),
       );
+      const { cycle } = await currentState(tx);
       const receipt: Receipt = {
         id: await nextId(tx, 'rcpt'),
         obligationId: obligation.id,
@@ -421,8 +423,12 @@ export class ReportingController {
           Date.parse(businessTime) > Date.parse(period.submissionDeadline)
             ? 'late'
             : 'on_time',
-        daysLate: daysLate(businessTime, period.submissionDeadline),
-        daysLateUnit: 'calendar',
+        daysLate: daysLate(
+          businessTime,
+          period.submissionDeadline,
+          cycle.dayCounting,
+        ),
+        daysLateUnit: cycle.dayCounting.mode,
         evidenceComplete,
         submittedBy: user.displayName,
         submitterRole: parsed.data.attestation.submitterRole,

@@ -1,4 +1,4 @@
-import { shiftDays } from './days';
+import { shiftDays } from '@cpi/contracts';
 import type {
   CalendarSettings,
   ClockBoundary,
