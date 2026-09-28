@@ -72,9 +72,13 @@ export const authTokenQuery = (token: string) =>
   queryOptions({
     queryKey: ['auth', 'token', token],
     queryFn: ({ signal }) =>
-      request(`/api/auth/tokens/${encodeURIComponent(token)}`, authTokenSchema, {
-        signal,
-      }),
+      request(
+        `/api/auth/tokens/${encodeURIComponent(token)}`,
+        authTokenSchema,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 

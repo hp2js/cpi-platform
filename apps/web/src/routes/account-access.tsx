@@ -62,9 +62,18 @@ export function NewPasswordField({
   const [visible, setVisible] = useState(false);
   const problems = passwordProblems(value, email);
   const rules = [
-    [`At least ${PASSWORD_MIN_LENGTH} characters`, value.length >= PASSWORD_MIN_LENGTH],
-    ['Not a common password', !problems.includes('Choose a less common password.')],
-    ['Does not include your email', !problems.includes('Do not include your email address.')],
+    [
+      `At least ${PASSWORD_MIN_LENGTH} characters`,
+      value.length >= PASSWORD_MIN_LENGTH,
+    ],
+    [
+      'Not a common password',
+      !problems.includes('Choose a less common password.'),
+    ],
+    [
+      'Does not include your email',
+      !problems.includes('Do not include your email address.'),
+    ],
   ] as const;
   return (
     <div className="grid gap-1.5">
@@ -110,13 +119,15 @@ export function NewPasswordField({
               <Circle className="size-3.5" aria-hidden="true" />
             )}
             {rule}
-            <span className="sr-only">{met && value ? ': met' : ': not yet'}</span>
+            <span className="sr-only">
+              {met && value ? ': met' : ': not yet'}
+            </span>
           </li>
         ))}
       </ul>
       <p className="text-xs text-muted-foreground">
-        A passphrase of a few words is easy to remember. Pasting from a
-        password manager is fine.
+        A passphrase of a few words is easy to remember. Pasting from a password
+        manager is fine.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
@@ -136,14 +147,21 @@ export function ForgotPasswordPage() {
       {mutation.isSuccess ? (
         <div className="grid gap-4">
           <p role="status" className="flex items-start gap-2">
-            <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+            <MailCheck
+              className="mt-0.5 size-5 shrink-0 text-primary"
+              aria-hidden="true"
+            />
             {mutation.data.message}
           </p>
           <p className="text-sm text-muted-foreground">
             In this demonstration, emails go to the demo email sink, which the
             administrator can open under Notifications.
           </p>
-          <Link to="/sign-in" search={{ redirect: undefined }} className={buttonVariants({ variant: 'outline' })}>
+          <Link
+            to="/sign-in"
+            search={{ redirect: undefined }}
+            className={buttonVariants({ variant: 'outline' })}
+          >
             Back to sign in
           </Link>
         </div>
@@ -215,17 +233,23 @@ export function SetPasswordPage() {
       <Shell title="This link cannot be used">
         <Alert variant="destructive">
           <AlertTitle>
-            {isApiError(link.error, 410) ? 'The link has expired' : 'The link is not valid'}
+            {isApiError(link.error, 410)
+              ? 'The link has expired'
+              : 'The link is not valid'}
           </AlertTitle>
           <AlertDescription>
             {isApiError(link.error, 410)
               ? 'Invitation links last 7 days and reset links 1 hour.'
               : 'It may already have been used, or a newer link replaced it.'}{' '}
-            Ask your administrator for a new invitation, or request a new
-            reset link.
+            Ask your administrator for a new invitation, or request a new reset
+            link.
           </AlertDescription>
         </Alert>
-        <Link to="/forgot-password" search={{ email: undefined }} className={buttonVariants({ variant: 'outline' })}>
+        <Link
+          to="/forgot-password"
+          search={{ email: undefined }}
+          className={buttonVariants({ variant: 'outline' })}
+        >
           Request a reset link
         </Link>
       </Shell>
@@ -233,7 +257,9 @@ export function SetPasswordPage() {
   if (!link.data)
     return (
       <Shell title="Checking your link">
-        <p role="status" className="text-muted-foreground">One moment…</p>
+        <p role="status" className="text-muted-foreground">
+          One moment…
+        </p>
       </Shell>
     );
 
@@ -242,7 +268,10 @@ export function SetPasswordPage() {
   return (
     <Shell title={invitation ? 'Set up your account' : 'Choose a new password'}>
       <p className="flex items-start gap-2 text-sm">
-        <KeyRound className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        <KeyRound
+          className="mt-0.5 size-4 shrink-0 text-primary"
+          aria-hidden="true"
+        />
         <span>
           {invitation ? `Welcome, ${link.data.displayName}. ` : ''}
           You will sign in as <strong>{link.data.email}</strong>. This link
@@ -257,7 +286,13 @@ export function SetPasswordPage() {
         }}
       >
         {/* Lets password managers save the new password against the right account. */}
-        <input type="email" autoComplete="username" value={link.data.email} readOnly hidden />
+        <input
+          type="email"
+          autoComplete="username"
+          value={link.data.email}
+          readOnly
+          hidden
+        />
         <NewPasswordField
           id="new-password"
           label={invitation ? 'Password' : 'New password'}
@@ -277,7 +312,9 @@ export function SetPasswordPage() {
             aria-invalid={mismatch || undefined}
           />
           {mismatch && (
-            <p className="text-sm text-destructive">The passwords do not match.</p>
+            <p className="text-sm text-destructive">
+              The passwords do not match.
+            </p>
           )}
         </div>
         {mutation.isError && Object.keys(errors).length === 0 && (

@@ -2,7 +2,7 @@
 
 ## Entry points
 
-`src/main.tsx` starts the mock API (development only), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
+`src/main.tsx` starts the mock API (development only), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forgot password, set password from an emailed link, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
 
 Route guards only improve navigation. The API is the authority: every screen must handle 401, 403 and 404 responses, and `src/app/query-client.ts` sends the user to the session-expired or sign-in page when any request reports the session is gone.
 

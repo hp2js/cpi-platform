@@ -153,11 +153,18 @@ test('an institution page edits details and the Accounting Officer in place', as
     .getByLabel('Email (sign-in)')
     .fill('deputy.demo-002@example.invalid');
   await dialog.getByRole('button', { name: 'Add focal person' }).click();
-  await expect(
-    page
-      .getByRole('region', { name: 'Focal persons' })
-      .getByText('Deputy focal person, DEMO-002'),
-  ).toBeVisible();
+  const focal = page.getByRole('region', { name: 'Focal persons' });
+  await expect(focal.getByRole('status')).toContainText(
+    'Deputy focal person, DEMO-002 was added and invited by email',
+  );
+  const person = focal
+    .getByRole('listitem')
+    .filter({ hasText: 'deputy.demo-002@example.invalid' });
+  await expect(person.getByText('Invited', { exact: true })).toBeVisible();
+  await person.getByRole('button', { name: /Resend invitation/ }).click();
+  await expect(focal.getByRole('status')).toContainText(
+    'A new invitation was emailed to deputy.demo-002@example.invalid.',
+  );
 });
 
 test('people keep their own profile up to date under My account', async ({

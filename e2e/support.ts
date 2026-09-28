@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 /** Loads the app and waits until the mock API worker is serving requests. */
 export async function openApp(page: Page) {
-  await page.goto('/sign-in');
+  await page.goto('/sign-in?demo=open');
   await expect(
     page.getByRole('heading', { name: 'Prevention officer' }),
   ).toBeVisible();

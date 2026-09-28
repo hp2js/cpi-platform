@@ -43,7 +43,31 @@ async function settled(locator: Locator) {
 
 test('public pages', async ({ page }) => {
   await openApp(page);
+  await page.goto('/sign-in');
+  await expect(
+    page.getByRole('button', { name: /Explore with a demonstration account/ }),
+  ).toBeVisible();
   await scan(page, 'sign-in');
+  await page
+    .getByRole('button', { name: /Explore with a demonstration account/ })
+    .click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'demonstration accounts');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Sign in with eCitizen/ }).click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'eCitizen dialog');
+  await page.keyboard.press('Escape');
+  await page.goto('/forgot-password');
+  await expect(
+    page.getByRole('heading', { name: 'Reset your password' }),
+  ).toBeVisible();
+  await scan(page, 'forgot-password');
+  await page.goto('/set-password?token=not-a-real-token');
+  await expect(
+    page.getByRole('heading', { name: 'This link cannot be used' }),
+  ).toBeVisible();
+  await scan(page, 'set-password (invalid link)');
   await page.goto('/forbidden');
   await scan(page, 'forbidden');
   await page.goto('/session-expired');

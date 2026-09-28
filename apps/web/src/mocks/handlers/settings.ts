@@ -247,6 +247,11 @@ function people(): People {
             email: user.email,
             jobTitle: user.jobTitle ?? '',
             active: user.active,
+            status: accountStatus(user),
+            invitationExpiresAt:
+              accountStatus(user) === 'invited'
+                ? (user.authLink?.expiresAt ?? null)
+                : null,
           })),
         officer: officer ? { id: officer.id, name: officer.displayName } : null,
       };

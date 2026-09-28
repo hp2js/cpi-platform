@@ -1,13 +1,16 @@
-import type { Account } from '@cpi/contracts';
+import { passwordProblems, type Account } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { TextField } from '@/features/settings/institution-form';
 import { accountQuery, saveAccount } from '@/features/settings/queries';
-import { sessionQuery } from '@/features/session/queries';
+import { changePassword, sessionQuery } from '@/features/session/queries';
+import { NewPasswordField } from '@/routes/account-access';
 import { isApiError } from '@/lib/api';
 
 const roleLabel: Record<Account['role'], string> = {
@@ -144,12 +147,112 @@ function Access({ account }: { account: Account }) {
       </dl>
       <Alert>
         <AlertDescription>
-          Your email, role and institution are set by the administrator. In this
-          demonstration there is no password; real sign-in replaces the account
-          picker before any pilot.
+          Your email, role and institution are set by the administrator. Ask
+          them if any of these need to change.
         </AlertDescription>
       </Alert>
     </section>
+  );
+}
+
+function Password({ account }: { account: Account }) {
+  const id = useId();
+  const empty = { current: '', next: '', confirm: '' };
+  const [values, setValues] = useState(empty);
+  const change = useMutation({
+    mutationFn: () => changePassword(values.current, values.next),
+    onSuccess: () => setValues(empty),
+  });
+  const errors = isApiError(change.error) ? change.error.fieldErrors : {};
+  const mismatch = values.confirm.length > 0 && values.confirm !== values.next;
+  return (
+    <form
+      aria-labelledby={`${id}-heading`}
+      className="grid max-w-2xl gap-4 rounded-lg border bg-card p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        change.mutate();
+      }}
+    >
+      <h2 id={`${id}-heading`} className="font-semibold">
+        Password
+      </h2>
+      {/* Lets password managers update the saved entry for this account. */}
+      <input
+        type="email"
+        autoComplete="username"
+        value={account.email}
+        readOnly
+        hidden
+      />
+      <div className="grid gap-1.5 sm:max-w-sm">
+        <Label htmlFor={`${id}-current`}>Current password</Label>
+        <Input
+          id={`${id}-current`}
+          type="password"
+          autoComplete="current-password"
+          value={values.current}
+          onChange={(event) =>
+            setValues({ ...values, current: event.target.value })
+          }
+          aria-invalid={errors.currentPassword ? true : undefined}
+        />
+        {errors.currentPassword && (
+          <p className="text-sm text-destructive">{errors.currentPassword}</p>
+        )}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <NewPasswordField
+          id={`${id}-new`}
+          label="New password"
+          value={values.next}
+          onChange={(next) => setValues({ ...values, next })}
+          email={account.email}
+          error={errors.newPassword}
+        />
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor={`${id}-confirm`}>Confirm the new password</Label>
+          <Input
+            id={`${id}-confirm`}
+            type="password"
+            autoComplete="new-password"
+            value={values.confirm}
+            onChange={(event) =>
+              setValues({ ...values, confirm: event.target.value })
+            }
+            aria-invalid={mismatch || undefined}
+          />
+          {mismatch && (
+            <p className="text-sm text-destructive">
+              The passwords do not match.
+            </p>
+          )}
+        </div>
+      </div>
+      {change.isSuccess && (
+        <p role="status" className="text-sm font-medium">
+          Your password is changed. Use it next time you sign in.
+        </p>
+      )}
+      {change.isError && Object.keys(errors).length === 0 && (
+        <p role="alert" className="text-sm text-destructive">
+          {change.error.message}
+        </p>
+      )}
+      <div>
+        <Button
+          type="submit"
+          disabled={
+            !values.current ||
+            passwordProblems(values.next, account.email).length > 0 ||
+            values.confirm !== values.next ||
+            change.isPending
+          }
+        >
+          {change.isPending ? 'Changing…' : 'Change password'}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -165,6 +268,7 @@ export function AccountPage() {
         {(data) => (
           <div className="grid gap-6">
             <Profile account={data} />
+            <Password account={data} />
             <Access account={data} />
           </div>
         )}

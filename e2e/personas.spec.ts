@@ -13,7 +13,7 @@ function trackErrors(page: Page) {
 }
 
 async function signIn(page: Page, role: string, account: RegExp) {
-  await page.goto('/sign-in');
+  await page.goto('/sign-in?demo=open');
   await page
     .getByRole('region', { name: role })
     .getByRole('button', { name: account })
@@ -106,7 +106,7 @@ test('an expired session leads to a clear sign-in path', async ({ page }) => {
   ).toBeVisible();
   await page.getByRole('link', { name: 'Sign in again' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Sign in to the demonstration' }),
+    page.getByRole('heading', { name: 'Sign in', exact: true }),
   ).toBeVisible();
 });
 

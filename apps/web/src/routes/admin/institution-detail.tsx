@@ -11,7 +11,6 @@ import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { FlagList, WorkflowStateBadge } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,6 +34,11 @@ import {
   updateInstitution,
 } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
+import {
+  InvitationNotice,
+  ResendInvitation,
+  UserStatus,
+} from '@/routes/admin/users';
 
 const route = getRouteApi('/authed/admin/institutions/$institutionId');
 
@@ -290,7 +294,13 @@ function AccountingOfficerCard({
   );
 }
 
-function AddFocalPerson({ institution }: { institution: ManagedInstitution }) {
+function AddFocalPerson({
+  institution,
+  onInvited,
+}: {
+  institution: ManagedInstitution;
+  onInvited: (message: string) => void;
+}) {
   const queryClient = useQueryClient();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -309,6 +319,9 @@ function AddFocalPerson({ institution }: { institution: ManagedInstitution }) {
       }),
     onSuccess: async () => {
       setOpen(false);
+      onInvited(
+        `${values.displayName.trim()} was added and invited by email to set a password (the link lasts 7 days).`,
+      );
       await queryClient.invalidateQueries();
     },
   });
@@ -334,8 +347,9 @@ function AddFocalPerson({ institution }: { institution: ManagedInstitution }) {
         <DialogHeader>
           <DialogTitle>Add a focal person for {institution.id}</DialogTitle>
           <DialogDescription>
-            A platform account that reports for {institution.name}. They sign in
-            with this email and can update their own name and title.
+            A platform account that reports for {institution.name}. They get an
+            email invitation to set their own password, then sign in with this
+            email.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -404,6 +418,7 @@ function FocalPersonsCard({
   institution: ManagedInstitution;
 }) {
   const headingId = useId();
+  const [notice, setNotice] = useState<string | null>(null);
   return (
     <section
       aria-labelledby={headingId}
@@ -419,8 +434,11 @@ function FocalPersonsCard({
             rename them on the Users page.
           </p>
         </div>
-        <AddFocalPerson institution={institution} />
+        <AddFocalPerson institution={institution} onInvited={setNotice} />
       </div>
+      {notice && (
+        <InvitationNotice message={notice} onDismiss={() => setNotice(null)} />
+      )}
       {institution.focalPersons.length === 0 ? (
         <Alert>
           <AlertTitle>No focal person</AlertTitle>
@@ -443,9 +461,12 @@ function FocalPersonsCard({
                   {person.jobTitle && ` · ${person.jobTitle}`}
                 </span>
               </span>
-              <Badge variant={person.active ? 'outline' : 'secondary'}>
-                {person.active ? 'Active' : 'Deactivated'}
-              </Badge>
+              <span className="flex flex-wrap items-center gap-2">
+                <UserStatus user={person} />
+                {person.status === 'invited' && (
+                  <ResendInvitation user={person} onSent={setNotice} />
+                )}
+              </span>
             </li>
           ))}
         </ul>

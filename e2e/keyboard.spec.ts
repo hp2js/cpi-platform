@@ -45,11 +45,11 @@ test('sign in, skip navigation and complete part of a report without a mouse', a
   await page.evaluate(() => fetch('/api/session', { method: 'DELETE' }));
   await page.goto('/sign-in');
   await expect(
-    page.getByRole('heading', { name: 'Sign in to the demonstration' }),
+    page.getByRole('heading', { name: 'Sign in', exact: true }),
   ).toBeVisible();
-  // Wait for the account list itself, so focus is not placed while it is still loading.
+  // Wait for the demo button, so focus is not placed while the page is still loading.
   await expect(
-    page.getByRole('button', { name: /Focal person, DEMO-003/ }),
+    page.getByRole('button', { name: /Explore with a demonstration account/ }),
   ).toBeVisible();
 
   // The skip link is the first stop and moves focus to the main content.
@@ -60,6 +60,13 @@ test('sign in, skip navigation and complete part of a report without a mouse', a
   await page.keyboard.press('Enter');
   await expect(page.locator('#main')).toBeFocused();
 
+  // The demonstration accounts open in an overlay from the floating button.
+  await tabTo(page, 'Explore with a demonstration account');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Focal person, DEMO-003/ }),
+  ).toBeVisible();
   await tabTo(page, 'Focal person, DEMO-003');
   await page.keyboard.press('Enter');
   await expect(
@@ -147,6 +154,6 @@ test('dialogs trap focus and return it on Escape; the account menu works from th
   await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(
-    page.getByRole('heading', { name: 'Sign in to the demonstration' }),
+    page.getByRole('heading', { name: 'Sign in', exact: true }),
   ).toBeVisible();
 });

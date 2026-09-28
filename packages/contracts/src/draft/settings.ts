@@ -165,6 +165,8 @@ export const managedInstitutionSchema = z.object({
       email: z.string(),
       jobTitle: z.string(),
       active: z.boolean(),
+      status: z.enum(['active', 'invited', 'deactivated']),
+      invitationExpiresAt: instantSchema.nullable(),
     }),
   ),
   officer: z.object({ id: z.string(), name: z.string() }).nullable(),

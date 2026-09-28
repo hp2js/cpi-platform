@@ -87,6 +87,13 @@ export const setUserActive = (
     peopleSchema,
     { method: 'POST', json: { active, reason } },
   );
+/** Sends a fresh invitation link; the earlier link stops working. */
+export const resendInvitation = (userId: string) =>
+  request(
+    `/api/settings/users/${encodeURIComponent(userId)}/invitation`,
+    peopleSchema,
+    { method: 'POST' },
+  );
 export const updateInstitution = (id: string, update: InstitutionUpdate) =>
   request(
     `/api/settings/institutions/${encodeURIComponent(id)}`,

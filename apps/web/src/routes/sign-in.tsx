@@ -2,7 +2,9 @@ import type { AuthConfig, DemoAccount, Role } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import {
-  ArrowRight,
+  Check,
+  ChevronRight,
+  Copy,
   Building2,
   ClipboardList,
   Eye,
@@ -10,6 +12,7 @@ import {
   FlaskConical,
   Gauge,
   Landmark,
+  Search,
   Settings,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -29,6 +32,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import {
   authConfigQuery,
@@ -192,8 +203,8 @@ function ProviderButton({
             platform account the administrator created for the same email.
           </li>
           <li>
-            Roles, institutions and deactivation stay under the
-            administrator’s control.
+            Roles, institutions and deactivation stay under the administrator’s
+            control.
           </li>
         </ul>
         <p className="text-sm text-muted-foreground">
@@ -205,124 +216,311 @@ function ProviderButton({
   );
 }
 
+/** One account in the demonstration list: the whole row signs in. */
+function DemoAccountButton({
+  account,
+  pending,
+  disabled,
+  onSelect,
+}: {
+  account: DemoAccount;
+  pending: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      className="group flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent focus-visible:relative focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">{account.displayName}</span>
+        {account.institutionName ? (
+          <span className="block truncate text-xs text-muted-foreground">
+            <span className="sr-only">, </span>
+            {account.institutionName}
+          </span>
+        ) : (
+          account.institutionId && (
+            <span className="sr-only">
+              , institution {account.institutionId}
+            </span>
+          )
+        )}
+      </span>
+      <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+        <span
+          className={
+            pending
+              ? undefined
+              : 'sr-only group-hover:not-sr-only group-focus-visible:not-sr-only'
+          }
+        >
+          {pending ? 'Signing in…' : 'Sign in'}
+        </span>
+        <ChevronRight
+          className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+          aria-hidden="true"
+        />
+      </span>
+    </button>
+  );
+}
+
+function RoleGroup({
+  role,
+  icon: Icon,
+  description,
+  accounts,
+  pendingId,
+  disabled,
+  onSelect,
+}: (typeof roleOrder)[number] & {
+  accounts: DemoAccount[];
+  pendingId: string | null;
+  disabled: boolean;
+  onSelect: (accountId: string) => void;
+}) {
+  const [filter, setFilter] = useState('');
+  const searchable = accounts.length > 6;
+  const needle = filter.trim().toLowerCase();
+  const shown = needle
+    ? accounts.filter((account) =>
+        `${account.displayName} ${account.institutionName ?? ''} ${account.institutionId ?? ''}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : accounts;
+  return (
+    <section
+      id={`demo-${role}`}
+      aria-labelledby={`role-${role}`}
+      className="grid scroll-mt-4 gap-2"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="size-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3
+            id={`role-${role}`}
+            className="flex items-center gap-2 font-semibold"
+          >
+            {roleLabel[role]}
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {accounts.length}
+              <span className="sr-only">
+                {accounts.length === 1 ? ' account' : ' accounts'}
+              </span>
+            </span>
+          </h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {searchable && (
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            aria-label={`Find a ${roleLabel[role].toLowerCase()} account`}
+            placeholder="Filter by name or institution"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+      {shown.length === 0 ? (
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          No account matches “{filter.trim()}”.
+        </p>
+      ) : (
+        <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+          {shown.map((account) => (
+            <li key={account.id}>
+              <DemoAccountButton
+                account={account}
+                pending={pendingId === account.id}
+                disabled={disabled}
+                onSelect={() => onSelect(account.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CopyPassword({ password }: { password: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <code className="rounded-md border bg-background px-2 py-1 font-mono text-sm font-medium">
+        {password}
+      </code>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          void navigator.clipboard
+            ?.writeText(password)
+            .then(() => setCopied(true))
+            .catch(() => undefined);
+        }}
+      >
+        {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        {copied ? 'Copied' : 'Copy'}
+        <span className="sr-only"> the demo password</span>
+      </Button>
+      <span role="status" className="sr-only">
+        {copied ? 'Demo password copied' : ''}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Demonstration accounts live behind a floating button so the page reads as a real sign-in.
+ * The open state is in the URL (`?demo=open`), so a demo can be linked to directly.
+ */
 function DemoAccounts({ config }: { config: AuthConfig }) {
+  const { demo } = route.useSearch();
+  const navigate = useNavigate({ from: '/sign-in' });
   const accounts = useQuery(demoAccountsQuery);
   const mutation = useSignIn();
   const pendingId =
-    mutation.isPending && mutation.variables && 'accountId' in mutation.variables
+    mutation.isPending &&
+    mutation.variables &&
+    'accountId' in mutation.variables
       ? mutation.variables.accountId
       : null;
+  const setOpen = (open: boolean) =>
+    void navigate({
+      search: (previous) => ({
+        ...previous,
+        demo: open ? 'open' : undefined,
+      }),
+      replace: !open,
+    });
   return (
-    <section
-      aria-labelledby="demo-heading"
-      className="grid gap-5 rounded-2xl border border-secondary-foreground/15 bg-secondary/40 p-5 sm:p-6"
-    >
-      <div>
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">
-          <FlaskConical className="size-3.5" aria-hidden="true" />
-          Demonstration only
-        </p>
-        <h2 id="demo-heading" className="mt-2 text-lg font-semibold">
-          Explore with a demonstration account
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every institution, person and record here is fictional. Pick a role to
-          sign in with one click, no password needed.
-          {config.demoPassword && (
-            <>
-              {' '}
-              To try the sign-in form instead, use a demo email with the
-              password{' '}
-              <code className="rounded bg-card px-1 py-0.5 text-xs font-medium text-foreground">
-                {config.demoPassword}
-              </code>
-              .
-            </>
-          )}
-        </p>
-      </div>
-      {mutation.isError && (
-        <Alert variant="destructive">
-          <AlertDescription>{mutation.error.message}</AlertDescription>
-        </Alert>
-      )}
-      <QueryView query={accounts} label="demo accounts">
-        {(list) => (
-          <div className="grid gap-4 md:grid-cols-2">
-            {roleOrder.map(({ role, icon: Icon, description }) => {
-              const group = list.filter((account) => account.role === role);
-              if (group.length === 0) return null;
-              return (
-                <section
-                  key={role}
-                  aria-labelledby={`role-${role}`}
-                  className="rounded-xl border bg-card p-4"
-                >
-                  <h3
-                    id={`role-${role}`}
-                    className="flex items-center gap-2 font-semibold"
+    <Sheet open={demo === 'open'} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          type="button"
+          size="lg"
+          className="fixed bottom-4 left-4 z-40 h-11 rounded-full px-5 shadow-lg sm:bottom-6 sm:left-6"
+        >
+          <FlaskConical aria-hidden="true" />
+          <span className="sm:hidden">Demo accounts</span>
+          <span className="hidden sm:inline">
+            Explore with a demonstration account
+          </span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 outline-none sm:max-w-md"
+        // Start on the sheet itself: no keyboard popping up on phones, and Tab reaches the list.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
+        <SheetHeader className="gap-1 border-b p-5 pr-12">
+          <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">
+            <FlaskConical className="size-3.5" aria-hidden="true" />
+            Demonstration only
+          </p>
+          <SheetTitle className="mt-1 text-lg">
+            Explore with a demonstration account
+          </SheetTitle>
+          <SheetDescription>
+            Choose who to be. Every institution, person and record is fictional;
+            sign out at any time to switch.
+          </SheetDescription>
+          {accounts.data && (
+            <nav aria-label="Roles" className="mt-2 flex flex-wrap gap-1.5">
+              {roleOrder.map(({ role, icon: Icon }) => {
+                const count = accounts.data.filter(
+                  (account) => account.role === role,
+                ).length;
+                return count === 0 ? null : (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() =>
+                      document
+                        .getElementById(`demo-${role}`)
+                        ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
                   >
-                    <Icon className="size-5 text-primary" aria-hidden="true" />
+                    <Icon className="size-3.5" aria-hidden="true" />
                     {roleLabel[role]}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {description}
-                  </p>
-                  <ul className="mt-3 grid gap-2">
-                    {group.map((account: DemoAccount) => (
-                      <li key={account.id}>
-                        <button
-                          type="button"
-                          disabled={mutation.isPending}
-                          onClick={() =>
-                            mutation.mutate({ accountId: account.id })
-                          }
-                          className="group flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm hover:border-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60"
-                        >
-                          <span>
-                            <span className="font-medium">
-                              {account.displayName}
-                            </span>
-                            {account.institutionName ? (
-                              <span className="block text-xs text-muted-foreground">
-                                <span className="sr-only">, </span>
-                                {account.institutionName}
-                              </span>
-                            ) : (
-                              account.institutionId && (
-                                <span className="sr-only">
-                                  , institution {account.institutionId}
-                                </span>
-                              )
-                            )}
-                          </span>
-                          <span className="flex shrink-0 items-center gap-1 text-primary">
-                            {pendingId === account.id
-                              ? 'Signing in…'
-                              : 'Sign in'}
-                            <ArrowRight
-                              className="size-4 transition-transform group-hover:translate-x-0.5"
-                              aria-hidden="true"
-                            />
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
+                    <span className="text-muted-foreground">{count}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid gap-6 p-5">
+            {mutation.isError && (
+              <Alert variant="destructive">
+                <AlertDescription>{mutation.error.message}</AlertDescription>
+              </Alert>
+            )}
+            <QueryView query={accounts} label="demo accounts">
+              {(list) => (
+                <>
+                  {roleOrder.map((group) => {
+                    const members = list.filter(
+                      (account) => account.role === group.role,
+                    );
+                    return members.length === 0 ? null : (
+                      <RoleGroup
+                        key={group.role}
+                        {...group}
+                        accounts={members}
+                        pendingId={pendingId}
+                        disabled={mutation.isPending}
+                        onSelect={(accountId) => mutation.mutate({ accountId })}
+                      />
+                    );
+                  })}
+                </>
+              )}
+            </QueryView>
+          </div>
+        </div>
+        {config.demoPassword && (
+          <div className="grid gap-2 border-t bg-muted/40 p-5 text-sm">
+            <p>
+              <span className="font-medium">Prefer the sign-in form?</span>{' '}
+              <span className="text-muted-foreground">
+                Every demo email above works with this password.
+              </span>
+            </p>
+            <CopyPassword password={config.demoPassword} />
           </div>
         )}
-      </QueryView>
-    </section>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 export function SignInPage() {
   const config = useQuery(authConfigQuery);
   return (
-    <div className="min-h-svh bg-background">
+    <div className="flex min-h-svh flex-col bg-background">
       <SkipLink />
       <header className="border-b bg-card px-6 py-4">
         <Brand />
@@ -330,11 +528,11 @@ export function SignInPage() {
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start"
+        className="outline-none mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 pt-10 pb-24 sm:px-6"
       >
         <section
           aria-labelledby="sign-in-heading"
-          className="grid gap-6 rounded-2xl border bg-card p-6 shadow-xs lg:sticky lg:top-6"
+          className="grid gap-6 rounded-2xl border bg-card p-6 shadow-xs sm:p-8"
         >
           <div>
             <h1
@@ -371,8 +569,8 @@ export function SignInPage() {
             email to set your password.
           </p>
         </section>
-        {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
       </main>
+      {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
     </div>
   );
 }

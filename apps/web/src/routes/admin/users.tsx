@@ -6,7 +6,7 @@ import type {
 } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { MailCheck, Plus } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Combobox } from '@/components/combobox';
 import {
@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { SelectField } from '@/components/select-field';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,11 +44,13 @@ import { TextField } from '@/features/settings/institution-form';
 import {
   createUser,
   peopleQuery,
+  resendInvitation,
   setUserActive,
   updateUser,
 } from '@/features/settings/queries';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
+import { formatDateTime } from '@/lib/dates';
 
 export const roleLabel: Record<Role, string> = {
   institution: 'Institution focal person',
@@ -213,7 +216,104 @@ function EditUser({ user }: { user: ManagedUser }) {
   );
 }
 
-function AddUser({ institutions }: { institutions: ManagedInstitution[] }) {
+/** Account state as people see it: invited accounts have not set a password yet. */
+export function UserStatus({
+  user,
+}: {
+  user: Pick<ManagedUser, 'status' | 'invitationExpiresAt'>;
+}) {
+  if (user.status === 'invited') {
+    const expired =
+      user.invitationExpiresAt !== null &&
+      Date.parse(user.invitationExpiresAt) < Date.now();
+    return (
+      <span className="grid max-w-40 justify-items-start gap-0.5">
+        <Badge variant={expired ? 'destructive' : 'secondary'}>
+          {expired ? 'Invitation expired' : 'Invited'}
+        </Badge>
+        {user.invitationExpiresAt && !expired && (
+          <span className="text-xs whitespace-normal text-muted-foreground">
+            Link expires {formatDateTime(user.invitationExpiresAt)}
+          </span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <Badge variant={user.status === 'active' ? 'outline' : 'secondary'}>
+      {user.status === 'active' ? 'Active' : 'Deactivated'}
+    </Badge>
+  );
+}
+
+export function ResendInvitation({
+  user,
+  onSent,
+}: {
+  user: Pick<ManagedUser, 'id' | 'email' | 'displayName'>;
+  onSent: (message: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () => resendInvitation(user.id),
+    onSuccess: async () => {
+      onSent(`A new invitation was emailed to ${user.email}.`);
+      await queryClient.invalidateQueries();
+    },
+    onError: (error) => onSent(error.message),
+  });
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={mutation.isPending}
+      onClick={() => mutation.mutate()}
+    >
+      {mutation.isPending ? 'Sending…' : 'Resend invitation'}
+      <span className="sr-only"> to {user.displayName}</span>
+    </Button>
+  );
+}
+
+/** Where emailed links can be read in the demonstration. */
+export function InvitationNotice({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <Alert role="status">
+      <MailCheck aria-hidden="true" />
+      <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          {message} In this demonstration, emails land in the{' '}
+          <Link
+            to="/admin/notifications"
+            search={{ tab: 'sink' }}
+            className="text-primary underline underline-offset-4"
+          >
+            demo email sink
+          </Link>
+          .
+        </span>
+        <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function AddUser({
+  institutions,
+  onInvited,
+}: {
+  institutions: ManagedInstitution[];
+  onInvited: (message: string) => void;
+}) {
   const queryClient = useQueryClient();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -229,6 +329,9 @@ function AddUser({ institutions }: { institutions: ManagedInstitution[] }) {
     mutationFn: () => createUser(values),
     onSuccess: async () => {
       setOpen(false);
+      onInvited(
+        `${values.displayName.trim()} was added and invited by email to set a password (the link lasts 7 days).`,
+      );
       await queryClient.invalidateQueries();
     },
   });
@@ -254,8 +357,9 @@ function AddUser({ institutions }: { institutions: ManagedInstitution[] }) {
         <DialogHeader>
           <DialogTitle>Add a user</DialogTitle>
           <DialogDescription>
-            Demo accounts only: use a fictional @example.invalid address. New
-            officers get institutions through{' '}
+            They receive an email invitation to set their own password; no one
+            else ever sees it. Demo accounts only: use a fictional
+            @example.invalid address. New officers get institutions through{' '}
             <Link to="/admin/assignments" className="text-primary underline">
               Assignments
             </Link>
@@ -401,10 +505,12 @@ function UsersTable({
   users,
   institutions,
   selfId,
+  onNotice,
 }: {
   users: ManagedUser[];
   institutions: ManagedInstitution[];
   selfId: string;
+  onNotice: (message: string) => void;
 }) {
   const [role, setRole] = useState('');
   const byId = useMemo(
@@ -419,7 +525,7 @@ function UsersTable({
   const controls = useListControls(
     filtered,
     (user) =>
-      `${user.displayName} ${user.email} ${user.jobTitle} ${user.institutionId ?? ''} ${byId.get(user.institutionId ?? '')?.name ?? ''} ${user.active ? 'active' : 'deactivated'}`,
+      `${user.displayName} ${user.email} ${user.jobTitle} ${user.institutionId ?? ''} ${byId.get(user.institutionId ?? '')?.name ?? ''} ${user.status}`,
   );
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -474,12 +580,13 @@ function UsersTable({
                   {scope(user, byId)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={user.active ? 'outline' : 'secondary'}>
-                    {user.active ? 'Active' : 'Deactivated'}
-                  </Badge>
+                  <UserStatus user={user} />
                 </TableCell>
                 <TableCell>
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {user.status === 'invited' && (
+                      <ResendInvitation user={user} onSent={onNotice} />
+                    )}
                     <EditUser user={user} />
                     {user.id === selfId ? (
                       <span className="self-center text-sm text-muted-foreground">
@@ -503,6 +610,7 @@ function UsersTable({
 export function UsersPage() {
   const session = useSession();
   const people = useQuery(peopleQuery);
+  const [notice, setNotice] = useState<string | null>(null);
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
@@ -510,15 +618,24 @@ export function UsersPage() {
         title="Users"
         description="Platform accounts, their role and scope (FR01). Deactivating an account ends its session at once and keeps everything it recorded. Accounting Officers are institution contacts, not accounts; manage them on each institution’s page."
         actions={
-          people.data && <AddUser institutions={people.data.institutions} />
+          people.data && (
+            <AddUser
+              institutions={people.data.institutions}
+              onInvited={setNotice}
+            />
+          )
         }
       />
+      {notice && (
+        <InvitationNotice message={notice} onDismiss={() => setNotice(null)} />
+      )}
       <QueryView query={people} label="users">
         {(data) => (
           <UsersTable
             users={data.users}
             institutions={data.institutions}
             selfId={session.user.id}
+            onNotice={setNotice}
           />
         )}
       </QueryView>

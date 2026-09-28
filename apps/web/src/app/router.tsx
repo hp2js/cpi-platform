@@ -48,10 +48,37 @@ async function loadSession(queryClient: QueryClient) {
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'sign-in',
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect: string | undefined; demo?: 'open' } => ({
     redirect: safeRedirect(search.redirect),
+    ...(search.demo === 'open' ? { demo: 'open' as const } : {}),
   }),
   component: lazyRouteComponent(() => import('@/routes/sign-in'), 'SignInPage'),
+});
+const optionalText = (value: unknown) =>
+  typeof value === 'string' && value ? value.slice(0, 256) : undefined;
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'forgot-password',
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: optionalText(search.email),
+  }),
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'ForgotPasswordPage',
+  ),
+});
+const setPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'set-password',
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: optionalText(search.token),
+  }),
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'SetPasswordPage',
+  ),
 });
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -274,6 +301,10 @@ const adminFormRoute = createRoute({
 const adminNotificationsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'notifications',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: 'all' | 'sink' } =>
+    search.tab === 'all' || search.tab === 'sink' ? { tab: search.tab } : {},
   component: page(
     () => import('@/routes/admin/notifications'),
     'NotificationsPage',
@@ -431,6 +462,8 @@ const adminReviewRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
+  forgotPasswordRoute,
+  setPasswordRoute,
   forbiddenRoute,
   sessionExpiredRoute,
   authedRoute.addChildren([

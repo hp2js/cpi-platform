@@ -41,6 +41,19 @@ async function expectNoPageOverflow(page: Page, name: string) {
   expect(overflow, name).toEqual({ page: false, offenders: [] });
 }
 
+test('sign-in pages fit a phone', async ({ page }) => {
+  for (const [path, heading] of [
+    ['/sign-in', 'Sign in'],
+    ['/sign-in?demo=open', 'Explore with a demonstration account'],
+    ['/forgot-password', 'Reset your password'],
+    ['/set-password?token=not-a-real-token', 'This link cannot be used'],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+    await expectNoPageOverflow(page, path);
+  }
+});
+
 test('mid-year screens fit a phone', async ({ page }) => {
   test.setTimeout(180_000);
   const { review } = await midYear(page);
