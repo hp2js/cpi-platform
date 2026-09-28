@@ -21,6 +21,7 @@ export function toAssignment(
     validFrom: record.validFrom,
     validTo: record.validTo,
     reason: record.reason,
+    // `?? null`: records stored before these fields existed read as ordinary assignments.
     cover: record.cover
       ? {
           until: record.cover.until,
@@ -28,7 +29,7 @@ export function toAssignment(
           returnToOfficerName: nameOf(db, record.cover.returnToOfficerId),
         }
       : null,
-    handoverNote: record.handoverNote,
+    handoverNote: record.handoverNote ?? null,
   };
 }
 

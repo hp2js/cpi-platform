@@ -249,8 +249,40 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 13;
+/**
+ * Bump whenever stored records change shape: browsers keep the demo data in localStorage, and
+ * an older copy would otherwise be served to screens that expect the new fields. A different
+ * version makes every browser start again from the seed. `db.test.ts` compares the seed's
+ * shape with `SCHEMA_SHAPE` so a change cannot go unnoticed.
+ * 14: assignment cover and handover notes, draft `savedBy`, reassignment request kinds.
+ */
+export const SCHEMA_VERSION = 14;
+/** `${version}:${shape}` of the seed this version describes. */
+export const SCHEMA_SHAPE = '14:cb7d5518';
 const STORAGE_KEY = 'cpi-mock-db';
+
+/** The keys of every record in the seed, as one string: changes when a record gains a field. */
+export function shapeSignature(value: unknown): string {
+  if (Array.isArray(value))
+    return `[${value.length ? shapeSignature(value[0]) : ''}]`;
+  if (value && typeof value === 'object')
+    return `{${Object.keys(value)
+      .sort()
+      .map(
+        (key) =>
+          `${key}:${shapeSignature((value as Record<string, unknown>)[key])}`,
+      )
+      .join(',')}}`;
+  return typeof value;
+}
+
+/** A short, stable hash of the seed's shape (djb2). */
+export function schemaShape() {
+  let hash = 5381;
+  for (const character of shapeSignature(seed()))
+    hash = ((hash << 5) + hash + character.charCodeAt(0)) >>> 0;
+  return hash.toString(16);
+}
 
 function seed(): MockDb {
   const foundations = seedFoundations();

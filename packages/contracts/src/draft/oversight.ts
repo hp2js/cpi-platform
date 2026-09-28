@@ -157,3 +157,21 @@ export const reassignmentSuggestionRequestSchema = z.object({
 export const suggestionDismissRequestSchema = z.object({
   note: z.string().trim().min(10).max(1000),
 });
+
+/** Many institutions to one officer, each with its own history entry (500+ institutions). */
+export const bulkAssignmentRequestSchema = z.object({
+  institutionIds: z.array(institutionIdSchema).min(1).max(1000),
+  officerId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+  handoverNote: z.string().trim().max(2000).optional(),
+});
+export const bulkSupervisionRequestSchema = z.object({
+  institutionIds: z.array(institutionIdSchema).min(1).max(1000),
+  supervisorId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+});
+export const bulkChangeResultSchema = z.object({
+  changed: z.array(institutionIdSchema),
+  /** Already with that officer or supervisor: nothing to change. */
+  unchanged: z.array(institutionIdSchema),
+});

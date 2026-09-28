@@ -1,4 +1,5 @@
 import {
+  bulkChangeResultSchema,
   reassignmentSuggestionSchema,
   reassignmentSuggestionsSchema,
   supervisionsSchema,
@@ -54,3 +55,24 @@ export const dismissSuggestion = (suggestionId: string, note: string) =>
     reassignmentSuggestionSchema,
     { method: 'POST', json: { note } },
   );
+
+export const bulkReassign = (input: {
+  institutionIds: string[];
+  officerId: string;
+  reason: string;
+  handoverNote?: string;
+}) =>
+  request('/api/assignments/bulk', bulkChangeResultSchema, {
+    method: 'POST',
+    json: input,
+  });
+
+export const bulkSupervise = (input: {
+  institutionIds: string[];
+  supervisorId: string;
+  reason: string;
+}) =>
+  request('/api/supervision/bulk', bulkChangeResultSchema, {
+    method: 'POST',
+    json: input,
+  });

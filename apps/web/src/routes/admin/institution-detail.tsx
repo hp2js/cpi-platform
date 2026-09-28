@@ -33,6 +33,7 @@ import {
   peopleQuery,
   updateInstitution,
 } from '@/features/settings/queries';
+import { SupportView } from '@/features/support/support-view';
 import { isApiError } from '@/lib/api';
 import {
   InvitationNotice,
@@ -537,6 +538,16 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
                   <FlagList flags={obligation.flags} />
                 </span>
               )}
+              {obligation &&
+                (obligation.state === 'draft' ||
+                  obligation.state === 'clarification_requested') && (
+                  <span>
+                    <SupportView
+                      obligationId={obligation.id}
+                      periodLabel={period.label}
+                    />
+                  </span>
+                )}
             </li>
           );
         })}

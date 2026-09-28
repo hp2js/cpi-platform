@@ -1,7 +1,15 @@
+import { elevatedAuditActions } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Download, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Combobox } from '@/components/combobox';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
+import { SelectField } from '@/components/select-field';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -12,10 +20,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { auditQuery } from '@/features/events/queries';
+import { downloadExport } from '@/features/annual/queries';
+import {
+  auditQuery,
+  auditSearch,
+  type AuditFilters,
+} from '@/features/events/queries';
 import { roleLabel } from '@/features/session/queries';
 import { formatDateTime } from '@/lib/dates';
-import { SelectField } from '@/components/select-field';
 
 const objectTypes = [
   'form',
@@ -26,86 +38,253 @@ const objectTypes = [
   'baseline',
   'amendment',
   'foundation',
+  'obligation',
+  'assignment',
+  'supervision',
+  'user',
+  'institution',
+  'publication',
+  'simulation',
   'delivery',
 ];
 
+const elevated = new Set<string>(elevatedAuditActions);
+
+/** Waits until typing pauses before searching, so every keystroke is not a request. */
+function useDebounced<T>(value: T, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function AuditPage() {
-  const [objectType, setObjectType] = useState<string | null>(null);
-  const events = useQuery(auditQuery(objectType));
+  const [text, setText] = useState('');
+  const [filters, setFilters] = useState<Omit<AuditFilters, 'q' | 'page'>>({});
+  const [page, setPage] = useState(1);
+  const q = useDebounced(text.trim());
+  const query = { ...filters, q: q || undefined };
+  const events = useQuery(auditQuery({ ...query, page }));
+  const set = (patch: Partial<AuditFilters>) => {
+    setFilters((current) => ({ ...current, ...patch }));
+    setPage(1);
+  };
+  useEffect(() => setPage(1), [q]);
+  const data = events.data;
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <PageHeader
         eyebrow="Operations"
         title="Audit log"
-        description="Every publish, submission, review decision, clarification, baseline and delivery action, with actor, object version and time. Entries cannot be edited here."
+        description="Every configuration, submission, review, assignment, publication and elevated action, with actor, object version and time. Entries cannot be edited or deleted."
+        actions={
+          <Button
+            variant="outline"
+            onClick={() =>
+              void downloadExport(
+                `/api/audit.csv${auditSearch(query)}`,
+                'cpi-audit-log.csv',
+              )
+            }
+          >
+            <Download aria-hidden="true" />
+            Export CSV
+          </Button>
+        }
       />
-      <div className="grid max-w-xs gap-1.5">
-        <Label htmlFor="audit-type">Object type</Label>
-        <SelectField
-          id="audit-type"
-          value={objectType ?? ''}
-          onChange={(value) => setObjectType(value || null)}
-          options={[
-            { value: '', label: 'All' },
-            ...objectTypes.map((type) => ({ value: type, label: type })),
-          ]}
-        />
-      </div>
+      <form
+        role="search"
+        aria-label="Filter the audit log"
+        className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-3"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <div className="grid gap-1.5 md:col-span-2 xl:col-span-3">
+          <Label htmlFor="audit-search">Search</Label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="audit-search"
+              type="search"
+              placeholder="Summary, object ID, person or action"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="audit-action">Action</Label>
+          <Combobox
+            id="audit-action"
+            allOption="All actions"
+            searchPlaceholder="Search actions"
+            value={filters.action ?? ''}
+            onChange={(value) => set({ action: value || undefined })}
+            options={(data?.actions ?? []).map((action) => ({
+              value: action,
+              label: action,
+            }))}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="audit-actor">Person</Label>
+          <Combobox
+            id="audit-actor"
+            allOption="Everyone"
+            searchPlaceholder="Search people"
+            value={filters.actor ?? ''}
+            onChange={(value) => set({ actor: value || undefined })}
+            options={(data?.actors ?? []).map((actor) => ({
+              value: actor,
+              label: actor,
+            }))}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="audit-type">Object type</Label>
+          <SelectField
+            id="audit-type"
+            value={filters.objectType ?? ''}
+            onChange={(value) => set({ objectType: value || undefined })}
+            options={[
+              { value: '', label: 'All object types' },
+              ...objectTypes.map((type) => ({ value: type, label: type })),
+            ]}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="audit-from">From (business date)</Label>
+          <Input
+            id="audit-from"
+            type="date"
+            value={filters.from ?? ''}
+            onChange={(event) => set({ from: event.target.value || undefined })}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="audit-to">To (business date)</Label>
+          <Input
+            id="audit-to"
+            type="date"
+            value={filters.to ?? ''}
+            onChange={(event) => set({ to: event.target.value || undefined })}
+          />
+        </div>
+        <div className="flex items-center gap-2 self-end pb-2">
+          <Checkbox
+            id="audit-elevated"
+            checked={filters.elevated ?? false}
+            onCheckedChange={(value) =>
+              set({ elevated: value === true || undefined })
+            }
+          />
+          <Label htmlFor="audit-elevated" className="font-normal">
+            Elevated actions only (overrides, support access, files opened,
+            clock, publication)
+          </Label>
+        </div>
+      </form>
       <QueryView
         query={events}
         label="audit events"
-        isEmpty={(list) => list.length === 0}
-        empty="No events recorded yet."
+        isEmpty={(page) => page.total === 0}
+        empty="No events match these filters."
       >
-        {(list) => (
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <Table className="min-w-[60rem]">
-              <TableCaption className="sr-only">
-                Audit events, newest first
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">Business time</TableHead>
-                  <TableHead scope="col">Actor</TableHead>
-                  <TableHead scope="col">Action</TableHead>
-                  <TableHead scope="col">Object</TableHead>
-                  <TableHead scope="col">Summary</TableHead>
-                  <TableHead scope="col">Actual time (UTC)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.map((event) => (
-                  <TableRow key={event.id}>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {formatDateTime(event.businessTime)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {event.actorName}
-                      <span className="block text-xs text-muted-foreground">
-                        {roleLabel[event.actorRole]}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {event.action}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {event.objectType} {event.objectId}
-                      {event.objectVersion && (
-                        <span className="block text-xs text-muted-foreground">
-                          version {event.objectVersion}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm whitespace-normal">
-                      {event.summary}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      {event.actualTime.slice(0, 19).replace('T', ' ')}
-                    </TableCell>
+        {(result) => (
+          <div className="grid gap-3">
+            <p role="status" className="text-sm text-muted-foreground">
+              {result.total} {result.total === 1 ? 'event' : 'events'}, newest
+              first
+            </p>
+            <div className="rounded-lg border bg-card">
+              <Table className="min-w-[60rem]">
+                <TableCaption className="sr-only">
+                  Audit events, newest first
+                </TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Business time</TableHead>
+                    <TableHead scope="col">Actor</TableHead>
+                    <TableHead scope="col">Action</TableHead>
+                    <TableHead scope="col">Object</TableHead>
+                    <TableHead scope="col">Summary</TableHead>
+                    <TableHead scope="col">Actual time (UTC)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {result.events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {formatDateTime(event.businessTime)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {event.actorName}
+                        <span className="block text-xs text-muted-foreground">
+                          {roleLabel[event.actorRole]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {event.action}
+                        {elevated.has(event.action) && (
+                          <Badge
+                            variant="secondary"
+                            className="mt-1 block w-fit"
+                          >
+                            Elevated
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {event.objectType} {event.objectId}
+                        {event.objectVersion && (
+                          <span className="block text-xs text-muted-foreground">
+                            version {event.objectVersion}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-normal">
+                        {event.summary}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {event.actualTime.slice(0, 19).replace('T', ' ')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <nav
+              aria-label="Audit log pages"
+              className="flex flex-wrap items-center justify-between gap-2"
+            >
+              <p className="text-sm text-muted-foreground">
+                Page {result.page} of {pages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={result.page <= 1}
+                  onClick={() => setPage(result.page - 1)}
+                >
+                  Newer
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={result.page >= pages}
+                  onClick={() => setPage(result.page + 1)}
+                >
+                  Older
+                </Button>
+              </div>
+            </nav>
           </div>
         )}
       </QueryView>

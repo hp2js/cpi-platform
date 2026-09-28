@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import type { AuditEvent, Delivery, Notification } from '@cpi/contracts';
+import type { Delivery, Notification } from '@cpi/contracts';
 import { commit, getDb } from '../db';
 import { attemptDelivery, audit } from '../services/events';
 import { apiError, notFound } from '../services/http';
@@ -127,15 +127,5 @@ export const eventHandlers = [
     await networkDelay();
     requireRole('administrator');
     return HttpResponse.json([...getDb().emailSink].reverse());
-  }),
-  http.get('/api/audit', async ({ request }) => {
-    await networkDelay();
-    requireRole('administrator');
-    const url = new URL(request.url);
-    const objectType = url.searchParams.get('objectType');
-    const events: AuditEvent[] = getDb()
-      .audit.filter((event) => !objectType || event.objectType === objectType)
-      .reverse();
-    return HttpResponse.json(events);
   }),
 ];

@@ -32,6 +32,7 @@ import {
   supervisionQuery,
 } from '@/features/supervision/queries';
 import { AssignmentHistory } from '@/features/supervision/assignment-history';
+import { BulkMove } from '@/features/supervision/bulk-move';
 import { formatDateTime } from '@/lib/dates';
 
 function DismissSuggestion({
@@ -473,6 +474,7 @@ export function AssignmentsPage() {
         </section>
         <ChangeSupervisor />
       </div>
+      <BulkMove />
       <Tabs defaultValue="officers" className="grid gap-4">
         <TabsList className="w-fit">
           <TabsTrigger value="officers">Officer history</TabsTrigger>

@@ -2,7 +2,7 @@
 import {
   annualOverviewSchema,
   evidenceLookupSchema,
-  auditEventsSchema,
+  auditPageSchema,
   deliveriesSchema,
   draftSchema,
   evidenceItemSchema,
@@ -302,7 +302,7 @@ describe('notifications (FR11, AT12)', () => {
     expect(
       await request('/api/admin/email-sink', z.array(z.unknown())),
     ).toHaveLength(1);
-    const events = await request('/api/audit', auditEventsSchema);
+    const { events } = await request('/api/audit', auditPageSchema);
     expect(events.map((event) => event.action)).toEqual(
       expect.arrayContaining([
         'form.publish',

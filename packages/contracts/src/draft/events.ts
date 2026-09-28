@@ -49,3 +49,32 @@ export const auditEventSchema = z.object({
 });
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export const auditEventsSchema = z.array(auditEventSchema);
+
+/**
+ * Elevated actions: administrator overrides, support access, evidence opened by an
+ * administrator, clock changes, publication and corrections. The audit log can filter to them.
+ */
+export const elevatedAuditActions = [
+  'review.override',
+  'support.draft_view',
+  // Recorded only when an administrator opens a file.
+  'evidence.access',
+  'simulation.advance',
+  'simulation.reset',
+  'publication.publish',
+  'publication.correct',
+  'correction.open',
+  'user.role_change',
+] as const;
+
+/** One page of the audit log, filtered on the server so it scales with the institution count. */
+export const auditPageSchema = z.object({
+  events: auditEventsSchema,
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  /** Every action and actor recorded, for the filter lists. */
+  actions: z.array(z.string()),
+  actors: z.array(z.string()),
+});
+export type AuditPage = z.infer<typeof auditPageSchema>;

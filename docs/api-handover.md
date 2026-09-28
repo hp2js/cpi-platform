@@ -168,6 +168,22 @@ Supervisors oversee the officers who review their institutions. Each institution
 - **Safeguards:** a supervisor with current institutions cannot be deactivated (`409 supervisor_has_institutions`), and the last active supervisor cannot be deactivated (`409 last_supervisor`).
 - **Oversight digest:** as the clock crosses each boundary, every supervisor with something needing attention gets one `oversight.digest` notification summarizing missing reports, reviews past the target, clarifications past their window and institutions needing an extension decision. A live system would send it daily; replayed boundaries never repeat it.
 
+### Administrators (PRD §5.1, §5.2, §9, O17)
+
+Administrators hold full privileges, exercised through explicit, justified and audited paths.
+
+| Method and path                               | Roles | Notes                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/admin/attention`                    | A     | What needs the administrator now: `[{ id, title, detail, count, link }]`, only items with a count. Covers failed emails, open reassignment requests, institutions with no active focal person or no supervisor, officers with no institutions, expired invitations, no published form, and results ready to publish after the cutoff. |
+| `POST /api/support/obligations/:obligationId` | A     | `{ reason }` (20+ characters) → the institution's `ReportBundle` as it stands, including the saved draft. Audited as `support.draft_view`; the institution is notified with the reason. Read only.                                                                                                                                    |
+| `POST /api/assignments/bulk`                  | A     | `{ institutionIds, officerId, reason, handoverNote? }` → `{ changed, unchanged }`. Each changed institution gets its own history entry, audit record and notifications.                                                                                                                                                               |
+| `POST /api/supervision/bulk`                  | A     | `{ institutionIds, supervisorId, reason }` → `{ changed, unchanged }`, the same way.                                                                                                                                                                                                                                                  |
+| `PUT /api/settings/users/:id/role`            | A     | `{ role, institutionId, reason }`. Keeps one identity and its history; ends the person's session. Refused for yourself, for an officer or supervisor who still holds institutions, for the last active administrator or supervisor, and for an institution's last active focal person. Audited as `user.role_change`.                 |
+
+**Decision: no editing on an institution's behalf.** The PRD's "elevated support action" to maintain responses is not provided. A submission carries the institution's own attestation of authority (§7.2), which an administrator's edit would undermine; support stays read only, and the focal person makes any change.
+
+**Production gate: administrator account security.** Before a pilot, administrator accounts need two-factor sign-in, a shorter idle session, and re-entry of the password before elevated actions (publication, overrides, support access, role changes, clock changes). The demonstration does not simulate these.
+
 ### Institution focal persons (PRD §5.1, §7.2)
 
 Focal persons report for their own institution; an institution can have several, with no extra business roles. Besides reporting, they read their institution's profile and keep its Accounting Officer contact current.
@@ -197,14 +213,14 @@ Review actions belong to the assigned officer. An administrator may take one onl
 
 ### Notifications, audit and simulation
 
-| Method and path                                      | Roles  | Notes                                                                                                      |
-| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------- |
-| `GET /api/notifications`, `POST …/read`, `/read-all` | any    | Own inbox only.                                                                                            |
-| `GET /api/admin/deliveries?status=`, `POST …/retry`  | A      | Email delivery attempts; three automatic attempts, then the failure queue (AT12).                          |
-| `GET /api/admin/email-sink`                          | A      | Demo sink; never real recipients.                                                                          |
-| `GET /api/audit?objectType=`                         | A      | Read-only.                                                                                                 |
-| `GET /api/simulation`, `POST /advance`, `/reset`     | any; A | Named boundaries processed once per run (AT13, AT24). Server-side clock shared with scheduled jobs (FR14). |
-| `POST /api/simulation/scenario`                      | A      | Demo driver (HP2-28). The mock's `scenario.ts` shows the expected steps and results.                       |
+| Method and path                                                           | Roles  | Notes                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/notifications`, `POST …/read`, `/read-all`                      | any    | Own inbox only.                                                                                                                                                                                                                                           |
+| `GET /api/admin/deliveries?status=`, `POST …/retry`                       | A      | Email delivery attempts; three automatic attempts, then the failure queue (AT12).                                                                                                                                                                         |
+| `GET /api/admin/email-sink`                                               | A      | Demo sink; never real recipients.                                                                                                                                                                                                                         |
+| `GET /api/audit?q&objectType&action&actor&from&to&elevated&page&pageSize` | A      | Read-only, filtered and paged on the server: `{ events, total, page, pageSize, actions, actors }`, newest first. `elevated=true` keeps only the actions in `elevatedAuditActions`. `GET /api/audit.csv` exports the same filters with formula-safe cells. |
+| `GET /api/simulation`, `POST /advance`, `/reset`                          | any; A | Named boundaries processed once per run (AT13, AT24). Server-side clock shared with scheduled jobs (FR14).                                                                                                                                                |
+| `POST /api/simulation/scenario`                                           | A      | Demo driver (HP2-28). The mock's `scenario.ts` shows the expected steps and results.                                                                                                                                                                      |
 
 ## Export column dictionary (`cpi-export-1`, FR16)
 

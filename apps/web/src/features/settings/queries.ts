@@ -1,4 +1,5 @@
 import {
+  adminAttentionSchema,
   calendarSettingsSchema,
   peopleSchema,
   profilesStateSchema,
@@ -15,8 +16,10 @@ import {
   type InstitutionTypeUpdate,
   accountSchema,
   type AccountUpdate,
+  type UserRoleChange,
 } from '@cpi/contracts';
 import { queryOptions } from '@tanstack/react-query';
+import { z } from 'zod';
 import { request } from '@/lib/api';
 
 export const settingsKeys = {
@@ -144,3 +147,17 @@ export const accountQuery = queryOptions({
 });
 export const saveAccount = (update: AccountUpdate) =>
   request('/api/account', accountSchema, { method: 'PUT', json: update });
+
+export const adminAttentionQuery = queryOptions({
+  queryKey: ['admin', 'attention'] as const,
+  queryFn: ({ signal }) =>
+    request('/api/admin/attention', adminAttentionSchema, { signal }),
+});
+
+/** Keeps one identity and its history; scope must be handed over first. */
+export const changeUserRole = (userId: string, change: UserRoleChange) =>
+  request(
+    `/api/settings/users/${encodeURIComponent(userId)}/role`,
+    z.object({ ok: z.boolean() }),
+    { method: 'PUT', json: change },
+  );

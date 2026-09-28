@@ -350,3 +350,31 @@ export const institutionImportResultSchema = z.object({
 export type InstitutionImportResult = z.infer<
   typeof institutionImportResultSchema
 >;
+
+/** What needs the administrator now; each item links to where it is handled (PRD §9). */
+export const adminAttentionSchema = z.array(
+  z.object({
+    id: z.string(),
+    title: z.string(),
+    detail: z.string(),
+    count: z.number().int().positive(),
+    link: z.string(),
+  }),
+);
+export type AdminAttention = z.infer<typeof adminAttentionSchema>;
+
+/**
+ * Changing an account's role keeps one identity and its history. Scope must be handed over
+ * first; an institution role needs an institution.
+ */
+export const userRoleChangeSchema = z.object({
+  role: roleSchema,
+  institutionId: institutionIdSchema.nullable(),
+  reason: z.string().trim().min(10).max(500),
+});
+export type UserRoleChange = z.infer<typeof userRoleChangeSchema>;
+
+/** Read-only support access to an institution's draft (PRD §5.2): justified and audited. */
+export const supportAccessRequestSchema = z.object({
+  reason: z.string().trim().min(20).max(500),
+});

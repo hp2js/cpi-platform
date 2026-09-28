@@ -43,6 +43,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { TextField } from '@/features/settings/institution-form';
 import {
+  changeUserRole,
   createUser,
   peopleQuery,
   resendInvitation,
@@ -159,6 +160,132 @@ function StatusChange({ user }: { user: ManagedUser }) {
             onClick={() => mutation.mutate()}
           >
             {user.active ? 'Deactivate' : 'Reactivate'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Changes an account's role, keeping one identity and its history (for example an officer
+ * promoted to supervisor). The server refuses while scope has not been handed over.
+ */
+function ChangeRole({
+  user,
+  institutions,
+}: {
+  user: ManagedUser;
+  institutions: ManagedInstitution[];
+}) {
+  const queryClient = useQueryClient();
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<Role>(user.role);
+  const [institutionId, setInstitutionId] = useState(user.institutionId ?? '');
+  const [reason, setReason] = useState('');
+  const mutation = useMutation({
+    mutationFn: () =>
+      changeUserRole(user.id, {
+        role,
+        institutionId: role === 'institution' ? institutionId || null : null,
+        reason,
+      }),
+    onSuccess: async () => {
+      setOpen(false);
+      await queryClient.invalidateQueries();
+    },
+  });
+  const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setRole(user.role);
+          setInstitutionId(user.institutionId ?? '');
+          setReason('');
+          mutation.reset();
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Change role
+          <span className="sr-only"> for {user.displayName}</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change {user.displayName}’s role</DialogTitle>
+          <DialogDescription>
+            They keep one account and their history. Their current session ends,
+            and the new permissions apply when they next sign in. Institutions
+            they review or supervise must be handed over first.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-role`}>New role</Label>
+            <SelectField
+              id={`${id}-role`}
+              value={role}
+              onChange={(value) => setRole(value as Role)}
+              options={(Object.keys(roleLabel) as Role[]).map((value) => ({
+                value,
+                label: roleLabel[value],
+              }))}
+            />
+          </div>
+          {role === 'institution' && (
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-institution`}>Institution</Label>
+              <Combobox
+                id={`${id}-institution`}
+                placeholder="Choose an institution"
+                searchPlaceholder="Search institutions"
+                value={institutionId}
+                onChange={setInstitutionId}
+                options={institutions.map((institution) => ({
+                  value: institution.id,
+                  label: institution.id,
+                  description: institution.name,
+                }))}
+                invalid={Boolean(errors.institutionId)}
+              />
+            </div>
+          )}
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-reason`}>Reason</Label>
+            <Textarea
+              id={`${id}-reason`}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          {mutation.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              {mutation.error.message}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={
+              (role === user.role &&
+                (role !== 'institution' ||
+                  institutionId === (user.institutionId ?? ''))) ||
+              (role === 'institution' && !institutionId) ||
+              reason.trim().length < 10 ||
+              mutation.isPending
+            }
+            onClick={() => mutation.mutate()}
+          >
+            Change role
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -638,7 +765,12 @@ function UsersTable({
                         You
                       </span>
                     ) : (
-                      <StatusChange user={user} />
+                      <>
+                        {user.active && (
+                          <ChangeRole user={user} institutions={institutions} />
+                        )}
+                        <StatusChange user={user} />
+                      </>
                     )}
                   </div>
                 </TableCell>

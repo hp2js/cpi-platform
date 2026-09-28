@@ -1,8 +1,4 @@
-import {
-  auditEventsSchema,
-  deliveriesSchema,
-  inboxSchema,
-} from '@cpi/contracts';
+import { auditPageSchema, deliveriesSchema, inboxSchema } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { request } from '@/lib/api';
@@ -11,7 +7,7 @@ export const eventKeys = {
   inbox: ['inbox'] as const,
   deliveries: (status: string | null) => ['deliveries', { status }] as const,
   emailSink: ['email-sink'] as const,
-  audit: (objectType: string | null) => ['audit', { objectType }] as const,
+  audit: (filters: AuditFilters) => ['audit', filters] as const,
 };
 
 export const inboxQuery = queryOptions({
@@ -63,15 +59,36 @@ export const retryDelivery = (id: string) =>
     { method: 'POST' },
   );
 
-export const auditQuery = (objectType: string | null) =>
+export interface AuditFilters {
+  q?: string;
+  objectType?: string;
+  action?: string;
+  actor?: string;
+  /** Local dates, YYYY-MM-DD, against business time. */
+  from?: string;
+  to?: string;
+  elevated?: boolean;
+  page?: number;
+}
+
+/** The query string for the audit filters; shared by the page and the CSV export. */
+export function auditSearch(filters: AuditFilters) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters))
+    if (value !== undefined && value !== '' && value !== false)
+      params.set(key, String(value));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export const auditQuery = (filters: AuditFilters) =>
   queryOptions({
-    queryKey: eventKeys.audit(objectType),
+    queryKey: eventKeys.audit(filters),
     queryFn: ({ signal }) =>
-      request(
-        objectType ? `/api/audit?objectType=${objectType}` : '/api/audit',
-        auditEventsSchema,
-        { signal },
-      ),
+      request(`/api/audit${auditSearch(filters)}`, auditPageSchema, {
+        signal,
+      }),
+    placeholderData: (previous) => previous,
   });
 
 /** Most actions create notifications and audit records; refresh those views after writes. */
