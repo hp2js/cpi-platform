@@ -4,6 +4,7 @@ import type {
   Receipt,
   ReportAnswers,
   ReportBundle,
+  ReviewBundle,
 } from '@cpi/contracts';
 import type { Client } from './api';
 
@@ -93,4 +94,36 @@ export async function submitDraft(
   if (result.status >= 400)
     throw new Error(`Submit failed: ${JSON.stringify(result.body)}`);
   return result.body as Receipt;
+}
+
+const checks = Object.fromEntries(
+  ['institution', 'period', 'relevance', 'approval', 'readability'].map(
+    (key) => [key, { outcome: 'pass', reason: '' }],
+  ),
+);
+
+/** The assigned officer records that every file in the review passes its suitability checks (AT30). */
+export async function passSuitability(officer: Client, submissionId: string) {
+  const bundle = await officer.json<ReviewBundle>(`/reviews/${submissionId}`);
+  for (const item of bundle.evidence)
+    await officer.put(
+      `/reviews/${submissionId}/evidence/${item.id}/suitability`,
+      { revision: bundle.item.revision, checks },
+    );
+}
+
+export async function decideAll(
+  officer: Client,
+  submissionId: string,
+  revision: number,
+  codes = ['M-01', 'M-02', 'M-03', 'M-04'],
+) {
+  for (const code of codes) {
+    const result = await officer.put(
+      `/reviews/${submissionId}/decisions/${code}`,
+      { outcome: 'accepted', reason: '', revision },
+    );
+    if (result.status !== 200)
+      throw new Error(`Decision ${code}: ${JSON.stringify(result.body)}`);
+  }
 }

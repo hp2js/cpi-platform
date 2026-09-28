@@ -9,6 +9,7 @@ import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
 import { Events } from './events/events';
 import { ReportingController } from './reporting/reporting.controller';
+import { ReviewController } from './review/review.controller';
 import { HealthController } from './health.controller';
 import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
@@ -23,6 +24,7 @@ import { Infrastructure } from './infrastructure';
     FormsController,
     SettingsController,
     ReportingController,
+    ReviewController,
   ],
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },
