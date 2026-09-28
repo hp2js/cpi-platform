@@ -29,6 +29,9 @@ export interface NewInstitution {
   /** What the request gave, for error messages. */
   typeInput: string;
   officer: MockUser | undefined;
+  /** Null: no supervisor. Undefined: one was named but no active supervisor matches. */
+  supervisor: MockUser | null | undefined;
+  supervisorInput: string;
   accountingOfficer: AccountingOfficer;
   focalUser: { displayName: string; email: string; jobTitle: string } | null;
 }
@@ -66,6 +69,8 @@ export function institutionProblems(
   },
 ) {
   const errors: string[] = [];
+  if (input.supervisor === undefined)
+    errors.push(`No active supervisor matches ${input.supervisorInput}.`);
   if (!ID_PATTERN.test(input.id))
     errors.push(
       'The ID needs capital letters, a hyphen and three digits, e.g. MDA-123.',
@@ -122,6 +127,24 @@ export function activeOfficer(db: MockDb, reference: string) {
   );
 }
 
+export function activeSupervisor(db: MockDb, reference: string) {
+  const key = reference.trim().toLowerCase();
+  return db.users.find(
+    (user) =>
+      user.role === 'supervisor' &&
+      user.active &&
+      (user.id === reference || user.email.toLowerCase() === key),
+  );
+}
+
+/** With exactly one active supervisor, new institutions go to them unless told otherwise. */
+export function defaultSupervisor(db: MockDb) {
+  const active = db.users.filter(
+    (user) => user.role === 'supervisor' && user.active,
+  );
+  return active.length === 1 ? active[0]! : null;
+}
+
 const opensAt = (endsOn: string) =>
   Date.parse(`${endsOn}T23:59:59+03:00`) + 1000;
 
@@ -156,6 +179,14 @@ export function createInstitution(
     validTo: null,
     reason: 'Initial assignment on onboarding',
   });
+  if (input.supervisor)
+    db.supervisions.push({
+      institutionId: input.id,
+      supervisorId: input.supervisor.id,
+      validFrom: db.businessTime,
+      validTo: null,
+      reason: 'Initial supervision on onboarding',
+    });
   for (const period of db.cycle.periods) {
     db.obligations.push({
       id: `${input.id}:${period.id}`,
@@ -231,6 +262,10 @@ export function fromCreateRequest(
     typeId: activeTypeId(db, request.typeId),
     typeInput: request.typeId,
     officer: activeOfficer(db, request.officerId),
+    supervisor: request.supervisorId
+      ? activeSupervisor(db, request.supervisorId)
+      : null,
+    supervisorInput: request.supervisorId ?? '',
     accountingOfficer: request.accountingOfficer,
     focalUser: request.focalUser,
   };
@@ -275,12 +310,19 @@ export function previewImport(
     const focalEmail = cell(cells, 'focal_email');
     const focalName = cell(cells, 'focal_name');
     const typeInput = cell(cells, 'type');
+    const supervisorInput = columns.includes('supervisor_email')
+      ? cell(cells, 'supervisor_email')
+      : '';
     const input: NewInstitution = {
       id: cell(cells, 'institution_id').toUpperCase(),
       name: cell(cells, 'name'),
       typeId: activeTypeId(db, typeInput),
       typeInput,
       officer: activeOfficer(db, cell(cells, 'officer_email')),
+      supervisor: supervisorInput
+        ? activeSupervisor(db, supervisorInput)
+        : defaultSupervisor(db),
+      supervisorInput,
       accountingOfficer: {
         name: cell(cells, 'ao_name'),
         designation: cell(cells, 'ao_designation'),
@@ -306,6 +348,7 @@ export function previewImport(
         ? db.institutionTypes.find((type) => type.id === input.typeId)!.label
         : input.typeInput,
       officerName: input.officer?.displayName ?? null,
+      supervisorName: input.supervisor?.displayName ?? null,
       focalEmail: input.focalUser?.email || null,
       errors,
     };

@@ -6,6 +6,7 @@ import type {
   EvidenceItem,
   EvidenceSuitability,
   OversightComment,
+  ReassignmentSuggestion,
   FormVersion,
   Institution,
   Receipt,
@@ -31,6 +32,7 @@ import {
   institutions,
   initialAssignments,
   initialInstitutionTypes,
+  initialSupervisions,
   users,
   type MockInstitutionType,
   type MockUser,
@@ -101,6 +103,16 @@ export interface MockSubmission {
   finalizedBy: string | null;
 }
 
+/** Names are resolved when read, so a renamed account shows its current name. */
+export type MockSuggestion = Omit<
+  ReassignmentSuggestion,
+  | 'institutionName'
+  | 'currentOfficerName'
+  | 'suggestedOfficerName'
+  | 'suggestedBy'
+  | 'resolvedBy'
+> & { suggestedById: string; resolvedById: string | null };
+
 export interface MockDb {
   schemaVersion: number;
   runId: string;
@@ -109,6 +121,10 @@ export interface MockDb {
   institutions: Institution[];
   users: MockUser[];
   assignments: typeof initialAssignments;
+  /** Supervisor per institution, with history (a supervisor sees only these institutions). */
+  supervisions: typeof initialSupervisions;
+  /** Supervisors' reassignment suggestions for the administrator. */
+  suggestions: MockSuggestion[];
   obligations: MockObligation[];
   session: { userId: string; expired: boolean } | null;
   forms: FormVersion[];
@@ -233,7 +249,7 @@ export interface MockDelivery {
   lastError: string | null;
 }
 
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 const STORAGE_KEY = 'cpi-mock-db';
 
 function seed(): MockDb {
@@ -246,6 +262,8 @@ function seed(): MockDb {
     institutions: structuredClone(institutions),
     users: structuredClone(users),
     assignments: structuredClone(initialAssignments),
+    supervisions: structuredClone(initialSupervisions),
+    suggestions: [],
     obligations: institutions.flatMap((institution) =>
       cycle.periods.map((period) => ({
         id: `${institution.id}:${period.id}`,

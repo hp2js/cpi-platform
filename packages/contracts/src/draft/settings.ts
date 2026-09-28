@@ -170,6 +170,8 @@ export const managedInstitutionSchema = z.object({
     }),
   ),
   officer: z.object({ id: z.string(), name: z.string() }).nullable(),
+  /** Null when no supervisor is assigned: no supervisor can see the institution. */
+  supervisor: z.object({ id: z.string(), name: z.string() }).nullable(),
 });
 export type ManagedInstitution = z.infer<typeof managedInstitutionSchema>;
 
@@ -282,6 +284,8 @@ export const institutionCreateSchema = institutionUpdateSchema.extend({
       'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
     ),
   officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  /** Null leaves the institution without a supervisor until one is assigned. */
+  supervisorId: z.string().nullable(),
   focalUser: focalUserSchema.nullable(),
   /**
    * Simulation only (PRD §10.4): quarters that have already opened get a SEEDED HISTORICAL
@@ -308,6 +312,11 @@ export const institutionImportColumns = [
   'focal_name',
   'focal_email',
 ] as const;
+/**
+ * Optional: when the column is absent or blank and exactly one supervisor is active, that
+ * supervisor is assigned.
+ */
+export const institutionImportOptionalColumns = ['supervisor_email'] as const;
 export const institutionImportPreviewSchema = z.object({
   /** Problems with the file itself, such as missing columns. */
   fileErrors: z.array(z.string()),
@@ -318,6 +327,7 @@ export const institutionImportPreviewSchema = z.object({
       name: z.string(),
       type: z.string(),
       officerName: z.string().nullable(),
+      supervisorName: z.string().nullable(),
       focalEmail: z.string().nullable(),
       errors: z.array(z.string()),
     }),

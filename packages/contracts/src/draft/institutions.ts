@@ -59,6 +59,8 @@ export const obligationFlagSchema = z.enum([
   'evidence_incomplete',
   'clarification_overdue',
   'needs_re_review',
+  /** Awaiting the officer beyond the review target. Internal: never shown to institutions. */
+  'review_overdue',
 ]);
 export type ObligationFlag = z.infer<typeof obligationFlagSchema>;
 
@@ -93,3 +95,23 @@ export const assignmentSchema = z.object({
 });
 export type Assignment = z.infer<typeof assignmentSchema>;
 export const assignmentsSchema = z.array(assignmentSchema);
+
+/**
+ * Supervisors are assigned institutions, as officers are; a supervisor sees only the
+ * institutions currently assigned to them. `validTo` is null for the current record.
+ */
+export const supervisionSchema = z.object({
+  institutionId: institutionIdSchema,
+  supervisorId: z.string(),
+  supervisorName: z.string(),
+  validFrom: instantSchema,
+  validTo: instantSchema.nullable(),
+  reason: z.string().nullable(),
+});
+export type Supervision = z.infer<typeof supervisionSchema>;
+export const supervisionsSchema = z.array(supervisionSchema);
+export const supervisionChangeRequestSchema = z.object({
+  institutionId: institutionIdSchema,
+  supervisorId: z.string(),
+  reason: z.string().trim().min(10).max(1000),
+});

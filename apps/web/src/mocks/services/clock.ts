@@ -1,7 +1,15 @@
 import type { ClockBoundary } from '@cpi/contracts';
 import { getDb, type MockDb } from '../db';
 import { endOfDay, localDate, shiftDays } from './days';
-import { assignedOfficers, institutionUsers, notify } from './events';
+import { toClarification } from './clarifications';
+import {
+  assignedOfficers,
+  institutionUsers,
+  notify,
+  usersWithRole,
+} from './events';
+import { isReviewOverdue } from './obligations';
+import { supervisedInstitutionIds } from './scope';
 
 /**
  * Server-side demo clock (FR14). Advancing crosses named boundaries in order, and each boundary
@@ -144,6 +152,65 @@ function process(db: MockDb, boundary: Omit<ClockBoundary, 'passed'>) {
   }
 }
 
+const plural = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
+/**
+ * One digest per supervisor per boundary, only when something in their institutions needs
+ * attention (PRD §4.1, G4). A live system would send it daily; the demo sends it as the clock
+ * crosses each boundary, so a replayed boundary never repeats it.
+ */
+function sendOversightDigests(db: MockDb, key: string) {
+  const now = Date.parse(db.businessTime);
+  for (const supervisor of usersWithRole('supervisor')) {
+    const scope = supervisedInstitutionIds(supervisor.id);
+    const obligations = db.obligations.filter((obligation) =>
+      scope.includes(obligation.institutionId),
+    );
+    const missing = obligations.filter((obligation) => {
+      const period = db.cycle.periods.find(
+        (candidate) => candidate.id === obligation.periodId,
+      )!;
+      return (
+        (obligation.state === 'not_started' || obligation.state === 'draft') &&
+        Date.parse(period.submissionDeadline) < now
+      );
+    });
+    const reviews = obligations.filter(isReviewOverdue);
+    const clarifications = db.clarifications
+      .filter((clarification) => scope.includes(clarification.institutionId))
+      .map(toClarification);
+    const overdue = clarifications.filter((item) => item.overdue);
+    const extensions = new Set(
+      clarifications
+        .filter((item) => item.extensionRequired)
+        .map((item) => item.institutionId),
+    );
+    const lines = [
+      missing.length &&
+        `${plural(missing.length, 'report', 'reports')} missing after the deadline`,
+      reviews.length &&
+        `${plural(reviews.length, 'review', 'reviews')} past the officer review target (${db.cycle.dayCounting.reviewTargetDays} ${db.cycle.dayCounting.mode === 'working' ? 'working ' : ''}days)`,
+      overdue.length &&
+        `${plural(overdue.length, 'clarification', 'clarifications')} past the response window`,
+      extensions.size &&
+        `${plural(extensions.size, 'institution needs', 'institutions need')} an extension decision`,
+    ].filter(Boolean) as string[];
+    if (!lines.length) continue;
+    notify(
+      db,
+      `${key}:digest:${supervisor.id}`,
+      'oversight.digest',
+      [supervisor],
+      {
+        title: `Oversight digest: ${plural(lines.length, 'item', 'items')} need attention`,
+        body: `${lines.join('; ')}.`,
+        link: '/supervisor',
+      },
+    );
+  }
+}
+
 /**
  * After a schedule change, reminders already in the past are marked processed so a new
  * reminder time never fires retroactively.
@@ -174,7 +241,10 @@ export function advanceTo(db: MockDb, target: string) {
     if (at > to) continue;
     // Each boundary's notifications and audit entries carry the time it occurred.
     if (at > Date.parse(db.businessTime)) db.businessTime = boundary.at;
+    const key = `${db.runId}:${boundary.id}`;
+    const fresh = !db.processedEvents.includes(key);
     process(db, boundary);
+    if (fresh) sendOversightDigests(db, key);
   }
   db.businessTime = target;
 }

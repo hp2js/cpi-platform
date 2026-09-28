@@ -38,6 +38,7 @@ describe('day counting (PRD §9.1)', () => {
       ...working,
       reportingDays: 15,
       clarificationDays: 7,
+      reviewTargetDays: 10,
     };
     // Thu 1 Oct 2026 + 7 working days = Mon 12 Oct.
     expect(
@@ -105,6 +106,7 @@ describe('onboarding institutions (FR01)', () => {
     name: 'Demo Ports Authority',
     typeId: 'state-corporation',
     officerId: 'officer-b',
+    supervisorId: 'supervisor',
     accountingOfficer: {
       name: 'Accounting Officer, MDA-101',
       designation: 'Managing Director',
@@ -124,7 +126,11 @@ describe('onboarding institutions (FR01)', () => {
     const people = await create(newInstitution);
     expect(
       people.institutions.find((item) => item.id === 'MDA-101'),
-    ).toMatchObject({ name: 'Demo Ports Authority', active: true });
+    ).toMatchObject({
+      name: 'Demo Ports Authority',
+      active: true,
+      supervisor: { id: 'supervisor' },
+    });
     await expect(create(newInstitution)).rejects.toMatchObject({
       status: 422,
     });

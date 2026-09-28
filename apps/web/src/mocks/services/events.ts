@@ -1,6 +1,6 @@
 import { getDb, nextId, type MockDb, type MockDelivery } from '../db';
 import type { MockUser } from '../seed/cast';
-import { assignedInstitutionIds } from './scope';
+import { assignedInstitutionIds, supervisedInstitutionIds } from './scope';
 
 /**
  * Stand-in for the backend's audit log and durable notification outbox (FR10, FR11). Callers
@@ -174,6 +174,16 @@ export function assignedOfficers(institutionId: string) {
       user.active &&
       user.role === 'officer' &&
       assignedInstitutionIds(user.id).includes(institutionId),
+  );
+}
+
+/** The institution's current supervisor, as a recipient list. */
+export function assignedSupervisors(institutionId: string) {
+  return getDb().users.filter(
+    (user) =>
+      user.active &&
+      user.role === 'supervisor' &&
+      supervisedInstitutionIds(user.id).includes(institutionId),
   );
 }
 

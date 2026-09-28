@@ -50,7 +50,7 @@ function DayCountingFields({
 }) {
   const [holiday, setHoliday] = useState({ date: '', name: '' });
   const number =
-    (key: 'reportingDays' | 'clarificationDays') =>
+    (key: 'reportingDays' | 'clarificationDays' | 'reviewTargetDays') =>
     (event: ChangeEvent<HTMLInputElement>) =>
       onChange({ ...values, [key]: Number(event.target.value) || 0 });
   return (
@@ -100,7 +100,7 @@ function DayCountingFields({
           </div>
         ))}
       </RadioGroup>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="grid content-start gap-1.5">
           <Label htmlFor="reporting-days">Deadline rule</Label>
           <div className="flex items-center gap-2">
@@ -151,6 +151,34 @@ function DayCountingFields({
             PRD §7.3: 7. Applies to new requests only.
           </p>
           {errorFor('dayCounting.clarificationDays')}
+        </div>
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor="review-target-days">Officer review target</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="review-target-days"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={60}
+              className="w-24"
+              value={values.reviewTargetDays}
+              onChange={number('reviewTargetDays')}
+              aria-describedby="review-target-days-hint"
+            />
+            <span className="text-sm">
+              {values.mode === 'working' ? 'working days' : 'days'} from receipt
+              to a final decision
+            </span>
+          </div>
+          <p
+            id="review-target-days-hint"
+            className="text-xs text-muted-foreground"
+          >
+            A target, not a deadline: later reviews are flagged for supervisors
+            and never block finalizing.
+          </p>
+          {errorFor('dayCounting.reviewTargetDays')}
         </div>
       </div>
       <div className="grid gap-2">

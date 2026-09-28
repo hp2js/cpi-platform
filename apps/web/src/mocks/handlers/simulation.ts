@@ -9,7 +9,9 @@ import { advanceTo, boundaryState } from '../services/clock';
 import { audit, institutionUsers, notify } from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
+import { readableInstitutionIds } from '../services/scope';
 import { requireRole, requireUser } from '../services/session';
+import { applySuggestion } from './supervision';
 import { runScenario } from '../scenario';
 
 function state(): SimulationState {
@@ -111,15 +113,18 @@ export const simulationHandlers = [
 
   http.get('/api/assignments/history', async () => {
     await networkDelay();
-    requireRole('administrator', 'supervisor');
+    const user = requireRole('administrator', 'supervisor');
     const db = getDb();
+    const readable = readableInstitutionIds(user);
     return HttpResponse.json(
-      db.assignments.map((assignment) => ({
-        ...assignment,
-        officerName:
-          db.users.find((user) => user.id === assignment.officerId)
-            ?.displayName ?? assignment.officerId,
-      })),
+      db.assignments
+        .filter((assignment) => readable.includes(assignment.institutionId))
+        .map((assignment) => ({
+          ...assignment,
+          officerName:
+            db.users.find((candidate) => candidate.id === assignment.officerId)
+              ?.displayName ?? assignment.officerId,
+        })),
     );
   }),
 
@@ -168,6 +173,14 @@ export const simulationHandlers = [
         { type: 'assignment', id: parsed.data.institutionId },
         `${parsed.data.institutionId} → ${officer.displayName}: ${parsed.data.reason.trim()}`,
       );
+      if (parsed.data.suggestionId)
+        applySuggestion(
+          store,
+          parsed.data.suggestionId,
+          parsed.data.institutionId,
+          user.id,
+          `${parsed.data.institutionId} now goes to ${officer.displayName}. ${parsed.data.reason.trim()}`,
+        );
       notify(
         store,
         `${parsed.data.institutionId}:assigned:${store.sequence}`,

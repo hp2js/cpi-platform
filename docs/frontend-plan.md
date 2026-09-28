@@ -21,12 +21,12 @@ These shape every screen and are checked at each review point.
 
 The mock seeds the fixture cast from PRD §17.1. Sign-in is by email and password, with invitations and resets by emailed link; a floating "Explore with a demonstration account" button opens an overlay with one-click accounts per role (and the published demo password); it does not ship (HP2-13/HP2-14).
 
-| Persona                  | Demo accounts                                 | Layout                                                                                                                                                                              | Lands on                                                                        |
-| ------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Institution focal person | One per DEMO-001 … DEMO-008                   | **Task layout.** Top bar with institution name, current period and next deadline; single-column content; bottom navigation on mobile. Optimised for form entry on laptop and phone. | "What is due and what needs attention": obligations, clarifications, deadlines. |
-| Prevention officer       | Officer A (DEMO-001–004), Officer B (005–008) | **Workspace layout.** Left rail with portfolio and queue counts; dense split-pane review (claim · rule · evidence · decision). Collapses to stacked panels on narrow screens.       | Assigned work queue, oldest unresolved first.                                   |
-| Supervisor               | One supervisor                                | **Oversight layout.** Full-width analytics with a persistent filter bar (cycle, quarter, institution, officer) held in the URL. Every chart paired with its table.                  | Coverage and bottlenecks.                                                       |
-| Administrator            | One administrator (also the demo operator)    | **Console layout.** Grouped sidebar: Setup, Forms & scoring, Publication, Operations. Elevated actions visually distinct and require a justification.                               | Publishing readiness, assignments, failed notifications.                        |
+| Persona                  | Demo accounts                                                              | Layout                                                                                                                                                                                                 | Lands on                                                                        |
+| ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Institution focal person | One per DEMO-001 … DEMO-008                                                | **Task layout.** Top bar with institution name, current period and next deadline; single-column content; bottom navigation on mobile. Optimised for form entry on laptop and phone.                    | "What is due and what needs attention": obligations, clarifications, deadlines. |
+| Prevention officer       | Officer A (DEMO-001–004), Officer B (005–008)                              | **Workspace layout.** Left rail with portfolio and queue counts; dense split-pane review (claim · rule · evidence · decision). Collapses to stacked panels on narrow screens.                          | Assigned work queue, oldest unresolved first.                                   |
+| Supervisor               | One supervisor (the model allows several, each with assigned institutions) | **Oversight layout.** A grouped rail (oversight, officers, rules and results) and wide analytics with a filter bar (quarter, institution, officer) held in the URL. Every chart paired with its table. | Coverage, trends and bottlenecks in their institutions.                         |
+| Administrator            | One administrator (also the demo operator)                                 | **Console layout.** Grouped sidebar: Setup, Forms & scoring, Publication, Operations. Elevated actions visually distinct and require a justification.                                                  | Publishing readiness, assignments, failed notifications.                        |
 
 All layouts share: skip link, simulation banner (business time + run ID), inbox entry point, account menu with sign-out, and a consistent page header (title, context, primary action).
 
@@ -60,11 +60,14 @@ Code-based TanStack Router, one subtree per role. `beforeLoad` redirects signed-
 /officer/clarifications
 /officer/inbox
 
-/supervisor                               overview metrics
-/supervisor/coverage                      8 × 4 institution-quarter matrix
-/supervisor/backlog                       review backlog and officer workload
-/supervisor/institutions/$institutionId   read-only drilldown
-/supervisor/comparison                    same-profile, finalized-only comparison
+/supervisor                               overview metrics, trends, institution-quarter matrix
+/supervisor/institutions                  the supervisor's institutions
+/supervisor/institutions/$institutionId   read-only drilldown: quarters, trend, baselines
+/supervisor/submissions, /reviews/$id     read-only reviews with oversight comments
+/supervisor/evidence                      evidence lookup within scope
+/supervisor/workload                      officer workload and finalized-only comparison
+/supervisor/assignments                   assignments, history, reassignment suggestions
+/supervisor/rules                         active form versions and scoring profile (read only)
 /supervisor/annual                        release readiness (read only)
 /supervisor/reports                       consolidated report and exports
 /supervisor/inbox
@@ -120,7 +123,7 @@ Each screen lists the states it must render. "States" always includes loading, e
 | Overview              | The seven §4.3 metrics, each with numerator, denominator and as-of time; _Not applicable_ for a zero denominator; backlog split into officer action and institution action. | §4.3, FR12  |
 | Coverage matrix       | 8 × 4 grid of institution-quarter state with text flags; closed-nonresponse counted separately.                                                                             | FR12, AT13  |
 | Backlog & workload    | Per-officer queues, review age, unresolved clarifications; non-gating oversight comments.                                                                                   | §7.3        |
-| Institution drilldown | Submitted records only (no drafts), internal provisional vs reviewed.                                                                                                       | §5.2        |
+| Institution drilldown | Submitted records only (no drafts), quarters with flags, the institution's trend and baselines; suggest a reassignment.                                                     | §5.2        |
 | Comparison            | Same cycle and profile, finalized periods only, coverage and plan size beside each value, limitations text; never a ranking.                                                | §10.7       |
 | Annual readiness      | Which institutions are releasable and why not.                                                                                                                              | §7.6        |
 | Reports               | Consolidated report, print view, CSV/JSON export.                                                                                                                           | FR13, FR16  |

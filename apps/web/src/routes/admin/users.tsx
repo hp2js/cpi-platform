@@ -491,9 +491,12 @@ function scope(
       user.institutionId
     );
   }
-  if (user.role === 'officer') {
+  if (user.role === 'officer' || user.role === 'supervisor') {
     const ids = user.assignedInstitutionIds;
-    if (!ids.length) return 'No institutions assigned';
+    if (!ids.length)
+      return user.role === 'supervisor'
+        ? 'No institutions supervised'
+        : 'No institutions assigned';
     return ids.length <= 4
       ? ids.join(', ')
       : `${ids.length} institutions (${ids.slice(0, 3).join(', ')}, …)`;

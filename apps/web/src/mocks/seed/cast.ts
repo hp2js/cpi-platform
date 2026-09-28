@@ -201,6 +201,15 @@ export const users: MockUser[] = [
   },
 ];
 
+/** The one supervisor oversees all eight institutions (PRD §4.1 scenario). */
+export const initialSupervisions = institutions.map((institution) => ({
+  institutionId: institution.id,
+  supervisorId: 'supervisor',
+  validFrom: '2026-07-01T00:00:00+03:00',
+  validTo: null as string | null,
+  reason: null as string | null,
+}));
+
 /** Officer A owns DEMO-001–004 and Officer B owns DEMO-005–008 (PRD §17.1). */
 export const initialAssignments = institutions.map((institution, index) => ({
   institutionId: institution.id,

@@ -145,16 +145,34 @@ export const suitabilityRequestSchema = z
  * Supervisor oversight comments (PRD §5.2, §7.3): visible to officers and administrators,
  * never to the institution, and never an approval step for the officer's decisions.
  */
+export const oversightReplySchema = z.object({
+  author: z.string(),
+  role: z.enum(['officer', 'supervisor', 'administrator']),
+  at: instantSchema,
+  text: z.string(),
+});
 export const oversightCommentSchema = z.object({
   id: z.string(),
   revision: z.number().int().positive(),
   author: z.string(),
   at: instantSchema,
   text: z.string(),
+  /**
+   * `addressed` once the officer says so. Closing the loop is for the supervisor's view only:
+   * an open comment never blocks finalization.
+   */
+  status: z.enum(['open', 'addressed']),
+  addressedAt: instantSchema.nullable(),
+  replies: z.array(oversightReplySchema),
 });
 export type OversightComment = z.infer<typeof oversightCommentSchema>;
 export const oversightCommentRequestSchema = z.object({
   text: z.string().trim().min(10).max(2000),
+});
+/** A reply in the comment's thread; the assigned officer may also mark it addressed. */
+export const oversightReplyRequestSchema = z.object({
+  text: z.string().trim().min(2).max(2000),
+  addressed: z.boolean(),
 });
 
 export const finalizeRequestSchema = z.object({

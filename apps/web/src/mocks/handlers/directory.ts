@@ -45,7 +45,12 @@ export const directoryHandlers = [
             readable.includes(obligation.institutionId) &&
             (!filter || obligation.institutionId === filter),
         )
-        .map(toObligation),
+        .map((obligation) =>
+          toObligation(
+            obligation,
+            user.role === 'institution' ? 'institution' : 'internal',
+          ),
+        ),
     );
   }),
   http.get('/api/assignments', async () => {
@@ -53,9 +58,11 @@ export const directoryHandlers = [
     const user = requireUser();
     if (user.role === 'institution') return forbidden();
     const { assignments, users } = getDb();
+    const readable = readableInstitutionIds(user);
     const visible = assignments.filter(
       (assignment) =>
-        user.role !== 'officer' || assignment.officerId === user.id,
+        (user.role !== 'officer' || assignment.officerId === user.id) &&
+        readable.includes(assignment.institutionId),
     );
     return HttpResponse.json(
       visible.map((assignment): Assignment => ({

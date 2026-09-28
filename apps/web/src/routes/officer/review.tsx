@@ -44,6 +44,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +66,7 @@ import {
   reviewKeys,
   reviewQuery,
   addOversightComment,
+  replyToComment,
   closeClarification,
 } from '@/features/review/queries';
 import { ComponentScoreValue } from '@/features/review/score-display';
@@ -952,13 +954,101 @@ function CloseUnanswered({
   );
 }
 
+/** The thread under one comment; the officer may also mark the comment addressed. */
+function CommentReply({
+  bundle,
+  comment,
+  role,
+}: {
+  bundle: ReviewBundle;
+  comment: ReviewBundle['comments'][number];
+  role: 'officer' | 'supervisor';
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [addressed, setAddressed] = useState(false);
+  const mutation = useReviewMutation(bundle, () =>
+    replyToComment(bundle.submissionId, comment.id, { text, addressed }),
+  );
+  const fieldId = `reply-${comment.id}`;
+  if (!open)
+    return (
+      <div>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+          {role === 'officer' && comment.status === 'open'
+            ? 'Reply or mark addressed'
+            : 'Reply'}
+        </Button>
+      </div>
+    );
+  return (
+    <form
+      className="grid gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        mutation.mutate(undefined, {
+          onSuccess: () => {
+            setText('');
+            setAddressed(false);
+            setOpen(false);
+          },
+        });
+      }}
+    >
+      <Label htmlFor={fieldId}>Reply</Label>
+      <Textarea
+        id={fieldId}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
+      {role === 'officer' && comment.status === 'open' && (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`${fieldId}-addressed`}
+            checked={addressed}
+            onCheckedChange={(value) => setAddressed(value === true)}
+          />
+          <Label htmlFor={`${fieldId}-addressed`} className="font-normal">
+            Mark the comment addressed
+          </Label>
+        </div>
+      )}
+      {mutation.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {mutation.error.message}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={text.trim().length < 2 || mutation.isPending}
+        >
+          Send reply
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setOpen(false)}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 /** Supervisor guidance for the officer; never shown to the institution, never an approval gate. */
 function OversightComments({
   bundle,
   canComment,
+  replyAs,
 }: {
   bundle: ReviewBundle;
   canComment: boolean;
+  /** Who may reply in the thread: the assigned officer or the supervisor. */
+  replyAs: 'officer' | 'supervisor' | null;
 }) {
   const [text, setText] = useState('');
   const mutation = useReviewMutation(bundle, () =>
@@ -975,17 +1065,50 @@ function OversightComments({
       </h2>
       <p className="text-sm text-muted-foreground">
         From the supervisor to the officer. They support oversight and are not
-        an approval step; the institution does not see them.
+        an approval step: an open comment never blocks finalizing. The
+        institution does not see them.
       </p>
       {bundle.comments.length > 0 && (
         <ul className="grid gap-2">
           {bundle.comments.map((comment) => (
-            <li key={comment.id} className="rounded-md border p-3 text-sm">
+            <li
+              key={comment.id}
+              className="grid gap-2 rounded-md border p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={comment.status === 'open' ? 'secondary' : 'outline'}
+                >
+                  {comment.status === 'open'
+                    ? 'Open'
+                    : `Addressed${comment.addressedAt ? ` ${formatDateTime(comment.addressedAt)}` : ''}`}
+                </Badge>
+                <span className="text-muted-foreground">
+                  {comment.author}, {formatDateTime(comment.at)} · on revision{' '}
+                  {comment.revision}
+                </span>
+              </div>
               <p className="whitespace-pre-line">{comment.text}</p>
-              <p className="mt-1 text-muted-foreground">
-                {comment.author}, {formatDateTime(comment.at)} · on revision{' '}
-                {comment.revision}
-              </p>
+              {comment.replies.length > 0 && (
+                <ol aria-label="Replies" className="grid gap-2 border-l-2 pl-3">
+                  {comment.replies.map((reply) => (
+                    <li key={`${reply.at}-${reply.author}`}>
+                      <p className="whitespace-pre-line">{reply.text}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {reply.author} ({reply.role}),{' '}
+                        {formatDateTime(reply.at)}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {replyAs && (
+                <CommentReply
+                  bundle={bundle}
+                  comment={comment}
+                  role={replyAs}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -1300,6 +1423,31 @@ export function ReviewPage() {
                   </AlertDescription>
                 </Alert>
               )}
+              {session.user.role === 'officer' &&
+                bundle.comments.some(
+                  (comment) => comment.status === 'open',
+                ) && (
+                  <Alert>
+                    <AlertDescription>
+                      <span>
+                        The supervisor left{' '}
+                        {
+                          bundle.comments.filter(
+                            (comment) => comment.status === 'open',
+                          ).length
+                        }{' '}
+                        open oversight comment(s).{' '}
+                        <a
+                          href="#comments-heading"
+                          className="text-primary underline underline-offset-4"
+                        >
+                          Read and reply
+                        </a>
+                        . They never block finalizing.
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
               {bundle.reopenings.map((reopening) => (
                 <p key={reopening.at} className="text-sm text-muted-foreground">
                   Reopened by {reopening.by}, {formatDateTime(reopening.at)}:{' '}
@@ -1354,7 +1502,17 @@ export function ReviewPage() {
                 ))}
               </section>
               <OtherAnswers bundle={bundle} />
-              <OversightComments bundle={bundle} canComment={supervisor} />
+              <OversightComments
+                bundle={bundle}
+                canComment={supervisor}
+                replyAs={
+                  supervisor
+                    ? 'supervisor'
+                    : session.user.role === 'officer'
+                      ? 'officer'
+                      : null
+                }
+              />
               {bundle.canDecide && !openClarification && (
                 <RequestClarification bundle={bundle} />
               )}

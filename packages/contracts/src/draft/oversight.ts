@@ -40,6 +40,25 @@ export const comparisonRowSchema = z.object({
   planSize: z.number().int().positive(),
 });
 
+/**
+ * One quarter of the trend series (PRD §4.1: coverage, trends and review backlog). Counts are
+ * in the caller's scope; quarters not yet due report `due: 0` and are shown as not applicable.
+ */
+export const trendPointSchema = z.object({
+  periodId: z.string(),
+  periodLabel: z.string(),
+  /** Reports whose deadline has passed. */
+  due: z.number().int().nonnegative(),
+  submitted: z.number().int().nonnegative(),
+  onTime: z.number().int().nonnegative(),
+  finalized: z.number().int().nonnegative(),
+  awaitingOfficer: z.number().int().nonnegative(),
+  reviewOverdue: z.number().int().nonnegative(),
+  /** Mean reviewed implementation points of finalized reports; null when none. */
+  averagePoints: z.string().nullable(),
+});
+export type TrendPoint = z.infer<typeof trendPointSchema>;
+
 export const oversightSchema = z.object({
   asOf: instantSchema,
   profileName: z.string(),
@@ -60,6 +79,12 @@ export const oversightSchema = z.object({
   }),
   workload: z.array(officerWorkloadSchema),
   comparison: z.array(comparisonRowSchema),
+  trends: z.array(trendPointSchema),
+  /** The officer review target the `review_overdue` flag uses. */
+  reviewTarget: z.object({
+    days: z.number().int().positive(),
+    unit: z.enum(['calendar', 'working']),
+  }),
 });
 export type Oversight = z.infer<typeof oversightSchema>;
 
@@ -67,6 +92,8 @@ export const assignmentChangeRequestSchema = z.object({
   institutionId: institutionIdSchema,
   officerId: z.string(),
   reason: z.string().min(10).max(1000),
+  /** The supervisor suggestion this change applies, if any. */
+  suggestionId: z.string().optional(),
 });
 export const assignmentHistorySchema = z.array(
   z.object({
@@ -78,3 +105,39 @@ export const assignmentHistorySchema = z.array(
     reason: z.string().nullable(),
   }),
 );
+
+/**
+ * A supervisor's suggestion that an institution move to another officer. Only the administrator
+ * changes assignments (PRD §5.2); applying or dismissing a suggestion is recorded here.
+ */
+export const reassignmentSuggestionSchema = z.object({
+  id: z.string(),
+  institutionId: institutionIdSchema,
+  institutionName: z.string(),
+  currentOfficerId: z.string().nullable(),
+  currentOfficerName: z.string().nullable(),
+  suggestedOfficerId: z.string().nullable(),
+  suggestedOfficerName: z.string().nullable(),
+  reason: z.string(),
+  suggestedBy: z.string(),
+  at: instantSchema,
+  status: z.enum(['open', 'applied', 'dismissed']),
+  resolvedBy: z.string().nullable(),
+  resolvedAt: instantSchema.nullable(),
+  resolutionNote: z.string().nullable(),
+});
+export type ReassignmentSuggestion = z.infer<
+  typeof reassignmentSuggestionSchema
+>;
+export const reassignmentSuggestionsSchema = z.array(
+  reassignmentSuggestionSchema,
+);
+export const reassignmentSuggestionRequestSchema = z.object({
+  institutionId: institutionIdSchema,
+  /** Null when the supervisor asks the administrator to choose. */
+  suggestedOfficerId: z.string().nullable(),
+  reason: z.string().trim().min(10).max(1000),
+});
+export const suggestionDismissRequestSchema = z.object({
+  note: z.string().trim().min(10).max(1000),
+});

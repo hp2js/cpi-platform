@@ -63,19 +63,11 @@ import { isApiError } from '@/lib/api';
 import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
 import { SelectField } from '@/components/select-field';
+import { questionTypeLabels } from '@/features/forms/labels';
 
 const route = getRouteApi('/authed/admin/forms/$formId');
 
-const typeLabels: Record<QuestionType, string> = {
-  text: 'Short text',
-  long_text: 'Long text',
-  number: 'Number',
-  date: 'Date',
-  yes_no: 'Yes / no',
-  choice: 'Choice',
-  evidence: 'Evidence upload',
-  milestone_progress: 'Milestone progress (scored)',
-};
+const typeLabels = questionTypeLabels;
 const addableTypes = (Object.keys(typeLabels) as QuestionType[]).filter(
   (type) => type !== 'milestone_progress',
 );

@@ -7,6 +7,7 @@ import {
   suitabilityCheckKeys,
   suitabilityRequestSchema,
   oversightCommentRequestSchema,
+  oversightReplyRequestSchema,
   closeClarificationRequestSchema,
   type Decision,
   type ReviewBundle,
@@ -30,6 +31,7 @@ import {
 } from '../services/clarifications';
 import {
   assignedOfficers,
+  assignedSupervisors,
   audit,
   institutionUsers,
   notify,
@@ -260,6 +262,9 @@ function reviewBundle(
         author: comment.author,
         at: comment.at,
         text: comment.text,
+        status: comment.status,
+        addressedAt: comment.addressedAt,
+        replies: comment.replies,
       })),
     decisions: decisions.map(toDecision),
     score: scoreSummary(
@@ -703,6 +708,9 @@ export const reviewHandlers = [
           author: user.displayName,
           at: db.businessTime,
           text: parsed.data.text,
+          status: 'open' as const,
+          addressedAt: null,
+          replies: [],
         };
         db.comments.push(comment);
         audit(
@@ -727,6 +735,102 @@ export const reviewHandlers = [
             link: `/officer/reviews/${submission.id}`,
           },
         );
+      });
+      return HttpResponse.json(reviewBundle(user, submission));
+    },
+  ),
+
+  /**
+   * The comment thread: the assigned officer replies and may mark the comment addressed; the
+   * supervisor may reply. Neither changes what the officer can do with the review.
+   */
+  http.post(
+    '/api/reviews/:submissionId/comments/:commentId/replies',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('officer', 'supervisor');
+      const submission = findSubmission(user, params.submissionId);
+      const institutionId = obligationOf(submission).institutionId;
+      if (
+        user.role === 'officer' &&
+        !assignedInstitutionIds(user.id).includes(institutionId)
+      )
+        return apiError(
+          403,
+          'Only the assigned officer can reply to oversight comments.',
+          'forbidden',
+        );
+      const parsed = oversightReplyRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!parsed.success)
+        return apiError(422, 'Write a reply.', 'invalid_reply', {
+          text: 'Write a reply.',
+        });
+      if (parsed.data.addressed && user.role !== 'officer')
+        return apiError(
+          422,
+          'Only the officer marks a comment addressed.',
+          'invalid_reply',
+        );
+      const db = getDb();
+      const comment = db.comments.find(
+        (candidate) =>
+          candidate.id === params.commentId &&
+          candidate.obligationId === submission.obligationId,
+      );
+      if (!comment) return notFound();
+      const obligation = obligationOf(submission);
+      commit((store) => {
+        const target = store.comments.find((c) => c.id === comment.id)!;
+        target.replies.push({
+          author: user.displayName,
+          role: user.role as 'officer' | 'supervisor',
+          at: store.businessTime,
+          text: parsed.data.text,
+        });
+        if (parsed.data.addressed && target.status === 'open') {
+          target.status = 'addressed';
+          target.addressedAt = store.businessTime;
+        }
+        audit(
+          store,
+          user,
+          parsed.data.addressed
+            ? 'review.comment_addressed'
+            : 'review.comment_reply',
+          {
+            type: 'submission',
+            id: submission.id,
+            version: submission.revision,
+          },
+          `Reply on oversight comment ${target.id}`,
+        );
+        const period = periodOf(obligation.periodId).label;
+        if (user.role === 'officer')
+          notify(
+            store,
+            `${target.id}:reply:${target.replies.length}`,
+            'review.comment_reply',
+            assignedSupervisors(obligation.institutionId),
+            {
+              title: `${parsed.data.addressed ? 'Comment addressed' : 'Officer replied'}: ${obligation.institutionId} ${period}`,
+              body: parsed.data.text,
+              link: `/supervisor/reviews/${submission.id}`,
+            },
+          );
+        else
+          notify(
+            store,
+            `${target.id}:reply:${target.replies.length}`,
+            'review.comment_reply',
+            assignedOfficers(obligation.institutionId),
+            {
+              title: `Supervisor replied: ${obligation.institutionId} ${period}`,
+              body: 'The supervisor added to an oversight comment. It is guidance, not an approval step.',
+              link: `/officer/reviews/${submission.id}`,
+            },
+          );
       });
       return HttpResponse.json(reviewBundle(user, submission));
     },

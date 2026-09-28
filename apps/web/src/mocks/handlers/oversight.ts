@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import type { Metric, Oversight } from '@cpi/contracts';
 import { getDb } from '../db';
 import { networkDelay } from '../services/latency';
+import { isReviewOverdue } from '../services/obligations';
 import { baselineOf, periodOf } from '../services/reporting';
 import { format2, mul, rational, sum } from '../services/rational';
 import { readableInstitutionIds } from '../services/scope';
@@ -100,7 +101,11 @@ export const oversightHandlers = [
       ),
     );
 
-    const comparison = finalized.map(({ obligation, submission }) => {
+    /** Reviewed implementation result of a finalized revision. */
+    const reviewedResult = (
+      obligation: (typeof obligations)[number],
+      submission: (typeof db.submissions)[number],
+    ) => {
       const milestones =
         baselineOf(obligation.institutionId, obligation.periodId)?.milestones ??
         [];
@@ -122,20 +127,27 @@ export const oversightHandlers = [
           ? score.fraction
           : { numerator: 0, denominator: 1 };
       return {
+        fraction,
+        points: mul(
+          rational(activeWeights(db).implementation),
+          rational(fraction.numerator, fraction.denominator),
+        ),
+        planSize: Math.max(1, milestones.length),
+      };
+    };
+
+    const comparison = finalized.map(({ obligation, submission }) => {
+      const result = reviewedResult(obligation, submission);
+      return {
         institutionId: obligation.institutionId,
         institutionName:
           db.institutions.find(
             (institution) => institution.id === obligation.institutionId,
           )?.name ?? '',
         periodLabel: periodOf(obligation.periodId).label,
-        reviewed: fraction,
-        points: format2(
-          mul(
-            rational(activeWeights(db).implementation),
-            rational(fraction.numerator, fraction.denominator),
-          ),
-        ),
-        planSize: Math.max(1, milestones.length),
+        reviewed: result.fraction,
+        points: format2(result.points),
+        planSize: result.planSize,
       };
     });
     const average = comparison.length
@@ -154,12 +166,16 @@ export const oversightHandlers = [
         )
       : null;
 
+    // A supervisor sees the officers who currently review their institutions.
+    const scope = readableInstitutionIds(user);
     const workload = db.users
       .filter(
         (candidate) =>
           candidate.role === 'officer' &&
           candidate.active &&
-          (!officerId || candidate.id === officerId),
+          (!officerId || candidate.id === officerId) &&
+          (user.role === 'administrator' ||
+            scope.some((id) => officerOf(id) === candidate.id)),
       )
       .map((officer) => {
         const mine = currentSubmissions.filter(
@@ -199,6 +215,60 @@ export const oversightHandlers = [
           ).length,
         };
       });
+
+    // Quarter by quarter across the whole cycle, independent of the quarter filter.
+    const inScope = db.obligations.filter((obligation) =>
+      institutions.includes(obligation.institutionId),
+    );
+    const trends = db.cycle.periods.map((period) => {
+      const quarter = inScope.filter(
+        (obligation) => obligation.periodId === period.id,
+      );
+      const deadline = Date.parse(period.submissionDeadline);
+      const dueHere = deadline < now ? quarter : [];
+      const current = quarter.flatMap((obligation) => {
+        const submission = db.submissions.find(
+          (candidate) =>
+            candidate.obligationId === obligation.id &&
+            candidate.revision === obligation.currentRevision,
+        );
+        return submission ? [{ obligation, submission }] : [];
+      });
+      const done = current.filter(
+        ({ obligation }) => obligation.state === 'finalized',
+      );
+      return {
+        periodId: period.id,
+        periodLabel: period.label,
+        due: dueHere.length,
+        submitted: dueHere.filter(submitted).length,
+        onTime: dueHere.filter(
+          (obligation) =>
+            obligation.firstSubmittedAt !== null &&
+            Date.parse(obligation.firstSubmittedAt) <= deadline,
+        ).length,
+        finalized: done.length,
+        awaitingOfficer: current.filter(
+          ({ obligation }) =>
+            obligation.state === 'submitted' ||
+            obligation.state === 'under_review',
+        ).length,
+        reviewOverdue: quarter.filter(isReviewOverdue).length,
+        averagePoints: done.length
+          ? format2(
+              mul(
+                sum(
+                  done.map(
+                    ({ obligation, submission }) =>
+                      reviewedResult(obligation, submission).points,
+                  ),
+                ),
+                rational(1, done.length),
+              ),
+            )
+          : null,
+      };
+    });
 
     const body: Oversight = {
       asOf: db.businessTime,
@@ -264,6 +334,11 @@ export const oversightHandlers = [
           a.institutionId.localeCompare(b.institutionId) ||
           a.periodLabel.localeCompare(b.periodLabel),
       ),
+      trends,
+      reviewTarget: {
+        days: db.cycle.dayCounting.reviewTargetDays,
+        unit: db.cycle.dayCounting.mode,
+      },
     };
     return HttpResponse.json(body);
   }),

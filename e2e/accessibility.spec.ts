@@ -113,6 +113,14 @@ test('mid-year screens for every role', async ({ page }) => {
       'supervisor review (read only)',
     ],
     ['supervisor', '/supervisor/evidence', 'supervisor evidence lookup'],
+    ['supervisor', '/supervisor/institutions', 'supervisor institutions'],
+    [
+      'supervisor',
+      '/supervisor/institutions/DEMO-003',
+      'supervisor institution page',
+    ],
+    ['supervisor', '/supervisor/assignments', 'supervisor assignments'],
+    ['supervisor', '/supervisor/rules', 'supervisor rules'],
     [
       'officer-a',
       '/officer/institutions/DEMO-004',
@@ -202,6 +210,7 @@ test('configuration dialogs and searchable selects', async ({ page }) => {
 
   await visit(page, 'administrator', '/admin/assignments');
   await page
+    .getByRole('region', { name: 'Reassign an institution' })
     .getByRole('combobox', { name: 'Institution', exact: true })
     .click();
   await settled(page.getByRole('dialog'));

@@ -339,6 +339,35 @@ const supervisorReportsRoute = createRoute({
   path: 'reports',
   component: page(() => import('@/routes/supervisor/reports'), 'ReportsPage'),
 });
+const supervisorInstitutionsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'institutions',
+  component: page(
+    () => import('@/routes/supervisor/institutions'),
+    'SupervisorInstitutionsPage',
+  ),
+});
+const supervisorInstitutionRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'institutions/$institutionId',
+  component: page(
+    () => import('@/routes/supervisor/institutions'),
+    'SupervisorInstitutionPage',
+  ),
+});
+const supervisorAssignmentsRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'assignments',
+  component: page(
+    () => import('@/routes/supervisor/assignments'),
+    'SupervisorAssignmentsPage',
+  ),
+});
+const supervisorRulesRoute = createRoute({
+  getParentRoute: () => supervisorRoute,
+  path: 'rules',
+  component: page(() => import('@/routes/supervisor/rules'), 'RulesPage'),
+});
 const adminSimulationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'simulation',
@@ -498,6 +527,10 @@ export const routeTree = rootRoute.addChildren([
       supervisorWorkloadRoute,
       supervisorAnnualRoute,
       supervisorReportsRoute,
+      supervisorInstitutionsRoute,
+      supervisorInstitutionRoute,
+      supervisorAssignmentsRoute,
+      supervisorRulesRoute,
     ]),
     adminRoute.addChildren([
       adminHomeRoute,

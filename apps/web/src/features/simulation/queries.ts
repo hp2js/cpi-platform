@@ -39,10 +39,11 @@ export const reassign = (
   institutionId: string,
   officerId: string,
   reason: string,
+  suggestionId?: string,
 ) =>
   request('/api/assignments', z.object({ ok: z.boolean() }), {
     method: 'POST',
-    json: { institutionId, officerId, reason },
+    json: { institutionId, officerId, reason, suggestionId },
   });
 
 /** Business time and run changes affect every screen: refetch everything, including the session clock. */

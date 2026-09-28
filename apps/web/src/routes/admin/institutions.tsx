@@ -349,6 +349,9 @@ export function InstitutionsPage() {
             <div className="flex flex-wrap gap-2">
               <AddInstitution
                 officers={officers}
+                supervisors={people.data.users.filter(
+                  (user) => user.role === 'supervisor' && user.active,
+                )}
                 types={people.data.institutionTypes}
               />
               <ImportInstitutions types={people.data.institutionTypes} />

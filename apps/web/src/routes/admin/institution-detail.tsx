@@ -495,14 +495,18 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
             Reporting and review
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Reviewed by {institution.officer?.name ?? 'nobody (unassigned)'}.
+            Reviewed by {institution.officer?.name ?? 'nobody (unassigned)'};
+            supervised by{' '}
+            {institution.supervisor?.name ??
+              'nobody, so no supervisor can see it'}
+            .
           </p>
         </div>
         <Link
           to="/admin/assignments"
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
-          Change officer
+          Change officer or supervisor
         </Link>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">

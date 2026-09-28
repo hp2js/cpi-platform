@@ -32,15 +32,15 @@ export function ObligationMatrix({
   institutions,
   obligations,
   assignments,
-  linkToInstitution = false,
+  linkToInstitution,
 }: {
   caption: string;
   cycle: Cycle;
   institutions: Institution[];
   obligations: Obligation[];
   assignments?: Assignment[];
-  /** Officers can open each institution's plan, baselines and foundations. */
-  linkToInstitution?: boolean;
+  /** Where each institution's name leads: the officer's or the supervisor's institution page. */
+  linkToInstitution?: 'officer' | 'supervisor';
 }) {
   // Indexed once: a portfolio can hold hundreds of institutions.
   const byKey = useMemo(
@@ -99,7 +99,11 @@ export function ObligationMatrix({
                 >
                   {linkToInstitution ? (
                     <Link
-                      to="/officer/institutions/$institutionId"
+                      to={
+                        linkToInstitution === 'officer'
+                          ? '/officer/institutions/$institutionId'
+                          : '/supervisor/institutions/$institutionId'
+                      }
                       params={{ institutionId: institution.id }}
                       className="block font-medium text-primary underline-offset-4 hover:underline"
                     >
