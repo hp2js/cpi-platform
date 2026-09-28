@@ -499,7 +499,7 @@ export const annualHandlers = [
       released: results.length > 0,
       message: results.length
         ? 'Your published results are shown below.'
-        : 'Results are published after annual evaluation. Until then you see the status of each report and any feedback.',
+        : 'Results are published after annual evaluation. Until then you see the status of each report; your reviewing officer contacts you through clarifications if anything needs fixing.',
       results,
     });
   }),

@@ -60,3 +60,30 @@ test('deactivating an institution’s last focal person is confirmed and then fl
       .getByText('No active focal person'),
   ).toBeVisible();
 });
+
+test('the home to-do list leads to a clarification shown where it applies', async ({
+  page,
+}) => {
+  await midYear(page);
+  await visit(page, 'focal-demo-002', '/institution');
+  const todo = page.getByRole('region', { name: 'What needs you' });
+  const clarification = todo
+    .getByRole('listitem')
+    .filter({ hasText: 'Answer the clarification on your Q1 report' });
+  await expect(clarification).toContainText(
+    '1 question from your reviewing officer',
+  );
+  await expect(clarification).toContainText(/days left|Due today|Due tomorrow/);
+  await clarification.getByRole('link', { name: /Respond/ }).click();
+
+  await expect(
+    page.getByRole('navigation', { name: 'Report sections' }),
+  ).toContainText(/of \d+/);
+  await page
+    .getByRole('navigation', { name: 'Questioned milestones' })
+    .getByRole('link', { name: /M-01/ })
+    .click();
+  await expect(
+    page.getByText('Your officer asked about this milestone'),
+  ).toBeInViewport();
+});
