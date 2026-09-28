@@ -1,0 +1,47 @@
+{
+  "$schema": "https://unpkg.com/release-it@21/schema/release-it.json",
+  "git": {
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true,
+    "requireCommits": true,
+    "commitMessage": "chore(release): v${version}",
+    "tagName": "v${version}",
+    "tagAnnotation": "Release v${version}"
+  },
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": true,
+    "releaseName": "v${version}"
+  },
+  "hooks": {
+    "before:init": ["pnpm format:check", "pnpm check"],
+    "after:bump": "prettier --write CHANGELOG.md"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog",
+      "preset": {
+        "name": "conventionalcommits",
+        "types": [
+          { "type": "feat", "section": "Features" },
+          { "type": "fix", "section": "Bug fixes" },
+          { "type": "perf", "section": "Performance" },
+          { "type": "docs", "section": "Documentation", "effect": "changelog" },
+          {
+            "type": "build",
+            "section": "Build and dependencies",
+            "effect": "changelog"
+          },
+          { "type": "refactor", "effect": "hidden" },
+          { "type": "test", "effect": "hidden" },
+          { "type": "ci", "effect": "hidden" },
+          { "type": "style", "effect": "hidden" },
+          { "type": "chore", "effect": "hidden" }
+        ]
+      }
+    }
+  }
+}
