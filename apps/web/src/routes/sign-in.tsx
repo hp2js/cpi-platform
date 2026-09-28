@@ -304,18 +304,17 @@ function RoleGroup({
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3
-            id={`role-${role}`}
-            className="flex items-center gap-2 font-semibold"
-          >
-            {roleLabel[role]}
+          <div className="flex items-center gap-2">
+            <h3 id={`role-${role}`} className="font-semibold">
+              {roleLabel[role]}
+            </h3>
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {accounts.length}
               <span className="sr-only">
                 {accounts.length === 1 ? ' account' : ' accounts'}
               </span>
             </span>
-          </h3>
+          </div>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
