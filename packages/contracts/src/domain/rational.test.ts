@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { add, format2, mul, rational, sum } from './rational';
+import { add, format2, mul, rational, sum } from './rational.js';
 
 /** Annual score A = 10P + 15R + 15M + 60 × (I1 + I2 + I3 + I4) ÷ 4 (PRD §10.5). */
 function annual(p: number, r: number, m: number, quarters: [number, number][]) {

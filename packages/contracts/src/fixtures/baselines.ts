@@ -1,6 +1,6 @@
-import type { Milestone } from '@cpi/contracts';
-import { cycle } from './cycle';
-import { institutions } from './cast';
+import type { Milestone } from '../index.js';
+import { cycle } from './cycle.js';
+import { institutions } from './cast.js';
 
 /** A baseline version. Amendments add versions; earlier versions are never edited (PRD §10.4). */
 export interface MockBaseline {

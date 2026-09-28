@@ -1,4 +1,4 @@
-import type { Institution, Role } from '@cpi/contracts';
+import type { Institution, Role } from '../index.js';
 
 /** Fictional cast from PRD §17.1. No record represents a real institution or person. */
 export interface MockUser {

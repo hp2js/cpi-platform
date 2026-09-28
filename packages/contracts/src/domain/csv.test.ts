@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { csvCell, toCsv } from './csv';
+import { csvCell, toCsv } from './csv.js';
 
 it('neutralises formula prefixes and quotes separators', () => {
   expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);

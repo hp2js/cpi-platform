@@ -1,6 +1,6 @@
-import type { Milestone, ReportAnswers } from '@cpi/contracts';
+import type { Milestone, ReportAnswers } from '../draft/index.js';
 import { describe, expect, it } from 'vitest';
-import { points, provisionalCredits, scoreSummary } from './scoring';
+import { points, provisionalCredits, scoreSummary } from './scoring.js';
 
 const milestone = (code: string): Milestone => ({
   id: `X:${code}`,
@@ -87,6 +87,7 @@ describe('provisional implementation credit (FR08)', () => {
       ['ev-1'],
       [decide('M-01', 'rejected')],
       1,
+      'Test profile',
     );
     expect(partial.provisional).toMatchObject({
       status: 'calculated',
@@ -109,6 +110,7 @@ describe('provisional implementation credit (FR08)', () => {
         decide('M-04', 'accepted'),
       ],
       1,
+      'Test profile',
     );
     // A superseded decision never counts: only the active decision per milestone does.
     const superseded = {
@@ -129,6 +131,7 @@ describe('provisional implementation credit (FR08)', () => {
         decide('M-04', 'accepted'),
       ],
       1,
+      'Test profile',
     );
     expect(withHistory.reviewed).toMatchObject({
       status: 'calculated',

@@ -1,5 +1,5 @@
-import type { FormVersion } from '@cpi/contracts';
-import { cycle } from './cycle';
+import type { FormVersion } from '../index.js';
+import { cycle } from './cycle.js';
 
 /**
  * Quarterly progress form v1, seeded as an unpublished draft: the demonstration begins with

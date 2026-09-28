@@ -1,4 +1,4 @@
-import { foundationChecks, type ScoringProfile } from '@cpi/contracts';
+import { foundationChecks, type ScoringProfile } from '../index.js';
 
 /** A stored profile; `issues` is derived when the profile is read. */
 export type MockProfile = Omit<ScoringProfile, 'issues'>;

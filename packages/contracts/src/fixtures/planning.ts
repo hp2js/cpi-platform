@@ -1,6 +1,6 @@
-import type { FoundationKind } from '@cpi/contracts';
-import { institutions } from './cast';
-import { plans } from './baselines';
+import type { FoundationKind } from '../index.js';
+import { institutions } from './cast.js';
+import { plans } from './baselines.js';
 
 export interface MockRisk {
   id: string;

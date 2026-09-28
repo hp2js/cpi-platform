@@ -10,6 +10,7 @@ import { Pool } from 'pg';
 import Redis from 'ioredis';
 import type { ReadinessResponse } from '@cpi/contracts';
 import { CONFIG, type AppConfig } from './config';
+import * as schema from './database/schema';
 import { errorCode } from './http/diagnostics';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class Infrastructure implements OnApplicationShutdown {
       max: 10,
     });
     this.pool.on('error', (error) => this.reportFailure('database', error));
-    this.database = drizzle(this.pool);
+    this.database = drizzle(this.pool, { schema, casing: 'snake_case' });
     this.redis = new Redis(config.REDIS_URL, {
       lazyConnect: true,
       enableOfflineQueue: false,

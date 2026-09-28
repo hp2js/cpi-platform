@@ -11,7 +11,7 @@ import type {
   Receipt,
   ReportAnswers,
 } from '@cpi/contracts';
-import { initialBaselines, type MockBaseline } from './seed/baselines';
+import { initialBaselines, type MockBaseline } from '@cpi/contracts/fixtures';
 import {
   approvedPlanReference,
   initialRisks,
@@ -19,22 +19,22 @@ import {
   type MockFoundationReview,
   type MockFoundationVersion,
   type MockRisk,
-} from './seed/planning';
+} from '@cpi/contracts/fixtures';
 import type {
   AuditEvent,
   Amendment,
   Clarification,
   Role,
 } from '@cpi/contracts';
-import { initialForm } from './seed/forms';
+import { initialForm } from '@cpi/contracts/fixtures';
 import {
   institutions,
   initialAssignments,
   users,
   type MockUser,
-} from './seed/cast';
-import { cycle, initialBusinessTime } from './seed/cycle';
-import { initialProfiles, type MockProfile } from './seed/profiles';
+} from '@cpi/contracts/fixtures';
+import { cycle, initialBusinessTime } from '@cpi/contracts/fixtures';
+import { initialProfiles, type MockProfile } from '@cpi/contracts/fixtures';
 
 /**
  * In-memory stand-in for the server's database. In the browser it is persisted to

@@ -1,5 +1,5 @@
 import { getDb } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 
 /** Current assignment only: reassignment removes access immediately (PRD §5.2). */
 export function assignedInstitutionIds(officerId: string): string[] {

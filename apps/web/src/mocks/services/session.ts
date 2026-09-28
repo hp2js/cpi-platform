@@ -1,6 +1,6 @@
 import type { Session } from '@cpi/contracts';
 import { getDb } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { apiError } from './http';
 import { activeProfile } from './profiles';
 

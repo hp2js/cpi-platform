@@ -1,4 +1,4 @@
-import type { Cycle } from '@cpi/contracts';
+import type { Cycle } from '../index.js';
 
 /** FY2026/27 demo calendar from PRD §9.1 (Africa/Nairobi, UTC+03:00, no DST). */
 export const cycle: Cycle = {

@@ -5,12 +5,12 @@ import type {
   Milestone,
   ReportAnswers,
   ScoreSummary,
-} from '@cpi/contracts';
-import { profileLabel } from './profiles';
+} from '../draft/index.js';
 
 /**
- * Stand-in for the backend scoring engine (HP2-18) implementing PRD §10.4 for the
- * implementation component. It lives in the mock layer only; the UI never recomputes it.
+ * The scoring engine (HP2-18) implementing PRD §10.4 for the implementation component.
+ * Shared by the API and the mock API (PRD §15: one calculation module); the UI never
+ * recomputes it.
  */
 
 /** points = maxPoints × numerator ÷ denominator, rounded half-up to two decimals, exactly. */
@@ -77,6 +77,7 @@ export function scoreSummary(
   evidenceIds: string[],
   decisions: Decision[],
   revision: number,
+  profileName: string,
 ): ScoreSummary {
   const denominator = totalWeight(milestones);
   const credits = provisionalCredits(milestones, answers, evidenceIds);
@@ -123,7 +124,7 @@ export function scoreSummary(
             : 'awaiting_officer_decisions',
       };
   return {
-    profileName: profileLabel(),
+    profileName,
     simulation: true,
     provisional,
     provisionalCredits: credits,
