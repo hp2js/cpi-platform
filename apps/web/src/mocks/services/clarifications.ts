@@ -1,27 +1,7 @@
 import type { Clarification, ReportAnswers } from '@cpi/contracts';
 import { getDb, type MockDb, type MockSubmission } from '../db';
 
-const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-
-/**
- * Seven calendar days from the later of portal availability and in-app notification, ending
- * 23:59:59 Africa/Nairobi on the seventh day after that event's local date (PRD §7.3).
- */
-export function responseDueAt(availableAt: string, notifiedAt: string) {
-  const start = Math.max(Date.parse(availableAt), Date.parse(notifiedAt));
-  const local = new Date(start + EAT_OFFSET_MS);
-  const due = new Date(
-    Date.UTC(
-      local.getUTCFullYear(),
-      local.getUTCMonth(),
-      local.getUTCDate() + 7,
-      23,
-      59,
-      59,
-    ),
-  );
-  return `${due.toISOString().slice(0, 19)}+03:00`;
-}
+export { responseDueAt } from '@cpi/contracts';
 
 /** The cutoff that applies to an institution: the cycle's, or an authorized extension (§7.3). */
 export function effectiveCutoff(institutionId: string, db: MockDb = getDb()) {

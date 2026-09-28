@@ -1,23 +1,8 @@
-import type { Obligation, ObligationFlag } from '@cpi/contracts';
+import { daysLate, type Obligation, type ObligationFlag } from '@cpi/contracts';
 import { getDb, type MockObligation } from '../db';
 import { clarificationsFor } from './clarifications';
 
-const nairobiDate = (ms: number) =>
-  new Date(ms + 3 * 3_600_000).toISOString().slice(0, 10);
-
-/** Calendar days in Africa/Nairobi between the deadline and a later submission; 0 on time. */
-export function daysLate(submittedAt: string, deadline: string) {
-  const submitted = Date.parse(submittedAt);
-  const due = Date.parse(deadline);
-  if (submitted <= due) return 0;
-  return Math.max(
-    1,
-    Math.round(
-      (Date.parse(nairobiDate(submitted)) - Date.parse(nairobiDate(due))) /
-        86_400_000,
-    ),
-  );
-}
+export { daysLate };
 
 /** Flags are derived from business time on the server, never in the browser (FR02). */
 export function toObligation(obligation: MockObligation): Obligation {

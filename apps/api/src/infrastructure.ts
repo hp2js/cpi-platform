@@ -22,7 +22,7 @@ export class Infrastructure implements OnApplicationShutdown {
   >();
   private readonly pool: Pool;
   readonly database;
-  private readonly redis: Redis;
+  readonly redis: Redis;
 
   constructor(@Inject(CONFIG) config: AppConfig) {
     this.pool = new Pool({

@@ -11,6 +11,12 @@ const schema = z.object({
   REDIS_URL: z
     .url()
     .refine((value) => /^rediss?:/.test(value), 'Use a Redis URL'),
+  /** Idle session lifetime; each authenticated request extends it. */
+  SESSION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .default(8 * 3600),
 });
 export type AppConfig = z.infer<typeof schema>;
 export const CONFIG = Symbol('CONFIG');

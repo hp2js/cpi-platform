@@ -23,7 +23,7 @@ Until the backend implements a contract, `pnpm dev` serves it from [MSW](https:/
 - The **Mock API** button (development only) changes latency, expires the session and resets demo data, for exercising loading and recovery states.
 - **Scripted year:** the administrator's Simulation clock page runs `src/mocks/scenario.ts`, which plays PRD §17.1 for all eight institutions by calling the mock API as each real account (so scope, workflow and audit rules apply), skipping steps already done. From a fresh run it reproduces the expected annual results (88.75, 70.00, 96.25 …), asserted in `src/mocks/annual.test.ts`. The real backend will need its own driver (HP2-28).
 - The clock only moves forward; each boundary (reporting opens, reminders, deadline, overdue, cutoff, publication) is processed once per run. Start a new run to go back.
-- When a real endpoint lands, delete its handler; the screens should not change.
+- The handlers are deleted together once the real API implements every endpoint (see [api-handover.md](api-handover.md)); the screens should not change.
 
 ## Navigation and lists: Router + Table
 

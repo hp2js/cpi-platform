@@ -13,6 +13,7 @@
     "typecheck": "pnpm --filter @cpi/contracts build && pnpm -r typecheck && tsc -p e2e/tsconfig.json",
     "lint": "pnpm --filter @cpi/contracts build && eslint .",
     "test": "pnpm --filter @cpi/contracts build && pnpm -r test",
+    "test:integration": "pnpm --filter @cpi/contracts build && pnpm --filter @cpi/api test:integration",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/check-compiler.mjs",

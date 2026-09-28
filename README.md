@@ -48,6 +48,7 @@ pnpm check            # lint, typecheck, tests, production builds
 pnpm format           # format source and docs
 pnpm format:check     # CI formatting check
 pnpm test:smoke       # running Docker stack: outages, recovery, DB persistence
+pnpm test:integration # running Docker services: API tests against a `_test` database
 pnpm test:e2e         # running dev stack: browser tests (Playwright)
 pnpm test:e2e:prod    # running `docker:prod` stack: adds web-server checks
 pnpm docker:up        # rebuild and start the development stack
