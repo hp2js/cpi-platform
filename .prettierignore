@@ -6,3 +6,6 @@ coverage
 artifacts/
 playwright-report/
 test-results/
+
+# Exported from the source Google Doc; keep byte-for-byte.
+docs/HP2JS — Adili-V3-Track-2-PRD.md
