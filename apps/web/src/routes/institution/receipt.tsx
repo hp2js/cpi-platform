@@ -30,10 +30,10 @@ export function ReceiptPage() {
               Print
             </Button>
             <Link
-              to="/institution/receipts"
+              to="/institution/reports"
               className={buttonVariants({ variant: 'outline' })}
             >
-              All receipts
+              All reports
             </Link>
           </>
         }

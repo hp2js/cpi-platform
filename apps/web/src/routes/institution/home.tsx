@@ -134,7 +134,8 @@ function buildTodos({
       deadline: foundations.deadline,
       action: (
         <Link
-          to="/institution/foundations"
+          to="/institution/plan"
+          search={{ tab: 'documents' }}
           className={buttonVariants({ size: 'sm', variant: 'outline' })}
         >
           Open foundations {arrow}

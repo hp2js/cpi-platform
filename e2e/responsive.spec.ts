@@ -60,10 +60,10 @@ test('mid-year screens fit a phone', async ({ page }) => {
   for (const [account, path] of [
     ['focal-demo-001', '/institution'],
     ['focal-demo-003', '/institution/reports/FY2026-27-Q1'],
-    ['focal-demo-002', '/institution/clarifications'],
+    ['focal-demo-002', '/institution/reports'],
     ['focal-demo-001', '/institution/plan'],
-    ['focal-demo-001', '/institution/foundations'],
-    ['focal-demo-001', '/institution/receipts'],
+    ['focal-demo-001', '/institution/plan?tab=documents'],
+    ['focal-demo-001', '/institution/reports'],
     ['officer-a', '/officer'],
     ['officer-a', `/officer/reviews/${review}`],
     ['officer-a', '/officer/evidence'],

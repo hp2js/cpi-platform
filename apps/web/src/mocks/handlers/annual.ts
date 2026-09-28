@@ -385,7 +385,7 @@ export const annualHandlers = [
           body: 'The extension lets evidence and review finish. It does not change other deadlines or lateness.',
           link: (recipient) =>
             recipient.role === 'institution'
-              ? '/institution/clarifications'
+              ? '/institution/reports'
               : `/officer/institutions/${institutionId}`,
         },
       );

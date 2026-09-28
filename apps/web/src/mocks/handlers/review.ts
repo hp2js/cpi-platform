@@ -673,7 +673,7 @@ export const reviewHandlers = [
           {
             title: `${periodOf(obligation.periodId).label} clarification closed unanswered`,
             body: `The response window and the evaluation cutoff have passed. Reason: ${parsed.data.reason}`,
-            link: '/institution/clarifications',
+            link: '/institution/reports',
           },
         );
       });
@@ -998,7 +998,7 @@ export const reviewHandlers = [
           {
             title: `Clarification requested on your ${period.label} report`,
             body: `Your reviewing officer has ${items.length} question${items.length === 1 ? '' : 's'}. Respond by submitting a revised report.`,
-            link: `/institution/clarifications`,
+            link: '/institution/reports',
           },
         );
       });

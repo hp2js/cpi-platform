@@ -91,12 +91,16 @@ test('mid-year screens for every role', async ({ page }) => {
     ],
     [
       'focal-demo-002',
-      '/institution/clarifications',
-      'institution clarifications',
+      '/institution/reports',
+      'institution reports with a clarification',
     ],
-    ['focal-demo-001', '/institution/receipts', 'institution receipts'],
+    ['focal-demo-001', '/institution/reports', 'institution reports'],
     ['focal-demo-001', '/institution/plan', 'institution plan'],
-    ['focal-demo-001', '/institution/foundations', 'institution foundations'],
+    [
+      'focal-demo-001',
+      '/institution/plan?tab=documents',
+      'institution foundation documents',
+    ],
     ['focal-demo-002', '/institution/inbox', 'institution inbox'],
     ['focal-demo-002', '/institution/profile', 'our institution'],
     [

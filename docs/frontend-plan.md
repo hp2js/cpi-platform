@@ -40,15 +40,14 @@ Code-based TanStack Router, one subtree per role. `beforeLoad` redirects signed-
 /                                         redirect to the signed-in role's home
 /forbidden, /session-expired, 404
 
-/institution                              home: obligations, next actions, deadlines
-/institution/foundations                  procedures, risk assessment, mitigation plan versions
-/institution/plan                         risk register, activities, milestones, baseline status, amendments
-/institution/reports/$periodId            quarterly report editor (draft)
+/institution                              home: what needs you (soonest first, with countdowns), quarters
+/institution/reports                      each quarter: status, clarifications, submitted revisions and receipts
+/institution/reports/$periodId            quarterly report editor (draft), section progress, questions inline
 /institution/reports/$periodId/review     review-before-submit and attestation
 /institution/receipts/$receiptId          immutable receipt
-/institution/history                      revisions and receipts across the year
-/institution/clarifications(/$id)         requests and responses
+/institution/plan(?tab=documents)         plan and baselines, amendments; foundation documents
 /institution/results                      withheld until release; own published report and versions
+/institution/profile                      our institution: focal persons, reviewing officer, Accounting Officer
 /institution/inbox
 
 /officer                                  work queue (tabs in search params)

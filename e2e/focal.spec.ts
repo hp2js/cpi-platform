@@ -87,3 +87,25 @@ test('the home to-do list leads to a clarification shown where it applies', asyn
     page.getByText('Your officer asked about this milestone'),
   ).toBeInViewport();
 });
+
+test('four sections with full labels, attention badges and old addresses redirected', async ({
+  page,
+}) => {
+  await midYear(page);
+  await visit(page, 'focal-demo-002', '/institution');
+  const nav = page.getByRole('navigation', { name: 'Institution' }).first();
+  await expect(nav.getByRole('link')).toHaveText([
+    'Home',
+    /^Reports1 needing attention$/,
+    'Plan & documents',
+    'Results',
+  ]);
+  // Bookmarks and older notifications still work.
+  await page.goto('/institution/clarifications');
+  await expect(page).toHaveURL(/\/institution\/reports$/);
+  await page.goto('/institution/foundations');
+  await expect(page).toHaveURL(/\/institution\/plan\?tab=documents$/);
+  await expect(
+    page.getByRole('tab', { name: 'Foundation documents', selected: true }),
+  ).toBeVisible();
+});
