@@ -127,7 +127,7 @@ export function SimulationPage() {
                 <div className="flex flex-wrap gap-2">
                   {next && (
                     <Button
-                      className="h-auto py-2 text-left whitespace-normal"
+                      className="h-auto max-w-full shrink py-2 text-left whitespace-normal"
                       onClick={() => advance.mutate(next.id)}
                       disabled={advance.isPending}
                     >

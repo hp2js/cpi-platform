@@ -563,7 +563,7 @@ function PriorDecision({
           <Button
             size="sm"
             variant="outline"
-            className="h-auto py-1.5 text-left whitespace-normal"
+            className="h-auto max-w-full shrink py-1.5 text-left whitespace-normal"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate(undefined)}
           >
