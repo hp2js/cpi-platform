@@ -15,6 +15,11 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    ignore:
+      # Node follows the LTS line pinned in package.json engines, .nvmrc and CI; a major
+      # move changes all of them together, so Dependabot proposes only 24.x updates.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
   - package-ecosystem: docker-compose
     directory: /
     schedule:
