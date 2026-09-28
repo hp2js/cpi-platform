@@ -33,6 +33,8 @@ import type {
 export const toNairobi = (value: Date | string) =>
   `${new Date(new Date(value).getTime() + 3 * 3_600_000).toISOString().slice(0, 19)}+03:00`;
 
+const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
+
 const instant = customType<{ data: string; driverData: Date | string }>({
   dataType: () => 'timestamp with time zone',
   toDriver: (value) => value,
@@ -227,6 +229,7 @@ export const baselines = pgTable(
 
 export const amendments = pgTable('amendments', {
   id: text().primaryKey(),
+  seq: serial(),
   institutionId: text()
     .notNull()
     .references(() => institutions.id),
@@ -280,6 +283,8 @@ export const obligations = pgTable(
 /** Private evidence files; foundation documents have no obligation. */
 export const evidence = pgTable('evidence', {
   id: text().primaryKey(),
+  /** Upload order (IDs share one counter and are not zero-padded far enough to sort). */
+  seq: serial(),
   institutionId: text()
     .notNull()
     .references(() => institutions.id),
@@ -294,6 +299,18 @@ export const evidence = pgTable('evidence', {
   version: integer().notNull(),
   predecessorId: text(),
   supersededBy: text(),
+});
+
+/**
+ * Uploaded bytes, stored beside their metadata in the same transaction.
+ * ponytail: Postgres bytea is fine for 8 institutions at ≤100 MB per report; move to a private
+ * object store (keyed by evidence ID) if storage volume or backup size becomes a concern.
+ */
+export const evidenceFiles = pgTable('evidence_files', {
+  evidenceId: text()
+    .primaryKey()
+    .references(() => evidence.id),
+  bytes: bytea().notNull(),
 });
 
 export const foundationVersions = pgTable('foundation_versions', {
@@ -369,6 +386,7 @@ export const submissions = pgTable(
 /** Receipts are immutable snapshots, served exactly as issued. */
 export const receipts = pgTable('receipts', {
   id: text().primaryKey(),
+  seq: serial(),
   obligationId: text()
     .notNull()
     .references(() => obligations.id),
@@ -398,6 +416,7 @@ export const idempotencyKeys = pgTable(
 /** Append-only: a replaced decision gets `supersededAt` and keeps its record. */
 export const decisions = pgTable('decisions', {
   id: text().primaryKey(),
+  seq: serial(),
   submissionId: text()
     .notNull()
     .references(() => submissions.id),
@@ -427,6 +446,7 @@ export const suitability = pgTable('suitability', {
 
 export const clarifications = pgTable('clarifications', {
   id: text().primaryKey(),
+  seq: serial(),
   submissionId: text()
     .notNull()
     .references(() => submissions.id),
@@ -453,6 +473,7 @@ export const clarifications = pgTable('clarifications', {
 
 export const oversightComments = pgTable('oversight_comments', {
   id: text().primaryKey(),
+  seq: serial(),
   obligationId: text()
     .notNull()
     .references(() => obligations.id),
@@ -501,6 +522,7 @@ export const extensions = pgTable('extensions', {
 
 export const publications = pgTable('publications', {
   id: text().primaryKey(),
+  seq: serial(),
   institutionId: text()
     .notNull()
     .references(() => institutions.id),
@@ -536,6 +558,7 @@ export const notifications = pgTable(
   'notifications',
   {
     id: text().primaryKey(),
+    seq: serial(),
     eventId: text().notNull(),
     recipientId: text()
       .notNull()
@@ -553,6 +576,7 @@ export const notifications = pgTable(
 /** Email outbox: unique per event, recipient and channel, so a replay cannot deliver twice. */
 export const deliveries = pgTable('deliveries', {
   id: text().primaryKey(),
+  seq: serial(),
   key: text().notNull().unique(),
   eventType: text().notNull(),
   recipientId: text()
@@ -574,6 +598,7 @@ export const deliveries = pgTable('deliveries', {
 /** Local stand-in for email (no real recipients). */
 export const emailSink = pgTable('email_sink', {
   id: text().primaryKey(),
+  seq: serial(),
   to: text().notNull(),
   subject: text().notNull(),
   body: text().notNull(),
@@ -582,6 +607,7 @@ export const emailSink = pgTable('email_sink', {
 
 export const auditEvents = pgTable('audit_events', {
   id: text().primaryKey(),
+  seq: serial(),
   actorName: text().notNull(),
   actorRole: text().$type<AuditEvent['actorRole']>().notNull(),
   action: text().notNull(),

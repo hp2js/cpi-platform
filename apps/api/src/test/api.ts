@@ -97,7 +97,9 @@ export class Client {
     const response = await fetch(`${this.url}/api${path}`, {
       ...init,
       headers: {
-        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...(typeof init.body === 'string'
+          ? { 'content-type': 'application/json' }
+          : {}),
         ...(this.cookie ? { cookie: this.cookie } : {}),
         ...init.headers,
       },
@@ -105,9 +107,10 @@ export class Client {
     for (const header of response.headers.getSetCookie())
       this.cookie = header.split(';')[0]!;
     const text = await response.text();
+    const json = response.headers.get('content-type')?.includes('json');
     return {
       status: response.status,
-      body: text ? (JSON.parse(text) as unknown) : undefined,
+      body: json && text ? (JSON.parse(text) as unknown) : (text as unknown),
       headers: response.headers,
     };
   }
@@ -127,6 +130,18 @@ export class Client {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers,
     });
+  }
+
+  /** A multipart evidence upload, as the browser sends it. */
+  upload(
+    path: string,
+    file: { name: string; bytes: Uint8Array },
+    fields: Record<string, string>,
+  ) {
+    const form = new FormData();
+    form.set('file', new Blob([Buffer.from(file.bytes)]), file.name);
+    for (const [name, value] of Object.entries(fields)) form.set(name, value);
+    return this.request(path, { method: 'POST', body: form });
   }
 
   put(path: string, body: unknown) {
