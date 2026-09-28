@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   Param,
   Post,
   Put,
@@ -42,8 +43,11 @@ import {
   loadProfiles,
 } from '../database/state';
 import { initialInstitutionTypes } from '@cpi/contracts/fixtures';
+import { accountStatus, newLink } from '../auth/passwords';
+import { CONFIG, type AppConfig } from '../config';
 import {
   Events,
+  sendEmail,
   assignedOfficers,
   institutionUsers,
   usersWithRole,
@@ -154,9 +158,10 @@ async function people(db: Db): Promise<People> {
     db.select().from(supervisions).where(isNull(supervisions.validTo)),
     db.select().from(institutions).orderBy(asc(institutions.id)),
   ]);
-  // ponytail: no invitations yet, so every account is active or deactivated.
-  const status = (active: boolean): 'active' | 'deactivated' =>
-    active ? 'active' : 'deactivated';
+  const invitationExpiresAt = (user: (typeof userRows)[number]) =>
+    accountStatus(user) === 'invited' && user.authLink?.purpose === 'invitation'
+      ? user.authLink.expiresAt
+      : null;
   return {
     users: userRows.map((user) => ({
       id: user.id,
@@ -166,8 +171,8 @@ async function people(db: Db): Promise<People> {
       jobTitle: user.jobTitle,
       institutionId: user.institutionId,
       active: user.active,
-      status: status(user.active),
-      invitationExpiresAt: null,
+      status: accountStatus(user),
+      invitationExpiresAt: invitationExpiresAt(user),
       assignedInstitutionIds: current
         .filter((assignment) => assignment.officerId === user.id)
         .map((assignment) => assignment.institutionId),
@@ -203,8 +208,8 @@ async function people(db: Db): Promise<People> {
             email: user.email,
             jobTitle: user.jobTitle,
             active: user.active,
-            status: status(user.active),
-            invitationExpiresAt: null,
+            status: accountStatus(user),
+            invitationExpiresAt: invitationExpiresAt(user),
           })),
         officer: officer ? { id: officer.id, name: officer.displayName } : null,
         supervisor: supervisorOf(institution.id),
@@ -261,6 +266,7 @@ export class SettingsController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
   private get db() {
@@ -658,8 +664,11 @@ export class SettingsController {
           jobTitle: input.jobTitle,
           institutionId: input.institutionId,
           active: true,
+          // The person sets their own password from the invitation email.
+          passwordHash: null,
         })
         .returning();
+      await this.invite(tx, businessTime, user!, admin);
       await this.events.audit(
         tx,
         businessTime,
@@ -667,6 +676,57 @@ export class SettingsController {
         'user.create',
         { type: 'user', id: user!.id },
         `${user!.displayName} (${user!.role}${user!.institutionId ? `, ${user!.institutionId}` : ''})`,
+      );
+      return people(tx);
+    });
+  }
+
+  /** Stores a new single-use invitation link (replacing any earlier one) and emails it. */
+  private async invite(tx: Tx, businessTime: string, user: User, admin: User) {
+    const link = newLink('invitation');
+    await tx
+      .update(users)
+      .set({ authLink: link.stored })
+      .where(eq(users.id, user.id));
+    await sendEmail(
+      tx,
+      businessTime,
+      this.config.PORTAL_URL,
+      `invitation:${user.id}:${link.stored.tokenHash.slice(0, 12)}`,
+      'account.invitation',
+      user,
+      {
+        subject: 'You are invited to the CPI Platform',
+        body: `${admin.displayName} created an account for you (${user.email}). Set your password to sign in. The link works once and expires in 7 days.`,
+        link: `/set-password?token=${link.token}`,
+      },
+    );
+  }
+
+  /** A new invitation link replaces the earlier one (e.g. it expired or the email was lost). */
+  @Post('users/:userId/invitation')
+  @HttpCode(200)
+  @Roles('administrator')
+  resendInvitation(@CurrentUser() admin: User, @Param('userId') id: string) {
+    return write(this.db, async (tx, businessTime) => {
+      const [user] = await tx.select().from(users).where(eq(users.id, id));
+      if (!user) throw notFound();
+      if (accountStatus(user) !== 'invited')
+        throw new ApiError(
+          409,
+          user.active
+            ? 'This person has already set a password.'
+            : 'Reactivate the account before inviting again.',
+          'not_invited',
+        );
+      await this.invite(tx, businessTime, user, admin);
+      await this.events.audit(
+        tx,
+        businessTime,
+        admin,
+        'user.invite',
+        { type: 'user', id: user.id },
+        `Invitation sent again to ${user.email}`,
       );
       return people(tx);
     });

@@ -127,3 +127,15 @@ export async function decideAll(
       throw new Error(`Decision ${code}: ${JSON.stringify(result.body)}`);
   }
 }
+
+/** The latest single-use link token emailed to an address (demo email sink). */
+export async function emailedToken(admin: Client, email: string) {
+  const mails =
+    await admin.json<{ to: string; body: string }[]>('/admin/email-sink');
+  const mail = mails.find((candidate) => candidate.to === email);
+  const token = mail?.body.match(/token=([\w-]+)/)?.[1];
+  if (!token) throw new Error(`No link emailed to ${email}`);
+  return token;
+}
+
+export const STRONG_PASSWORD = 'correct horse battery staple';

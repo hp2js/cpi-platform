@@ -46,6 +46,9 @@ export async function loadFixtures(
         ...user,
         institutionId: user.institutionId ?? null,
         jobTitle: user.jobTitle ?? '',
+        phone: user.phone ?? '',
+        passwordHash: user.passwordHash ?? null,
+        authLink: null,
       })),
     );
     await tx.insert(schema.assignments).values(initialAssignments);

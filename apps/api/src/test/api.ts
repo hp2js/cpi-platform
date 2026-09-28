@@ -3,6 +3,7 @@ import { createServer } from 'node:net';
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import Redis from 'ioredis';
 import { Pool } from 'pg';
 import { loadFixtures } from '../database/fixtures';
 import * as schema from '../database/schema';
@@ -82,6 +83,15 @@ export async function startApi(env: Record<string, string> = {}) {
     db,
     /** Restore the fixture state between tests. */
     reset: () => loadFixtures(db),
+    /** Clear sessions and sign-in lockouts (Redis database 15). */
+    async flushRedis() {
+      const redis = new Redis(urls.redis);
+      try {
+        await redis.flushdb();
+      } finally {
+        redis.disconnect();
+      }
+    },
     client: () => new Client(url),
     async stop() {
       server.kill();

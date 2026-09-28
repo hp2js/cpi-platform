@@ -73,8 +73,17 @@ export const users = pgTable('users', {
   email: text().notNull().unique(),
   role: text().$type<Role>().notNull(),
   jobTitle: text().notNull().default(''),
+  phone: text().notNull().default(''),
   institutionId: text().references(() => institutions.id),
   active: boolean().notNull().default(true),
+  /** scrypt hash; the demo marker for seeded accounts; null until an invited person sets one. */
+  passwordHash: text(),
+  /** The current single-use invitation or reset link (its token hash only). */
+  authLink: jsonb().$type<{
+    purpose: 'invitation' | 'reset';
+    tokenHash: string;
+    expiresAt: string;
+  }>(),
 });
 
 export const assignments = pgTable('assignments', {

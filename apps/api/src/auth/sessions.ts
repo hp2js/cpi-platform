@@ -19,10 +19,11 @@ import { Infrastructure } from '../infrastructure';
 export type User = typeof users.$inferSelect;
 
 /**
- * Demo sessions (replaced by real authentication in HP2-13): an opaque random ID in an
- * HttpOnly cookie, mapped to the user in Redis with a sliding idle timeout.
+ * Sessions: an opaque random ID in an HttpOnly cookie, mapped to the user in Redis with a
+ * sliding idle timeout. Signing in (demo or password) starts one; deactivation ends access.
  */
 const COOKIE = 'cpi_session';
+const LOCKOUT_MS = 15 * 60_000;
 const key = (id: string) => `session:${id}`;
 
 function sessionIdFrom(request: Request) {
@@ -61,6 +62,34 @@ export class Sessions {
     const id = sessionIdFrom(request);
     if (id) await this.infrastructure.redis.del(key(id));
     response.clearCookie(COOKIE, { path: '/api' });
+  }
+
+  /* Sign-in throttling per email, whether or not an account exists (PRD §13.1). */
+
+  /** Milliseconds until the email may try again; 0 when not locked. */
+  async lockedFor(email: string) {
+    return Math.max(
+      0,
+      await this.infrastructure.redis.pttl(`login-lock:${email}`),
+    );
+  }
+
+  /** Five failures within 15 minutes lock that email for 15 minutes. */
+  async recordFailure(email: string) {
+    const redis = this.infrastructure.redis;
+    const failures = await redis.incr(`login-fail:${email}`);
+    if (failures === 1) await redis.pexpire(`login-fail:${email}`, LOCKOUT_MS);
+    if (failures >= 5) {
+      await redis.set(`login-lock:${email}`, '1', 'PX', LOCKOUT_MS);
+      await redis.del(`login-fail:${email}`);
+    }
+  }
+
+  async clearFailures(email: string) {
+    await this.infrastructure.redis.del(
+      `login-fail:${email}`,
+      `login-lock:${email}`,
+    );
   }
 
   /** The signed-in, active user; 401 `session_expired` when a cookie outlived its session. */

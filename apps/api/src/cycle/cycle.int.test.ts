@@ -10,6 +10,7 @@ import type {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { auditEvents, notifications, periods } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
+import { STRONG_PASSWORD, emailedToken } from '../test/journeys';
 
 /** Ported from apps/web/src/mocks/settings.test.ts and thin-path.test.ts (AT03). */
 describe.skipIf(!integration)('reporting cycle', () => {
@@ -295,7 +296,17 @@ describe.skipIf(!integration)('reporting cycle', () => {
         },
       });
 
-      const session = await api.client().signIn(deputy.id);
+      // New accounts are invited: they sign in after setting a password from the email.
+      expect(deputy.status).toBe('invited');
+      const session = api.client();
+      const token = await emailedToken(admin, deputy.email);
+      expect(
+        (
+          await session.post(`/auth/tokens/${token}`, {
+            password: STRONG_PASSWORD,
+          })
+        ).status,
+      ).toBe(200);
       expect((await session.request('/session')).status).toBe(200);
       await admin.post(`/settings/users/${deputy.id}/status`, {
         active: false,

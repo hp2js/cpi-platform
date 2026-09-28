@@ -131,23 +131,13 @@ describe.skipIf(!integration)('sign-in configuration', () => {
     try {
       const client = demo.client();
       expect(await client.json<AuthConfig>('/auth/config')).toMatchObject({
-        passwordSignIn: false,
+        passwordSignIn: true,
         demoAccounts: true,
-        demoPassword: null,
         providers: [{ id: 'ecitizen', status: 'planned' }],
       });
       expect(
         (await client.json<DemoAccount[]>('/demo/accounts')).length,
       ).toBeGreaterThan(0);
-      expect(
-        await client.post('/session', {
-          email: 'focal.demo-001@example.invalid',
-          password: 'Demo-Password-2026',
-        }),
-      ).toMatchObject({
-        status: 422,
-        body: { code: 'password_sign_in_unavailable' },
-      });
     } finally {
       await demo.stop();
     }
