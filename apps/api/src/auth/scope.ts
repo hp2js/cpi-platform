@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Db } from '../database/db';
 import { assignments, institutions } from '../database/schema';
 import type { User } from './sessions';
@@ -10,7 +10,8 @@ export async function assignedInstitutionIds(db: Db, officerId: string) {
     .from(assignments)
     .where(
       and(eq(assignments.officerId, officerId), isNull(assignments.validTo)),
-    );
+    )
+    .orderBy(asc(assignments.institutionId));
   return rows.map((row) => row.id);
 }
 
@@ -26,9 +27,12 @@ export async function readableInstitutionIds(
       return assignedInstitutionIds(db, user.id);
     case 'supervisor':
     case 'administrator':
-      return (await db.select({ id: institutions.id }).from(institutions)).map(
-        (row) => row.id,
-      );
+      return (
+        await db
+          .select({ id: institutions.id })
+          .from(institutions)
+          .orderBy(asc(institutions.id))
+      ).map((row) => row.id);
   }
 }
 
