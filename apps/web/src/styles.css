@@ -17,6 +17,8 @@
   --color-accent: #f1e8f4;
   --color-accent-foreground: var(--primary);
   --color-destructive: #b42318;
+  --color-success: #e6f4ea;
+  --color-success-foreground: #14532d;
   --color-border: #ddd5e1;
   --color-input: #b7adbc;
   --color-ring: var(--primary);
@@ -35,6 +37,16 @@
   * {
     @apply border-border;
   }
+  /* Heights of the fixed banner and header, measured by each layout (see useMeasuredHeight). */
+  :root {
+    --banner-h: 0px;
+    --header-h: 0px;
+    --sticky-top: calc(var(--banner-h) + var(--header-h));
+  }
+  /* Anchors, skip links and focused fields scroll clear of the fixed header. */
+  html {
+    scroll-padding-top: calc(var(--sticky-top) + 0.75rem);
+  }
   body {
     @apply m-0 bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -43,5 +55,31 @@
   input,
   a {
     @apply outline-offset-4;
+  }
+}
+
+/*
+ * Print view for receipts and reports: navigation and controls are removed, while the
+ * simulation banner and profile labels stay so printed results remain clearly labelled.
+ */
+@media print {
+  nav,
+  aside,
+  [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  main {
+    padding: 0 !important;
+  }
+  [data-sticky] {
+    position: static !important;
+  }
+  section,
+  article,
+  table {
+    break-inside: avoid;
   }
 }

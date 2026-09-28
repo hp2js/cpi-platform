@@ -8,34 +8,89 @@ export class ApiError extends Error {
     message: string,
     readonly fieldErrors: Record<string, string> = {},
     readonly requestId?: string,
+    /** Machine-readable reason from the error envelope, e.g. `session_expired`. */
+    readonly code?: string,
   ) {
     super(message);
   }
 }
 
+/** Resolves an API path against the page origin; Node-environment tests have no page. */
+export function apiUrl(path: string) {
+  return new URL(path, globalThis.location?.origin ?? 'http://localhost');
+}
+
+/** The request never reached the server or its response was lost; it is safe to retry. */
+export class NetworkError extends Error {}
+
+export function isApiError(error: unknown, status?: number): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    (status === undefined || error.status === status)
+  );
+}
+
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | null;
   json?: unknown;
+  /** Defaults to five seconds; long-running administrative actions may extend it. */
+  timeoutMs?: number;
 };
-export async function request<T>(
+let overrideReason: string | null = null;
+/**
+ * An administrator's justified override for review actions (FR10). While set, review writes
+ * carry the justification; the server records each use. Clear it when leaving the review.
+ */
+export function setOverrideReason(reason: string | null) {
+  overrideReason = reason;
+}
+
+let beforeRequest: (() => Promise<void>) | null = null;
+/** Registers work to finish before every API call; development mock mode uses it. */
+export function setBeforeRequest(hook: () => Promise<void>) {
+  beforeRequest = hook;
+}
+export async function awaitBeforeRequest() {
+  await beforeRequest?.();
+}
+
+/** Sends a request and returns the response once it is known to be successful. */
+async function send(
   path: `/api/${string}`,
-  schema: z.ZodType<T>,
-  options: RequestOptions = {},
-): Promise<T> {
-  const { json, ...init } = options;
+  options: RequestOptions,
+): Promise<Response> {
+  const { json, timeoutMs = 5000, ...init } = options;
   if (json !== undefined && init.body != null)
     throw new Error('Choose json or body, not both.');
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+  if (
+    overrideReason &&
+    path.startsWith('/api/reviews/') &&
+    (init.method ?? 'GET') !== 'GET'
+  )
+    headers.set('X-Override-Reason', overrideReason);
   if (json !== undefined) headers.set('Content-Type', 'application/json');
-  const response = await fetch(path, {
-    ...init,
-    headers,
-    body: json === undefined ? init.body : JSON.stringify(json),
-    signal: init.signal
-      ? AbortSignal.any([init.signal, AbortSignal.timeout(5000)])
-      : AbortSignal.timeout(5000),
-  });
+  await awaitBeforeRequest();
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers,
+      body: json === undefined ? init.body : JSON.stringify(json),
+      signal: init.signal
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+        : AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    // A caller's own cancellation is not an error to report.
+    if (init.signal?.aborted) throw error;
+    throw new NetworkError(
+      error instanceof DOMException && error.name === 'TimeoutError'
+        ? 'The service took too long to respond. Your entries are kept; please try again.'
+        : 'The connection was interrupted. Your entries are kept; check your network and try again.',
+    );
+  }
   const requestId = response.headers.get('X-Request-ID') ?? undefined;
   if (!response.ok) {
     const parsed = apiErrorSchema.safeParse(
@@ -47,9 +102,20 @@ export async function request<T>(
         ? parsed.data.message
         : 'The service is unavailable. Please try again.',
       parsed.success ? parsed.data.fieldErrors : {},
-      requestId,
+      requestId ?? (parsed.success ? parsed.data.requestId : undefined),
+      parsed.success ? parsed.data.code : undefined,
     );
   }
+  return response;
+}
+
+export async function request<T>(
+  path: `/api/${string}`,
+  schema: z.ZodType<T>,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await send(path, options);
+  const requestId = response.headers.get('X-Request-ID') ?? undefined;
   const text = await response.text();
   let value: unknown;
   try {
@@ -72,6 +138,17 @@ export async function request<T>(
     );
   return parsed.data;
 }
+/** Fetches a file (such as evidence) with the same session, timeout and error handling. */
+export async function requestFile(
+  path: `/api/${string}`,
+  options: RequestOptions = {},
+): Promise<Blob> {
+  const headers = new Headers(options.headers);
+  if (!headers.has('Accept')) headers.set('Accept', '*/*');
+  const response = await send(path, { timeoutMs: 30_000, ...options, headers });
+  return response.blob();
+}
+
 export const healthQuery = queryOptions({
   queryKey: ['system', 'readiness'],
   queryFn: ({ signal }) =>

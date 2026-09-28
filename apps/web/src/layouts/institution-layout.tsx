@@ -1,0 +1,163 @@
+import { useQuery } from '@tanstack/react-query';
+import { InboxLink } from '@/components/inbox-link';
+import { Link, Outlet } from '@tanstack/react-router';
+import {
+  Award,
+  FolderOpen,
+  History,
+  House,
+  ListChecks,
+  MessageCircleQuestion,
+} from 'lucide-react';
+import { AccountMenu } from '@/components/account-menu';
+import { Brand } from '@/components/brand';
+import { SimulationBanner } from '@/components/simulation-banner';
+import { institutionQuery } from '@/features/directory/queries';
+import { useSession } from '@/features/session/use-session';
+import { SkipLink, useMeasuredHeight, type NavItem } from './shared';
+
+// `short` labels fit six items in the phone bottom bar; the full label stays the accessible name.
+const nav = [
+  {
+    to: '/institution',
+    label: 'Home',
+    short: 'Home',
+    icon: House,
+    exact: true,
+  },
+  {
+    to: '/institution/plan',
+    label: 'Plan',
+    short: 'Plan',
+    icon: ListChecks,
+    exact: false,
+  },
+  {
+    to: '/institution/foundations',
+    label: 'Foundations',
+    short: 'Docs',
+    icon: FolderOpen,
+    exact: false,
+  },
+  {
+    to: '/institution/clarifications',
+    label: 'Clarifications',
+    short: 'Questions',
+    icon: MessageCircleQuestion,
+    exact: false,
+  },
+  {
+    to: '/institution/receipts',
+    label: 'Receipts',
+    short: 'Receipts',
+    icon: History,
+    exact: false,
+  },
+  {
+    to: '/institution/results',
+    label: 'Results',
+    short: 'Results',
+    icon: Award,
+    exact: false,
+  },
+] as const satisfies readonly (NavItem & { short: string })[];
+
+/**
+ * Task layout for institution focal persons: one institution, one column, optimised for
+ * form entry on laptops and phones. Bottom navigation replaces the tab bar on small screens.
+ */
+export function InstitutionLayout() {
+  const session = useSession();
+  const institutionId = session.user.institutionId ?? '';
+  const institution = useQuery(institutionQuery(institutionId));
+  const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
+  const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
+  return (
+    <div className="min-h-svh bg-background pb-20 md:pb-0">
+      <SkipLink />
+      <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
+        <SimulationBanner session={session} />
+      </div>
+      <header
+        ref={headerRef}
+        data-sticky
+        className="sticky top-(--banner-h) z-30 border-b bg-card"
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-3 sm:px-6">
+          <Link
+            to="/institution"
+            activeOptions={{ exact: true }}
+            aria-label="Institution home"
+          >
+            <Brand />
+          </Link>
+          <div className="flex items-center gap-1">
+            <InboxLink to="/institution/inbox" />
+            <AccountMenu session={session} />
+          </div>
+        </div>
+        <p className="mx-auto max-w-5xl px-4 pt-2 pb-1 sm:px-6">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Reporting for
+          </span>{' '}
+          <span className="font-semibold">
+            {institution.data?.name ?? institutionId}
+          </span>{' '}
+          <span className="text-sm text-muted-foreground">
+            ({institutionId})
+          </span>
+        </p>
+        <nav
+          aria-label="Institution"
+          className="mx-auto hidden max-w-5xl px-4 sm:px-6 md:block"
+        >
+          <ul className="flex gap-1">
+            {nav.map(({ to, label, exact }) => (
+              <li key={to}>
+                <Link
+                  to={to}
+                  activeOptions={{ exact }}
+                  className="inline-block border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground data-[status=active]:border-primary data-[status=active]:text-foreground"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
+      <main
+        id="main"
+        tabIndex={-1}
+        className="outline-none mx-auto max-w-5xl px-4 py-6 sm:px-6"
+      >
+        <Outlet />
+      </main>
+      <nav
+        aria-label="Institution"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card md:hidden"
+      >
+        <ul
+          className="mx-auto grid max-w-md"
+          style={{
+            gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))`,
+          }}
+        >
+          {nav.map(({ to, label, short, icon: Icon, exact }) => (
+            <li key={to}>
+              <Link
+                aria-label={label}
+                to={to}
+                activeOptions={{ exact }}
+                className="flex flex-col items-center gap-0.5 py-2 text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-primary"
+              >
+                <Icon className="size-5" aria-hidden="true" />
+                {short}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  );
+}

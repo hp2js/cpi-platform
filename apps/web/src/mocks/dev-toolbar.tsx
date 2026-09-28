@@ -1,0 +1,165 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { FlaskConical, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { AppRouter } from '@/app/router';
+import { Button } from '@/components/ui/button';
+import { awaitBeforeRequest } from '@/lib/api';
+import {
+  getLatencyMode,
+  setLatencyMode,
+  type LatencyMode,
+} from './services/latency';
+import { SelectField } from '@/components/select-field';
+
+/**
+ * Development-only controls for the mock API, used to exercise loading, expired-session
+ * and fresh-start paths. Never rendered in production builds.
+ */
+/** Like fetch, but first makes sure the mock worker still handles this page. */
+async function mockFetch(input: string, init?: RequestInit) {
+  await awaitBeforeRequest();
+  return fetch(input, init);
+}
+
+export function DevToolbar({ router }: { router: AppRouter }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [latency, setLatency] = useState<LatencyMode>(getLatencyMode);
+  const [busy, setBusy] = useState(false);
+
+  // The panel is a quick control, not a page: close it on navigation and on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const unsubscribe = router.subscribe('onResolved', () => setOpen(false));
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, router]);
+
+  async function post(path: string) {
+    setBusy(true);
+    try {
+      await mockFetch(path, { method: 'POST' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const [emailFailing, setEmailFailing] = useState(false);
+  useEffect(() => {
+    void mockFetch('/api/__mock/email-failure')
+      .then((response) => response.json() as Promise<{ enabled: boolean }>)
+      .then((body) => setEmailFailing(body.enabled))
+      .catch(() => undefined);
+  }, []);
+  async function toggleEmailFailure(enabled: boolean) {
+    setEmailFailing(enabled);
+    await mockFetch('/api/__mock/email-failure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+  }
+  async function expireSession() {
+    await post('/api/__mock/expire-session');
+    await queryClient.invalidateQueries();
+  }
+  async function resetData() {
+    if (!window.confirm('Reset all demo data to the seeded starting point?'))
+      return;
+    await post('/api/__mock/reset');
+    queryClient.clear();
+    await router.navigate({ to: '/sign-in', search: { redirect: undefined } });
+  }
+
+  if (!open) {
+    return (
+      <Button
+        data-print-hide
+        type="button"
+        variant="outline"
+        size="sm"
+        className="fixed right-3 bottom-24 z-50 shadow-md md:bottom-3"
+        onClick={() => setOpen(true)}
+      >
+        <FlaskConical aria-hidden="true" />
+        Mock API
+      </Button>
+    );
+  }
+  return (
+    <section
+      data-print-hide
+      aria-label="Mock API controls"
+      className="fixed right-3 bottom-24 z-50 w-72 rounded-lg border bg-card p-4 text-sm shadow-lg md:bottom-3"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold">Mock API controls</h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setOpen(false)}
+        >
+          <X aria-hidden="true" />
+          <span className="sr-only">Close mock API controls</span>
+        </Button>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Development only. Data is fictional and stored in this browser.
+      </p>
+      <div className="mt-3 grid gap-1">
+        <label htmlFor="dev-latency" className="font-medium">
+          Network latency
+        </label>
+        <SelectField
+          id="dev-latency"
+          value={latency}
+          onChange={(value) => {
+            const mode = value as LatencyMode;
+            setLatency(mode);
+            setLatencyMode(mode);
+          }}
+          options={[
+            { value: 'off', label: 'Off' },
+            { value: 'realistic', label: 'Realistic (0.1–0.4 s)' },
+            { value: 'slow', label: 'Slow (1.5–2.5 s)' },
+          ]}
+        />
+      </div>
+      <label className="mt-3 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={emailFailing}
+          onChange={(event) => void toggleEmailFailure(event.target.checked)}
+        />
+        <span>Demo email sink rejects messages</span>
+      </label>
+      <div className="mt-3 grid gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => void expireSession()}
+        >
+          Expire my session
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => void resetData()}
+        >
+          Reset demo data
+        </Button>
+      </div>
+    </section>
+  );
+}

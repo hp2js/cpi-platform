@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { request } from './api';
 import { z } from 'zod';
-import { parseSearch } from './search';
 afterEach(() => vi.unstubAllGlobals());
 describe('API errors', () => {
   it('preserves field validation errors for the form layer', async () => {
@@ -33,14 +32,6 @@ describe('API errors', () => {
     });
   });
 });
-it('normalizes invalid URL state', () => {
-  expect(parseSearch({ q: 10, sort: 'arbitrary', desc: 'false' })).toEqual({
-    q: '',
-    sort: 'name',
-    desc: false,
-  });
-});
-
 it('rejects malformed successful responses', async () => {
   vi.stubGlobal(
     'fetch',
