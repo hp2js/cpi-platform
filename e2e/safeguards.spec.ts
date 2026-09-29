@@ -276,17 +276,27 @@ test('an inflated baseline cannot be approved without the checks and can be retu
       /12 milestones, of which 2 committee obligations \(17% of the denominator\)/,
     ),
   ).toBeVisible();
-  await expect(q2.getByText(/This proposal is large/)).toBeVisible();
+  await expect(q2.getByText(/A-99 has 8 milestones/)).toBeVisible();
   await expect(
     q2.getByRole('button', { name: 'Approve and activate' }),
   ).toBeDisabled();
   await q2
-    .getByLabel('Or return it to the institution with feedback')
+    .getByLabel('Feedback for the institution')
     .fill(
       'Eight administrative tasks artificially split the plan and dilute the committee obligations.',
     );
-  await q2.getByRole('button', { name: 'Return for revision' }).click();
+  const giveBack = q2.getByRole('button', { name: 'Return for revision' });
+  await expect(giveBack).toBeDisabled();
+  await q2
+    .getByLabel('Milestones are duplicated, trivial or artificially split')
+    .check();
+  await giveBack.click();
   await expect(q2.getByText('Returned for revision').first()).toBeVisible();
+  await expect(
+    q2.getByRole('listitem').filter({
+      hasText: 'Milestones are duplicated, trivial or artificially split',
+    }),
+  ).toBeVisible();
 });
 
 test('failed email is visible to the administrator and succeeds on retry (AT12)', async ({

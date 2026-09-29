@@ -9,3 +9,6 @@ test-results/
 
 # Exported from the source Google Doc; keep byte-for-byte.
 docs/HP2JS — Adili-V3-Track-2-PRD.md
+
+# Written by release-it on each release; reformatting it would fight the generator.
+CHANGELOG.md

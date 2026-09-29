@@ -468,6 +468,10 @@ export const settingsHandlers = [
       changes.push(
         `Officer review target ${before.reviewTargetDays} → ${counting.reviewTargetDays} days`,
       );
+    if (before.proposalLeadDays !== counting.proposalLeadDays)
+      changes.push(
+        `Baseline proposals due ${before.proposalLeadDays} → ${counting.proposalLeadDays} days before each quarter`,
+      );
     if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
       changes.push(
         `Public holidays updated (${counting.holidays.length} listed)`,

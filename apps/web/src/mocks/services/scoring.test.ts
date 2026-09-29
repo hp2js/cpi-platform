@@ -8,6 +8,7 @@ const milestone = (code: string): Milestone => ({
   title: code,
   activity: '',
   risk: '',
+  activityId: null,
   completionCondition: '',
   evidenceExpectation: '',
   weight: 1,

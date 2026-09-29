@@ -12,6 +12,8 @@ export const milestoneSchema = z.object({
   title: z.string(),
   activity: z.string(),
   risk: z.string(),
+  /** The plan activity this milestone came from; null for the committee meetings. */
+  activityId: z.string().nullable(),
   completionCondition: z.string(),
   evidenceExpectation: z.string(),
   weight: z.number().int().positive(),

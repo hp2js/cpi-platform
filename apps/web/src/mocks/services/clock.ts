@@ -11,6 +11,7 @@ import {
   usersWithRole,
 } from './events';
 import { isReviewOverdue, reviewDueAt } from './obligations';
+import { startedWithoutBaseline } from './plans';
 import { assignedInstitutionIds, supervisedInstitutionIds } from './scope';
 
 /**
@@ -191,6 +192,8 @@ function sendOversightDigests(db: MockDb, key: string) {
     const unreachable = scope.filter(
       (institutionId) => activeFocalPersons(db, institutionId).length === 0,
     );
+    // A quarter under way without an approved baseline has nothing to report against.
+    const noBaseline = startedWithoutBaseline(db, scope);
     const lines = [
       missing.length &&
         `${plural(missing.length, 'report', 'reports')} missing after the deadline`,
@@ -202,6 +205,11 @@ function sendOversightDigests(db: MockDb, key: string) {
         `${plural(extensions.size, 'institution needs', 'institutions need')} an extension decision`,
       unreachable.length &&
         `${plural(unreachable.length, 'institution has', 'institutions have')} no active focal person (${unreachable.slice(0, 3).join(', ')}${unreachable.length > 3 ? ', …' : ''})`,
+      noBaseline.length &&
+        `${plural(noBaseline.length, 'quarter has', 'quarters have')} started without an approved baseline (${noBaseline
+          .slice(0, 3)
+          .map((item) => `${item.institutionId} ${item.period.label}`)
+          .join(', ')}${noBaseline.length > 3 ? ', …' : ''})`,
     ].filter(Boolean) as string[];
     if (!lines.length) continue;
     notify(
@@ -251,7 +259,7 @@ function sendOfficerDigests(db: MockDb, key: string) {
       const period = db.cycle.periods.find(
         (candidate) => candidate.id === baseline.periodId,
       )!;
-      return baseline.status !== 'approved' && period.startsOn <= soon;
+      return baseline.status === 'proposed' && period.startsOn <= soon;
     });
     const toConfirm = [...latest.values()].filter(
       (baseline) =>

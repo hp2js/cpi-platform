@@ -34,6 +34,8 @@ export const dayCountingSchema = z.object({
    * is flagged `review_overdue` for supervisors. A target, never a gate (PRD §7.3).
    */
   reviewTargetDays: z.number().int().min(1).max(60),
+  /** Institutions propose each quarter's baseline this many counted days before it starts. */
+  proposalLeadDays: z.number().int().min(1).max(60),
   holidays: z.array(holidaySchema).max(60),
 });
 export type DayCounting = z.infer<typeof dayCountingSchema>;

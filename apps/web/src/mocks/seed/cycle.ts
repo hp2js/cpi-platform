@@ -50,6 +50,8 @@ export const cycle: Cycle = {
     clarificationDays: 7,
     // No PRD figure: ten days from receipt to a final decision, adjustable by the administrator.
     reviewTargetDays: 10,
+    // No PRD figure: two weeks gives the officer time to approve before the quarter opens.
+    proposalLeadDays: 14,
     holidays: [
       { date: '2026-10-20', name: 'Mashujaa Day' },
       { date: '2026-12-12', name: 'Jamhuri Day' },

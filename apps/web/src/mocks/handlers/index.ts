@@ -8,6 +8,7 @@ import { faultHandlers } from './faults';
 import { formHandlers } from './forms';
 import { foundationHandlers } from './foundations';
 import { planningHandlers } from './planning';
+import { planEditorHandlers } from './plan-editor';
 import { reportingHandlers } from './reporting';
 import { reviewHandlers } from './review';
 import { accountHandlers } from './account';
@@ -26,6 +27,7 @@ export const handlers = [
   ...reportingHandlers,
   ...reviewHandlers,
   ...planningHandlers,
+  ...planEditorHandlers,
   ...foundationHandlers,
   ...eventHandlers,
   ...annualHandlers,

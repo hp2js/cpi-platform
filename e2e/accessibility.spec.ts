@@ -144,6 +144,8 @@ test('mid-year screens for every role', async ({ page }) => {
   }
   await page.getByRole('tab', { name: 'Foundations' }).click();
   await scan(page, 'officer foundations tab');
+  await page.getByRole('tab', { name: 'Plan' }).click();
+  await scan(page, 'officer plan tab');
   for (const [path, name] of [
     ['/admin', 'admin console'],
     ['/admin/forms', 'admin forms'],
@@ -227,4 +229,42 @@ test('configuration dialogs and searchable selects', async ({ page }) => {
   await visit(page, 'administrator', '/admin/calendar');
   await page.getByRole('radio', { name: 'Working days' }).click();
   await scan(page, 'calendar with working days');
+});
+
+test('plan editing dialogs', async ({ page }) => {
+  await openApp(page);
+  await visit(page, 'focal-demo-004', '/institution/plan');
+  await page
+    .getByRole('region', { name: 'Plan approval' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await settled(page.getByRole('dialog'));
+  await scan(page, 'plan approval dialog');
+  await page.keyboard.press('Escape');
+  for (const [button, name] of [
+    ['Add risk', 'add risk dialog'],
+    ['Add activity', 'add activity dialog'],
+    ['Add Q3 milestone', 'add milestone dialog'],
+  ] as const) {
+    await page.getByRole('button', { name: button }).click();
+    const dialog = page.getByRole('dialog');
+    await settled(dialog);
+    await dialog.getByRole('button', { name: /^Add/ }).click();
+    await expect(dialog.getByText('Some values need attention.')).toBeVisible();
+    await scan(page, `${name} with errors`);
+    await page.keyboard.press('Escape');
+  }
+  await page.getByRole('button', { name: 'Import from CSV' }).click();
+  await page
+    .getByRole('dialog')
+    .getByLabel('CSV file')
+    .setInputFiles({
+      name: 'plan.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        'record,code,link,title\nrisk,R-09,,Unscored risk\nactivity,A-09,R-77,Unlinked activity\n',
+      ),
+    });
+  await expect(page.getByText(/rows need attention/)).toBeVisible();
+  await scan(page, 'plan import preview dialog');
 });

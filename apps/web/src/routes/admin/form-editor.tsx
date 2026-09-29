@@ -114,6 +114,7 @@ const previewMilestones: Milestone[] = [
     title: 'Example planned milestone',
     activity: 'A-01 Example activity from the approved plan',
     risk: 'R-01 Example risk',
+    activityId: null,
     completionCondition: 'Each institution sees its own locked baseline here.',
     evidenceExpectation: 'Minutes or progress report passage.',
     weight: 1,

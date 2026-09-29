@@ -10,6 +10,8 @@ import {
   obligationsQuery,
 } from '@/features/directory/queries';
 import { foundationsQuery } from '@/features/foundations/queries';
+import { proposalsNeedingAttention } from '@/features/planning/labels';
+import { planQuery } from '@/features/planning/queries';
 import { useSession } from '@/features/session/use-session';
 import { SkipLink, useMeasuredHeight, type NavItem } from './shared';
 
@@ -51,9 +53,13 @@ function useAttention(institutionId: string) {
             !indicator.versions.some((version) => version.status === 'active'),
         ).length
       : 0;
+  const plan = useQuery(planQuery(institutionId));
+  const proposals = plan.data
+    ? proposalsNeedingAttention(plan.data, session.clock.businessTime)
+    : 0;
   return {
     '/institution/reports': reports,
-    '/institution/plan': documents,
+    '/institution/plan': documents + proposals,
   } as Partial<Record<(typeof nav)[number]['to'], number>>;
 }
 

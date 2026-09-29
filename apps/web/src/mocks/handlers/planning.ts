@@ -5,8 +5,10 @@ import {
   approveBaselineRequestSchema,
   confirmSeedRequestSchema,
   returnBaselineRequestSchema,
+  type Activity,
   type Baseline,
   type Plan,
+  type PlannedMilestone,
 } from '@cpi/contracts';
 import { commit, getDb, nextId } from '../db';
 import type { MockBaseline } from '../seed/baselines';
@@ -19,22 +21,17 @@ import {
 } from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
-import { toObligation } from '../services/obligations';
+import { periodLocked, proposalsFor } from '../services/plans';
 import { baselineOf, periodOf } from '../services/reporting';
 import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
 import { requireRole, requireUser } from '../services/session';
 
 /** A baseline locks once reporting opens on its period or any work has started (PRD §10.4). */
 function locked(baseline: MockBaseline) {
-  const obligation = getDb().obligations.find(
-    (candidate) =>
-      candidate.institutionId === baseline.institutionId &&
-      candidate.periodId === baseline.periodId,
-  );
-  return (
-    !obligation ||
-    obligation.state !== 'not_started' ||
-    !toObligation(obligation).flags.includes('not_yet_due')
+  return periodLocked(
+    getDb(),
+    baseline.institutionId,
+    periodOf(baseline.periodId),
   );
 }
 
@@ -46,16 +43,40 @@ function toBaseline(baseline: MockBaseline): Baseline {
   };
 }
 
-function planFor(institutionId: string): Plan {
+const MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+const longDate = (date: string) => {
+  const [year, month, day] = date.split('-').map(Number);
+  return `${day} ${MONTHS[month! - 1]} ${year}`;
+};
+
+export function planFor(user: MockUser, institutionId: string): Plan {
   const db = getDb();
+  const mine = <T extends { institutionId: string }>(item: T) =>
+    item.institutionId === institutionId;
+  const record = db.planApprovals.find(mine);
+  const approval = record
+    ? {
+        approvingBody: record.approvingBody,
+        approvedOn: record.approvedOn,
+        reference: record.reference,
+        accountingOfficer: record.accountingOfficer,
+        documentVersionId: record.documentVersionId,
+        recordedBy: record.recordedBy,
+        recordedAt: record.recordedAt,
+      }
+    : null;
   return {
     institutionId,
     institutionName:
       db.institutions.find((institution) => institution.id === institutionId)
         ?.name ?? institutionId,
-    approvedPlanReference: db.planReference,
+    approvedPlanReference: approval
+      ? `${approval.reference}, approved by the ${approval.approvingBody} on ${longDate(approval.approvedOn)}`
+      : 'No plan approval recorded yet',
+    approval,
     risks: db.risks
-      .filter((risk) => risk.institutionId === institutionId)
+      .filter(mine)
+      .sort((a, b) => a.code.localeCompare(b.code))
       .map((risk) => ({
         id: risk.id,
         code: risk.code,
@@ -65,15 +86,46 @@ function planFor(institutionId: string): Plan {
         impact: risk.impact,
         severity: risk.probability * risk.impact,
       })),
+    activities: db.activities
+      .filter(mine)
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .map((activity): Activity => ({
+        id: activity.id,
+        code: activity.code,
+        riskId: activity.riskId,
+        title: activity.title,
+        strategy: activity.strategy,
+        output: activity.output,
+        kpi: activity.kpi,
+        target: activity.target,
+        owner: activity.owner,
+        resourceReference: activity.resourceReference,
+      })),
+    plannedMilestones: db.plannedMilestones
+      .filter(mine)
+      .sort(
+        (a, b) =>
+          a.periodId.localeCompare(b.periodId) || a.code.localeCompare(b.code),
+      )
+      .map((milestone): PlannedMilestone => ({
+        id: milestone.id,
+        code: milestone.code,
+        activityId: milestone.activityId,
+        periodId: milestone.periodId,
+        title: milestone.title,
+        completionCondition: milestone.completionCondition,
+        evidenceExpectation: milestone.evidenceExpectation,
+      })),
+    proposals: proposalsFor(db, institutionId),
     baselines: db.baselines
-      .filter((baseline) => baseline.institutionId === institutionId)
+      .filter(mine)
       .sort(
         (a, b) => a.periodId.localeCompare(b.periodId) || a.version - b.version,
       )
       .map(toBaseline),
-    amendments: db.amendments.filter(
-      (amendment) => amendment.institutionId === institutionId,
-    ),
+    amendments: db.amendments.filter(mine),
+    editable:
+      user.role === 'institution' && user.institutionId === institutionId,
   };
 }
 
@@ -125,7 +177,7 @@ export const planningHandlers = [
     await networkDelay();
     const user = requireUser();
     return HttpResponse.json(
-      planFor(readableInstitution(user, params.institutionId)),
+      planFor(user, readableInstitution(user, params.institutionId)),
     );
   }),
 
@@ -211,13 +263,22 @@ export const planningHandlers = [
       const parsed = returnBaselineRequestSchema.safeParse(
         await request.json().catch(() => undefined),
       );
-      if (!parsed.success)
+      if (!parsed.success) {
+        const fields = parsed.error.issues.map((issue) => issue.path[0]);
         return apiError(
           422,
-          'Give a reason of at least 10 characters.',
+          'Say which checks are not met and give a reason of at least 10 characters.',
           'reason_required',
-          { reason: 'Give a reason of at least 10 characters.' },
+          {
+            ...(fields.includes('reason')
+              ? { reason: 'Give a reason of at least 10 characters.' }
+              : {}),
+            ...(fields.includes('failedChecks')
+              ? { failedChecks: 'Choose at least one check that is not met.' }
+              : {}),
+          },
         );
+      }
       requireLatest(baseline, parsed.data.version);
       if (baseline.status !== 'proposed')
         return apiError(
@@ -231,6 +292,7 @@ export const planningHandlers = [
           by: user.displayName,
           at: db.businessTime,
           reason: parsed.data.reason.trim(),
+          failedChecks: parsed.data.failedChecks,
         };
         audit(
           db,
@@ -246,7 +308,7 @@ export const planningHandlers = [
           institutionUsers(baseline.institutionId),
           {
             title: `${periodOf(baseline.periodId).label} baseline returned for revision`,
-            body: 'Your officer returned the proposed baseline with feedback.',
+            body: `Your officer returned the proposed baseline: ${parsed.data.reason.trim()}`,
             link: '/institution/plan',
           },
         );
@@ -325,6 +387,13 @@ export const planningHandlers = [
           409,
           'Reporting has opened for this period, so its baseline can no longer change.',
           'baseline_locked',
+        );
+      // Until approval, the institution changes its plan and proposes again instead.
+      if (baseline.status !== 'approved')
+        return apiError(
+          409,
+          'This baseline is not approved yet. Change the planned milestones and propose it again.',
+          'baseline_not_approved',
         );
       if (milestone.mandatory)
         return apiError(
@@ -490,6 +559,16 @@ export const planningHandlers = [
               nextVersion(target, [...target.milestones, moved]),
             );
           }
+          // The plan follows the confirmed change, so a later proposal does not undo it.
+          const planned = db.plannedMilestones.find(
+            (milestone) => milestone.id === moved.id,
+          );
+          if (planned && amendment.change === 'reschedule')
+            planned.periodId = amendment.toPeriodId!;
+          if (planned && amendment.change === 'remove')
+            db.plannedMilestones = db.plannedMilestones.filter(
+              (milestone) => milestone !== planned,
+            );
         }
         audit(
           db,
@@ -510,89 +589,7 @@ export const planningHandlers = [
           },
         );
       });
-      return HttpResponse.json(planFor(amendment.institutionId));
-    },
-  ),
-
-  /** A returned proposal is revised by keeping a subset of its milestones; a new version is proposed. */
-  http.post(
-    '/api/baselines/:baselineId/revise',
-    async ({ params, request }) => {
-      await networkDelay();
-      const user = requireRole('institution');
-      const baseline = getDb().baselines.find(
-        (candidate) => candidate.id === params.baselineId,
-      );
-      if (!baseline || baseline.institutionId !== user.institutionId)
-        return notFound();
-      const body = (await request.json().catch(() => undefined)) as
-        { version?: number; milestoneIds?: string[] } | undefined;
-      if (!body?.version || !Array.isArray(body.milestoneIds))
-        return apiError(
-          422,
-          'Choose the milestones to keep.',
-          'invalid_request',
-        );
-      requireLatest(baseline, body.version);
-      if (baseline.status !== 'returned')
-        return apiError(
-          409,
-          'Only a returned proposal can be revised.',
-          'not_returned',
-        );
-      if (locked(baseline))
-        return apiError(
-          409,
-          'Reporting has opened for this period.',
-          'baseline_locked',
-        );
-      const keep = baseline.milestones.filter((milestone) =>
-        body.milestoneIds!.includes(milestone.id),
-      );
-      if (
-        baseline.milestones.some(
-          (milestone) => milestone.mandatory && !keep.includes(milestone),
-        )
-      ) {
-        return apiError(
-          422,
-          'Committee meeting obligations must stay in the baseline.',
-          'mandatory_milestone',
-        );
-      }
-      if (keep.length === 0)
-        return apiError(422, 'Keep at least one milestone.', 'empty_baseline');
-      const revised: MockBaseline = {
-        ...structuredClone(baseline),
-        id: `bl-${baseline.institutionId}-${periodOf(baseline.periodId).label}-v${baseline.version + 1}`,
-        version: baseline.version + 1,
-        status: 'proposed',
-        milestones: keep,
-        returned: null,
-        approval: null,
-      };
-      commit((db) => {
-        db.baselines.push(revised);
-        audit(
-          db,
-          user,
-          'baseline.revise',
-          { type: 'baseline', id: revised.id, version: revised.version },
-          `${keep.length} milestones proposed`,
-        );
-        notify(
-          db,
-          `${revised.id}:proposed`,
-          'baseline.proposed',
-          assignedOfficers(baseline.institutionId),
-          {
-            title: `Revised baseline proposed: ${baseline.institutionId} ${periodOf(baseline.periodId).label}`,
-            body: `${keep.length} milestones are proposed for approval.`,
-            link: `/officer/institutions/${baseline.institutionId}`,
-          },
-        );
-      });
-      return HttpResponse.json(toBaseline(revised), { status: 201 });
+      return HttpResponse.json(planFor(user, amendment.institutionId));
     },
   ),
 ];
