@@ -16,21 +16,18 @@ export function VersionList({ indicator }: { indicator: FoundationIndicator }) {
       {indicator.versions.map((version) => (
         <li
           key={version.id}
-          className="grid gap-1 rounded-md border bg-background p-3 text-sm"
+          className="grid gap-1 rounded-md border bg-white p-3 text-sm"
         >
           <p className="flex flex-wrap items-center gap-x-2">
-            <FileText
-              className="size-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <span className="font-medium">
+            <FileText className="size-4 text-base-dark" aria-hidden="true" />
+            <span className="font-bold">
               Version {version.version}: {version.evidence.fileName}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+            <span className="rounded-full bg-base-lightest px-2 py-1 text-xs font-bold">
               {statusLabel[version.status]}
             </span>
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             Effective {formatCalendarDate(version.effectiveFrom)}
             {version.effectiveTo
               ? ` to ${formatCalendarDate(version.effectiveTo)}`
@@ -39,7 +36,7 @@ export function VersionList({ indicator }: { indicator: FoundationIndicator }) {
             {formatDateTime(version.recordedAt)} ·{' '}
             {formatBytes(version.evidence.sizeBytes)}
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             Claims:{' '}
             {indicator.checks
               .filter((_, index) => version.claimedChecks[index])

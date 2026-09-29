@@ -179,7 +179,7 @@ function ProfileEditor({
         {profile.simulation && (
           <Badge variant="secondary">Simulation profile</Badge>
         )}
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-base-dark">
           {profile.formulaVersion} · half-up rounding to 2 decimal places
           {profile.approvedAt &&
             ` · approved ${formatDateTime(profile.approvedAt)} by ${profile.approvedBy}`}
@@ -232,7 +232,7 @@ function ProfileEditor({
           save.mutate();
         }}
       >
-        <fieldset className="grid max-w-xl gap-1.5" disabled={!editable}>
+        <fieldset className="grid max-w-tablet gap-2" disabled={!editable}>
           <Label htmlFor="profile-name">Name</Label>
           <Input
             id="profile-name"
@@ -243,22 +243,22 @@ function ProfileEditor({
             aria-invalid={issueFor('name') ? true : undefined}
           />
           {issueFor('name') && (
-            <p className="text-sm text-destructive">{issueFor('name')}</p>
+            <p className="text-sm text-error-dark">{issueFor('name')}</p>
           )}
         </fieldset>
 
         <fieldset
-          className="grid gap-4 rounded-lg border bg-card p-5"
+          className="grid gap-4 rounded-lg border bg-white p-5"
           disabled={!editable}
         >
-          <legend className="px-1 font-semibold">Indicator weights</legend>
-          <p className="text-sm text-muted-foreground">
+          <legend className="px-1 font-bold">Indicator weights</legend>
+          <p className="text-sm text-base-dark">
             Points out of 100 for each indicator (PRD §10.5). Foundations count
             once a year; implementation averages the four quarters.
           </p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 tablet:grid-cols-4">
             {weightFields.map(([key, label]) => (
-              <div key={key} className="grid gap-1.5">
+              <div key={key} className="grid gap-2">
                 <Label htmlFor={`weight-${key}`}>{label}</Label>
                 <Input
                   id={`weight-${key}`}
@@ -286,7 +286,7 @@ function ProfileEditor({
           </div>
           <p
             className={
-              total === 100 ? 'text-sm' : 'text-sm font-medium text-destructive'
+              total === 100 ? 'text-sm' : 'text-sm font-bold text-error-dark'
             }
             aria-live="polite"
           >
@@ -296,14 +296,14 @@ function ProfileEditor({
           {(issueFor('weights') ??
             issueFor('weights.procedures') ??
             issueFor('weights.implementation')) && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-error-dark">
               {issueFor('weights') ??
                 issueFor('weights.procedures') ??
                 issueFor('weights.implementation')}
             </p>
           )}
           <div className="grid gap-2">
-            <p className="text-sm font-medium" id="procedures-mode">
+            <p className="text-sm font-bold" id="procedures-mode">
               How procedures count
             </p>
             <RadioGroup
@@ -338,24 +338,24 @@ function ProfileEditor({
         </fieldset>
 
         <fieldset
-          className="grid gap-4 rounded-lg border bg-card p-5"
+          className="grid gap-4 rounded-lg border bg-white p-5"
           disabled={!editable}
         >
-          <legend className="px-1 font-semibold">Foundation checklists</legend>
-          <p className="text-sm text-muted-foreground">
+          <legend className="px-1 font-bold">Foundation checklists</legend>
+          <p className="text-sm text-base-dark">
             Each foundation has four equally weighted checks (PRD §10.3).
             Officers review against these, and institutions see them when they
             record a document.
           </p>
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 desktop:grid-cols-3">
             {checklistFields.map(([key, label]) => (
               <div key={key} className="grid content-start gap-2">
-                <p className="text-sm font-medium">{label}</p>
+                <p className="text-sm font-bold">{label}</p>
                 {values.checklists[key].map((check, index) => (
                   <div key={index} className="grid gap-1">
                     <Label
                       htmlFor={`check-${key}-${index}`}
-                      className="text-xs font-normal text-muted-foreground"
+                      className="text-xs font-normal text-base-dark"
                     >
                       Check {index + 1}
                     </Label>
@@ -377,7 +377,7 @@ function ProfileEditor({
                   </div>
                 ))}
                 {issueFor(`checklists.${key}`) && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-error-dark">
                     {issueFor(`checklists.${key}`)}
                   </p>
                 )}
@@ -386,7 +386,7 @@ function ProfileEditor({
           </div>
         </fieldset>
 
-        <fieldset className="grid max-w-3xl gap-1.5" disabled={!editable}>
+        <fieldset className="grid max-w-measure gap-2" disabled={!editable}>
           <Label htmlFor="profile-source">Source and status note</Label>
           <Textarea
             id="profile-source"
@@ -395,7 +395,7 @@ function ProfileEditor({
               setValues({ ...values, sourceNote: event.target.value })
             }
           />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Where the weights come from and who has confirmed them. Shown with
             the profile; it never claims official approval.
           </p>
@@ -462,13 +462,13 @@ function ProfileEditor({
           </Button>
         </div>
         {profile.status === 'approved' && !inUse && state.locked && (
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p className="flex items-start gap-2 text-sm text-base-dark">
+            <Lock className="mt-1 size-4 shrink-0" aria-hidden="true" />
             {state.lockedReason}
           </p>
         )}
         {editable && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Save or approve to check the draft. Approval needs weights totalling
             100, four different checks per foundation and a unique name.
           </p>
@@ -505,7 +505,7 @@ export function ProfileDetailPage() {
           profile ? (
             <ProfileEditor key={profile.id} profile={profile} state={state} />
           ) : (
-            <p className="text-muted-foreground">
+            <p className="text-base-dark">
               This profile does not exist.{' '}
               <Link to="/admin/profiles" className="text-primary underline">
                 See all profiles

@@ -19,21 +19,21 @@ function SystemPage({
   action: ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-white">
       <SkipLink />
-      <header className="border-b bg-card px-6 py-4">
+      <header className="border-b bg-white px-6 py-4">
         <Brand />
       </header>
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16"
+        className="outline-none mx-auto flex w-full max-w-mobile-lg flex-1 flex-col justify-center px-6 py-16"
       >
         <div className="text-primary" aria-hidden="true">
           {icon}
         </div>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>
-        <div className="mt-2 text-muted-foreground">{children}</div>
+        <h1 className="mt-4 text-xl font-bold tracking-tight">{title}</h1>
+        <div className="mt-2 text-base-dark">{children}</div>
         <div className="mt-6">{action}</div>
       </main>
     </div>
@@ -123,7 +123,7 @@ export function RouteErrorPage({ error }: ErrorComponentProps) {
         Something went wrong while loading. Reloading usually fixes it.
       </span>
       {import.meta.env.DEV && (
-        <pre className="mt-4 overflow-auto rounded-md bg-muted p-3 text-xs">
+        <pre className="mt-4 overflow-auto rounded-md bg-base-lightest p-3 text-xs">
           {error instanceof Error ? error.message : String(error)}
         </pre>
       )}

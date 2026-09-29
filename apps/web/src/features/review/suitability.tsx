@@ -7,7 +7,7 @@ import {
   type SuitabilityChecks,
 } from '@cpi/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { EvidenceLink } from '@/features/reporting/evidence-link';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import { recordSuitability, reviewKeys } from './queries';
 
 type Outcome = SuitabilityChecks['institution']['outcome'];
@@ -24,6 +25,18 @@ const outcomeLabel: Record<Outcome, string> = {
   deficient: 'Deficient',
   not_applicable: 'Not applicable',
 };
+
+type CheckKey = (typeof suitabilityCheckKeys)[number];
+/** Checks being recorded: nothing is pre-selected, so a file is never passed by default (§11). */
+type DraftChecks = Record<
+  CheckKey,
+  { outcome: Outcome | null; reason: string }
+>;
+
+const unanswered = (): DraftChecks =>
+  Object.fromEntries(
+    suitabilityCheckKeys.map((key) => [key, { outcome: null, reason: '' }]),
+  ) as DraftChecks;
 
 const allPass = (): SuitabilityChecks =>
   Object.fromEntries(
@@ -49,8 +62,13 @@ function FileChecks({
 }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(!record);
-  const [checks, setChecks] = useState<SuitabilityChecks>(
-    () => record?.checks ?? allPass(),
+  const [checks, setChecks] = useState<DraftChecks>(
+    () => record?.checks ?? unanswered(),
+  );
+  const [showMissing, setShowMissing] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  const missing = suitabilityCheckKeys.filter(
+    (key) => checks[key].outcome === null,
   );
   const save = useMutation({
     mutationFn: (next: SuitabilityChecks) =>
@@ -77,11 +95,11 @@ function FileChecks({
   const idBase = `suit-${item.id}`;
 
   return (
-    <li className="grid gap-3 rounded-lg border bg-card p-4">
+    <li className="grid gap-3 rounded-lg border-2 border-base-lighter bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm">
           <EvidenceLink evidenceId={item.id} fileName={item.fileName} />
-          <span className="block text-muted-foreground">
+          <span className="block text-base-dark">
             Cited by {citedBy.join(', ') || 'no milestone'}
           </span>
         </div>
@@ -100,18 +118,18 @@ function FileChecks({
 
       {record && !editing && (
         <div className="grid gap-1 text-sm">
-          <ul className="grid gap-0.5">
+          <ul className="grid gap-1">
             {suitabilityCheckKeys.map((key) => (
               <li key={key}>
                 {suitabilityCheckLabels[key]}:{' '}
-                <span className="font-medium">
+                <span className="font-bold">
                   {outcomeLabel[record.checks[key].outcome]}
                 </span>
                 {record.checks[key].reason && ` · ${record.checks[key].reason}`}
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             Recorded by {record.recordedBy}, {formatDateTime(record.recordedAt)}
           </p>
           {bundle.canDecide && (
@@ -132,9 +150,20 @@ function FileChecks({
       {bundle.canDecide && editing && (
         <form
           className="grid gap-3"
+          ref={form}
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            save.mutate(checks);
+            if (missing.length > 0) {
+              setShowMissing(true);
+              form.current
+                ?.querySelector<HTMLElement>(
+                  `#${idBase}-${missing[0]} [role=radio]`,
+                )
+                ?.focus();
+              return;
+            }
+            save.mutate(checks as SuitabilityChecks);
           }}
         >
           {!record && (
@@ -148,21 +177,39 @@ function FileChecks({
                 All five checks pass
                 <span className="sr-only"> for {item.fileName}</span>
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-base-dark">
                 or record each check below.
               </span>
             </div>
           )}
           {suitabilityCheckKeys.map((key) => {
             const check = checks[key];
+            const unset = showMissing && check.outcome === null;
             return (
-              <fieldset key={key} className="grid gap-1.5">
-                <legend className="text-sm font-medium">
+              <fieldset
+                key={key}
+                id={`${idBase}-${key}`}
+                aria-describedby={unset ? `${idBase}-${key}-error` : undefined}
+                className={cn(
+                  'grid gap-2',
+                  // usa-form-group--error
+                  unset && 'border-l-4 border-error-dark pl-4',
+                )}
+              >
+                <legend className="text-sm font-bold">
                   {suitabilityCheckLabels[key]}
                 </legend>
+                {unset && (
+                  <p
+                    id={`${idBase}-${key}-error`}
+                    className="text-sm font-bold text-error-dark"
+                  >
+                    Choose Pass, Deficient or Not applicable
+                  </p>
+                )}
                 <RadioGroup
-                  className="flex flex-wrap gap-x-4 gap-y-1"
-                  value={check.outcome}
+                  className="flex flex-wrap gap-x-4"
+                  value={check.outcome ?? ''}
                   onValueChange={(value) =>
                     setChecks({
                       ...checks,
@@ -171,7 +218,10 @@ function FileChecks({
                   }
                 >
                   {(Object.keys(outcomeLabel) as Outcome[]).map((outcome) => (
-                    <div key={outcome} className="flex items-center gap-1.5">
+                    <div
+                      key={outcome}
+                      className="flex min-h-touch items-center gap-2"
+                    >
                       <RadioGroupItem
                         id={`${idBase}-${key}-${outcome}`}
                         value={outcome}
@@ -185,7 +235,7 @@ function FileChecks({
                     </div>
                   ))}
                 </RadioGroup>
-                {check.outcome !== 'pass' && (
+                {check.outcome !== null && check.outcome !== 'pass' && (
                   <>
                     <Label
                       htmlFor={`${idBase}-${key}-reason`}
@@ -205,7 +255,7 @@ function FileChecks({
                       }
                     />
                     {errors[`checks.${key}.reason`] && (
-                      <p className="text-sm text-destructive">
+                      <p className="text-sm font-bold text-error-dark">
                         {errors[`checks.${key}.reason`]}
                       </p>
                     )}
@@ -215,7 +265,7 @@ function FileChecks({
             );
           })}
           {save.isError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {save.error.message}
             </p>
           )}
@@ -230,6 +280,7 @@ function FileChecks({
                 variant="ghost"
                 onClick={() => {
                   setChecks(record.checks);
+                  setShowMissing(false);
                   setEditing(false);
                 }}
               >
@@ -252,10 +303,10 @@ export function SuitabilitySection({ bundle }: { bundle: ReviewBundle }) {
   if (!bundle.evidence.length) return null;
   return (
     <section aria-labelledby="suitability-heading" className="grid gap-3">
-      <h2 id="suitability-heading" className="text-lg font-semibold">
+      <h2 id="suitability-heading" className="text-lg font-bold">
         Evidence suitability
       </h2>
-      <p className="max-w-3xl text-sm text-muted-foreground">
+      <p className="max-w-measure text-sm text-base-dark">
         Check each file before relying on it. A file that fails a check stays on
         record but cannot support an accepted claim. A deficiency is an evidence
         finding, not an allegation of fraud.

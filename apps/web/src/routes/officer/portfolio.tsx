@@ -19,7 +19,7 @@ export function PortfolioPage() {
       <QueryView query={oversight} label="portfolio">
         {(data) => (
           <div className="grid gap-8">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               As of {formatDateTime(data.asOf)} · {data.profileName}
               {data.simulation && ' (simulation profile)'}
             </p>

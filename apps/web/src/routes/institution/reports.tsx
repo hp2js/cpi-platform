@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { DeadlineCountdown } from '@/components/deadline-countdown';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
-import { FlagList, WorkflowStateBadge } from '@/components/status';
+import { ObligationStatus } from '@/components/status';
 import { buttonVariants } from '@/components/ui/button';
 import { ClarificationCard } from '@/features/clarifications/clarification-card';
 import { cycleQuery, obligationsQuery } from '@/features/directory/queries';
@@ -83,13 +83,13 @@ function Quarter({
   return (
     <section
       aria-labelledby={`quarter-${period.id}`}
-      className="grid gap-4 rounded-xl border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
-          <h2 id={`quarter-${period.id}`} className="text-lg font-semibold">
+          <h2 id={`quarter-${period.id}`} className="text-lg font-bold">
             {period.label}{' '}
-            <span className="font-normal text-muted-foreground">
+            <span className="font-normal text-base-dark">
               · {formatDateRange(period.startsOn, period.endsOn)}
             </span>
           </h2>
@@ -101,11 +101,9 @@ function Quarter({
             {open && <DeadlineCountdown deadline={period.submissionDeadline} />}
           </p>
           <span className="mt-1 flex flex-wrap items-center gap-2">
-            <WorkflowStateBadge
+            <ObligationStatus
               state={obligation.state}
               audience="institution"
-            />
-            <FlagList
               flags={obligation.flags.filter(
                 (flag) => flag !== 'late' || !obligation.firstSubmittedAt,
               )}
@@ -115,7 +113,7 @@ function Quarter({
             <p className="text-sm">
               First submitted {formatDateTime(obligation.firstSubmittedAt)} ·{' '}
               {late > 0 ? (
-                <span className="font-medium text-destructive">
+                <span className="font-bold text-error-dark">
                   {formatDays(late, obligation.daysLateUnit)} late
                 </span>
               ) : (
@@ -133,7 +131,7 @@ function Quarter({
 
       {clarifications.length > 0 && (
         <div className="grid gap-3">
-          <h3 className="font-semibold">Clarifications</h3>
+          <h3 className="font-bold">Clarifications</h3>
           {clarifications.map((clarification) => (
             <ClarificationCard
               key={clarification.id}
@@ -146,7 +144,7 @@ function Quarter({
 
       {revisions.length > 0 && (
         <div className="grid gap-2">
-          <h3 className="font-semibold">Submitted revisions</h3>
+          <h3 className="font-bold">Submitted revisions</h3>
           <ul className="divide-y rounded-md border text-sm">
             {revisions.map((receipt) => (
               <li
@@ -161,7 +159,7 @@ function Quarter({
                 <Link
                   to="/institution/receipts/$receiptId"
                   params={{ receiptId: receipt.id }}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  className="font-bold text-primary underline-offset-4 hover:underline"
                 >
                   View receipt {receipt.id}
                 </Link>

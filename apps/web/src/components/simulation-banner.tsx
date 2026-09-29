@@ -8,24 +8,29 @@ import { formatDateTime } from '@/lib/dates';
  */
 export function SimulationBanner({ session }: { session: Session }) {
   return (
-    <div className="border-b border-secondary-foreground/15 bg-secondary text-secondary-foreground">
-      <p className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-1.5 text-xs sm:px-6">
-        <span className="inline-flex items-center gap-1.5 font-semibold">
+    <div className="border-b border-ink bg-warning-lighter text-ink">
+      <p className="mx-auto flex max-w-widescreen flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1 text-xs tablet:gap-x-4 tablet:px-6 tablet:py-2">
+        <span className="inline-flex items-center gap-2 font-bold">
           <FlaskConical className="size-3.5" aria-hidden="true" />
           Simulation
         </span>
         <span>
-          Business time:{' '}
+          {/* Phones keep the two facts that matter (simulated time, not official scoring) on
+              about one line, so the pinned chrome leaves room for the page. */}
+          <span className="sr-only tablet:not-sr-only">Business time: </span>
           <time dateTime={session.clock.businessTime}>
             {formatDateTime(session.clock.businessTime)}
           </time>
         </span>
-        <span>Run {session.clock.runId}</span>
+        <span className="hidden tablet:inline">Run {session.clock.runId}</span>
         {session.profile.simulation && (
-          <span>
-            {session.profile.name} · simulation profile, not official EACC
-            scoring
-          </span>
+          <>
+            <span className="tablet:hidden">Not official scoring</span>
+            <span className="hidden tablet:inline">
+              {session.profile.name} · simulation profile, not official EACC
+              scoring
+            </span>
+          </>
         )}
       </p>
     </div>

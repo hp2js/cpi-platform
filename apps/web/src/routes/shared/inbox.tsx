@@ -29,14 +29,14 @@ function Item({ notification }: { notification: Notification }) {
   return (
     <li
       className={cn(
-        'grid gap-1 rounded-lg border bg-card p-4',
-        !notification.readAt && 'border-primary/40',
+        'grid gap-1 rounded-lg border bg-white p-4',
+        !notification.readAt && 'border-primary-dark',
       )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-medium">
+        <h2 className="font-bold">
           {!notification.readAt && (
-            <span className="mr-2 rounded bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
+            <span className="mr-2 rounded-md bg-primary px-2 py-1 text-xs text-white">
               New<span className="sr-only">:</span>
             </span>
           )}{' '}
@@ -44,12 +44,12 @@ function Item({ notification }: { notification: Notification }) {
         </h2>
         <time
           dateTime={notification.createdAt}
-          className="text-xs text-muted-foreground"
+          className="text-xs text-base-dark"
         >
           {formatDateTime(notification.createdAt)}
         </time>
       </div>
-      <p className="text-sm text-muted-foreground">{notification.body}</p>
+      <p className="text-sm text-base-dark">{notification.body}</p>
       {(notification.link || !notification.readAt) && (
         <div className="mt-1">
           <Button

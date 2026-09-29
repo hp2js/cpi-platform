@@ -61,7 +61,7 @@ export function FormsPage() {
         }
       />
       {(hasDraft || (forms.isSuccess && !hasPublished)) && (
-        <p id="new-version-hint" className="text-sm text-muted-foreground">
+        <p id="new-version-hint" className="text-sm text-base-dark">
           {hasDraft
             ? 'A draft version is already open. Publish or edit it before starting another.'
             : 'Publish the first version before creating another.'}
@@ -74,7 +74,7 @@ export function FormsPage() {
       )}
       <QueryView query={forms} label="forms">
         {(list) => (
-          <div className="overflow-x-auto rounded-lg border bg-card">
+          <div className="overflow-x-auto rounded-lg border bg-white">
             <Table>
               <TableCaption className="sr-only">
                 Form versions, newest first
@@ -95,7 +95,7 @@ export function FormsPage() {
                       <Link
                         to="/admin/forms/$formId"
                         params={{ formId: form.id }}
-                        className="font-medium text-primary underline-offset-4 hover:underline"
+                        className="font-bold text-primary underline-offset-4 hover:underline"
                       >
                         Version {form.version}
                       </Link>

@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -56,11 +55,11 @@ export function ListSearch({
 }) {
   const id = useId();
   return (
-    <div className="grid w-full max-w-md gap-1.5 sm:w-96">
+    <div className="grid w-full max-w-mobile-lg gap-2 tablet:w-96">
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <Search
-          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-base-dark"
           aria-hidden="true"
         />
         <Input
@@ -72,7 +71,7 @@ export function ListSearch({
           onChange={(event) => controls.setQuery(event.target.value)}
         />
       </div>
-      <p className="text-xs text-muted-foreground" aria-live="polite">
+      <p className="text-xs text-base-dark" aria-live="polite">
         {controls.query
           ? `${controls.filtered.length} of ${controls.total} shown`
           : `${controls.total} in total`}
@@ -97,38 +96,78 @@ export function ListPager({
     controls.filtered.length,
     (controls.page + 1) * controls.pageSize,
   );
+  const go = (page: number) => controls.setPage(page);
+  const step =
+    'inline-flex min-h-touch items-center gap-1 px-2 text-primary underline underline-offset-2 hover:text-primary-dark';
   return (
     <nav
       aria-label={`${noun} pages`}
-      className="flex flex-wrap items-center justify-between gap-2 text-sm"
+      className="flex flex-wrap items-center justify-between gap-4 text-sm"
     >
-      <p className="text-muted-foreground">
+      <p className="text-base-dark">
         {first}–{last} of {controls.filtered.length} {noun}
       </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={controls.page === 0}
-          onClick={() => controls.setPage(controls.page - 1)}
-        >
-          <ChevronLeft aria-hidden="true" />
-          Previous
-        </Button>
-        <span className="text-muted-foreground">
-          Page {controls.page + 1} of {controls.pages}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={controls.page >= controls.pages - 1}
-          onClick={() => controls.setPage(controls.page + 1)}
-        >
-          Next
-          <ChevronRight aria-hidden="true" />
-        </Button>
-      </div>
+      {/* USWDS pagination: previous, numbered pages with gaps, next; the current page is filled. */}
+      <ul className="flex flex-wrap items-center gap-1">
+        {controls.page > 0 && (
+          <li>
+            <button
+              type="button"
+              className={step}
+              onClick={() => go(controls.page - 1)}
+            >
+              <ChevronLeft className="size-5" aria-hidden="true" />
+              Previous<span className="sr-only"> page</span>
+            </button>
+          </li>
+        )}
+        {pageSlots(controls.page, controls.pages).map((slot, index) =>
+          slot === null ? (
+            <li
+              key={`gap-${index}`}
+              aria-hidden="true"
+              className="px-2 text-base-dark"
+            >
+              …
+            </li>
+          ) : (
+            <li key={slot}>
+              <button
+                type="button"
+                aria-label={`Page ${slot + 1}`}
+                aria-current={slot === controls.page ? 'page' : undefined}
+                className="inline-flex min-h-touch min-w-touch items-center justify-center rounded-md border border-base-dark px-2 text-ink hover:border-primary hover:text-primary aria-[current=page]:border-ink aria-[current=page]:bg-ink aria-[current=page]:font-bold aria-[current=page]:text-white"
+                onClick={() => go(slot)}
+              >
+                {slot + 1}
+              </button>
+            </li>
+          ),
+        )}
+        {controls.page < controls.pages - 1 && (
+          <li>
+            <button
+              type="button"
+              className={step}
+              onClick={() => go(controls.page + 1)}
+            >
+              Next<span className="sr-only"> page</span>
+              <ChevronRight className="size-5" aria-hidden="true" />
+            </button>
+          </li>
+        )}
+      </ul>
     </nav>
+  );
+}
+
+/** First, last, and the current page with its neighbours; null marks a gap. */
+export function pageSlots(page: number, pages: number): (number | null)[] {
+  const keep = [...new Set([0, page - 1, page, page + 1, pages - 1])]
+    .filter((slot) => slot >= 0 && slot < pages)
+    .sort((a, b) => a - b);
+  return keep.flatMap((slot, index) =>
+    index > 0 && slot - keep[index - 1]! > 1 ? [null, slot] : [slot],
   );
 }
 

@@ -64,18 +64,18 @@ function SeedOption({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
+    <div className="flex items-start gap-2 rounded-md border bg-base-lightest p-3">
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(value) => onChange(value === true)}
-        className="mt-0.5"
+        className="mt-1"
       />
-      <div className="grid gap-0.5">
+      <div className="grid gap-1">
         <Label htmlFor={id} className="font-normal">
           Load seeded historical baselines for quarters that have already opened
         </Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-base-dark">
           Simulation only (PRD §10.4): the committee milestones are loaded and
           the officer confirms them before any score is finalized. Without this,
           those quarters stay pending baseline approval.
@@ -172,7 +172,7 @@ export function AddInstitution({
           Add institution
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Add an institution</DialogTitle>
           <DialogDescription>
@@ -188,8 +188,8 @@ export function AddInstitution({
           }}
         >
           <fieldset className="grid gap-3">
-            <legend className="mb-2 text-sm font-semibold">Institution</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <legend className="mb-2 text-sm font-bold">Institution</legend>
+            <div className="grid gap-3 tablet:grid-cols-2">
               <TextField
                 id={`${id}-id`}
                 label="Institution ID"
@@ -215,7 +215,7 @@ export function AddInstitution({
               onChange={(name) => setValues({ ...values, name })}
               error={errors.name}
             />
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-officer`}>Reviewing officer</Label>
               <Combobox
                 id={`${id}-officer`}
@@ -229,7 +229,7 @@ export function AddInstitution({
                 }))}
               />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-supervisor`}>Supervisor</Label>
               <SelectField
                 id={`${id}-supervisor`}
@@ -248,7 +248,7 @@ export function AddInstitution({
               />
               <p
                 id={`${id}-supervisor-hint`}
-                className="text-xs text-muted-foreground"
+                className="text-xs text-base-dark"
               >
                 Supervisors see only the institutions assigned to them.
               </p>
@@ -265,8 +265,8 @@ export function AddInstitution({
           />
 
           <fieldset className="grid gap-3">
-            <legend className="mb-2 text-sm font-semibold">Focal person</legend>
-            <p className="text-xs text-muted-foreground">
+            <legend className="mb-2 text-sm font-bold">Focal person</legend>
+            <p className="text-xs text-base-dark">
               The person who reports for the institution on the platform. More
               focal persons can be added later from the institution’s page.
             </p>
@@ -281,7 +281,7 @@ export function AddInstitution({
               </Label>
             </div>
             {withFocal && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 tablet:grid-cols-2">
                 <TextField
                   id={`${id}-focal-name`}
                   label="Name"
@@ -317,7 +317,7 @@ export function AddInstitution({
             }
           />
           {mutation.isError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -381,12 +381,10 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
             <TableRow key={row.line}>
               <TableCell>{row.line}</TableCell>
               <TableHead scope="row" className="font-normal whitespace-normal">
-                <span className="block font-medium">
+                <span className="block font-bold">
                   {row.institutionId || '—'}
                 </span>
-                <span className="block text-xs text-muted-foreground">
-                  {row.name}
-                </span>
+                <span className="block text-xs text-base-dark">{row.name}</span>
               </TableHead>
               <TableCell className="text-sm">
                 {row.officerName ?? '—'}
@@ -396,7 +394,7 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
               </TableCell>
               <TableCell className="text-sm whitespace-normal">
                 {row.errors.length ? (
-                  <ul className="list-disc pl-4 text-destructive">
+                  <ul className="list-disc pl-4 text-error-dark">
                     {row.errors.map((error) => (
                       <li key={error}>{error}</li>
                     ))}
@@ -410,7 +408,7 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
         </TableBody>
       </Table>
       {preview.rows.length > shown.length && (
-        <p className="p-2 text-xs text-muted-foreground">
+        <p className="p-2 text-xs text-base-dark">
           Showing {shown.length} of {preview.rows.length} rows, problems first.
         </p>
       )}
@@ -461,7 +459,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
           Import from CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Import institutions</DialogTitle>
           <DialogDescription>
@@ -471,13 +469,13 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
         </DialogHeader>
         {run.isSuccess ? (
           <div className="grid gap-3">
-            <p role="status" className="font-medium">
+            <p role="status" className="font-bold">
               {run.data.created.length} institutions imported
               {run.data.focalUsers > 0 &&
                 `, with ${run.data.focalUsers} focal person accounts`}
               .
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Their officers were notified. Baselines for quarters still to open
               are waiting for officer approval.
             </p>
@@ -522,7 +520,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-file`}>CSV file</Label>
               <Input
                 id={`${id}-file`}
@@ -534,7 +532,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
             <SeedOption id={`${id}-seed`} checked={seed} onChange={setSeed} />
             {preview.isPending && <p className="text-sm">Checking the file…</p>}
             {preview.isError && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-error-dark">
                 {preview.error.message}
               </p>
             )}
@@ -543,7 +541,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
                 {result.fileErrors.length > 0 ? (
                   <ul
                     role="alert"
-                    className="list-disc pl-5 text-sm text-destructive"
+                    className="list-disc pl-5 text-sm text-error-dark"
                   >
                     {result.fileErrors.map((error) => (
                       <li key={error}>{error}</li>
@@ -553,9 +551,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
                   <p
                     role="status"
                     className={
-                      result.invalid
-                        ? 'font-medium text-destructive'
-                        : 'font-medium'
+                      result.invalid ? 'font-bold text-error-dark' : 'font-bold'
                     }
                   >
                     {csv?.name}: {result.valid} ready
@@ -567,7 +563,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
               </div>
             )}
             {run.isError && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-error-dark">
                 {run.error.message}
               </p>
             )}

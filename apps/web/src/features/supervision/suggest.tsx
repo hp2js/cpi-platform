@@ -62,9 +62,7 @@ export function SuggestReassignment({
   });
   const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
   if (disabledReason)
-    return (
-      <span className="text-xs text-muted-foreground">{disabledReason}</span>
-    );
+    return <span className="text-xs text-base-dark">{disabledReason}</span>;
   return (
     <Dialog
       open={open}
@@ -92,7 +90,7 @@ export function SuggestReassignment({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor={`${id}-officer`}>Suggested officer</Label>
             <SelectField
               id={`${id}-officer`}
@@ -105,12 +103,12 @@ export function SuggestReassignment({
               invalid={Boolean(errors.suggestedOfficerId)}
             />
             {errors.suggestedOfficerId && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-error-dark">
                 {errors.suggestedOfficerId}
               </p>
             )}
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor={`${id}-reason`}>Reason</Label>
             <Textarea
               id={`${id}-reason`}
@@ -118,17 +116,14 @@ export function SuggestReassignment({
               onChange={(event) => setReason(event.target.value)}
               aria-describedby={`${id}-reason-hint`}
             />
-            <p
-              id={`${id}-reason-hint`}
-              className="text-xs text-muted-foreground"
-            >
+            <p id={`${id}-reason-hint`} className="text-xs text-base-dark">
               For example, workload balance or a conflict of interest. At least
               10 characters.
             </p>
           </div>
         </div>
         {mutation.isError && Object.keys(errors).length === 0 && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-error-dark">
             {mutation.error.message}
           </p>
         )}

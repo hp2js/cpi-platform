@@ -54,9 +54,9 @@ function DayCountingFields({
     (event: ChangeEvent<HTMLInputElement>) =>
       onChange({ ...values, [key]: Number(event.target.value) || 0 });
   return (
-    <fieldset className="grid gap-4 rounded-lg border bg-card p-5">
-      <legend className="px-1 font-semibold">Day counting</legend>
-      <p className="text-sm text-muted-foreground">
+    <fieldset className="grid gap-4 rounded-lg border bg-white p-5">
+      <legend className="px-1 font-bold">Day counting</legend>
+      <p className="text-sm text-base-dark">
         How the cycle counts days for the deadline rule, clarification windows,
         reminders and days late. Working days are Monday to Friday, excluding
         the public holidays below. Windows already issued and deadlines of
@@ -68,7 +68,7 @@ function DayCountingFields({
         onValueChange={(mode) =>
           onChange({ ...values, mode: mode as DayCountingMode })
         }
-        className="grid gap-2 sm:grid-cols-2"
+        className="grid gap-2 tablet:grid-cols-2"
       >
         {(
           [
@@ -88,20 +88,16 @@ function DayCountingFields({
             key={mode}
             className="flex items-start gap-2 rounded-md border p-3 has-[button[data-state=checked]]:border-primary"
           >
-            <RadioGroupItem
-              id={`mode-${mode}`}
-              value={mode}
-              className="mt-0.5"
-            />
+            <RadioGroupItem id={`mode-${mode}`} value={mode} className="mt-1" />
             <div>
               <Label htmlFor={`mode-${mode}`}>{label}</Label>
-              <p className="text-xs text-muted-foreground">{hint}</p>
+              <p className="text-xs text-base-dark">{hint}</p>
             </div>
           </div>
         ))}
       </RadioGroup>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="grid content-start gap-1.5">
+      <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2 widescreen:grid-cols-3">
+        <div className="grid content-start gap-2">
           <Label htmlFor="reporting-days">Deadline rule</Label>
           <div className="flex items-center gap-2">
             <Input
@@ -120,13 +116,13 @@ function DayCountingFields({
               quarter ends
             </span>
           </div>
-          <p id="reporting-days-hint" className="text-xs text-muted-foreground">
+          <p id="reporting-days-hint" className="text-xs text-base-dark">
             PRD §9.1: 15. Applied to quarters that have not opened when you
             choose to recalculate their deadlines.
           </p>
           {errorFor('dayCounting.reportingDays')}
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className="grid content-start gap-2">
           <Label htmlFor="clarification-days">Clarification window</Label>
           <div className="flex items-center gap-2">
             <Input
@@ -144,15 +140,12 @@ function DayCountingFields({
               {values.mode === 'working' ? 'working days' : 'days'} to respond
             </span>
           </div>
-          <p
-            id="clarification-days-hint"
-            className="text-xs text-muted-foreground"
-          >
+          <p id="clarification-days-hint" className="text-xs text-base-dark">
             PRD §7.3: 7. Applies to new requests only.
           </p>
           {errorFor('dayCounting.clarificationDays')}
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className="grid content-start gap-2">
           <Label htmlFor="review-target-days">Officer review target</Label>
           <div className="flex items-center gap-2">
             <Input
@@ -171,10 +164,7 @@ function DayCountingFields({
               to a final decision
             </span>
           </div>
-          <p
-            id="review-target-days-hint"
-            className="text-xs text-muted-foreground"
-          >
+          <p id="review-target-days-hint" className="text-xs text-base-dark">
             A target, not a deadline: later reviews are flagged for supervisors
             and never block finalizing.
           </p>
@@ -182,20 +172,20 @@ function DayCountingFields({
         </div>
       </div>
       <div className="grid gap-2">
-        <h3 className="text-sm font-medium">Public holidays</h3>
-        <p className="text-xs text-muted-foreground">
+        <h3 className="text-sm font-bold">Public holidays</h3>
+        <p className="text-xs text-base-dark">
           Used only for working days. The list is a demonstration default;
           confirm it against the Kenya Gazette, including moveable holidays.
         </p>
         {values.holidays.length > 0 && (
-          <ul className="grid gap-1 sm:grid-cols-2">
+          <ul className="grid gap-1 tablet:grid-cols-2">
             {values.holidays.map((day) => (
               <li
                 key={day.date}
-                className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm"
+                className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
               >
                 <span>
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {formatCalendarDate(day.date)}
                   </span>{' '}
                   · {day.name}
@@ -220,7 +210,7 @@ function DayCountingFields({
           </ul>
         )}
         <div className="flex flex-wrap items-end gap-2">
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor="holiday-date">Date</Label>
             <Input
               id="holiday-date"
@@ -231,7 +221,7 @@ function DayCountingFields({
               }
             />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor="holiday-name">Holiday</Label>
             <Input
               id="holiday-name"
@@ -271,8 +261,8 @@ function DayCountingFields({
 function LockNote({ reason }: { reason: string | null }) {
   if (!reason) return null;
   return (
-    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-      <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+    <p className="flex items-start gap-2 text-xs text-base-dark">
+      <Lock className="mt-1 size-3.5 shrink-0" aria-hidden="true" />
       {reason}
     </p>
   );
@@ -295,7 +285,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
   });
   const errors = isApiError(save.error) ? save.error.fieldErrors : {};
   const errorFor = (path: string) =>
-    errors[path] && <p className="text-sm text-destructive">{errors[path]}</p>;
+    errors[path] && <p className="text-sm text-error-dark">{errors[path]}</p>;
   const toggleReminder = (days: number, on: boolean) =>
     setValues({
       ...values,
@@ -336,20 +326,20 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
         errorFor={errorFor}
       />
 
-      <fieldset className="grid gap-4 rounded-lg border bg-card p-5">
-        <legend className="px-1 font-semibold">Quarterly deadlines</legend>
-        <p className="text-sm text-muted-foreground">
+      <fieldset className="grid gap-4 rounded-lg border bg-white p-5">
+        <legend className="px-1 font-bold">Quarterly deadlines</legend>
+        <p className="text-sm text-base-dark">
           Each deadline ends at 23:59:59 {calendar.timezone} time on the chosen
           date. A deadline is fixed once its quarter opens for reporting, so
           lateness can never be removed by moving it (FR02).
         </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2 widescreen:grid-cols-4">
           {calendar.periods.map((period) => (
-            <div key={period.id} className="grid content-start gap-1.5">
+            <div key={period.id} className="grid content-start gap-2">
               <Label htmlFor={`deadline-${period.id}`}>
                 {period.label} deadline
               </Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-base-dark">
                 Quarter {formatCalendarDate(period.startsOn)} –{' '}
                 {formatCalendarDate(period.endsOn)}
               </p>
@@ -371,7 +361,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
               {period.lock.editable &&
                 calendar.ruleDeadlines[period.id] !==
                   values.deadlines[period.id] && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-base-dark">
                     The saved rule gives{' '}
                     {formatCalendarDate(calendar.ruleDeadlines[period.id]!)}.
                   </p>
@@ -388,7 +378,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
             onCheckedChange={(checked) =>
               setValues({ ...values, applyRuleToDeadlines: checked === true })
             }
-            className="mt-0.5"
+            className="mt-1"
           />
           <div>
             <Label htmlFor="apply-rule" className="font-normal">
@@ -400,7 +390,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
               )}{' '}
               after quarter end
             </Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-base-dark">
               The dates are calculated on the server when you save; the dates
               above are then ignored for those quarters.
             </p>
@@ -408,14 +398,14 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 rounded-lg border bg-card p-5">
-        <legend className="px-1 font-semibold">Other dates</legend>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid content-start gap-1.5">
+      <fieldset className="grid gap-4 rounded-lg border bg-white p-5">
+        <legend className="px-1 font-bold">Other dates</legend>
+        <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2">
+          <div className="grid content-start gap-2">
             <Label htmlFor="foundation-deadline">
               Foundation documents deadline
             </Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-base-dark">
               Procedures, risk assessment and mitigation plan; separate from
               quarterly deadlines.
             </p>
@@ -434,9 +424,9 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
             <LockNote reason={calendar.foundationLock.reason} />
             {errorFor('foundationDeadlineDate')}
           </div>
-          <div className="grid content-start gap-1.5">
+          <div className="grid content-start gap-2">
             <Label htmlFor="evaluation-cutoff">Evaluation cutoff</Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-base-dark">
               A demonstration setting, not an official EACC deadline. It must
               fall after the Q4 deadline.
             </p>
@@ -458,9 +448,9 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-3 rounded-lg border bg-card p-5">
-        <legend className="px-1 font-semibold">Reminders</legend>
-        <p className="text-sm text-muted-foreground">
+      <fieldset className="grid gap-3 rounded-lg border bg-white p-5">
+        <legend className="px-1 font-bold">Reminders</legend>
+        <p className="text-sm text-base-dark">
           Sent to institutions that have not yet submitted. Changes apply to
           reminders still to come; past reminders are never sent late.
         </p>
@@ -500,7 +490,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
         </div>
       </fieldset>
 
-      <div className="grid max-w-2xl gap-1.5">
+      <div className="grid max-w-measure gap-2">
         <Label htmlFor="calendar-reason">Reason for the change</Label>
         <Textarea
           id="calendar-reason"
@@ -508,7 +498,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
           aria-describedby="calendar-reason-hint"
           onChange={(event) => setReason(event.target.value)}
         />
-        <p id="calendar-reason-hint" className="text-sm text-muted-foreground">
+        <p id="calendar-reason-hint" className="text-sm text-base-dark">
           At least 10 characters. Kept in the change log and the audit log, and
           included in the notice to institutions.
         </p>
@@ -530,9 +520,7 @@ function CalendarForm({ calendar }: { calendar: CalendarSettings }) {
             Discard changes
           </Button>
         )}
-        {!dirty && (
-          <p className="text-sm text-muted-foreground">No changes yet.</p>
-        )}
+        {!dirty && <p className="text-sm text-base-dark">No changes yet.</p>}
       </div>
     </form>
   );
@@ -556,11 +544,11 @@ export function CalendarPage() {
           <div className="grid grid-cols-1 gap-8">
             <CalendarForm calendar={data} />
             <section aria-labelledby="changes-heading">
-              <h2 id="changes-heading" className="text-lg font-semibold">
+              <h2 id="changes-heading" className="text-lg font-bold">
                 Change log
               </h2>
               {data.changes.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-base-dark">
                   No changes since the cycle was set up.
                 </p>
               ) : (
@@ -568,10 +556,10 @@ export function CalendarPage() {
                   {data.changes.map((change) => (
                     <li
                       key={change.at + change.summary}
-                      className="rounded-lg border bg-card p-4 text-sm"
+                      className="rounded-lg border bg-white p-4 text-sm"
                     >
-                      <p className="font-medium">{change.summary}</p>
-                      <p className="text-muted-foreground">
+                      <p className="font-bold">{change.summary}</p>
+                      <p className="text-base-dark">
                         {formatDateTime(change.at)} by {change.by}. Reason:{' '}
                         {change.reason}
                       </p>

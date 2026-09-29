@@ -71,7 +71,7 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
       <section aria-labelledby="portfolio-heading">
         <h2
           id="portfolio-heading"
-          className="px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+          className="px-3 text-xs font-bold tracking-wide text-base-dark uppercase"
         >
           My portfolio
           {portfolio.data && ` (${portfolio.data.length})`}
@@ -87,7 +87,6 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
               placeholder="Filter institutions"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
-              className="h-8"
             />
           </div>
         )}
@@ -98,19 +97,17 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
                 to="/officer/institutions/$institutionId"
                 params={{ institutionId: institution.id }}
                 onClick={onNavigate}
-                className="block rounded-md px-3 py-1.5 hover:bg-accent data-[status=active]:bg-accent"
+                className="block min-h-touch border-l-4 border-transparent px-3 py-2 text-ink hover:bg-base-lightest data-[status=active]:border-primary data-[status=active]:text-primary"
               >
-                <span className="block font-medium">{institution.id}</span>
-                <span className="block truncate text-xs text-muted-foreground">
+                <span className="block font-bold">{institution.id}</span>
+                <span className="block text-xs text-base-dark">
                   {institution.name}
                 </span>
               </Link>
             </li>
           ))}
           {portfolio.isPending && (
-            <li className="px-3 text-xs text-muted-foreground">
-              Loading portfolio…
-            </li>
+            <li className="px-3 text-xs text-base-dark">Loading portfolio…</li>
           )}
         </ul>
       </section>
@@ -128,7 +125,7 @@ export function OfficerLayout() {
   const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
   const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-white">
       <SkipLink />
       <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
         <SimulationBanner session={session} />
@@ -136,7 +133,7 @@ export function OfficerLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-card lg:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
         >
           <OfficerRail />
         </aside>
@@ -144,11 +141,11 @@ export function OfficerLayout() {
           <header
             ref={headerRef}
             data-sticky
-            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end"
+            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button variant="ghost" size="icon" className="desktop:hidden">
                   <Menu aria-hidden="true" />
                   <span className="sr-only">Open navigation</span>
                 </Button>
@@ -169,7 +166,7 @@ export function OfficerLayout() {
           <main
             id="main"
             tabIndex={-1}
-            className="outline-none flex-1 px-4 py-6 lg:px-8"
+            className="outline-none flex-1 px-4 py-6 desktop:px-8"
           >
             <Outlet />
           </main>

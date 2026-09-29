@@ -94,10 +94,10 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
   const large = baseline.milestones.length > 6;
   const allChecked = Object.values(checks).every(Boolean);
   return (
-    <div className="grid gap-4 rounded-md border bg-background p-4">
-      <h4 className="font-medium">Approve or return this proposal</h4>
-      <dl className="grid gap-1 text-sm sm:grid-cols-[12rem_1fr]">
-        <dt className="text-muted-foreground">Plan size</dt>
+    <div className="grid gap-4 rounded-md border bg-white p-4">
+      <h4 className="font-bold">Approve or return this proposal</h4>
+      <dl className="grid gap-1 text-sm tablet:grid-cols-[12rem_1fr]">
+        <dt className="text-base-dark">Plan size</dt>
         <dd>
           {baseline.milestones.length} milestones, of which {committee}{' '}
           committee obligation{committee === 1 ? '' : 's'} (
@@ -106,7 +106,7 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           )}
           % of the denominator)
         </dd>
-        <dt className="text-muted-foreground">Milestones per risk</dt>
+        <dt className="text-base-dark">Milestones per risk</dt>
         <dd>
           {[...byRisk.entries()].map(([risk, count]) => (
             <span key={risk} className="block">
@@ -116,18 +116,15 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
         </dd>
       </dl>
       {large && (
-        <p className="flex items-start gap-2 text-sm font-medium">
-          <TriangleAlert
-            className="mt-0.5 size-4 shrink-0"
-            aria-hidden="true"
-          />
+        <p className="flex items-start gap-2 text-sm font-bold">
+          <TriangleAlert className="mt-1 size-4 shrink-0" aria-hidden="true" />
           This proposal is large. Check for duplicate, trivial or artificially
           split milestones: they would inflate the result and shrink the
           committee obligations’ share.
         </p>
       )}
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">Confirm each check</legend>
+        <legend className="text-sm font-bold">Confirm each check</legend>
         {(Object.keys(checkLabels) as (keyof BaselineChecks)[]).map((key) => (
           <div key={key} className="flex items-start gap-2">
             <Checkbox
@@ -139,7 +136,7 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
                   [key]: checked === true,
                 }))
               }
-              className="mt-0.5"
+              className="mt-1"
             />
             <Label
               htmlFor={`${baseline.id}-${key}`}
@@ -150,7 +147,7 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           </div>
         ))}
       </fieldset>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor={`${baseline.id}-rationale`}>
           Rationale (kept for audit)
         </Label>
@@ -161,7 +158,7 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
         />
       </div>
       {approve.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {approve.error.message}
         </p>
       )}
@@ -175,13 +172,13 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           Approve and activate
         </Button>
         {(!allChecked || rationale.trim().length < 20) && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-base-dark">
             Confirm all four checks and give a rationale of at least 20
             characters.
           </p>
         )}
       </div>
-      <div className="grid gap-1.5 border-t pt-4">
+      <div className="grid gap-2 border-t pt-4">
         <Label htmlFor={`${baseline.id}-return`}>
           Or return it to the institution with feedback
         </Label>
@@ -191,7 +188,7 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           onChange={(event) => setReturnReason(event.target.value)}
         />
         {giveBack.isError && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-error-dark">
             {giveBack.error.message}
           </p>
         )}
@@ -214,7 +211,7 @@ function SeedConfirmation({ baseline }: { baseline: Baseline }) {
     confirmSeed(baseline.id, baseline.version),
   );
   return (
-    <div className="grid gap-2 rounded-md border bg-background p-4 text-sm">
+    <div className="grid gap-2 rounded-md border bg-white p-4 text-sm">
       <p>
         This baseline was seeded for the simulated year. Confirm that its
         milestones correspond to the fictional approved plan before finalizing
@@ -222,7 +219,7 @@ function SeedConfirmation({ baseline }: { baseline: Baseline }) {
         now; nothing is backdated.
       </p>
       {confirm.isError && (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-error-dark">
           {confirm.error.message}
         </p>
       )}
@@ -251,12 +248,12 @@ function Baselines({ plan }: { plan: Plan }) {
         <article
           key={baseline.id}
           aria-labelledby={`obl-${baseline.periodId}`}
-          className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-5"
+          className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-5"
         >
           <header className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 id={`obl-${baseline.periodId}`} className="font-semibold">
+            <h3 id={`obl-${baseline.periodId}`} className="font-bold">
               {baseline.periodLabel}{' '}
-              <span className="font-normal text-muted-foreground">
+              <span className="font-normal text-base-dark">
                 · version {baseline.version}
               </span>
             </h3>
@@ -288,7 +285,7 @@ function Amendments({ plan }: { plan: Plan }) {
   );
   if (plan.amendments.length === 0)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         No amendments have been requested.
       </p>
     );
@@ -297,9 +294,9 @@ function Amendments({ plan }: { plan: Plan }) {
       {plan.amendments.map((amendment) => (
         <li
           key={amendment.id}
-          className="grid gap-2 rounded-lg border bg-card p-4 text-sm"
+          className="grid gap-2 rounded-lg border bg-white p-4 text-sm"
         >
-          <p className="font-medium">
+          <p className="font-bold">
             {amendment.change === 'remove' ? 'Remove' : 'Move'}{' '}
             {amendment.milestoneCode}
             {amendment.toPeriodId
@@ -310,7 +307,7 @@ function Amendments({ plan }: { plan: Plan }) {
               ? 'awaiting your decision'
               : amendment.status}
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             {amendment.requestedBy}, {formatDateTime(amendment.requestedAt)}:{' '}
             {amendment.reason}
           </p>
@@ -364,7 +361,7 @@ function Amendments({ plan }: { plan: Plan }) {
         </li>
       ))}
       {decide.isError && (
-        <li role="alert" className="text-sm text-destructive">
+        <li role="alert" className="text-sm text-error-dark">
           {decide.error.message}
         </li>
       )}
@@ -428,11 +425,11 @@ function FoundationReview({
         return (
           <fieldset
             key={label}
-            className="grid gap-2 rounded-md border bg-background p-3"
+            className="grid gap-2 rounded-md border bg-white p-3"
           >
-            <legend className="px-1 text-sm font-medium">
+            <legend className="px-1 text-sm font-bold">
               {index + 1}. {label}
-              <span className="ml-2 font-normal text-muted-foreground">
+              <span className="ml-2 font-normal text-base-dark">
                 {active.claimedChecks[index] ? '(claimed)' : '(not claimed)'}
               </span>
             </legend>
@@ -467,10 +464,10 @@ function FoundationReview({
                   onChange={(event) =>
                     update(index, { passage: event.target.value })
                   }
-                  className="max-w-sm"
+                  className="max-w-mobile-lg"
                 />
                 {errors[`checks.${index}.passage`] && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-error-dark">
                     {errors[`checks.${index}.passage`]}
                   </p>
                 )}
@@ -487,7 +484,7 @@ function FoundationReview({
                   }
                 />
                 {errors[`checks.${index}.reason`] && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-error-dark">
                     {errors[`checks.${index}.reason`]}
                   </p>
                 )}
@@ -497,7 +494,7 @@ function FoundationReview({
         );
       })}
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
@@ -525,17 +522,17 @@ function Foundations({ institutionId }: { institutionId: string }) {
             <section
               key={indicator.kind}
               aria-labelledby={`of-${indicator.kind}`}
-              className="grid gap-4 rounded-lg border bg-card p-5"
+              className="grid gap-4 rounded-lg border bg-white p-5"
             >
-              <h3 id={`of-${indicator.kind}`} className="text-lg font-semibold">
+              <h3 id={`of-${indicator.kind}`} className="text-lg font-bold">
                 {indicator.label}{' '}
-                <span className="text-sm font-normal text-muted-foreground">
+                <span className="text-sm font-normal text-base-dark">
                   · up to {indicator.maxPoints} points
                 </span>
               </h3>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-md bg-muted/60 p-4">
-                  <dt className="text-sm font-medium">
+              <dl className="grid gap-4 tablet:grid-cols-2">
+                <div className="rounded-md bg-base-lightest p-4">
+                  <dt className="text-sm font-bold">
                     Provisional (claimed checks with a document)
                   </dt>
                   <dd className="mt-1">
@@ -547,8 +544,8 @@ function Foundations({ institutionId }: { institutionId: string }) {
                     )}
                   </dd>
                 </div>
-                <div className="rounded-md bg-accent p-4">
-                  <dt className="text-sm font-medium">
+                <div className="rounded-md bg-primary-lighter p-4">
+                  <dt className="text-sm font-bold">
                     Reviewed (your accepted checks)
                   </dt>
                   <dd className="mt-1">

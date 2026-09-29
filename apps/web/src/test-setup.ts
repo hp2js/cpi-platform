@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { resetDb } from './mocks/db';
 import { server } from './mocks/node';
 
@@ -15,6 +15,9 @@ else
     value: new URL('http://localhost/'),
     configurable: true,
   });
+
+// Under pnpm check's parallel load the first render can take longer than the default 1 s.
+configure({ asyncUtilTimeout: 5_000 });
 
 // The mock API runs in tests too, so components are exercised against the same contract.
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));

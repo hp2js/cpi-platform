@@ -39,7 +39,7 @@ export function OfficerHomePage() {
         }
       />
       <section aria-labelledby="queue-heading" className="grid gap-3">
-        <h2 id="queue-heading" className="text-lg font-semibold">
+        <h2 id="queue-heading" className="text-lg font-bold">
           Review queue
         </h2>
         <nav aria-label="Queue filter">
@@ -51,10 +51,10 @@ export function OfficerHomePage() {
                   search={{ tab: item.value }}
                   aria-current={tab === item.value ? 'page' : undefined}
                   className={cn(
-                    '-mb-px inline-block border-b-2 px-3 py-2 text-sm font-medium',
+                    '-mb-px inline-block border-b-2 px-3 py-2 text-sm font-bold',
                     tab === item.value
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                      ? 'border-primary text-ink'
+                      : 'border-transparent text-base-dark hover:text-ink',
                   )}
                 >
                   {item.label}
@@ -66,7 +66,7 @@ export function OfficerHomePage() {
         <ReviewQueueTable status={tab} audience="officer" />
       </section>
       <section aria-labelledby="portfolio-status" className="grid gap-3">
-        <h2 id="portfolio-status" className="text-lg font-semibold">
+        <h2 id="portfolio-status" className="text-lg font-bold">
           Portfolio status
         </h2>
         <QueryView query={cycle} label="reporting calendar">

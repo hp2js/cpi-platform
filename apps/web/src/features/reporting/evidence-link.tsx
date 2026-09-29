@@ -46,13 +46,13 @@ export function EvidenceLink({
         type="button"
         onClick={() => void open()}
         disabled={state === 'opening'}
-        className="text-left font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-60"
+        className="text-left font-bold text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-60"
       >
         {fileName}
         <span className="sr-only"> (opens in a new tab)</span>
       </button>
       {state !== 'idle' && state !== 'opening' && (
-        <span role="alert" className="block text-destructive">
+        <span role="alert" className="block text-error-dark">
           {state}
         </span>
       )}

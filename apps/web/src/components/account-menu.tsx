@@ -46,40 +46,38 @@ export function AccountMenu({
         <Button
           variant="ghost"
           className={cn(
-            'h-auto max-w-56 gap-2 px-2 py-1.5 text-left',
-            tone === 'dark' &&
-              'text-primary-foreground hover:bg-white/10 hover:text-primary-foreground',
+            'h-auto max-w-56 gap-2 px-2 py-2 text-left',
+            tone === 'dark' && 'text-white hover:bg-white/10 hover:text-white',
           )}
         >
-          <UserRound className="size-5 shrink-0 sm:hidden" aria-hidden="true" />
-          <span className="hidden min-w-0 sm:block">
-            <span className="block truncate text-sm font-medium">
+          <UserRound
+            className="size-5 shrink-0 tablet:hidden"
+            aria-hidden="true"
+          />
+          <span className="hidden min-w-0 tablet:block">
+            <span className="block truncate text-sm font-bold">
               {user.displayName}
             </span>
             <span
               className={cn(
                 'block truncate text-xs',
-                tone === 'dark'
-                  ? 'text-primary-foreground/75'
-                  : 'text-muted-foreground',
+                tone === 'dark' ? 'text-white' : 'text-base-dark',
               )}
             >
               {roleLabel[user.role]}
             </span>
           </span>
           <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
-          <span className="sr-only sm:hidden">
+          <span className="sr-only tablet:hidden">
             Account menu for {user.displayName}
           </span>
-          <span className="sr-only max-sm:hidden">Account menu</span>
+          <span className="sr-only max-tablet:hidden">Account menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="font-normal">
-          <span className="block text-sm font-medium">{user.displayName}</span>
-          <span className="block text-xs text-muted-foreground">
-            {user.email}
-          </span>
+          <span className="block text-sm font-bold">{user.displayName}</span>
+          <span className="block text-xs text-base-dark">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem

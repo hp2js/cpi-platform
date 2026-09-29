@@ -100,13 +100,13 @@ function NewVersion({
         mutation.mutate();
       }}
     >
-      <h4 className="font-medium">Record a new version</h4>
-      <p className="text-sm text-muted-foreground">
+      <h4 className="font-bold">Record a new version</h4>
+      <p className="text-sm text-base-dark">
         The new version supersedes the active one from its effective date. It is
         never treated as valid for an earlier period.
       </p>
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="grid gap-1.5">
+      <div className="grid gap-3 tablet:grid-cols-3">
+        <div className="grid gap-2">
           <Label htmlFor={`${id}-file`}>Approved document</Label>
           <Input
             id={`${id}-file`}
@@ -115,10 +115,10 @@ function NewVersion({
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           />
           {fieldErrors.file && (
-            <p className="text-sm text-destructive">{fieldErrors.file}</p>
+            <p className="text-sm text-error-dark">{fieldErrors.file}</p>
           )}
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor={`${id}-approval`}>Approval reference</Label>
           <Input
             id={`${id}-approval`}
@@ -127,7 +127,7 @@ function NewVersion({
             placeholder="e.g. CPC resolution 2 Oct 2026"
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor={`${id}-effective`}>Effective from</Label>
           <Input
             id={`${id}-effective`}
@@ -138,7 +138,7 @@ function NewVersion({
         </div>
       </div>
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">This document covers</legend>
+        <legend className="text-sm font-bold">This document covers</legend>
         {indicator.checks.map((check, index) => (
           <div key={check} className="flex items-center gap-2">
             <Checkbox
@@ -160,14 +160,14 @@ function NewVersion({
       </fieldset>
       {progress !== null && (
         <progress
-          className="h-2 w-full max-w-sm accent-primary"
+          className="h-2 w-full max-w-mobile-lg accent-primary"
           value={progress}
           max={1}
           aria-label="Upload progress"
         />
       )}
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
@@ -185,7 +185,7 @@ function NewVersion({
           </Button>
         )}
         {incomplete && (
-          <p id={`${id}-hint`} className="text-sm text-muted-foreground">
+          <p id={`${id}-hint`} className="text-sm text-base-dark">
             Choose the approved document and give its approval reference and
             effective date.
           </p>
@@ -227,7 +227,7 @@ function Withdraw({
         onChange={(event) => setReason(event.target.value)}
       />
       {mutation.isError && (
-        <p className="text-sm text-destructive">{mutation.error.message}</p>
+        <p className="text-sm text-error-dark">{mutation.error.message}</p>
       )}
       <div className="flex gap-2">
         <Button
@@ -255,7 +255,7 @@ export function InstitutionFoundations() {
     <QueryView query={foundations} label="foundation documents">
       {(data) => (
         <div className="grid gap-6">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Procedures, the risk assessment and the mitigation plan are due{' '}
             {formatDateTime(data.deadline)}, separately from quarterly reports.
             Your officer reviews each document against four checks; results are
@@ -269,16 +269,13 @@ export function InstitutionFoundations() {
               <section
                 key={indicator.kind}
                 aria-labelledby={`f-${indicator.kind}`}
-                className="grid gap-4 rounded-lg border bg-card p-5"
+                className="grid gap-4 rounded-lg border bg-white p-5"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2
-                    id={`f-${indicator.kind}`}
-                    className="text-lg font-semibold"
-                  >
+                  <h2 id={`f-${indicator.kind}`} className="text-lg font-bold">
                     {indicator.label}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-base-dark">
                     {indicator.review
                       ? `Reviewed ${formatDateTime(indicator.review.reviewedAt)}`
                       : 'Not yet reviewed'}

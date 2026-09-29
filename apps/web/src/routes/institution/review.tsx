@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useRef } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { ErrorSummary } from '@/components/error-summary';
+import { cn } from '@/lib/utils';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -68,25 +70,25 @@ function Checklist({
       {completeness.missing.length > 0 ? (
         <section
           aria-labelledby="missing-heading"
-          className="rounded-lg border border-destructive/40 bg-card p-5"
+          className="border-l-8 border-error bg-error-lighter px-5 py-4"
         >
           <h2
             id="missing-heading"
-            className="flex items-center gap-2 font-semibold text-destructive"
+            className="flex items-center gap-2 text-md font-bold"
           >
-            <CircleAlert className="size-5" aria-hidden="true" />
+            <CircleAlert className="size-6 shrink-0" aria-hidden="true" />
             {completeness.missing.length} item
             {completeness.missing.length === 1 ? '' : 's'} to complete before
             you can submit
           </h2>
-          <ul className="mt-3 grid gap-2 text-sm">
+          <ul className="mt-3 grid gap-2 pl-8 text-sm">
             {completeness.missing.map((item) => (
               <li key={`${item.field}-${item.message}`}>
                 <Link
                   to="/institution/reports/$periodId"
                   params={{ periodId }}
                   hash={fieldDomId(item.field)}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  className="font-bold text-error-dark underline underline-offset-2"
                 >
                   {item.label}
                 </Link>
@@ -98,16 +100,16 @@ function Checklist({
       ) : (
         <section
           aria-labelledby="ready-heading"
-          className="rounded-lg border bg-card p-5"
+          className="border-l-8 border-success bg-success-lighter px-5 py-4"
         >
           <h2
             id="ready-heading"
-            className="flex items-center gap-2 font-semibold"
+            className="flex items-center gap-2 text-md font-bold"
           >
-            <CircleCheck className="size-5 text-primary" aria-hidden="true" />
+            <CircleCheck className="size-6 shrink-0" aria-hidden="true" />
             Every required item is answered
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 pl-8 text-sm">
             Check the declarations below, then confirm your authority to submit.
           </p>
         </section>
@@ -115,20 +117,19 @@ function Checklist({
       {completeness.declarations.length > 0 && (
         <section
           aria-labelledby="declarations-heading"
-          className="rounded-lg border bg-card p-5"
+          className="rounded-lg border bg-white p-5"
         >
-          <h2 id="declarations-heading" className="font-semibold">
+          <h2 id="declarations-heading" className="font-bold">
             Declarations you are making
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-base-dark">
             These are honest statements, not errors. They are recorded on your
             receipt and considered by the reviewing officer.
           </p>
-          <ul className="mt-3 grid list-disc gap-1.5 pl-5 text-sm">
+          <ul className="mt-3 grid list-disc gap-2 pl-5 text-sm">
             {completeness.declarations.map((item) => (
               <li key={`${item.field}-${item.message}`}>
-                <span className="font-medium">{item.label}</span>:{' '}
-                {item.message}
+                <span className="font-bold">{item.label}</span>: {item.message}
               </li>
             ))}
           </ul>
@@ -144,12 +145,12 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
     referencedIds(bundle).includes(item.id),
   );
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 desktop:grid-cols-2">
       <section
         aria-labelledby="claims-heading"
-        className="rounded-lg border bg-card p-5"
+        className="rounded-lg border bg-white p-5"
       >
-        <h2 id="claims-heading" className="font-semibold">
+        <h2 id="claims-heading" className="font-bold">
           Milestone claims
         </h2>
         <ul className="mt-3 grid gap-2 text-sm">
@@ -158,10 +159,10 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
             return (
               <li key={milestone.id} className="flex justify-between gap-3">
                 <span>
-                  <span className="font-medium">{milestone.code}</span>{' '}
+                  <span className="font-bold">{milestone.code}</span>{' '}
                   {milestone.title}
                 </span>
-                <span className="shrink-0 text-muted-foreground">
+                <span className="shrink-0 text-base-dark">
                   {response?.completed === true
                     ? 'Completed'
                     : response?.completed === false
@@ -175,13 +176,13 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
       </section>
       <section
         aria-labelledby="files-heading"
-        className="rounded-lg border bg-card p-5"
+        className="rounded-lg border bg-white p-5"
       >
-        <h2 id="files-heading" className="font-semibold">
+        <h2 id="files-heading" className="font-bold">
           Files that will be attached
         </h2>
         {attached.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-sm text-base-dark">
             No files are referenced.
           </p>
         ) : (
@@ -189,11 +190,11 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
             {attached.map((item) => (
               <li key={item.id} className="flex items-center gap-2">
                 <FileText
-                  className="size-4 text-muted-foreground"
+                  className="size-4 text-base-dark"
                   aria-hidden="true"
                 />
-                <span className="font-medium">{item.fileName}</span>
-                <span className="text-muted-foreground">
+                <span className="font-bold">{item.fileName}</span>
+                <span className="text-base-dark">
                   {evidenceCategoryLabel[item.category]} ·{' '}
                   {formatBytes(item.sizeBytes)}
                 </span>
@@ -214,14 +215,31 @@ interface AttestationValues {
   explanation: string;
 }
 
+function firstError(errors: unknown[]) {
+  return errors.find((error): error is string => typeof error === 'string');
+}
+
 function FieldError({ id, errors }: { id: string; errors: unknown[] }) {
-  const message = errors.find((error) => typeof error === 'string');
+  const message = firstError(errors);
   return message ? (
-    <p id={id} className="text-sm text-destructive">
-      {message as string}
+    <p id={id} className="text-sm font-bold text-error-dark">
+      {message}
     </p>
   ) : null;
 }
+
+/** usa-form-group--error: a 4 px error bar beside a field that failed validation. */
+const errorGroup = (errors: unknown[]) =>
+  firstError(errors) ? 'border-l-4 border-error-dark pl-4' : undefined;
+
+/** Where each attestation field's error summary link sends focus. */
+const attestationTargets: Record<keyof AttestationValues, string> = {
+  authorized: 'attest-authorized',
+  submitterRole: 'attest-role',
+  approvalKind: 'approval-reference',
+  reference: 'approval-reference-input',
+  explanation: 'approval-explanation',
+};
 
 function SubmitForm({
   bundle,
@@ -288,12 +306,12 @@ function SubmitForm({
   return (
     <section
       aria-labelledby="attest-heading"
-      className="rounded-lg border bg-card p-5"
+      className="rounded-lg border bg-white p-5"
     >
-      <h2 id="attest-heading" className="font-semibold">
+      <h2 id="attest-heading" className="font-bold">
         Confirm and submit
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 text-sm text-base-dark">
         A submitted revision cannot be changed. Your draft stays saved if
         anything below is incomplete.
       </p>
@@ -305,6 +323,32 @@ function SubmitForm({
           void form.handleSubmit();
         }}
       >
+        <form.Subscribe
+          selector={(state) => ({
+            attempts: state.submissionAttempts,
+            meta: state.fieldMeta,
+          })}
+        >
+          {({ attempts, meta }) => (
+            <ErrorSummary
+              key={attempts}
+              problems={
+                attempts === 0
+                  ? []
+                  : (
+                      Object.keys(
+                        attestationTargets,
+                      ) as (keyof AttestationValues)[]
+                    ).flatMap((name) => {
+                      const message = firstError(meta[name]?.errors ?? []);
+                      return message
+                        ? [{ target: attestationTargets[name], message }]
+                        : [];
+                    })
+              }
+            />
+          )}
+        </form.Subscribe>
         <form.Field
           name="authorized"
           validators={{
@@ -313,8 +357,14 @@ function SubmitForm({
           }}
         >
           {(field) => (
-            <div className="grid gap-1">
-              <div className="flex items-start gap-2.5">
+            <div
+              className={cn('grid gap-1', errorGroup(field.state.meta.errors))}
+            >
+              <FieldError
+                id="attest-authorized-error"
+                errors={field.state.meta.errors}
+              />
+              <div className="flex min-h-touch items-start gap-3">
                 <Checkbox
                   id="attest-authorized"
                   checked={field.state.value}
@@ -323,7 +373,7 @@ function SubmitForm({
                   }
                   aria-invalid={field.state.meta.errors.length > 0}
                   aria-describedby="attest-authorized-error"
-                  className="mt-0.5"
+                  className="mt-1"
                 />
                 <Label
                   htmlFor="attest-authorized"
@@ -333,10 +383,6 @@ function SubmitForm({
                   {institutionName}.
                 </Label>
               </div>
-              <FieldError
-                id="attest-authorized-error"
-                errors={field.state.meta.errors}
-              />
             </div>
           )}
         </form.Field>
@@ -350,10 +396,19 @@ function SubmitForm({
           }}
         >
           {(field) => (
-            <div className="grid max-w-md gap-1.5">
+            <div
+              className={cn(
+                'grid max-w-mobile-lg gap-2',
+                errorGroup(field.state.meta.errors),
+              )}
+            >
               <Label htmlFor="attest-role">
                 Your role or delegation reference
               </Label>
+              <FieldError
+                id="attest-role-error"
+                errors={field.state.meta.errors}
+              />
               <Input
                 id="attest-role"
                 value={field.state.value}
@@ -363,10 +418,6 @@ function SubmitForm({
                 autoComplete="organization-title"
                 aria-invalid={field.state.meta.errors.length > 0}
                 aria-describedby="attest-role-error"
-              />
-              <FieldError
-                id="attest-role-error"
-                errors={field.state.meta.errors}
               />
             </div>
           )}
@@ -378,17 +429,23 @@ function SubmitForm({
           }}
         >
           {(field) => (
-            <fieldset className="grid gap-2">
-              <legend className="font-medium">
+            <fieldset
+              className={cn('grid gap-2', errorGroup(field.state.meta.errors))}
+            >
+              <legend className="font-bold">
                 Institutional approval of this report
               </legend>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-base-dark">
                 Give the CPC or Accounting Officer approval reference
                 {accountingOfficer &&
                   ` (${accountingOfficer.name}, ${accountingOfficer.designation}, chairs your CPC)`}
                 . If approval is not available, say so; this is recorded as a
                 review deficiency, not a false statement.
               </p>
+              <FieldError
+                id="attest-kind-error"
+                errors={field.state.meta.errors}
+              />
               <RadioGroup
                 value={field.state.value}
                 onValueChange={(value) =>
@@ -397,13 +454,13 @@ function SubmitForm({
                 aria-describedby="attest-kind-error"
                 className="grid gap-2"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex min-h-touch items-center gap-2">
                   <RadioGroupItem id="approval-reference" value="reference" />
                   <Label htmlFor="approval-reference" className="font-normal">
                     Approved; I have the reference
                   </Label>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex min-h-touch items-center gap-2">
                   <RadioGroupItem
                     id="approval-unavailable"
                     value="not_available"
@@ -413,10 +470,6 @@ function SubmitForm({
                   </Label>
                 </div>
               </RadioGroup>
-              <FieldError
-                id="attest-kind-error"
-                errors={field.state.meta.errors}
-              />
             </fieldset>
           )}
         </form.Field>
@@ -433,10 +486,19 @@ function SubmitForm({
                 }}
               >
                 {(field) => (
-                  <div className="grid max-w-md gap-1.5">
+                  <div
+                    className={cn(
+                      'grid max-w-mobile-lg gap-2',
+                      errorGroup(field.state.meta.errors),
+                    )}
+                  >
                     <Label htmlFor="approval-reference-input">
                       Approval reference
                     </Label>
+                    <FieldError
+                      id="approval-reference-error"
+                      errors={field.state.meta.errors}
+                    />
                     <Input
                       id="approval-reference-input"
                       value={field.state.value}
@@ -444,11 +506,8 @@ function SubmitForm({
                         field.handleChange(event.target.value)
                       }
                       placeholder="e.g. CPC minutes 12 Sep 2026, item 4"
+                      aria-invalid={field.state.meta.errors.length > 0}
                       aria-describedby="approval-reference-error"
-                    />
-                    <FieldError
-                      id="approval-reference-error"
-                      errors={field.state.meta.errors}
                     />
                   </div>
                 )}
@@ -464,21 +523,27 @@ function SubmitForm({
                 }}
               >
                 {(field) => (
-                  <div className="grid gap-1.5">
+                  <div
+                    className={cn(
+                      'grid gap-2',
+                      errorGroup(field.state.meta.errors),
+                    )}
+                  >
                     <Label htmlFor="approval-explanation">
                       Why approval is not available
                     </Label>
+                    <FieldError
+                      id="approval-explanation-error"
+                      errors={field.state.meta.errors}
+                    />
                     <Textarea
                       id="approval-explanation"
                       value={field.state.value}
                       onChange={(event) =>
                         field.handleChange(event.target.value)
                       }
+                      aria-invalid={field.state.meta.errors.length > 0}
                       aria-describedby="approval-explanation-error"
-                    />
-                    <FieldError
-                      id="approval-explanation-error"
-                      errors={field.state.meta.errors}
                     />
                   </div>
                 )}
@@ -502,7 +567,7 @@ function SubmitForm({
             {submit.isPending ? 'Submitting…' : 'Submit report'}
           </Button>
           {blocked && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Complete the items listed above first.
             </p>
           )}

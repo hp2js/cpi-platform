@@ -35,7 +35,7 @@ function ComparisonTable({
           placeholder="ID, name or quarter"
         />
       )}
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[40rem]">
           <TableCaption className="sr-only">
             Finalized reviewed implementation by institution and quarter
@@ -54,7 +54,7 @@ function ComparisonTable({
               <TableRow key={`${row.institutionId}-${row.periodLabel}`}>
                 <TableHead scope="row">
                   {row.institutionId}{' '}
-                  <span className="font-normal text-muted-foreground">
+                  <span className="font-normal text-base-dark">
                     {row.institutionName}
                   </span>
                 </TableHead>
@@ -85,10 +85,10 @@ export function FinalizedComparison({
   return (
     <section aria-labelledby="comparison-heading" className="grid gap-3">
       <div>
-        <h2 id="comparison-heading" className="text-lg font-semibold">
+        <h2 id="comparison-heading" className="text-lg font-bold">
           Finalized quarterly implementation
         </h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+        <p className="mt-1 max-w-measure text-sm text-base-dark">
           Same cycle and profile, finalized quarters only (
           {data.comparison.length} of {data.averageReviewed.expected}{' '}
           institution-quarters). Listed by institution, not ranked: plans differ
@@ -97,7 +97,7 @@ export function FinalizedComparison({
         </p>
       </div>
       {data.comparison.length === 0 ? (
-        <p className="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed bg-white p-4 text-sm text-base-dark">
           No quarter has been finalized yet. Results appear here as reviews are
           finalized.
         </p>

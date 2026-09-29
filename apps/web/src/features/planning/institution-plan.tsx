@@ -70,7 +70,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
   });
   if (open.length === 0)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         No future period is open for amendment.
       </p>
     );
@@ -80,22 +80,22 @@ function AmendmentForm({ plan }: { plan: Plan }) {
     (change === 'remove' || toPeriodId);
   return (
     <form
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
       onSubmit={(event) => {
         event.preventDefault();
         mutation.mutate();
       }}
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Removing or moving a planned milestone needs a reason and your officer’s
         confirmation. It applies only to periods that have not opened, and the
         original baseline is kept. Committee meeting obligations cannot be
         removed.
       </p>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-period">Period</Label>
         <SelectField
-          className="max-w-md"
+          className="max-w-mobile-lg"
           id="amend-period"
           value={periodId}
           onChange={(value) => {
@@ -108,10 +108,10 @@ function AmendmentForm({ plan }: { plan: Plan }) {
           }))}
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-milestone">Milestone</Label>
         <SelectField
-          className="max-w-md"
+          className="max-w-mobile-lg"
           id="amend-milestone"
           value={milestoneId}
           onChange={setMilestoneId}
@@ -123,7 +123,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         />
       </div>
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">Change</legend>
+        <legend className="text-sm font-bold">Change</legend>
         <RadioGroup
           value={change}
           onValueChange={(value) => setChange(value as 'remove' | 'reschedule')}
@@ -144,10 +144,10 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         </RadioGroup>
       </fieldset>
       {change === 'reschedule' && (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="amend-target">Move to</Label>
           <SelectField
-            className="max-w-md"
+            className="max-w-mobile-lg"
             id="amend-target"
             value={toPeriodId}
             onChange={setToPeriodId}
@@ -159,7 +159,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
           />
         </div>
       )}
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-reason">Reason</Label>
         <Textarea
           id="amend-reason"
@@ -168,7 +168,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         />
       </div>
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {isApiError(mutation.error)
             ? (Object.values(mutation.error.fieldErrors)[0] ??
               mutation.error.message)
@@ -194,15 +194,15 @@ function AmendmentList({ amendments }: { amendments: Amendment[] }) {
   return (
     <ul className="grid gap-2 text-sm">
       {amendments.map((amendment) => (
-        <li key={amendment.id} className="rounded-md border bg-card p-3">
-          <p className="font-medium">
+        <li key={amendment.id} className="rounded-md border bg-white p-3">
+          <p className="font-bold">
             {amendment.change === 'remove' ? 'Remove' : 'Move'}{' '}
             {amendment.milestoneCode} ·{' '}
             {amendment.status === 'pending'
               ? 'Awaiting officer'
               : amendment.status}
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             Requested {formatDateTime(amendment.requestedAt)}:{' '}
             {amendment.reason}
           </p>
@@ -226,22 +226,22 @@ export function InstitutionPlan() {
     <QueryView query={plan} label="plan">
       {(data) => (
         <div className="grid gap-8">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Corruption Risk Assessment and Mitigation Plan (CRAMP):{' '}
             {data.approvedPlanReference}
           </p>
           <section aria-labelledby="risks-heading" className="grid gap-3">
-            <h2 id="risks-heading" className="text-lg font-semibold">
+            <h2 id="risks-heading" className="text-lg font-bold">
               Risk register
             </h2>
             <RiskTable risks={data.risks} />
           </section>
           <section aria-labelledby="baselines-heading" className="grid gap-4">
             <div>
-              <h2 id="baselines-heading" className="text-lg font-semibold">
+              <h2 id="baselines-heading" className="text-lg font-bold">
                 Quarterly baselines
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-base-dark">
                 Your implementation result for each quarter is measured against
                 its approved baseline. Milestones cannot be deleted to improve a
                 result; changes need an amendment before the quarter opens.
@@ -257,15 +257,12 @@ export function InstitutionPlan() {
                 <article
                   key={baseline.id}
                   aria-labelledby={`bl-${baseline.periodId}`}
-                  className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-5"
+                  className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-5"
                 >
                   <header className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h3
-                      id={`bl-${baseline.periodId}`}
-                      className="font-semibold"
-                    >
+                    <h3 id={`bl-${baseline.periodId}`} className="font-bold">
                       {baseline.periodLabel} baseline{' '}
-                      <span className="font-normal text-muted-foreground">
+                      <span className="font-normal text-base-dark">
                         · version {baseline.version} ·{' '}
                         {baseline.milestones.length} milestones
                       </span>
@@ -275,7 +272,7 @@ export function InstitutionPlan() {
                   <MilestoneTable baseline={baseline} />
                   <BaselineNotes baseline={baseline} />
                   {history.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-base-dark">
                       Earlier versions kept:{' '}
                       {history
                         .map(
@@ -291,7 +288,7 @@ export function InstitutionPlan() {
             })}
           </section>
           <section aria-labelledby="amend-heading" className="grid gap-3">
-            <h2 id="amend-heading" className="text-lg font-semibold">
+            <h2 id="amend-heading" className="text-lg font-bold">
               Amendments
             </h2>
             <AmendmentList amendments={data.amendments} />

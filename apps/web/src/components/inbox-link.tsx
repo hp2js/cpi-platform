@@ -21,16 +21,16 @@ export function InboxLink({
       data-print-hide
       to={to}
       className={cn(
-        'relative inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium',
+        'relative inline-flex min-h-touch items-center gap-2 px-3 py-2 text-sm font-bold no-underline',
         tone === 'dark'
-          ? 'text-primary-foreground hover:bg-white/10'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          ? 'text-white hover:bg-white/10'
+          : 'text-ink hover:bg-base-lightest hover:text-primary',
       )}
     >
-      <Bell className="size-4" aria-hidden="true" />
-      <span className="sr-only sm:not-sr-only">Inbox</span>
+      <Bell className="size-5" aria-hidden="true" />
+      <span className="sr-only tablet:not-sr-only">Inbox</span>
       {unread > 0 && (
-        <span className="rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground tabular-nums">
+        <span className="rounded-full bg-secondary-dark px-2 text-2xs font-bold text-white tabular-nums">
           {unread}
           <span className="sr-only"> unread</span>
         </span>

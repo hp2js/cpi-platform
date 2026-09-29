@@ -8,7 +8,7 @@ import type {
   ReportAnswers,
 } from '@cpi/contracts';
 import { useForm } from '@tanstack/react-form';
-import { FileText, Upload } from 'lucide-react';
+import { FileText, MessageCircleQuestion, Upload } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -61,18 +61,48 @@ function FieldShell({
   return (
     <div id={id} className="grid scroll-mt-28 gap-2">
       <div>
-        <div className="font-medium">
+        <div className="font-bold">
           {label}
           {required === false && (
-            <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+            <span className="ml-2 text-sm font-normal text-base-dark">
               (optional)
             </span>
           )}
         </div>
-        {help && <p className="mt-0.5 text-sm text-muted-foreground">{help}</p>}
+        {help && (
+          <p
+            id={`${id}-hint`}
+            className="mt-1 max-w-measure text-xs text-base-dark"
+          >
+            {help}
+          </p>
+        )}
       </div>
       {children}
     </div>
+  );
+}
+
+/** USWDS tile radio (usa-radio__input--tile): the bordered tile is the label and the target. */
+function RadioTile({
+  id,
+  value,
+  label,
+  disabled,
+}: {
+  id: string;
+  value: string;
+  label: ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <Label
+      htmlFor={id}
+      className="min-h-touch cursor-pointer gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed"
+    >
+      <RadioGroupItem value={value} id={id} disabled={disabled} />
+      {label}
+    </Label>
   );
 }
 
@@ -83,7 +113,9 @@ function YesNo({
   labelledBy,
   yes = 'Yes',
   no = 'No',
+  describedBy,
 }: {
+  describedBy?: string;
   id: string;
   value: boolean | null;
   onChange: (value: boolean) => void;
@@ -96,20 +128,11 @@ function YesNo({
       aria-labelledby={labelledBy}
       value={value === null ? '' : value ? 'yes' : 'no'}
       onValueChange={(next) => onChange(next === 'yes')}
-      className="flex flex-wrap gap-x-6 gap-y-2"
+      aria-describedby={describedBy}
+      className="flex flex-wrap gap-2"
     >
-      <div className="flex items-center gap-2">
-        <RadioGroupItem value="yes" id={`${id}-yes`} />
-        <Label htmlFor={`${id}-yes`} className="font-normal">
-          {yes}
-        </Label>
-      </div>
-      <div className="flex items-center gap-2">
-        <RadioGroupItem value="no" id={`${id}-no`} />
-        <Label htmlFor={`${id}-no`} className="font-normal">
-          {no}
-        </Label>
-      </div>
+      <RadioTile id={`${id}-yes`} value="yes" label={yes} />
+      <RadioTile id={`${id}-no`} value="no" label={no} />
     </RadioGroup>
   );
 }
@@ -129,7 +152,7 @@ function UnavailableDeclaration({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid gap-2 rounded-md border border-dashed p-3">
+    <div className="grid max-w-tablet gap-3 bg-base-lightest p-4">
       <div className="flex items-center gap-2">
         <Checkbox
           id={`${id}-unavailable`}
@@ -144,7 +167,7 @@ function UnavailableDeclaration({
         </Label>
       </div>
       {value !== null && (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor={`${id}-explanation`}>Explain why</Label>
           <Textarea
             id={`${id}-explanation`}
@@ -209,7 +232,7 @@ function UploadButton({
   }
 
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <div className="flex flex-wrap items-center gap-3">
         <input
           ref={input}
@@ -227,28 +250,28 @@ function UploadButton({
           htmlFor={inputId}
           className={
             replaces
-              ? 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm font-medium text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 hover:bg-accent'
-              : 'inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs peer-focus-visible:outline-2 peer-focus-visible:outline-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 hover:bg-accent'
+              ? 'min-h-touch cursor-pointer gap-2 rounded-md px-3 font-bold text-primary underline underline-offset-2 peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:text-disabled hover:text-primary-dark'
+              : 'min-h-touch cursor-pointer gap-2 rounded-md bg-white px-4 font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:bg-disabled-lighter peer-disabled:text-disabled-dark peer-disabled:shadow-none hover:text-primary-dark'
           }
         >
-          <Upload className="size-4" aria-hidden="true" />
+          <Upload className="size-5" aria-hidden="true" />
           {label}
         </Label>
         {!replaces && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-base-dark">
             PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB
           </span>
         )}
       </div>
       {status.state === 'uploading' && (
-        <div className="grid max-w-sm gap-1">
+        <div className="grid max-w-mobile-lg gap-1">
           <progress
-            className="h-2 w-full accent-primary"
+            className="h-3 w-full accent-primary"
             value={status.progress}
             max={1}
             aria-label={`Uploading ${status.name}`}
           />
-          <p aria-live="polite" className="text-xs text-muted-foreground">
+          <p aria-live="polite" className="text-xs text-base-dark">
             Uploading {status.name}… {Math.round(status.progress * 100)}%
           </p>
         </div>
@@ -256,12 +279,12 @@ function UploadButton({
       {status.state === 'error' && (
         <div
           role="alert"
-          className="flex flex-wrap items-center gap-2 text-sm text-destructive"
+          className="flex flex-wrap items-center gap-2 border-l-4 border-error-dark pl-4 text-sm font-bold text-error-dark"
         >
           {status.message}
           <button
             type="button"
-            className="underline"
+            className="min-h-touch font-normal text-primary underline underline-offset-2"
             onClick={() => void send(status.file)}
           >
             Try again
@@ -275,13 +298,10 @@ function UploadButton({
 function EvidenceFile({ item }: { item: EvidenceItem }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <FileText
-        className="size-4 shrink-0 text-muted-foreground"
-        aria-hidden="true"
-      />
+      <FileText className="size-4 shrink-0 text-base-dark" aria-hidden="true" />
       <span className="min-w-0">
-        <span className="block truncate font-medium">{item.fileName}</span>
-        <span className="block text-xs text-muted-foreground">
+        <span className="block truncate font-bold">{item.fileName}</span>
+        <span className="block text-xs text-base-dark">
           {formatBytes(item.sizeBytes)} · uploaded{' '}
           {formatDateTime(item.uploadedAt)}
         </span>
@@ -306,6 +326,7 @@ export function QuestionField({
   const path = `questions.${question.id}` as const;
   const id = fieldDomId(path);
   const labelId = `${id}-label`;
+  const hintId = question.help ? `${id}-hint` : undefined;
   return (
     <form.Field name={path}>
       {(field) => {
@@ -324,7 +345,9 @@ export function QuestionField({
           case 'long_text':
             return shell(
               <Textarea
+                className="min-h-40"
                 aria-labelledby={labelId}
+                aria-describedby={hintId}
                 value={String(value ?? '')}
                 disabled={disabled}
                 onBlur={field.handleBlur}
@@ -337,12 +360,13 @@ export function QuestionField({
             return shell(
               <Input
                 aria-labelledby={labelId}
+                aria-describedby={hintId}
                 type={question.type === 'text' ? 'text' : question.type}
                 value={String(value ?? '')}
                 disabled={disabled}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                className="max-w-md"
+                className="max-w-mobile-lg"
               />,
             );
           case 'yes_no':
@@ -350,6 +374,7 @@ export function QuestionField({
               <YesNo
                 id={id}
                 labelledBy={labelId}
+                describedBy={hintId}
                 value={typeof value === 'boolean' ? value : null}
                 onChange={(next) => field.handleChange(next)}
               />,
@@ -358,21 +383,19 @@ export function QuestionField({
             return shell(
               <RadioGroup
                 aria-labelledby={labelId}
+                aria-describedby={hintId}
                 value={String(value ?? '')}
                 onValueChange={(next) => field.handleChange(next)}
-                className="grid gap-2"
+                className="grid max-w-tablet gap-2"
               >
                 {(question.choices ?? []).map((choice, index) => (
-                  <div key={choice} className="flex items-center gap-2">
-                    <RadioGroupItem
-                      value={choice}
-                      id={`${id}-${index}`}
-                      disabled={disabled}
-                    />
-                    <Label htmlFor={`${id}-${index}`} className="font-normal">
-                      {choice}
-                    </Label>
-                  </div>
+                  <RadioTile
+                    key={choice}
+                    id={`${id}-${index}`}
+                    value={choice}
+                    label={choice}
+                    disabled={disabled}
+                  />
                 ))}
               </RadioGroup>,
             );
@@ -399,7 +422,7 @@ export function QuestionField({
                     {files.map((item) => (
                       <li
                         key={item.id}
-                        className="flex items-center gap-3 rounded-md border bg-background p-2.5"
+                        className="flex flex-wrap items-center gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
                       >
                         <Checkbox
                           id={`${id}-${item.id}`}
@@ -417,7 +440,12 @@ export function QuestionField({
                           }
                           aria-label={`Include ${item.fileName} in this report`}
                         />
-                        <EvidenceFile item={item} />
+                        <Label
+                          htmlFor={`${id}-${item.id}`}
+                          className="min-w-0 font-normal"
+                        >
+                          <EvidenceFile item={item} />
+                        </Label>
                         <div className="ml-auto">
                           <UploadButton
                             category={item.category}
@@ -484,13 +512,20 @@ function TextArea({
   return (
     <form.Field name={name}>
       {(field) => (
-        <div id={id} className="grid scroll-mt-28 gap-1.5">
+        <div id={id} className="grid scroll-mt-28 gap-2">
           <Label htmlFor={`${id}-input`}>{label}</Label>
           {help && (
-            <p className="-mt-1 text-sm text-muted-foreground">{help}</p>
+            <p
+              id={`${id}-hint`}
+              className="max-w-measure text-xs text-base-dark"
+            >
+              {help}
+            </p>
           )}
           <Textarea
+            className="min-h-40"
             id={`${id}-input`}
+            aria-describedby={help ? `${id}-hint` : undefined}
             value={field.state.value}
             onBlur={field.handleBlur}
             onChange={(event) => setterOf<string>(field)(event.target.value)}
@@ -528,13 +563,13 @@ function EvidenceReferences({
           );
         return (
           <fieldset id={id} className="grid scroll-mt-28 gap-2">
-            <legend className="font-medium">Supporting evidence</legend>
-            <p className="text-sm text-muted-foreground">
+            <legend className="font-bold">Supporting evidence</legend>
+            <p className="text-sm text-base-dark">
               Expected: {milestone.evidenceExpectation} Select the files that
               support this claim and say where.
             </p>
             {current.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-base-dark">
                 Upload committee minutes above to reference them here.
               </p>
             ) : (
@@ -547,7 +582,7 @@ function EvidenceReferences({
                   return (
                     <li
                       key={item.id}
-                      className="grid gap-2 rounded-md border bg-background p-2.5"
+                      className="grid gap-2 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
                     >
                       <div className="flex items-center gap-3">
                         <Checkbox
@@ -565,7 +600,7 @@ function EvidenceReferences({
                         </Label>
                       </div>
                       {reference && (
-                        <div className="grid gap-1 pl-7">
+                        <div className="grid gap-1 pl-8">
                           <Label
                             htmlFor={`${checkboxId}-passage`}
                             className="text-sm"
@@ -574,7 +609,7 @@ function EvidenceReferences({
                           </Label>
                           <Input
                             id={`${checkboxId}-passage`}
-                            className="max-w-sm"
+                            className="max-w-mobile-lg"
                             value={reference.passage}
                             placeholder="e.g. Item 4, page 2"
                             onChange={(event) =>
@@ -623,18 +658,24 @@ export function MilestoneCard({
       id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
       className={cn(
-        'grid scroll-mt-28 gap-4 rounded-lg border bg-card p-4 sm:p-5',
-        questions.length > 0 && 'border-amber-500/60 ring-1 ring-amber-500/30',
+        'grid scroll-mt-28 gap-4 rounded-lg border-2 border-base-lighter bg-white p-4 tablet:p-6',
+        questions.length > 0 && 'border-l-8 border-l-warning',
       )}
     >
       {questions.length > 0 && (
-        <div className="grid gap-2 rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-500/10 dark:text-amber-100">
-          <p className="font-medium">Your officer asked about this milestone</p>
+        <div className="grid gap-2 border-l-8 border-warning bg-warning-lighter px-5 py-4 text-sm text-ink">
+          <p className="flex items-center gap-2 font-bold">
+            <MessageCircleQuestion
+              className="size-5 shrink-0"
+              aria-hidden="true"
+            />
+            Your officer asked about this milestone
+          </p>
           {questions.map((question) => (
             <div key={question.question}>
               <p>{question.question}</p>
               {question.requestedEvidence && (
-                <p className="text-xs">
+                <p className="text-xs text-base-darker">
                   Requested: {question.requestedEvidence}
                 </p>
               )}
@@ -643,24 +684,27 @@ export function MilestoneCard({
         </div>
       )}
       <header>
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <p className="text-xs font-bold tracking-wide text-base-dark uppercase">
           {milestone.code}
           {milestone.mandatory ? ' · Committee obligation' : ''}
         </p>
-        <h3 id={`${completedId}-title`} className="mt-0.5 font-semibold">
+        <h3
+          id={`${completedId}-title`}
+          className="mt-1 text-md leading-tight font-bold"
+        >
           {milestone.title}
         </h3>
-        <dl className="mt-2 grid gap-1 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-3">
-          <dt className="text-muted-foreground">Activity</dt>
+        <dl className="mt-2 grid gap-1 text-sm tablet:grid-cols-[auto_1fr] tablet:gap-x-3">
+          <dt className="text-base-dark">Activity</dt>
           <dd>{milestone.activity}</dd>
-          <dt className="text-muted-foreground">Completion condition</dt>
+          <dt className="text-base-dark">Completion condition</dt>
           <dd>{milestone.completionCondition}</dd>
         </dl>
       </header>
       <form.Field name={completedName}>
         {(field) => (
           <div id={completedId} className="grid scroll-mt-28 gap-2">
-            <p id={`${completedId}-label`} className="font-medium">
+            <p id={`${completedId}-label`} className="font-bold">
               Was this milestone completed by the end of the quarter?
             </p>
             <YesNo

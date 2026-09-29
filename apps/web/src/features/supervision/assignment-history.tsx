@@ -51,7 +51,7 @@ export function AssignmentHistory({
   );
   return (
     <section aria-labelledby={headingId} className="grid gap-3">
-      <h2 id={headingId} className="font-semibold">
+      <h2 id={headingId} className="font-bold">
         {title}
       </h2>
       <ListSearch
@@ -59,7 +59,7 @@ export function AssignmentHistory({
         label={`Filter the ${who.toLowerCase()} history`}
         placeholder={`Institution ID, ${who.toLowerCase()} or reason`}
       />
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[44rem]">
           <TableCaption className="sr-only">{title}</TableCaption>
           <TableHeader>

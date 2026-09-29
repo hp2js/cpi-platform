@@ -1,4 +1,5 @@
 import type { Oversight, TrendPoint } from '@cpi/contracts';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -32,14 +33,14 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
     {
       key: 'finalized',
       label: 'Finalized',
-      className: 'fill-muted-foreground',
+      className: 'fill-base-dark',
     },
   ] as const;
   return (
     <figure className="grid gap-2">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full max-w-xl"
+        className="w-full max-w-tablet"
         aria-hidden="true"
         focusable="false"
       >
@@ -52,13 +53,13 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
                 x2={width}
                 y1={y}
                 y2={y}
-                className="stroke-border"
+                className="stroke-base-lighter"
               />
               <text
                 x={30}
                 y={y + 4}
                 textAnchor="end"
-                className="fill-muted-foreground text-[10px]"
+                className="fill-base-dark text-[10px]"
               >
                 {tick}%
               </text>
@@ -78,7 +79,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
                   x={x}
                   y={top + plot - 6}
                   textAnchor="middle"
-                  className="fill-muted-foreground text-[10px]"
+                  className="fill-base-dark text-[10px]"
                 >
                   Not due
                 </text>
@@ -103,7 +104,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
                 x={x}
                 y={height - 10}
                 textAnchor="middle"
-                className="fill-foreground text-[11px]"
+                className="fill-ink text-[11px]"
               >
                 {point.periodLabel}
               </text>
@@ -111,9 +112,9 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
           );
         })}
       </svg>
-      <figcaption className="flex gap-4 text-xs text-muted-foreground">
+      <figcaption className="flex gap-4 text-xs text-base-dark">
         {series.map((item) => (
-          <span key={item.key} className="flex items-center gap-1.5">
+          <span key={item.key} className="flex items-center gap-2">
             <svg className="size-3" aria-hidden="true" focusable="false">
               <rect width="12" height="12" rx="2" className={item.className} />
             </svg>
@@ -137,25 +138,34 @@ export function Trends({
   title?: string;
 }) {
   const unit = data.reviewTarget.unit === 'working' ? 'working days' : 'days';
+  const anyDue = data.trends.some((point) => point.due > 0);
   return (
     <section aria-labelledby={headingId} className="grid gap-4">
       <div>
-        <h2 id={headingId} className="text-lg font-semibold">
+        <h2 id={headingId} className="text-lg font-bold">
           {title}
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           Reporting and review across the cycle. The officer review target is{' '}
           {data.reviewTarget.days} {unit} from receipt to a final decision.
         </p>
       </div>
-      <div className="grid gap-6 rounded-lg border bg-card p-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <TrendChart points={data.trends} />
+      <div
+        className={cn(
+          'grid gap-6 rounded-lg border-2 border-base-lighter bg-white p-5',
+          anyDue && 'widescreen:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]',
+        )}
+      >
+        {/* Until a quarter is due the chart would only draw empty axes; the table says so. */}
+        {anyDue && <TrendChart points={data.trends} />}
         {/* The table's own container scrolls and joins the tab order when it overflows. */}
         <div className="min-w-0">
           <Table className="min-w-[40rem]">
-            <TableCaption className="text-left">
-              The chart shows the on-time and finalized rates from this table.
-            </TableCaption>
+            {anyDue && (
+              <TableCaption className="text-left">
+                The chart shows the on-time and finalized rates from this table.
+              </TableCaption>
+            )}
             <TableHeader>
               <TableRow>
                 <TableHead scope="col">Quarter</TableHead>

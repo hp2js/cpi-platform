@@ -45,14 +45,12 @@ export function ResultsPage() {
           !data.released ? (
             <section
               aria-labelledby="unreleased-heading"
-              className="rounded-lg border bg-card p-5"
+              className="rounded-lg border bg-white p-5"
             >
-              <h2 id="unreleased-heading" className="font-semibold">
+              <h2 id="unreleased-heading" className="font-bold">
                 Not yet published
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {data.message}
-              </p>
+              <p className="mt-1 text-sm text-base-dark">{data.message}</p>
             </section>
           ) : (
             <div className="grid gap-8">
@@ -65,14 +63,14 @@ export function ResultsPage() {
                   <div>
                     <h2
                       id={`result-${result.id}`}
-                      className="text-lg font-semibold"
+                      className="text-lg font-bold"
                     >
                       Version {result.version}{' '}
                       {result.status === 'current'
                         ? '(current)'
                         : '(superseded)'}
                     </h2>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-base-dark">
                       Published {formatDateTime(result.publishedAt)} by{' '}
                       {result.publishedBy} · batch {result.batchId}
                       {result.correctionReason &&
@@ -102,7 +100,7 @@ export function ResultsPage() {
         }
       </QueryView>
       {exportCsv.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {exportCsv.error.message}
         </p>
       )}

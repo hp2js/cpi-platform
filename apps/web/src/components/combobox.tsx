@@ -6,6 +6,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { fieldControl } from '@/components/ui/input';
 
 export interface ComboboxOption {
   value: string;
@@ -132,13 +133,12 @@ export function Combobox({
           aria-describedby={describedBy}
           disabled={disabled}
           className={cn(
-            'flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive',
+            fieldControl,
+            'flex h-touch max-w-mobile-lg items-center justify-between gap-2 text-left',
             className,
           )}
         >
-          <span
-            className={cn('truncate', !selected && 'text-muted-foreground')}
-          >
+          <span className={cn('truncate', !selected && 'text-base-dark')}>
             {selected
               ? selected.description
                 ? `${selected.label} · ${selected.description}`
@@ -146,7 +146,7 @@ export function Combobox({
               : placeholder}
           </span>
           <ChevronsUpDown
-            className="size-4 shrink-0 text-muted-foreground"
+            className="size-5 shrink-0 text-ink"
             aria-hidden="true"
           />
         </button>
@@ -159,9 +159,9 @@ export function Combobox({
           (event.currentTarget as HTMLElement).querySelector('input')?.focus();
         }}
       >
-        <div className="flex items-center gap-2 border-b px-3">
+        <div className="flex items-center gap-2 border-b border-base-lighter px-2">
           <Search
-            className="size-4 shrink-0 text-muted-foreground"
+            className="size-4 shrink-0 text-base-dark"
             aria-hidden="true"
           />
           <input
@@ -178,14 +178,14 @@ export function Combobox({
             }}
             onKeyDown={onKeyDown}
             placeholder={searchPlaceholder}
-            className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="h-touch w-full bg-transparent text-sm outline-none placeholder:text-base"
           />
         </div>
         <ul
           id={listId}
           role="listbox"
           aria-label={searchPlaceholder}
-          className="max-h-72 overflow-y-auto p-1"
+          className="max-h-72 overflow-y-auto py-1"
         >
           {shown.map((option, index) => {
             const isSelected = option.value === value;
@@ -200,14 +200,14 @@ export function Combobox({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => choose(option)}
                 className={cn(
-                  'flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 text-sm',
-                  index === active && 'bg-accent text-accent-foreground',
-                  option.disabled && 'cursor-not-allowed opacity-50',
+                  'flex min-h-touch cursor-pointer items-start gap-2 px-2 py-2 text-sm',
+                  index === active && 'bg-primary-lighter text-primary-darker',
+                  option.disabled && 'cursor-not-allowed text-disabled',
                 )}
               >
                 <Check
                   className={cn(
-                    'mt-0.5 size-4 shrink-0',
+                    'mt-1 size-4 shrink-0',
                     isSelected ? 'opacity-100' : 'opacity-0',
                   )}
                   aria-hidden="true"
@@ -215,7 +215,7 @@ export function Combobox({
                 <span className="min-w-0">
                   <span className="block">{option.label}</span>
                   {option.description && (
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-base-dark">
                       {option.description}
                     </span>
                   )}
@@ -225,7 +225,7 @@ export function Combobox({
           })}
         </ul>
         <p
-          className="border-t px-3 py-2 text-xs text-muted-foreground"
+          className="border-t border-base-lighter px-2 py-2 text-xs text-base-dark"
           aria-live="polite"
         >
           {matches.length === 0

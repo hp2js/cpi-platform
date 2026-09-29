@@ -35,19 +35,19 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
   ];
   return (
     <div className="grid gap-6">
-      <dl className="grid gap-x-6 gap-y-3 rounded-lg border bg-card p-5 text-sm sm:grid-cols-[14rem_1fr]">
+      <dl className="grid gap-x-6 gap-y-3 rounded-lg border bg-white p-5 text-sm tablet:grid-cols-[14rem_1fr]">
         {rows.map(([term, detail]) => (
           <div key={term} className="contents">
-            <dt className="text-muted-foreground">{term}</dt>
-            <dd className="font-medium break-words">{detail}</dd>
+            <dt className="text-base-dark">{term}</dt>
+            <dd className="font-bold break-words">{detail}</dd>
           </div>
         ))}
       </dl>
       <section
         aria-labelledby="calculation-heading"
-        className="rounded-lg border bg-card p-5"
+        className="rounded-lg border bg-white p-5"
       >
-        <h2 id="calculation-heading" className="font-semibold">
+        <h2 id="calculation-heading" className="font-bold">
           Evaluation status
         </h2>
         <p className="mt-1 text-sm">
@@ -58,25 +58,23 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
       </section>
       <section
         aria-labelledby="inventory-heading"
-        className="rounded-lg border bg-card p-5"
+        className="rounded-lg border bg-white p-5"
       >
-        <h2 id="inventory-heading" className="font-semibold">
+        <h2 id="inventory-heading" className="font-bold">
           Evidence inventory
         </h2>
         {receipt.evidence.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            No files were attached.
-          </p>
+          <p className="mt-2 text-sm text-base-dark">No files were attached.</p>
         ) : (
           <ul className="mt-3 grid gap-2 text-sm">
             {receipt.evidence.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center gap-x-2">
                 <FileText
-                  className="size-4 text-muted-foreground"
+                  className="size-4 text-base-dark"
                   aria-hidden="true"
                 />
-                <span className="font-medium">{item.fileName}</span>
-                <span className="text-muted-foreground">
+                <span className="font-bold">{item.fileName}</span>
+                <span className="text-base-dark">
                   {evidenceCategoryLabel[item.category]} ·{' '}
                   {formatBytes(item.sizeBytes)} · SHA-256{' '}
                   {item.sha256.slice(0, 12)}…
@@ -87,11 +85,11 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
         )}
         {receipt.declaredUnavailable.length > 0 && (
           <>
-            <h3 className="mt-4 text-sm font-semibold">Declarations</h3>
+            <h3 className="mt-4 text-sm font-bold">Declarations</h3>
             <ul className="mt-2 grid list-disc gap-1 pl-5 text-sm">
               {receipt.declaredUnavailable.map((item) => (
                 <li key={`${item.field}-${item.message}`}>
-                  <span className="font-medium">{item.label}</span>:{' '}
+                  <span className="font-bold">{item.label}</span>:{' '}
                   {item.message}
                 </li>
               ))}

@@ -26,10 +26,10 @@ export function WorkloadPage() {
         {(data) => (
           <div className="grid gap-8">
             <section aria-labelledby="workload-heading" className="grid gap-3">
-              <h2 id="workload-heading" className="text-lg font-semibold">
+              <h2 id="workload-heading" className="text-lg font-bold">
                 Officer workload
               </h2>
-              <div className="overflow-x-auto rounded-lg border bg-card">
+              <div className="overflow-x-auto rounded-lg border bg-white">
                 <Table className="min-w-[44rem]">
                   <TableCaption className="sr-only">
                     Open and completed review work per officer

@@ -44,10 +44,10 @@ function ReadinessList({
       {controls.visible.map((evaluation) => (
         <details
           key={evaluation.institutionId}
-          className="rounded-lg border bg-card p-4"
+          className="rounded-lg border bg-white p-4"
         >
           <summary className="cursor-pointer text-sm">
-            <span className="font-semibold">{evaluation.institutionId}</span>{' '}
+            <span className="font-bold">{evaluation.institutionId}</span>{' '}
             {evaluation.institutionName} ·{' '}
             {evaluation.publication
               ? `published v${evaluation.publication.version}${evaluation.publication.stale ? ' (out of date)' : ''}`
@@ -81,7 +81,7 @@ export function SupervisorAnnualPage() {
       <QueryView query={annual} label="annual evaluation">
         {(data) => (
           <div className="grid gap-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Evaluation cutoff {formatDateTime(data.evaluationCutoff)} (
               {data.cutoffPassed ? 'passed' : 'not yet passed'}) · as of{' '}
               {formatDateTime(data.asOf)}

@@ -16,27 +16,27 @@ const status = {
   approved: {
     label: 'Approved',
     icon: CircleCheck,
-    className: 'bg-success text-success-foreground',
+    className: 'bg-success-lighter text-success-darker',
   },
   proposed: {
     label: 'Awaiting officer approval',
     icon: Clock,
-    className: 'bg-secondary text-secondary-foreground',
+    className: 'bg-warning-lighter text-ink',
   },
   returned: {
     label: 'Returned for revision',
     icon: Undo2,
-    className: 'bg-muted text-foreground',
+    className: 'bg-base-lightest text-ink',
   },
 } as const;
 
 export function BaselineStatus({ baseline }: { baseline: Baseline }) {
   const { label, icon: Icon, className } = status[baseline.status];
   return (
-    <span className="flex flex-wrap items-center gap-1.5">
+    <span className="flex flex-wrap items-center gap-2">
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+          'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold',
           className,
         )}
       >
@@ -44,7 +44,7 @@ export function BaselineStatus({ baseline }: { baseline: Baseline }) {
         {label}
       </span>
       {baseline.historicalSeed && (
-        <span className="rounded-md border px-2 py-0.5 text-xs font-semibold tracking-wide">
+        <span className="rounded-md border px-2 py-1 text-xs font-bold tracking-wide">
           SEEDED HISTORICAL BASELINE ·{' '}
           {baseline.historicalSeed.confirmedAt
             ? 'confirmed'
@@ -52,7 +52,7 @@ export function BaselineStatus({ baseline }: { baseline: Baseline }) {
         </span>
       )}
       {baseline.locked && (
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1 text-xs text-base-dark">
           <Lock className="size-3.5" aria-hidden="true" />
           Locked: reporting has opened
         </span>
@@ -84,17 +84,17 @@ export function MilestoneTable({ baseline }: { baseline: Baseline }) {
                 scope="row"
                 className="h-auto py-2 font-normal whitespace-normal"
               >
-                <span className="font-medium">{milestone.code}</span>{' '}
+                <span className="font-bold">{milestone.code}</span>{' '}
                 {milestone.title}
                 {milestone.mandatory && (
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-base-dark">
                     Committee obligation
                   </span>
                 )}
               </TableHead>
               <TableCell className="text-sm whitespace-normal">
                 {milestone.activity}
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs text-base-dark">
                   {milestone.risk}
                 </span>
               </TableCell>
@@ -115,7 +115,7 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
     <div className="grid gap-1 text-sm">
       {baseline.approval && (
         <p>
-          <span className="text-muted-foreground">
+          <span className="text-base-dark">
             Approved by {baseline.approval.by},{' '}
             {formatDateTime(baseline.approval.at)}:{' '}
           </span>
@@ -124,7 +124,7 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
       )}
       {baseline.returned && (
         <p>
-          <span className="text-muted-foreground">
+          <span className="text-base-dark">
             Returned by {baseline.returned.by},{' '}
             {formatDateTime(baseline.returned.at)}:{' '}
           </span>
@@ -132,7 +132,7 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
         </p>
       )}
       {baseline.historicalSeed && (
-        <p className="text-muted-foreground">
+        <p className="text-base-dark">
           {baseline.historicalSeed.reason} Loaded{' '}
           {formatDateTime(baseline.historicalSeed.loadedAt)}
           {baseline.historicalSeed.confirmedAt
@@ -147,7 +147,7 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
 /** Severity is the product on the cycle's 1–5 scale; no colour bands are inferred (O16). */
 export function RiskTable({ risks }: { risks: Risk[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div className="overflow-x-auto rounded-lg border bg-white">
       <Table className="min-w-[40rem]">
         <TableCaption className="text-left">
           Severity is probability × impact on the cycle's 1–5 scale. No rating
@@ -169,7 +169,7 @@ export function RiskTable({ risks }: { risks: Risk[] }) {
                 scope="row"
                 className="h-auto py-2 font-normal whitespace-normal"
               >
-                <span className="font-medium">{risk.code}</span>{' '}
+                <span className="font-bold">{risk.code}</span>{' '}
                 {risk.description}
               </TableHead>
               <TableCell className="text-sm whitespace-normal">
@@ -177,7 +177,7 @@ export function RiskTable({ risks }: { risks: Risk[] }) {
               </TableCell>
               <TableCell className="tabular-nums">{risk.probability}</TableCell>
               <TableCell className="tabular-nums">{risk.impact}</TableCell>
-              <TableCell className="font-medium tabular-nums">
+              <TableCell className="font-bold tabular-nums">
                 {risk.severity}
               </TableCell>
             </TableRow>

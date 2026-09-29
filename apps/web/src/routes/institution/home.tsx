@@ -17,8 +17,9 @@ import type { ReactNode } from 'react';
 import { DeadlineCountdown } from '@/components/deadline-countdown';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
-import { FlagList, WorkflowStateBadge } from '@/components/status';
+import { ObligationStatus } from '@/components/status';
 import { buttonVariants } from '@/components/ui/button';
+import { inboxQuery } from '@/features/events/queries';
 import { formsQuery } from '@/features/forms/queries';
 import { foundationsQuery } from '@/features/foundations/queries';
 import { receiptsQuery, reportQuery } from '@/features/reporting/queries';
@@ -149,28 +150,80 @@ function buildTodos({
   );
 }
 
+/** The earliest quarter that is not yet due, for the "nothing is due" state. */
+function nextDue(cycle: Cycle, obligations: Obligation[]) {
+  const upcoming = obligations
+    .filter((obligation) => obligation.flags.includes('not_yet_due'))
+    .flatMap((obligation) => {
+      const period = cycle.periods.find(
+        (candidate) => candidate.id === obligation.periodId,
+      );
+      return period
+        ? [{ label: period.label, deadline: period.submissionDeadline }]
+        : [];
+    })
+    .sort((a, b) => Date.parse(a.deadline) - Date.parse(b.deadline));
+  return upcoming[0];
+}
+
 function TodoList({
   todos,
   formPublished,
+  next,
 }: {
   todos: Todo[];
   formPublished: boolean;
+  /** The next quarter that will be due, shown when nothing is due now. */
+  next?: { label: string; deadline: string };
 }) {
+  const inbox = useQuery(inboxQuery);
+  const unread = inbox.data?.unread ?? 0;
   return (
     <section
       aria-labelledby="todo-heading"
-      className="grid gap-3 rounded-xl border bg-card p-5"
+      className="grid gap-3 rounded-lg border bg-white p-5"
     >
-      <h2 id="todo-heading" className="font-semibold">
+      <h2 id="todo-heading" className="font-bold">
         What needs you
       </h2>
       {todos.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CircleCheck className="size-4 text-primary" aria-hidden="true" />
-          {formPublished
-            ? 'Nothing is due right now. Upcoming quarters are listed below.'
-            : 'The report form has not been published yet. You will be notified when it is; nothing is needed from you until then.'}
-        </p>
+        <div className="grid gap-2 text-sm">
+          <p className="flex items-center gap-2">
+            <CircleCheck
+              className="size-5 shrink-0 text-success-darker"
+              aria-hidden="true"
+            />
+            {formPublished
+              ? 'Nothing is due right now.'
+              : 'The report form has not been published yet. You will be notified when it is; nothing is needed from you until then.'}
+          </p>
+          {formPublished && next && (
+            <p className="flex items-start gap-2">
+              <CalendarClock
+                className="size-5 shrink-0 text-base-dark"
+                aria-hidden="true"
+              />
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  Next: your <span className="font-bold">{next.label}</span>{' '}
+                  report, due{' '}
+                  <time dateTime={next.deadline}>
+                    {formatDateTime(next.deadline)}
+                  </time>
+                </span>
+                <DeadlineCountdown deadline={next.deadline} />
+              </span>
+            </p>
+          )}
+          {unread > 0 && (
+            <p>
+              <Link to="/institution/inbox" className="usa-link">
+                {unread} unread {unread === 1 ? 'message' : 'messages'} in your
+                inbox
+              </Link>
+            </p>
+          )}
+        </div>
       ) : (
         <ol className="grid gap-3">
           {todos.map((todo) => (
@@ -179,13 +232,13 @@ function TodoList({
               className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-4"
             >
               <div className="grid min-w-0 flex-1 gap-1">
-                <p className="font-medium">{todo.title}</p>
-                <p className="text-sm text-muted-foreground">{todo.detail}</p>
+                <p className="font-bold">{todo.title}</p>
+                <p className="text-sm text-base-dark">{todo.detail}</p>
                 {todo.deadline && (
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                     <span className="inline-flex items-start gap-2">
                       <CalendarClock
-                        className="mt-0.5 size-4 shrink-0 text-primary"
+                        className="mt-1 size-4 shrink-0 text-primary"
                         aria-hidden="true"
                       />
                       <span>
@@ -225,7 +278,7 @@ function QuarterOutcome({
     <p className="mt-2 text-sm">
       Submitted {formatDateTime(obligation.firstSubmittedAt)} ·{' '}
       {late > 0 ? (
-        <span className="font-medium text-destructive">
+        <span className="font-bold text-error-dark">
           {formatDays(late, obligation.daysLateUnit)} late
         </span>
       ) : (
@@ -326,13 +379,17 @@ function Overview({
   });
   return (
     <div className="grid gap-8">
-      <TodoList todos={todos} formPublished={formPublished} />
+      <TodoList
+        todos={todos}
+        formPublished={formPublished}
+        next={nextDue(cycle, obligations)}
+      />
 
       <section aria-labelledby="deadlines-heading">
-        <h2 id="deadlines-heading" className="text-lg font-semibold">
+        <h2 id="deadlines-heading" className="text-lg font-bold">
           {cycle.label} reporting obligations
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-base-dark">
           Quarterly reports are due{' '}
           {formatDays(cycle.dayCounting.reportingDays, cycle.dayCounting.mode)}{' '}
           after each quarter ends. Procedures, the risk assessment and the
@@ -342,7 +399,7 @@ function Overview({
           </time>
           , which quarterly deadlines do not extend.
         </p>
-        <ol className="mt-4 grid gap-3 sm:grid-cols-2">
+        <ol className="mt-4 grid gap-3 tablet:grid-cols-2">
           {cycle.periods.map((period) => {
             const obligation = obligations.find(
               (candidate) => candidate.periodId === period.id,
@@ -353,10 +410,10 @@ function Overview({
               (obligation.state === 'not_started' ||
                 obligation.state === 'draft');
             return (
-              <li key={period.id} className="rounded-lg border bg-card p-4">
-                <h3 className="font-semibold">
+              <li key={period.id} className="rounded-lg border bg-white p-4">
+                <h3 className="font-bold">
                   {period.label}{' '}
-                  <span className="font-normal text-muted-foreground">
+                  <span className="font-normal text-base-dark">
                     · {formatDateRange(period.startsOn, period.endsOn)}
                   </span>
                 </h3>
@@ -372,11 +429,9 @@ function Overview({
                 {obligation && (
                   <>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <WorkflowStateBadge
+                      <ObligationStatus
                         state={obligation.state}
                         audience="institution"
-                      />
-                      <FlagList
                         flags={obligation.flags.filter(
                           (flag) =>
                             flag !== 'late' || !obligation.firstSubmittedAt,
@@ -402,31 +457,29 @@ function Overview({
         </ol>
       </section>
 
-      <details className="group rounded-lg border bg-card p-5 text-sm">
-        <summary className="cursor-pointer font-semibold">
-          Terms used here
-        </summary>
-        <dl className="mt-3 grid gap-2 sm:grid-cols-[8rem_1fr]">
-          <dt className="font-medium">CPC</dt>
-          <dd className="text-muted-foreground">
+      <details className="group rounded-lg border bg-white p-5 text-sm">
+        <summary className="cursor-pointer font-bold">Terms used here</summary>
+        <dl className="mt-3 grid gap-2 tablet:grid-cols-[8rem_1fr]">
+          <dt className="font-bold">CPC</dt>
+          <dd className="text-base-dark">
             Corruption Prevention Committee: the institution's committee that
             oversees prevention work. Its signed quarterly minutes go with each
             report.
           </dd>
-          <dt className="font-medium">IAO</dt>
-          <dd className="text-muted-foreground">
+          <dt className="font-bold">IAO</dt>
+          <dd className="text-base-dark">
             Integrity Assurance Officers: the officers who carry out integrity
             assurance. Their signed quarterly meeting minutes go with each
             report.
           </dd>
-          <dt className="font-medium">CRAMP</dt>
-          <dd className="text-muted-foreground">
+          <dt className="font-bold">CRAMP</dt>
+          <dd className="text-base-dark">
             Corruption Risk Assessment and Mitigation Plan: your approved plan.
             Each quarter is scored against the milestones in its locked
             baseline.
           </dd>
-          <dt className="font-medium">Baseline</dt>
-          <dd className="text-muted-foreground">
+          <dt className="font-bold">Baseline</dt>
+          <dd className="text-base-dark">
             The milestones your officer approved for a quarter before it opened.
             They cannot be removed to improve a result.
           </dd>

@@ -11,7 +11,7 @@ import {
   ListSearch,
   useListControls,
 } from '@/components/list-controls';
-import { FlagList, WorkflowStateBadge } from '@/components/status';
+import { ObligationStatus } from '@/components/status';
 import {
   Table,
   TableBody,
@@ -74,7 +74,7 @@ export function ObligationMatrix({
           placeholder="ID or name"
         />
       )}
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[56rem]">
           <TableCaption className="sr-only">{caption}</TableCaption>
           <TableHeader>
@@ -105,16 +105,16 @@ export function ObligationMatrix({
                           : '/supervisor/institutions/$institutionId'
                       }
                       params={{ institutionId: institution.id }}
-                      className="block font-medium text-primary underline-offset-4 hover:underline"
+                      className="block font-bold text-primary underline-offset-4 hover:underline"
                     >
                       {institution.id}
                     </Link>
                   ) : (
-                    <span className="block font-medium text-foreground">
+                    <span className="block font-bold text-ink">
                       {institution.id}
                     </span>
                   )}
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-base-dark">
                     {institution.name}
                   </span>
                 </TableHead>
@@ -128,12 +128,14 @@ export function ObligationMatrix({
                   return (
                     <TableCell key={period.id} className="align-top">
                       {obligation ? (
-                        <span className="flex flex-col items-start gap-1.5">
-                          <WorkflowStateBadge state={obligation.state} />
-                          <FlagList flags={obligation.flags} />
+                        <span className="flex flex-col items-start gap-2">
+                          <ObligationStatus
+                            state={obligation.state}
+                            flags={obligation.flags}
+                          />
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-base-dark">
                           No obligation
                         </span>
                       )}
