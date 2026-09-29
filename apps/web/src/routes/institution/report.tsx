@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-router';
 import { ArrowRight, CircleAlert, CircleCheck, Lock, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { WorkflowStateBadge } from '@/components/status';
@@ -529,6 +530,7 @@ export function ReportPage() {
           )
         }
       />
+      <Glossary />
       <QueryView query={bundle} label="report">
         {(data) =>
           data.editable ? (

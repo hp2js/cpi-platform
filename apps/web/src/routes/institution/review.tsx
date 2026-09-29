@@ -15,8 +15,19 @@ import {
   Send,
 } from 'lucide-react';
 import { useRef } from 'react';
+import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
 import { ErrorSummary } from '@/components/error-summary';
+import { answerChanges } from '@/features/reporting/changes';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -136,6 +147,86 @@ function Checklist({
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Before a clarification response is submitted, what it changes compared with the last
+ * submitted revision, so the focal person can confirm the answer addresses the question.
+ */
+function ChangesSinceSubmitted({
+  bundle,
+  periodId,
+}: {
+  bundle: ReportBundle;
+  periodId: string;
+}) {
+  if (!bundle.submitted || !bundle.draft || !bundle.form) return null;
+  const changes = answerChanges(
+    bundle.form,
+    bundle.baseline.milestones,
+    bundle.evidence,
+    bundle.submitted.answers,
+    bundle.draft.answers,
+  );
+  const revision = bundle.submitted.revision;
+  return (
+    <section
+      aria-labelledby="changes-heading"
+      className="rounded-lg border-2 border-base-lighter bg-white p-5"
+    >
+      <h2 id="changes-heading" className="font-bold">
+        What you changed since revision {revision}
+      </h2>
+      {changes.length === 0 ? (
+        <p className="mt-2 flex items-start gap-2 bg-warning-lighter px-3 py-2 text-sm">
+          <CircleAlert
+            className="mt-1 size-4 shrink-0 text-warning-darker"
+            aria-hidden="true"
+          />
+          Nothing yet. Submitting now sends the same answers as revision{' '}
+          {revision}; change what the clarification asks about first.
+        </p>
+      ) : (
+        <Table className="mt-3">
+          <TableCaption className="sr-only">
+            Answers changed since revision {revision}
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Answer</TableHead>
+              <TableHead scope="col">Revision {revision}</TableHead>
+              <TableHead scope="col">Now</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {changes.map((change) => (
+              <TableRow key={change.field}>
+                <TableHead
+                  scope="row"
+                  className="font-normal whitespace-normal"
+                >
+                  <Link
+                    to="/institution/reports/$periodId"
+                    params={{ periodId }}
+                    hash={change.field}
+                    className="usa-link"
+                  >
+                    {change.label}
+                  </Link>
+                </TableHead>
+                <TableCell className="whitespace-normal text-base-dark">
+                  {change.before}
+                </TableCell>
+                <TableCell className="whitespace-normal font-bold">
+                  {change.after}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </section>
   );
 }
 
@@ -436,7 +527,8 @@ function SubmitForm({
                 Institutional approval of this report
               </legend>
               <p className="text-sm text-base-dark">
-                Give the CPC or Accounting Officer approval reference
+                Give the approval reference from the Corruption Prevention
+                Committee (CPC) or the Accounting Officer
                 {accountingOfficer &&
                   ` (${accountingOfficer.name}, ${accountingOfficer.designation}, chairs your CPC)`}
                 . If approval is not available, say so; this is recorded as a
@@ -610,6 +702,7 @@ export function ReviewSubmitPage() {
           </Link>
         }
       />
+      <Glossary />
       <QueryView query={bundle} label="report">
         {(data) =>
           !data.editable || !data.draft ? (
@@ -628,6 +721,7 @@ export function ReviewSubmitPage() {
               {(check) => (
                 <div className="grid gap-6">
                   <Checklist completeness={check} periodId={periodId} />
+                  <ChangesSinceSubmitted bundle={data} periodId={periodId} />
                   <ClaimsSummary bundle={data} />
                   <SubmitForm
                     key={data.draft!.version}

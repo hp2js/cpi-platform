@@ -101,8 +101,16 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
     .select()
     .from(drafts)
     .where(eq(drafts.obligationId, obligation.id));
-  const [[view], [period], form, baseline, clarifications, items, issued] =
-    await Promise.all([
+  const [
+    [view],
+    [period],
+    form,
+    baseline,
+    clarifications,
+    items,
+    issued,
+    [latest],
+  ] = await Promise.all([
       toObligations(db, [obligation], 'institution'),
       db.select().from(periods).where(eq(periods.id, obligation.periodId)),
       formFor(db, obligation, draftRow?.formVersionId),
@@ -118,6 +126,15 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
         .from(receipts)
         .where(eq(receipts.obligationId, obligation.id))
         .orderBy(asc(receipts.seq)),
+      db
+        .select({
+          revision: submissions.revision,
+          answers: submissions.answers,
+        })
+        .from(submissions)
+        .where(eq(submissions.obligationId, obligation.id))
+        .orderBy(desc(submissions.revision))
+        .limit(1),
     ]);
   const draft: Draft | null = draftRow ?? null;
   const milestones = baseline?.milestones ?? [];
@@ -140,6 +157,7 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
     draft,
     evidence: items.map(toEvidenceItem),
     receipts: issued.map((row) => row.receipt),
+    submitted: latest ?? null,
     editable:
       form !== undefined &&
       !view!.flags.includes('not_yet_due') &&

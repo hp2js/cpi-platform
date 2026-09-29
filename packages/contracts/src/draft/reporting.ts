@@ -178,6 +178,17 @@ export const reportBundleSchema = z.object({
   draft: draftSchema.nullable(),
   evidence: z.array(evidenceItemSchema),
   receipts: z.array(receiptSchema),
+  /**
+   * The latest submitted revision's answers, so a clarification response can show what it
+   * changes. Null before the first submission; optional until every API serves it.
+   */
+  submitted: z
+    .object({
+      revision: z.number().int().positive(),
+      answers: reportAnswersSchema,
+    })
+    .nullable()
+    .optional(),
   /** Whether the institution may edit now (draft or not started, and not locked by submission). */
   editable: z.boolean(),
 });

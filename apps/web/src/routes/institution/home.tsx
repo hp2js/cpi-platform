@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DeadlineCountdown } from '@/components/deadline-countdown';
+import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { ObligationStatus } from '@/components/status';
@@ -457,34 +458,7 @@ function Overview({
         </ol>
       </section>
 
-      <details className="group rounded-lg border bg-white p-5 text-sm">
-        <summary className="cursor-pointer font-bold">Terms used here</summary>
-        <dl className="mt-3 grid gap-2 tablet:grid-cols-[8rem_1fr]">
-          <dt className="font-bold">CPC</dt>
-          <dd className="text-base-dark">
-            Corruption Prevention Committee: the institution's committee that
-            oversees prevention work. Its signed quarterly minutes go with each
-            report.
-          </dd>
-          <dt className="font-bold">IAO</dt>
-          <dd className="text-base-dark">
-            Integrity Assurance Officers: the officers who carry out integrity
-            assurance. Their signed quarterly meeting minutes go with each
-            report.
-          </dd>
-          <dt className="font-bold">CRAMP</dt>
-          <dd className="text-base-dark">
-            Corruption Risk Assessment and Mitigation Plan: your approved plan.
-            Each quarter is scored against the milestones in its locked
-            baseline.
-          </dd>
-          <dt className="font-bold">Baseline</dt>
-          <dd className="text-base-dark">
-            The milestones your officer approved for a quarter before it opened.
-            They cannot be removed to improve a result.
-          </dd>
-        </dl>
-      </details>
+      <Glossary />
     </div>
   );
 }

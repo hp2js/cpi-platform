@@ -274,6 +274,9 @@ control (stricter than WCAG 2.2's 24 px, as requested).
 - **Quarter status** (`ObligationStatus` in `components/status.tsx`). A quarter that has not
   started and is not yet due shows one quiet "Not yet due" line, not two tags, so grids
   highlight only the cells that need action.
+- **Glossary** (`components/glossary.tsx`). A USWDS-style disclosure whose summary names the
+  terms it defines, placed on the screens where those terms appear. Terms in our own copy
+  are spelled out on first use, e.g. "Corruption Prevention Committee (CPC)".
 - **Step indicator.** No multi-step flow exists yet; do not build it until one does.
 
 Behaviour for dialogs, menus, popovers and tooltips (focus trapping, escape, return focus)
