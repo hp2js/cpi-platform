@@ -314,8 +314,9 @@ test('failed email is visible to the administrator and succeeds on retry (AT12)'
   });
   await api(page, '/api/forms/form-v1/publish', { method: 'POST' });
   await signIn(page, 'administrator', '/admin/notifications');
+  // Eight focal persons, two officers and the supervisor are told of the publication.
   await expect(
-    page.getByRole('tab', { name: /Failure queue \(10\)/ }),
+    page.getByRole('tab', { name: /Failure queue \(11\)/ }),
   ).toBeVisible();
   await expect(page.getByText('Failed after retries').first()).toBeVisible();
   await api(page, '/api/__mock/email-failure', {
@@ -324,7 +325,7 @@ test('failed email is visible to the administrator and succeeds on retry (AT12)'
   });
   await page.getByRole('button', { name: 'Retry' }).first().click();
   await expect(
-    page.getByRole('tab', { name: /Failure queue \(9\)/ }),
+    page.getByRole('tab', { name: /Failure queue \(10\)/ }),
   ).toBeVisible();
   await page.getByRole('tab', { name: 'Demo email sink' }).click();
   await expect(
