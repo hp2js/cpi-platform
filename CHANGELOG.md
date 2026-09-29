@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.0](https://github.com/hp2js/cpi-platform/compare/v0.1.0...v0.2.0) (2026-09-29)
+
+### Features
+
+* add accessibility fixes for tables, tabs, and focus management ([0f0cecc](https://github.com/hp2js/cpi-platform/commit/0f0cecc75ad5b16d5efd6d3cdbca37f1e8103f91))
+* add profile detail and profiles management pages with CRUD operations ([45fe2cf](https://github.com/hp2js/cpi-platform/commit/45fe2cf7df54290f30ccc8a68af4bfd8bacf7183))
+* add supervisor oversight dashboard and annual publication workflow ([b589fb8](https://github.com/hp2js/cpi-platform/commit/b589fb8b0b1f5996023919fef98cae3b8866e2ad))
+* **api:** add annual evaluation and publication module ([c04b4f9](https://github.com/hp2js/cpi-platform/commit/c04b4f95c9d18cbcfddd694e555d46966d8608f8))
+* **api:** add auth config and demo-mode gating ([a3fe066](https://github.com/hp2js/cpi-platform/commit/a3fe06658d68834d4e85f4725e6cb6e4db2ebf4b))
+* **api:** add events, simulation clock and scripted year ([b94051c](https://github.com/hp2js/cpi-platform/commit/b94051cddc660244d93a94a8f1b63f7a78126126))
+* **api:** add institution onboarding, types and institution profile ([016770e](https://github.com/hp2js/cpi-platform/commit/016770eadfa6d64d3caa2d14acd80e62051ea574))
+* **api:** add officer review module ([1117a35](https://github.com/hp2js/cpi-platform/commit/1117a35d64bf4690cf91c9627160ec48d999efb2))
+* **api:** add password sign-in, invitations, resets and account page ([37aaeab](https://github.com/hp2js/cpi-platform/commit/37aaeab32debce5b6b6f977069ac0cab81625e63))
+* **api:** add plan baseline and foundations module ([2d5ccc8](https://github.com/hp2js/cpi-platform/commit/2d5ccc8ef4129b56508823b061fef11012908bf0))
+* **api:** add quarterly reporting module ([54795aa](https://github.com/hp2js/cpi-platform/commit/54795aabda1fe89faf4163b2e896e397b2ad63bf))
+* **api:** add reporting cycle module (forms, profiles, calendar, people) ([5225ba6](https://github.com/hp2js/cpi-platform/commit/5225ba646d03c3934c4657650e2a0b9ecb21faa1))
+* **api:** add sessions, scope checks and directory endpoints ([b19ae8c](https://github.com/hp2js/cpi-platform/commit/b19ae8c5a42ac7bbe4a17f6113899ed31ac97862))
+* **api:** add supervision, reassignment requests, cover and replies ([bfd1930](https://github.com/hp2js/cpi-platform/commit/bfd1930ce8b6fd356ea08bd01e93467c79cdae73))
+* **api:** count lateness and clarification windows by the day rule ([09727d1](https://github.com/hp2js/cpi-platform/commit/09727d1ac6140438af838ecabd4f4720bcce9bdb))
+* **api:** share scoring and fixtures, add domain schema and seed ([e55e35c](https://github.com/hp2js/cpi-platform/commit/e55e35cfe4ab572b1b02ed8952594eef052364db))
+* enhance form editor with textarea for help text and improve accessibility ([d04de0c](https://github.com/hp2js/cpi-platform/commit/d04de0c9c71ab72770892405c2c7cd1851651609))
+* init supervisor model ([668615d](https://github.com/hp2js/cpi-platform/commit/668615d260ebc83a1a987b6a37ccacedb3a1521e))
+* run the web app against the real API by default ([dd41b08](https://github.com/hp2js/cpi-platform/commit/dd41b0830adb9af8d891e1940aa7ae79c364446a))
+* **web:** add clarifications, evidence versioning, review workflow ([fabecf6](https://github.com/hp2js/cpi-platform/commit/fabecf6db0428bfad1e3b0575625666dc0b34e95))
+* **web:** add reporting, review, and forms routes with mock API ([bf4b8b2](https://github.com/hp2js/cpi-platform/commit/bf4b8b25fc9ac3db8eadb9d727cb4b968923efcf))
+* **web:** restructure app around mock API and role-based routing ([221a6c7](https://github.com/hp2js/cpi-platform/commit/221a6c7c7bfefdb928a0bbc9db4a812e51d30a7f))
+
 ## 0.1.0 (2026-09-28)
 
 ### Features
