@@ -5,6 +5,7 @@ import {
   type FormDraftUpdate,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { request } from '@/lib/api';
 
 export const formKeys = {
@@ -48,6 +49,12 @@ export const saveForm = (id: string, update: FormDraftUpdate) =>
 export const publishForm = (id: string) =>
   request(`/api/forms/${encodeURIComponent(id)}/publish`, formVersionSchema, {
     method: 'POST',
+  });
+
+export const discardForm = (id: string, reason: string) =>
+  request(`/api/forms/${encodeURIComponent(id)}`, z.unknown(), {
+    method: 'DELETE',
+    json: { reason },
   });
 
 export const createFormVersion = () =>

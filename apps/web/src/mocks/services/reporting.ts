@@ -1,10 +1,15 @@
-import type {
-  Completeness,
-  EvidenceAnswer,
-  FormVersion,
-  Milestone,
-  ReportAnswers,
-  ReportBundle,
+import {
+  emptyAnswer,
+  isChecklistAnswer,
+  isEvidenceAnswer,
+  isRowsAnswer,
+  limitProblem,
+  type Completeness,
+  type EvidenceAnswer,
+  type FormVersion,
+  type Milestone,
+  type ReportAnswers,
+  type ReportBundle,
 } from '@cpi/contracts';
 import { getDb, toEvidenceItem, type MockObligation } from '../db';
 import { clarificationsFor } from './clarifications';
@@ -69,12 +74,7 @@ export function emptyAnswers(
     (section) => section.questions,
   )) {
     if (question.type === 'milestone_progress') continue;
-    questions[question.id] =
-      question.type === 'evidence'
-        ? { evidenceIds: [], unavailable: null }
-        : question.type === 'yes_no'
-          ? null
-          : '';
+    questions[question.id] = emptyAnswer(question);
   }
   const milestoneAnswers: ReportAnswers['milestones'] = {};
   for (const milestone of milestones) {
@@ -207,7 +207,6 @@ export function completeness(
       }
       continue;
     }
-    if (!question.required && question.type !== 'evidence') continue;
     const value = answers.questions[question.id];
     if (question.type === 'evidence') {
       const answer = (value ?? {
@@ -240,12 +239,63 @@ export function completeness(
       }
       continue;
     }
-    if (!filled(value))
-      missing.push({
-        field,
-        label: question.label,
-        message: 'Answer this question.',
+    if (question.type === 'checklist') {
+      const answer = isChecklistAnswer(value) ? value : { items: {} };
+      const open = (question.items ?? []).filter(
+        (item) => typeof answer.items[item.id] !== 'boolean',
+      );
+      if (question.required && open.length)
+        missing.push({
+          field,
+          label: question.label,
+          message: `Mark every item done or not done (${open.length} left).`,
+        });
+      continue;
+    }
+    if (question.type === 'repeated') {
+      const rows = (isRowsAnswer(value) ? value.rows : []).filter((row) =>
+        Object.values(row).some(filled),
+      );
+      const fewest = question.minRows ?? (question.required ? 1 : 0);
+      if (rows.length < fewest)
+        missing.push({
+          field,
+          label: question.label,
+          message:
+            fewest === 1
+              ? 'Add at least one row.'
+              : `Add at least ${fewest} rows.`,
+        });
+      rows.forEach((row, index) => {
+        for (const column of question.columns ?? []) {
+          const cell = row[column.id];
+          const problem = filled(cell)
+            ? limitProblem(column.limits, column.type, cell)
+            : column.required
+              ? 'Fill this in.'
+              : null;
+          if (problem)
+            missing.push({
+              field,
+              label: `${question.label}, row ${index + 1}: ${column.label}`,
+              message: problem,
+            });
+        }
       });
+      continue;
+    }
+    if (!filled(value)) {
+      if (question.required)
+        missing.push({
+          field,
+          label: question.label,
+          message: 'Answer this question.',
+        });
+      continue;
+    }
+    const problem = limitProblem(question.limits, question.type, value);
+    if (problem)
+      missing.push({ field, label: question.label, message: problem });
   }
   return { complete: missing.length === 0, missing, declarations };
 }
@@ -256,10 +306,8 @@ export function referencedEvidenceIds(
   available: string[],
 ) {
   const ids = new Set<string>();
-  for (const value of Object.values(answers.questions)) {
-    if (value && typeof value === 'object' && 'evidenceIds' in value)
-      value.evidenceIds.forEach((id) => ids.add(id));
-  }
+  for (const value of Object.values(answers.questions))
+    if (isEvidenceAnswer(value)) value.evidenceIds.forEach((id) => ids.add(id));
   for (const response of Object.values(answers.milestones))
     response.evidence.forEach((reference) => ids.add(reference.evidenceId));
   return [...ids].filter((id) => available.includes(id));

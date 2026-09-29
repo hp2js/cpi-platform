@@ -22,6 +22,8 @@ export const initialForm: FormVersion = {
   weightsLocked: false,
   basedOnVersion: null,
   updatedAt: '2026-09-20T10:00:00+03:00',
+  revision: 0,
+  changes: [],
   sections: [
     {
       id: 'committee-minutes',

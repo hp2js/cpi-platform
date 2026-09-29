@@ -268,10 +268,11 @@ export interface MockDelivery {
  * `activityId`, returned baselines' failed checks, proposal lead days.
  * 16: the cycle's declared risk scale labels.
  * 17: the risk scale's change log.
+ * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  */
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '17:e1ab4678';
+export const SCHEMA_SHAPE = '18:939f14ad';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */

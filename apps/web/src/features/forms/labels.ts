@@ -8,5 +8,7 @@ export const questionTypeLabels: Record<QuestionType, string> = {
   yes_no: 'Yes / no',
   choice: 'Choice',
   evidence: 'Evidence upload',
+  checklist: 'Checklist',
+  repeated: 'Repeated rows',
   milestone_progress: 'Milestone progress (scored)',
 };

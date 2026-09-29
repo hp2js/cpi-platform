@@ -1,4 +1,4 @@
-import { suitabilityCheckKeys } from '@cpi/contracts';
+import { isEvidenceAnswer, suitabilityCheckKeys } from '@cpi/contracts';
 import type {
   Baseline,
   Foundations,
@@ -622,7 +622,7 @@ export async function runScenario(): Promise<ScenarioResult> {
       const answers = structuredClone(bundle.draft!.answers);
       const swap = (id: string) => (id === wrong.id ? replacement : id);
       for (const value of Object.values(answers.questions))
-        if (value && typeof value === 'object')
+        if (isEvidenceAnswer(value))
           value.evidenceIds = value.evidenceIds.map(swap);
       for (const response of Object.values(answers.milestones))
         response.evidence = response.evidence.map((reference) => ({

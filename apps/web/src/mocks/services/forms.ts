@@ -1,4 +1,4 @@
-import type { FormIssue, FormVersion } from '@cpi/contracts';
+import type { FormIssue, FormVersion, Question } from '@cpi/contracts';
 import { getDb } from '../db';
 import { activeProfile, profileIssues } from './profiles';
 
@@ -95,6 +95,7 @@ export function validateForm(form: FormVersion): FormIssue[] {
           path: `${path}.evidenceCategory`,
           message: 'Choose the evidence category.',
         });
+      issues.push(...typeIssues(question, path));
       if (question.type === 'milestone_progress') {
         milestoneBlocks += 1;
         if (question.kind !== 'scored' || !question.required)
@@ -116,6 +117,38 @@ export function validateForm(form: FormVersion): FormIssue[] {
       path: 'sections',
       message: 'The form needs exactly one milestone progress block.',
     });
+
+  // An ID keeps its meaning in every version: a retired ID never returns as another type.
+  const earlier = db.forms.filter((candidate) => candidate.id !== form.id);
+  form.sections.forEach((section, sectionIndex) =>
+    section.questions.forEach((question, questionIndex) => {
+      const path = `sections.${sectionIndex}.questions.${questionIndex}`;
+      for (const version of earlier) {
+        const previous = version.sections
+          .flatMap((candidate) => candidate.questions)
+          .find((candidate) => candidate.id === question.id);
+        if (!previous) continue;
+        if (previous.type !== question.type) {
+          issues.push({
+            path: `${path}.id`,
+            message: `Question ID "${question.id}" was a ${previous.type.replace('_', ' ')} question in version ${version.version}. A different question needs a new ID.`,
+          });
+          break;
+        }
+        const clash = (question.columns ?? []).find((column) => {
+          const old = previous.columns?.find((item) => item.id === column.id);
+          return old && old.type !== column.type;
+        });
+        if (clash) {
+          issues.push({
+            path: `${path}.columns`,
+            message: `Column ID "${clash.id}" had another type in version ${version.version}. A different column needs a new ID.`,
+          });
+          break;
+        }
+      }
+    }),
+  );
 
   // Scored criteria cannot change after activation (FR03, PRD §7.1).
   const base = form.basedOnVersion
@@ -167,5 +200,114 @@ export function validateForm(form: FormVersion): FormIssue[] {
       path: 'periodIds',
       message: `Every period needs a form. Not yet assigned: ${uncovered.join(', ')}.`,
     });
+  return issues;
+}
+
+const TEXT_TYPES = ['text', 'long_text'];
+
+function limitIssues(
+  limits: Question['limits'],
+  type: string,
+  path: string,
+): FormIssue[] {
+  if (!limits) return [];
+  const issues: FormIssue[] = [];
+  const numeric =
+    limits.min !== undefined ||
+    limits.max !== undefined ||
+    limits.integer ||
+    limits.unit;
+  if (numeric && type !== 'number')
+    issues.push({
+      path: `${path}.limits`,
+      message: 'A range, whole numbers or a unit apply only to numbers.',
+    });
+  if (limits.maxLength && !TEXT_TYPES.includes(type))
+    issues.push({
+      path: `${path}.limits`,
+      message: 'A length limit applies only to text.',
+    });
+  if ((limits.earliest || limits.latest) && type !== 'date')
+    issues.push({
+      path: `${path}.limits`,
+      message: 'A date range applies only to dates.',
+    });
+  if (
+    limits.min !== undefined &&
+    limits.max !== undefined &&
+    limits.min > limits.max
+  )
+    issues.push({
+      path: `${path}.limits`,
+      message: 'The lowest value must not be above the highest.',
+    });
+  if (limits.earliest && limits.latest && limits.earliest > limits.latest)
+    issues.push({
+      path: `${path}.limits`,
+      message: 'The earliest date must not be after the latest.',
+    });
+  return issues;
+}
+
+/** Rules for the checklist and repeated-row types, and limits on any type. */
+function typeIssues(question: Question, path: string): FormIssue[] {
+  const issues = limitIssues(question.limits, question.type, path);
+  if (question.type === 'checklist') {
+    const items = question.items ?? [];
+    if (items.length < 1)
+      issues.push({
+        path: `${path}.items`,
+        message: 'A checklist needs at least one item.',
+      });
+    if (items.some((item) => !item.label.trim()))
+      issues.push({
+        path: `${path}.items`,
+        message: 'Give every checklist item a label.',
+      });
+    if (new Set(items.map((item) => item.id)).size !== items.length)
+      issues.push({
+        path: `${path}.items`,
+        message: 'Checklist item IDs must be unique.',
+      });
+  }
+  if (question.type === 'repeated') {
+    const columns = question.columns ?? [];
+    if (columns.length < 1)
+      issues.push({
+        path: `${path}.columns`,
+        message: 'Repeated rows need at least one column.',
+      });
+    if (new Set(columns.map((column) => column.id)).size !== columns.length)
+      issues.push({
+        path: `${path}.columns`,
+        message: 'Column IDs must be unique.',
+      });
+    columns.forEach((column, index) => {
+      const columnPath = `${path}.columns.${index}`;
+      if (!column.label.trim())
+        issues.push({
+          path: `${columnPath}.label`,
+          message: 'Give every column a label.',
+        });
+      if (
+        column.type === 'choice' &&
+        (column.choices?.filter((choice) => choice.trim()).length ?? 0) < 2
+      )
+        issues.push({
+          path: `${columnPath}.choices`,
+          message: 'A choice column needs at least two options.',
+        });
+      issues.push(...limitIssues(column.limits, column.type, columnPath));
+    });
+    if (
+      question.minRows !== undefined &&
+      question.maxRows !== undefined &&
+      question.minRows > question.maxRows
+    )
+      issues.push({
+        path: `${path}.minRows`,
+        message: 'The fewest rows must not be more than the most rows.',
+      });
+  }
   return issues;
 }

@@ -20,6 +20,7 @@ import { reportBundleSchema } from '@cpi/contracts';
 import { request } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { FileViewer } from '@/features/files/file-viewer';
+import { AnswerValue } from '@/features/reporting/answer-value';
 
 const openSupportView = (obligationId: string, reason: string) =>
   request(
@@ -27,24 +28,6 @@ const openSupportView = (obligationId: string, reason: string) =>
     reportBundleSchema,
     { method: 'POST', json: { reason } },
   );
-
-function answerText(value: unknown, fileName: (id: string) => string) {
-  if (value === null || value === undefined || value === '')
-    return 'Not answered';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (typeof value === 'object' && 'evidenceIds' in value) {
-    const answer = value as {
-      evidenceIds: string[];
-      unavailable: { explanation: string } | null;
-    };
-    if (answer.unavailable)
-      return `Declared not available: ${answer.unavailable.explanation}`;
-    return answer.evidenceIds.length
-      ? answer.evidenceIds.map(fileName).join(', ')
-      : 'Not answered';
-  }
-  return String(value);
-}
 
 /** The draft as the institution last saved it, read only. */
 function DraftView({ bundle }: { bundle: ReportBundle }) {
@@ -100,7 +83,11 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
                 <div key={question.id} className="rounded-md border p-2">
                   <dt className="font-medium">{question.label}</dt>
                   <dd>
-                    {answerText(draft.answers.questions[question.id], fileName)}
+                    <AnswerValue
+                      question={question}
+                      value={draft.answers.questions[question.id]}
+                      evidence={bundle.evidence}
+                    />
                   </dd>
                 </div>
               ),

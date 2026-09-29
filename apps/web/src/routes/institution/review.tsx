@@ -1,3 +1,4 @@
+import { isEvidenceAnswer } from '@cpi/contracts';
 import type {
   AccountingOfficer,
   Attestation,
@@ -50,8 +51,7 @@ function referencedIds(bundle: ReportBundle) {
   if (!answers) return [];
   const ids = new Set<string>();
   for (const value of Object.values(answers.questions))
-    if (value && typeof value === 'object')
-      value.evidenceIds.forEach((id) => ids.add(id));
+    if (isEvidenceAnswer(value)) value.evidenceIds.forEach((id) => ids.add(id));
   for (const response of Object.values(answers.milestones))
     response.evidence.forEach((reference) => ids.add(reference.evidenceId));
   return [...ids];
