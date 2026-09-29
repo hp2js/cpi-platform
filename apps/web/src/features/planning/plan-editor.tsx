@@ -5,6 +5,7 @@ import {
   type Plan,
   type PlannedMilestone,
   type Risk,
+  type RiskScale,
 } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Pencil, Plus, Send, Trash2, Upload } from 'lucide-react';
@@ -51,7 +52,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { invalidateEvents } from '@/features/events/queries';
 import { FileViewer } from '@/features/files/file-viewer';
+import { cycleQuery } from '@/features/directory/queries';
 import { foundationsQuery } from '@/features/foundations/queries';
+import { scalePoint } from '@/features/planning/labels';
 import {
   importPlan,
   invalidatePlan,
@@ -197,10 +200,14 @@ function useFields<T extends Record<string, string>>(initial: T) {
   return { values, bind, set };
 }
 
-const scale = [1, 2, 3, 4, 5].map((value) => ({
-  value: String(value),
-  label: String(value),
-}));
+const scaleOptions = (
+  scale: RiskScale | undefined,
+  axis: 'probability' | 'impact',
+) =>
+  [1, 2, 3, 4, 5].map((value) => ({
+    value: String(value),
+    label: scalePoint(scale, axis, value),
+  }));
 
 function RiskForm({
   plan,
@@ -212,6 +219,7 @@ function RiskForm({
   close: () => void;
 }) {
   const id = useId();
+  const riskScale = useQuery(cycleQuery).data?.riskScale;
   const { values, bind, set } = useFields({
     code: risk?.code ?? '',
     description: risk?.description ?? '',
@@ -256,6 +264,7 @@ function RiskForm({
         <Field
           id={`${id}-probability`}
           label="Probability (1–5)"
+          hint="How likely the risk is to occur."
           error={errors.probability}
         >
           <SelectField
@@ -263,19 +272,30 @@ function RiskForm({
             value={values.probability}
             onChange={set('probability')}
             placeholder="Choose"
-            options={scale}
+            options={scaleOptions(riskScale, 'probability')}
           />
         </Field>
-        <Field id={`${id}-impact`} label="Impact (1–5)" error={errors.impact}>
+        <Field
+          id={`${id}-impact`}
+          label="Impact (1–5)"
+          hint="How serious it would be if it occurred."
+          error={errors.impact}
+        >
           <SelectField
             id={`${id}-impact`}
             value={values.impact}
             onChange={set('impact')}
             placeholder="Choose"
-            options={scale}
+            options={scaleOptions(riskScale, 'impact')}
           />
         </Field>
       </div>
+      {riskScale && (
+        <p className="text-xs text-muted-foreground">
+          Scale labels: {riskScale.source} Severity is probability × impact,
+          with no rating bands.
+        </p>
+      )}
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
         <Button type="button" variant="outline" onClick={close}>
@@ -1018,6 +1038,7 @@ function downloadTemplate() {
 /** Loads risks, activities and milestones from one CSV after a row-by-row check. */
 export function ImportPlanDialog({ plan }: { plan: Plan }) {
   const id = useId();
+  const riskScale = useQuery(cycleQuery).data?.riskScale;
   const [open, setOpen] = useState(false);
   const [csv, setCsv] = useState<{ name: string; text: string } | null>(null);
   const preview = useMutation({
@@ -1089,6 +1110,21 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                 <code className="text-xs">quarter</code> from Q1 to Q4.
                 Milestones can only go into quarters not yet approved.
               </p>
+              {riskScale && (
+                <p>
+                  <code className="text-xs">probability</code> and{' '}
+                  <code className="text-xs">impact</code> are numbers from 1 to
+                  5. Probability:{' '}
+                  {riskScale.probability
+                    .map((label, index) => `${index + 1} ${label}`)
+                    .join(', ')}
+                  . Impact:{' '}
+                  {riskScale.impact
+                    .map((label, index) => `${index + 1} ${label}`)
+                    .join(', ')}
+                  .
+                </p>
+              )}
               <div>
                 <Button
                   type="button"

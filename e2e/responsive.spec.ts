@@ -84,6 +84,7 @@ test('mid-year screens fit a phone', async ({ page }) => {
     ['focal-demo-002', '/institution/profile'],
     ['administrator', '/admin/profiles/hackathon-mock-v1'],
     ['administrator', '/admin/calendar'],
+    ['administrator', '/admin/risk-scale'],
     ['administrator', '/admin/institutions'],
     ['administrator', '/admin/institutions/DEMO-001'],
     ['administrator', '/admin/users'],

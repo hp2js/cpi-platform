@@ -205,6 +205,7 @@ export interface MockDb {
     summary: string;
     reason: string;
   }[];
+  riskScaleChanges: MockDb['calendarChanges'];
   institutionTypes: MockInstitutionType[];
   /** Failed sign-ins per email (actual time), for throttling (PRD §13.1). */
   loginAttempts: Record<
@@ -265,10 +266,12 @@ export interface MockDelivery {
  * 14: assignment cover and handover notes, draft `savedBy`, reassignment request kinds.
  * 15: institution-owned plans: activities, planned milestones, plan approvals, milestone
  * `activityId`, returned baselines' failed checks, proposal lead days.
+ * 16: the cycle's declared risk scale labels.
+ * 17: the risk scale's change log.
  */
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 17;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '15:351acb96';
+export const SCHEMA_SHAPE = '17:e1ab4678';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -353,6 +356,7 @@ function seed(): MockDb {
     cycleProfileId: 'hackathon-mock-v1',
     reminders: { daysBefore: [7, 1], overdueNotice: true },
     calendarChanges: [],
+    riskScaleChanges: [],
     institutionTypes: structuredClone(initialInstitutionTypes),
     loginAttempts: {},
   };

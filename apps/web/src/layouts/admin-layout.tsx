@@ -9,6 +9,7 @@ import {
   Gauge,
   Mail,
   Menu,
+  Ruler,
   ScrollText,
   SlidersHorizontal,
   UserRound,
@@ -56,6 +57,7 @@ const sections = [
         icon: SlidersHorizontal,
       },
       { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
+      { to: '/admin/risk-scale', label: 'Risk rating scale', icon: Ruler },
     ],
   },
   {

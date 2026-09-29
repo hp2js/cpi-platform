@@ -44,6 +44,14 @@ export const cycle: Cycle = {
   // PRD §9.1 proposes calendar days with no weekend or holiday extension. The holidays are
   // used only when the administrator switches to working days; confirm them against the
   // Kenya Gazette before relying on them.
+  // Common 1–5 descriptors, not taken from an EACC source: the administrator confirms or
+  // replaces them. They label the inputs only; severity is never banded (O16).
+  riskScale: {
+    probability: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost certain'],
+    impact: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+    source:
+      'Demonstration labels from common 1–5 risk practice; confirm against the EACC risk assessment template before use.',
+  },
   dayCounting: {
     mode: 'calendar',
     reportingDays: 15,

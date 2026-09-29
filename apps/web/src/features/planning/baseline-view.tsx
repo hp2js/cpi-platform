@@ -10,7 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { failedCheckLabels } from '@/features/planning/labels';
+import { useQuery } from '@tanstack/react-query';
+import { cycleQuery } from '@/features/directory/queries';
+import { failedCheckLabels, scalePoint } from '@/features/planning/labels';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
@@ -163,6 +165,7 @@ export function RiskTable({
   risks: Risk[];
   actions?: (risk: Risk) => ReactNode;
 }) {
+  const scale = useQuery(cycleQuery).data?.riskScale;
   if (!risks.length)
     return (
       <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
@@ -173,8 +176,9 @@ export function RiskTable({
     <div className="overflow-x-auto rounded-lg border bg-card">
       <Table className="min-w-[40rem]">
         <TableCaption className="text-left">
-          Severity is probability × impact on the cycle's 1–5 scale. No rating
+          Severity is probability × impact on the cycle’s 1–5 scale. No rating
           bands are applied.
+          {scale && <span className="block">Scale labels: {scale.source}</span>}
         </TableCaption>
         <TableHeader>
           <TableRow>
@@ -203,8 +207,12 @@ export function RiskTable({
               <TableCell className="text-sm whitespace-normal">
                 {risk.cause}
               </TableCell>
-              <TableCell className="tabular-nums">{risk.probability}</TableCell>
-              <TableCell className="tabular-nums">{risk.impact}</TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">
+                {scalePoint(scale, 'probability', risk.probability)}
+              </TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">
+                {scalePoint(scale, 'impact', risk.impact)}
+              </TableCell>
               <TableCell className="font-medium tabular-nums">
                 {risk.severity}
               </TableCell>

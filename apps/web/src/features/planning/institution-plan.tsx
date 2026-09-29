@@ -23,7 +23,11 @@ import {
   MilestoneTable,
   RiskTable,
 } from '@/features/planning/baseline-view';
-import { latestBaselines, proposalsDue } from '@/features/planning/labels';
+import {
+  EQUAL_WEIGHTS_NOTE,
+  latestBaselines,
+  proposalsDue,
+} from '@/features/planning/labels';
 import {
   ActivityDialog,
   ActivityTable,
@@ -565,6 +569,9 @@ export function InstitutionPlan() {
                 quarter starts. Your implementation result is measured against
                 the approved baseline. Once approved, changes need an amendment,
                 and none are possible after reporting opens.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {EQUAL_WEIGHTS_NOTE}
               </p>
             </div>
             {data.proposals.map((proposal) => (

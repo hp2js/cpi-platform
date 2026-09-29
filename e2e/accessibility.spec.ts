@@ -157,6 +157,7 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/profiles', 'admin scoring profiles'],
     ['/admin/profiles/hackathon-mock-v1', 'admin profile detail'],
     ['/admin/calendar', 'admin reporting calendar'],
+    ['/admin/risk-scale', 'admin risk rating scale'],
     ['/admin/institutions', 'admin institutions'],
     ['/admin/institutions?tab=types', 'admin institution types'],
     ['/admin/institutions/DEMO-001', 'admin institution page'],

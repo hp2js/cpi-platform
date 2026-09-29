@@ -40,6 +40,19 @@ export const dayCountingSchema = z.object({
 });
 export type DayCounting = z.infer<typeof dayCountingSchema>;
 
+const scaleLabels = z.array(z.string().trim().min(2).max(40)).length(5);
+
+/**
+ * What 1–5 means for probability and impact in this cycle's risk registers: labels on the
+ * inputs, with their source. Severity stays their plain product; no rating bands (O16).
+ */
+export const riskScaleSchema = z.object({
+  probability: scaleLabels,
+  impact: scaleLabels,
+  source: z.string().trim().min(10).max(300),
+});
+export type RiskScale = z.infer<typeof riskScaleSchema>;
+
 export const cycleSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -49,5 +62,6 @@ export const cycleSchema = z.object({
   evaluationCutoff: instantSchema,
   periods: z.array(periodSchema).length(4),
   dayCounting: dayCountingSchema,
+  riskScale: riskScaleSchema,
 });
 export type Cycle = z.infer<typeof cycleSchema>;

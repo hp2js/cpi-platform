@@ -1,4 +1,4 @@
-import type { FormVersion, ScoringProfile } from '@cpi/contracts';
+import type { FormVersion, RiskScale, ScoringProfile } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
@@ -23,6 +23,10 @@ function Profile({ profile }: { profile: ScoringProfile }) {
     [
       'Implementation',
       `${profile.weights.implementation} points, ${profile.weights.implementation / 4} per quarter`,
+    ],
+    [
+      'Milestone weights',
+      'Equal: every milestone carries 1, so a quarter’s share is accepted milestones over all its milestones. A simplification, not a judgement that milestones matter equally (PRD §10.4).',
     ],
   ];
   const checklists: [string, string[]][] = [
@@ -138,6 +142,48 @@ function Form({
  * The rules reviews apply, read only (PRD §5.2: officers and supervisors read the active form
  * version and scoring rules). Only the administrator changes them.
  */
+/** The declared 1–5 scale institutions rate risks on; severity is never banded (O16). */
+function ScaleSection({ scale }: { scale: RiskScale }) {
+  return (
+    <section
+      aria-labelledby="scale-heading"
+      className="grid gap-4 rounded-lg border bg-card p-5"
+    >
+      <div>
+        <h2 id="scale-heading" className="text-lg font-semibold">
+          Risk rating scale
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Severity is probability × impact, with no rating bands. Labels:{' '}
+          {scale.source}
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {(
+          [
+            ['Probability', scale.probability],
+            ['Impact', scale.impact],
+          ] as const
+        ).map(([title, labels]) => (
+          <div key={title} className="grid content-start gap-1.5">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <ol className="space-y-1 text-sm">
+              {labels.map((label, index) => (
+                <li key={label} className="flex gap-2">
+                  <span className="w-4 text-right text-muted-foreground tabular-nums">
+                    {index + 1}
+                  </span>
+                  {label}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function RulesPage() {
   const profiles = useQuery(profilesQuery);
   const forms = useQuery(formsQuery);
@@ -163,6 +209,7 @@ export function RulesPage() {
           );
         }}
       </QueryView>
+      {cycle.data && <ScaleSection scale={cycle.data.riskScale} />}
       <QueryView
         query={forms}
         label="published forms"

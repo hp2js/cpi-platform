@@ -415,6 +415,11 @@ const adminProfileRoute = createRoute({
     'ProfileDetailPage',
   ),
 });
+const adminRiskScaleRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'risk-scale',
+  component: page(() => import('@/routes/admin/risk-scale'), 'RiskScalePage'),
+});
 const adminCalendarRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'calendar',
@@ -565,6 +570,7 @@ export const routeTree = rootRoute.addChildren([
       adminAnnualRoute,
       adminAssignmentsRoute,
       adminCalendarRoute,
+      adminRiskScaleRoute,
       adminInstitutionsRoute,
       adminInstitutionRoute,
       adminUsersRoute,

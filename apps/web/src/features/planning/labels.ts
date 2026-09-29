@@ -1,4 +1,4 @@
-import type { BaselineCheck, Plan } from '@cpi/contracts';
+import type { BaselineCheck, Plan, RiskScale } from '@cpi/contracts';
 
 /** The four approval checks (PRD §10.4, §10.7), worded as the officer confirms them. */
 export const checkLabels: Record<BaselineCheck, string> = {
@@ -87,3 +87,20 @@ export function proposalsNeedingAttention(plan: Plan, now: string) {
       Date.parse(now) >= Date.parse(proposal.dueAt) - week,
   ).length;
 }
+
+/** "3 Possible": the number with the cycle's label for it, or the number alone. */
+export function scalePoint(
+  scale: RiskScale | undefined,
+  axis: 'probability' | 'impact',
+  value: number,
+) {
+  const label = scale?.[axis][value - 1];
+  return label ? `${value} ${label}` : String(value);
+}
+
+/**
+ * Every milestone weighs 1 in the simulation profile (PRD §10.4). Neither the institution nor
+ * the officer sets weights: an approved rubric would, without changing the formula.
+ */
+export const EQUAL_WEIGHTS_NOTE =
+  'Every milestone carries weight 1 in this simulation profile. Equal weights are a simplification: they do not mean the milestones matter equally. Institutions and officers do not set weights; an approved rubric could, without changing the formula (PRD §10.4).';

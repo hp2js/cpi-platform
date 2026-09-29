@@ -34,6 +34,7 @@ import {
   RiskTable,
 } from '@/features/planning/baseline-view';
 import {
+  EQUAL_WEIGHTS_NOTE,
   checkKeys,
   checkLabels,
   failedCheckLabels,
@@ -110,6 +111,8 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
           )}
           % of the denominator)
         </dd>
+        <dt className="text-muted-foreground">Weights</dt>
+        <dd>{EQUAL_WEIGHTS_NOTE}</dd>
         <dt className="text-muted-foreground">Risk coverage</dt>
         <dd>
           {coverage.risks.length === 0 ? (

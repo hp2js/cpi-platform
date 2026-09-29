@@ -41,14 +41,14 @@ test('the institution plans a quarter, proposes it, and sees which checks failed
   await dialog
     .getByLabel('Cause')
     .fill('Panel members are not asked to declare interests.');
-  await choose(page, dialog, 'Probability (1–5)', '3');
-  await choose(page, dialog, 'Impact (1–5)', '5');
+  await choose(page, dialog, 'Probability (1–5)', '3 Possible');
+  await choose(page, dialog, 'Impact (1–5)', '5 Severe');
   await dialog.getByRole('button', { name: 'Add risk' }).click();
   await expect(dialog).toBeHidden();
   const risks = page.getByRole('region', { name: 'Risk register' });
   await expect(
     risks.getByRole('row', { name: /R-03 Collusion in appointment panels/ }),
-  ).toContainText('15');
+  ).toContainText(/3 Possible\s*5 Severe\s*15/);
 
   await page.getByRole('button', { name: 'Add activity' }).click();
   dialog = page.getByRole('dialog', { name: 'Add an activity' });
@@ -186,7 +186,7 @@ test('the institution imports its plan from a CSV after a row-by-row check (FR04
   ).toBeVisible();
 });
 
-test('the administrator sets when baseline proposals are due (FR04)', async ({
+test('the administrator sets when baseline proposals are due and labels the risk scale (FR04)', async ({
   page,
 }) => {
   await reset(page);
@@ -201,10 +201,50 @@ test('the administrator sets when baseline proposals are due (FR04)', async ({
     page.getByText(/Baseline proposals due 14 → 21 days before each quarter/),
   ).toBeVisible();
 
+  // The scale lives under Forms & scoring, with its own reason and change log.
+  await page
+    .getByRole('navigation', { name: 'Administration' })
+    .getByRole('link', { name: 'Risk rating scale' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Risk rating scale', level: 1 }),
+  ).toBeVisible();
+  await page.getByLabel('Probability 3').fill('Moderately likely');
+  await page
+    .getByLabel('Source of these labels')
+    .fill('EACC risk assessment template, 23rd Cycle guidelines, page 4.');
+  await page
+    .getByLabel('Reason for the change')
+    .fill('Labels confirmed against the EACC template.');
+  await page.getByRole('button', { name: 'Save scale' }).click();
+  await expect(page.getByText('Risk rating scale saved')).toBeVisible();
+  await expect(
+    page.getByText(
+      /Probability labels → 1 Rare, 2 Unlikely, 3 Moderately likely/,
+    ),
+  ).toBeVisible();
+
+  await visit(page, 'officer-a', '/officer/rules');
+  await expect(
+    page.getByRole('region', { name: 'Risk rating scale' }),
+  ).toContainText('Moderately likely');
+
   await visit(page, 'focal-demo-001', '/institution/plan');
   await expect(
     page
       .getByRole('article', { name: /Q3 baseline/ })
       .getByText(/Propose by Fri 11 Dec 2026, 23:59 EAT/),
+  ).toBeVisible();
+  const register = page.getByRole('region', { name: 'Risk register' });
+  await expect(register.getByRole('row', { name: /R-01/ })).toContainText(
+    '3 Moderately likely',
+  );
+  await expect(register).toContainText(
+    'Scale labels: EACC risk assessment template, 23rd Cycle guidelines, page 4.',
+  );
+  await expect(
+    page.getByText(
+      /Every milestone carries weight 1 in this simulation profile/,
+    ),
   ).toBeVisible();
 });
