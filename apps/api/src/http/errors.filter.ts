@@ -50,6 +50,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
     if (status < 500 && parsed.success && parsed.data.fieldErrors) {
       body.fieldErrors = parsed.data.fieldErrors;
     }
+    // The client branches on status and code (e.g. `session_expired`, `version_conflict`).
+    if (status < 500 && parsed.success && parsed.data.code) {
+      body.code = parsed.data.code;
+    }
     if (status >= 500) {
       this.logger.error({
         event: 'http.failure',

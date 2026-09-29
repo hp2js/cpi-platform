@@ -11,8 +11,8 @@ import {
 import { commit, getDb, nextId, type MockPublication } from '../db';
 import { evaluate } from '../services/annual';
 import { effectiveCutoff } from '../services/clarifications';
-import { toCsv } from '../services/csv';
-import { format2, mul, rational } from '../services/rational';
+import { toCsv } from '@cpi/contracts';
+import { format2, mul, rational } from '@cpi/contracts';
 import {
   assignedOfficers,
   audit,

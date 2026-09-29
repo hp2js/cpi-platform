@@ -11,6 +11,21 @@ const schema = z.object({
   REDIS_URL: z
     .url()
     .refine((value) => /^rediss?:/.test(value), 'Use a Redis URL'),
+  /**
+   * Demonstration deployment: lists the fictional accounts for one-click sign-in. Turn off
+   * (DEMO_MODE=false) anywhere real people sign in.
+   */
+  DEMO_MODE: z.stringbool().default(true),
+  /** Migrate on start and seed an empty database with the fictional fixtures. */
+  DB_AUTO_SETUP: z.stringbool().default(true),
+  /** Where email links point (the web portal's origin). */
+  PORTAL_URL: z.url().default('http://127.0.0.1:5180'),
+  /** Idle session lifetime; each authenticated request extends it. */
+  SESSION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .default(8 * 3600),
 });
 export type AppConfig = z.infer<typeof schema>;
 export const CONFIG = Symbol('CONFIG');

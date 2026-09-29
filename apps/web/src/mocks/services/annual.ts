@@ -8,10 +8,17 @@ import { getDb } from '../db';
 import { toClarification } from './clarifications';
 import { daysLate } from './obligations';
 import { baselineOf, periodOf } from './reporting';
-import { scoreSummary } from './scoring';
-import { points as formatPoints } from './scoring';
-import { add, format2, mul, rational, sum, type Rational } from './rational';
-import { activeProfile, activeWeights } from './profiles';
+import { scoreSummary } from '@cpi/contracts';
+import { points as formatPoints } from '@cpi/contracts';
+import {
+  add,
+  format2,
+  mul,
+  rational,
+  sum,
+  type Rational,
+} from '@cpi/contracts';
+import { activeProfile, activeWeights, profileLabel } from './profiles';
 
 const checklistKey = {
   procedures: 'procedures',
@@ -108,6 +115,7 @@ function quarterDisposition(
       submission.evidenceIds,
       decisions,
       submission.revision,
+      profileLabel(),
     ).reviewed;
     const rejected = decisions
       .filter((decision) => decision.outcome === 'rejected')

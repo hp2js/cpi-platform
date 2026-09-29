@@ -11,8 +11,8 @@ import {
   type PlannedMilestone,
 } from '@cpi/contracts';
 import { commit, getDb, nextId } from '../db';
-import type { MockBaseline } from '../seed/baselines';
-import type { MockUser } from '../seed/cast';
+import type { MockBaseline } from '@cpi/contracts/fixtures';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import {
   assignedOfficers,
   audit,

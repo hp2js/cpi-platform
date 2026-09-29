@@ -1,6 +1,6 @@
 import type { Assignment } from '@cpi/contracts';
 import type { MockDb } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { endOfDay } from './days';
 import { audit, institutionUsers, notify } from './events';
 

@@ -41,10 +41,10 @@ import { networkDelay } from '../services/latency';
 import { toObligation } from '../services/obligations';
 import { baselineOf, periodOf } from '../services/reporting';
 import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
-import { scoreSummary } from '../services/scoring';
+import { scoreSummary } from '@cpi/contracts';
 import { requireRole } from '../services/session';
-import type { MockUser } from '../seed/cast';
-import { activeWeights } from '../services/profiles';
+import type { MockUser } from '@cpi/contracts/fixtures';
+import { activeWeights, profileLabel } from '../services/profiles';
 
 const obligationOf = (submission: MockSubmission) =>
   getDb().obligations.find(
@@ -274,6 +274,7 @@ function reviewBundle(
       submission.evidenceIds,
       decisions,
       submission.revision,
+      profileLabel(),
     ),
     finalizedAt: submission.finalizedAt,
     finalizedBy: submission.finalizedBy,

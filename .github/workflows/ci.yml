@@ -31,6 +31,7 @@ jobs:
       - run: docker compose config --quiet
       - run: docker compose up --build --wait --wait-timeout 180
       - run: pnpm test:smoke
+      - run: pnpm test:integration
       - run: pnpm test:e2e
       - run: docker compose -f compose.yaml -f compose.production.yaml up --build --wait --wait-timeout 180
       - run: pnpm test:smoke

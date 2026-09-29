@@ -1,5 +1,5 @@
 import { getDb, nextId, type MockDb, type MockDelivery } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { assignedInstitutionIds, supervisedInstitutionIds } from './scope';
 
 /**

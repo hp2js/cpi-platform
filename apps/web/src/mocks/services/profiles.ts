@@ -1,6 +1,6 @@
 import type { IndicatorWeights, ScoringProfile } from '@cpi/contracts';
 import { getDb, type MockDb } from '../db';
-import type { MockProfile } from '../seed/profiles';
+import type { MockProfile } from '@cpi/contracts/fixtures';
 
 /** The profile the current cycle and run use (PRD §7.1). */
 export function activeProfile(db: MockDb = getDb()): MockProfile {

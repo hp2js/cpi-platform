@@ -154,10 +154,11 @@ Charts are simple SVG bars built in-house (no chart library), each followed by a
 src/mocks/
   browser.ts, node.ts      worker/server setup
   db.ts                    in-memory store; persisted to localStorage so a reload keeps the demo state
-  seed/                    DEMO-001…008, users, cycle, form v1, plans, scenario history (§17.1)
-  services/                session, scope checks, clock, workflow transitions, scoring, notifications, audit
+  services/                session, scope checks, clock, workflow transitions, notifications, audit
   handlers/                REST routes grouped by feature, calling services
 ```
+
+Fixtures (DEMO-001…008, users, cycle, form v1, plans; §17.1) live in `@cpi/contracts/fixtures` and the scoring engine in `@cpi/contracts` (`src/domain/`), so the API seed and calculations use the same code.
 
 Behaviour the mock must reproduce, because the UI depends on it:
 

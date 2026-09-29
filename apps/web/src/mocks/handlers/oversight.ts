@@ -5,9 +5,9 @@ import { getDb } from '../db';
 import { networkDelay } from '../services/latency';
 import { isReviewOverdue } from '../services/obligations';
 import { baselineOf, periodOf } from '../services/reporting';
-import { format2, mul, rational, sum } from '../services/rational';
+import { format2, mul, rational, sum } from '@cpi/contracts';
 import { readableInstitutionIds } from '../services/scope';
-import { scoreSummary } from '../services/scoring';
+import { scoreSummary } from '@cpi/contracts';
 import { requireRole } from '../services/session';
 import { activeWeights, profileLabel } from '../services/profiles';
 
@@ -123,6 +123,7 @@ export const oversightHandlers = [
         submission.evidenceIds,
         decisions,
         submission.revision,
+        profileLabel(db),
       ).reviewed;
       const fraction =
         score.status === 'calculated'

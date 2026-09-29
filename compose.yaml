@@ -62,6 +62,8 @@ services:
         - action: rebuild
           path: ./packages/contracts/tsconfig.json
         - action: rebuild
+          path: ./packages/contracts/tsconfig.build.json
+        - action: rebuild
           path: ./apps/api/package.json
         - action: rebuild
           path: ./apps/web/package.json
@@ -120,6 +122,8 @@ services:
           path: ./packages/contracts/package.json
         - action: rebuild
           path: ./packages/contracts/tsconfig.json
+        - action: rebuild
+          path: ./packages/contracts/tsconfig.build.json
         - action: rebuild
           path: ./apps/api/package.json
         - action: rebuild
