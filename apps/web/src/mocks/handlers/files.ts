@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { commit, getDb, type MockDb, type MockEvidence } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { audit } from '../services/events';
 import { demonstrationPdf, loadFile } from '../services/files';
 import { notFound } from '../services/http';

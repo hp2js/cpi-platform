@@ -127,8 +127,8 @@ describe.skipIf(!integration)('reporting cycle', () => {
   describe('form versions (FR03)', () => {
     it('publishes, notifies institutions and officers, and audits', async () => {
       expect((await admin.post('/forms/form-v1/publish')).status).toBe(200);
-      // 8 focal people and 2 officers, once each.
-      expect(await notified('form.published')).toBe(10);
+      // 8 focal people, 2 officers and the supervisor, once each.
+      expect(await notified('form.published')).toBe(11);
       const [audit] = await api.db
         .select()
         .from(auditEvents)
@@ -182,6 +182,7 @@ describe.skipIf(!integration)('reporting cycle', () => {
         periodIds: draft.periodIds,
         sections,
         weights: draft.weights,
+        baseRevision: draft.revision,
       });
       const result = await admin.post('/forms/form-v2/publish');
       expect(result).toMatchObject({

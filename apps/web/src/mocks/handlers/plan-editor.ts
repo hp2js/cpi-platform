@@ -9,8 +9,8 @@ import {
 } from '@cpi/contracts';
 import type { z } from 'zod';
 import { commit, getDb, nextId, type MockDb } from '../db';
-import type { MockBaseline } from '../seed/baselines';
-import type { MockUser } from '../seed/cast';
+import type { MockBaseline } from '@cpi/contracts/fixtures';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { assignedOfficers, audit, notify } from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';

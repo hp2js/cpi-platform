@@ -12,6 +12,9 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 import type {
+  BaselineCheck,
+  FormChange,
+  RiskScale,
   AccountingOfficer,
   Attestation,
   AuditEvent,
@@ -194,8 +197,27 @@ export const cycles = pgTable('cycles', {
     reportingDays: 15,
     clarificationDays: 7,
     reviewTargetDays: 10,
+    proposalLeadDays: 14,
     holidays: [],
   }),
+  /** Labels for the 1–5 risk ratings and their source (O16); set under Forms & scoring. */
+  riskScale: jsonb()
+    .$type<RiskScale>()
+    .notNull()
+    .default({
+      probability: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost certain'],
+      impact: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      source:
+        'Demonstration labels from common 1–5 risk practice; confirm against the EACC risk assessment template before use.',
+    }),
+});
+
+export const riskScaleChanges = pgTable('risk_scale_changes', {
+  id: serial().primaryKey(),
+  at: instant().notNull(),
+  by: text().notNull(),
+  summary: text().notNull(),
+  reason: text().notNull(),
 });
 
 export const periods = pgTable('periods', {
@@ -235,6 +257,10 @@ export const formVersions = pgTable(
     weightsLocked: boolean().notNull(),
     basedOnVersion: integer(),
     updatedAt: instant().notNull(),
+    /** Optimistic-concurrency token for draft saves (FR03). */
+    revision: integer().notNull().default(0),
+    /** Differences from `basedOnVersion`, recomputed on every save and at publication. */
+    changes: jsonb().$type<FormChange[]>().notNull().default([]),
   },
   (table) => [unique().on(table.cycleId, table.version)],
 );
@@ -269,6 +295,57 @@ export const risks = pgTable('risks', {
   impact: integer().notNull(),
 });
 
+/** A mitigation activity from the institution's plan, linked to the risk it treats (FR04). */
+export const activities = pgTable('activities', {
+  id: text().primaryKey(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  code: text().notNull(),
+  riskId: text()
+    .notNull()
+    .references(() => risks.id),
+  title: text().notNull(),
+  strategy: text().notNull(),
+  output: text().notNull(),
+  kpi: text().notNull(),
+  target: text().notNull(),
+  owner: text().notNull(),
+  resourceReference: text().notNull(),
+});
+
+/** A milestone the institution plans for a quarter; proposals copy them into baselines. */
+export const plannedMilestones = pgTable('planned_milestones', {
+  id: text().primaryKey(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  code: text().notNull(),
+  activityId: text()
+    .notNull()
+    .references(() => activities.id),
+  periodId: text()
+    .notNull()
+    .references(() => periods.id),
+  title: text().notNull(),
+  completionCondition: text().notNull(),
+  evidenceExpectation: text().notNull(),
+});
+
+/** The institution's own record of who approved its plan, and when (PRD §10.4). */
+export const planApprovals = pgTable('plan_approvals', {
+  institutionId: text()
+    .primaryKey()
+    .references(() => institutions.id),
+  approvingBody: text().notNull(),
+  approvedOn: date().notNull(),
+  reference: text().notNull(),
+  accountingOfficer: text().notNull(),
+  documentVersionId: text(),
+  recordedBy: text().notNull(),
+  recordedAt: instant().notNull(),
+});
+
 /** A baseline version: the locked milestone snapshot for one institution-quarter. */
 export const baselines = pgTable(
   'baselines',
@@ -300,7 +377,12 @@ export const baselines = pgTable(
         noFragmentation: boolean;
       };
     }>(),
-    returned: jsonb().$type<{ by: string; at: string; reason: string }>(),
+    returned: jsonb().$type<{
+      by: string;
+      at: string;
+      reason: string;
+      failedChecks: BaselineCheck[];
+    }>(),
   },
   (table) => [unique().on(table.institutionId, table.periodId, table.version)],
 );

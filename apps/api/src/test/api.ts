@@ -161,6 +161,13 @@ export class Client {
     return this.request(path, { method: 'PUT', body: JSON.stringify(body) });
   }
 
+  delete(path: string, body?: unknown) {
+    return this.request(path, {
+      method: 'DELETE',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }
+
   async signIn(accountId: string) {
     const result = await this.post('/session', { accountId });
     if (result.status !== 200)

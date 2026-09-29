@@ -1,7 +1,14 @@
-import type { BaselineProposal, Milestone, Period } from '@cpi/contracts';
+import {
+  buildProposal,
+  endOfDay,
+  periodStartsAt,
+  proposalDueAt as sharedDueAt,
+  sameMilestones,
+  type BaselineProposal,
+  type Milestone,
+  type Period,
+} from '@cpi/contracts';
 import type { MockDb } from '../db';
-import { committee, committeeCodes } from '../seed/baselines';
-import { endOfDay, shiftDays } from './days';
 
 /**
  * The institution's plan (FR04): risks, activities and quarterly milestones it maintains, and
@@ -44,18 +51,10 @@ export function periodLocked(
 }
 
 /** Proposals are due the configured number of counted days before the quarter starts. */
-export function proposalDueAt(db: MockDb, period: Period) {
-  return endOfDay(
-    shiftDays(
-      period.startsOn,
-      -db.cycle.dayCounting.proposalLeadDays,
-      db.cycle.dayCounting,
-    ),
-  );
-}
+export const proposalDueAt = (db: MockDb, period: Period) =>
+  sharedDueAt(period, db.cycle.dayCounting);
 
-export const periodStartsAt = (period: Period) =>
-  `${period.startsOn}T00:00:00+03:00`;
+export { periodStartsAt, sameMilestones } from '@cpi/contracts';
 
 /** The quarter's baseline as it would be proposed now: planned milestones plus committees. */
 export function proposedMilestones(
@@ -63,63 +62,18 @@ export function proposedMilestones(
   institutionId: string,
   period: Period,
 ): Milestone[] {
-  const planned = db.plannedMilestones.filter(
-    (milestone) =>
-      milestone.institutionId === institutionId &&
-      milestone.periodId === period.id,
-  );
-  const substantive = planned
-    .sort((a, b) => a.code.localeCompare(b.code))
-    .map((milestone): Milestone => {
-      const activity = db.activities.find(
-        (candidate) => candidate.id === milestone.activityId,
-      );
-      const risk = db.risks.find(
-        (candidate) => candidate.id === activity?.riskId,
-      );
-      return {
-        id: milestone.id,
-        code: milestone.code,
-        title: milestone.title,
-        activity: activity ? `${activity.code} ${activity.title}` : '',
-        risk: risk ? `${risk.code} ${risk.description}` : '',
-        activityId: milestone.activityId,
-        completionCondition: milestone.completionCondition,
-        evidenceExpectation: milestone.evidenceExpectation,
-        weight: 1,
-        mandatory: false,
-      };
-    });
-  // Keep the committee milestones a quarter already has, so their identifiers stay stable.
-  const existing = latestBaseline(
-    db,
+  const own = <T extends { institutionId: string }>(items: T[]) =>
+    items.filter((item) => item.institutionId === institutionId);
+  return buildProposal({
     institutionId,
-    period.id,
-  )?.milestones.filter((milestone) => milestone.mandatory);
-  const committees =
-    existing && existing.length >= 2
-      ? existing
-      : committee(institutionId, ...committeeCodes(period.quarter));
-  return [...substantive, ...committees];
-}
-
-/** What makes two versions' planned milestones the same, ignoring order. */
-export function sameMilestones(a: Milestone[], b: Milestone[]) {
-  const signature = (milestones: Milestone[]) =>
-    JSON.stringify(
-      milestones
-        .filter((milestone) => !milestone.mandatory)
-        .map((milestone) => [
-          milestone.id,
-          milestone.code,
-          milestone.title,
-          milestone.activityId,
-          milestone.completionCondition,
-          milestone.evidenceExpectation,
-        ])
-        .sort(),
-    );
-  return signature(a) === signature(b);
+    period,
+    planned: own(db.plannedMilestones).filter(
+      (milestone) => milestone.periodId === period.id,
+    ),
+    activities: own(db.activities),
+    risks: own(db.risks),
+    existing: latestBaseline(db, institutionId, period.id)?.milestones,
+  });
 }
 
 /** Whether the planned milestones differ from what the latest version holds. */
