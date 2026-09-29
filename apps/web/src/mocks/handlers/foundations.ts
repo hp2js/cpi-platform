@@ -14,14 +14,14 @@ import {
   toEvidenceItem,
   type MockEvidence,
 } from '../db';
-import type { MockUser } from '../seed/cast';
-import type { MockFoundationVersion } from '../seed/planning';
+import type { MockUser } from '@cpi/contracts/fixtures';
+import type { MockFoundationVersion } from '@cpi/contracts/fixtures';
 import { assignedOfficers, audit, notify } from '../services/events';
 import { checkUpload, sha256 } from '../services/evidence';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
-import { points } from '../services/scoring';
+import { points } from '@cpi/contracts';
 import { requireRole, requireUser } from '../services/session';
 import { activeProfile, activeWeights } from '../services/profiles';
 

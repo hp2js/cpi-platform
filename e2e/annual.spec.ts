@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './test';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',

@@ -16,7 +16,7 @@ import {
   reassignInstitution,
 } from '../services/assignments';
 import { accountStatus } from '../services/auth';
-import { toCsv } from '../services/csv';
+import { toCsv } from '@cpi/contracts';
 import { audit, institutionUsers, notify } from '../services/events';
 import { apiError, notFound } from '../services/http';
 import { activeFocalPersons } from '../services/institutions';

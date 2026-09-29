@@ -12,8 +12,9 @@ import {
 import { SelectField } from '@/components/select-field';
 
 /**
- * Development-only controls for the mock API, used to exercise loading, expired-session
- * and fresh-start paths. Never rendered in production builds.
+ * Development-only controls for the mock API or, in live mode, the real API's development
+ * endpoints on the same paths; used to exercise loading, expired-session and fresh-start
+ * paths. Never rendered in production builds.
  */
 /** Like fetch, but first makes sure the mock worker still handles this page. */
 async function mockFetch(input: string, init?: RequestInit) {
@@ -21,7 +22,15 @@ async function mockFetch(input: string, init?: RequestInit) {
   return fetch(input, init);
 }
 
-export function DevToolbar({ router }: { router: AppRouter }) {
+export function DevToolbar({
+  router,
+  live,
+}: {
+  router: AppRouter;
+  /** Against the real API: latency is real, so its control is hidden. */
+  live: boolean;
+}) {
+  const name = live ? 'Dev controls' : 'Mock API';
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [latency, setLatency] = useState<LatencyMode>(getLatencyMode);
@@ -88,18 +97,18 @@ export function DevToolbar({ router }: { router: AppRouter }) {
         onClick={() => setOpen(true)}
       >
         <FlaskConical aria-hidden="true" />
-        Mock API
+        {name}
       </Button>
     );
   }
   return (
     <section
       data-print-hide
-      aria-label="Mock API controls"
+      aria-label={`${name} controls`}
       className="fixed right-3 bottom-24 z-50 w-72 rounded-lg border bg-card p-4 text-sm shadow-lg md:bottom-3"
     >
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Mock API controls</h2>
+        <h2 className="font-semibold">{name} controls</h2>
         <Button
           type="button"
           variant="ghost"
@@ -107,31 +116,34 @@ export function DevToolbar({ router }: { router: AppRouter }) {
           onClick={() => setOpen(false)}
         >
           <X aria-hidden="true" />
-          <span className="sr-only">Close mock API controls</span>
+          <span className="sr-only">Close {name} controls</span>
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Development only. Data is fictional and stored in this browser.
+        Development only. Data is fictional and stored{' '}
+        {live ? 'in the development database' : 'in this browser'}.
       </p>
-      <div className="mt-3 grid gap-1">
-        <label htmlFor="dev-latency" className="font-medium">
-          Network latency
-        </label>
-        <SelectField
-          id="dev-latency"
-          value={latency}
-          onChange={(value) => {
-            const mode = value as LatencyMode;
-            setLatency(mode);
-            setLatencyMode(mode);
-          }}
-          options={[
-            { value: 'off', label: 'Off' },
-            { value: 'realistic', label: 'Realistic (0.1–0.4 s)' },
-            { value: 'slow', label: 'Slow (1.5–2.5 s)' },
-          ]}
-        />
-      </div>
+      {!live && (
+        <div className="mt-3 grid gap-1">
+          <label htmlFor="dev-latency" className="font-medium">
+            Network latency
+          </label>
+          <SelectField
+            id="dev-latency"
+            value={latency}
+            onChange={(value) => {
+              const mode = value as LatencyMode;
+              setLatency(mode);
+              setLatencyMode(mode);
+            }}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'realistic', label: 'Realistic (0.1–0.4 s)' },
+              { value: 'slow', label: 'Slow (1.5–2.5 s)' },
+            ]}
+          />
+        </div>
+      )}
       <label className="mt-3 flex items-center gap-2">
         <input
           type="checkbox"

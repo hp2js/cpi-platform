@@ -7,7 +7,7 @@ import {
 } from '@cpi/contracts';
 import { hashPassword, passwordMatches } from '../services/auth';
 import { commit, getDb } from '../db';
-import type { MockUser } from '../seed/cast';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { audit } from '../services/events';
 import { apiError } from '../services/http';
 import { networkDelay } from '../services/latency';

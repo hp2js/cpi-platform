@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test';
 import { midYear, visit } from './support';
 
 test.skip(
@@ -72,6 +72,10 @@ test('demo data saved by an older version is replaced, not served to new screens
   await midYear(page);
   await visit(page, 'administrator', '/admin');
   // Simulate a browser holding data from before assignments gained cover and handover notes.
+  const mockData = await page.evaluate(() =>
+    localStorage.getItem('cpi-mock-db'),
+  );
+  test.skip(!mockData, 'Only the mock API keeps data in the browser');
   await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem('cpi-mock-db')!);
     stored.schemaVersion = 13;

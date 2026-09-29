@@ -28,8 +28,10 @@ const expected: Record<string, string> = {
 
 async function runYear() {
   await signInAs('administrator');
+  // The whole year in one request, as the app allows for it (features/simulation).
   return request('/api/simulation/scenario', scenarioResultSchema, {
     method: 'POST',
+    timeoutMs: 60_000,
   });
 }
 

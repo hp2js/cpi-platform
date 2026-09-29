@@ -15,8 +15,8 @@ import {
 } from '@cpi/contracts';
 import type { z } from 'zod';
 import { commit, getDb, nextId, type MockDb } from '../db';
-import type { MockUser } from '../seed/cast';
-import type { MockProfile } from '../seed/profiles';
+import type { MockUser } from '@cpi/contracts/fixtures';
+import type { MockProfile } from '@cpi/contracts/fixtures';
 import { accountStatus, prepareLink, sendLink } from '../services/auth';
 import { supervisedInstitutionIds, supervisorIdOf } from '../services/scope';
 import { skipPastBoundaries } from '../services/clock';

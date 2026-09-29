@@ -1,35 +1,21 @@
 import 'reflect-metadata';
-import { ConsoleLogger, Module } from '@nestjs/common';
+import { ConsoleLogger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import helmet from 'helmet';
-import { CONFIG, loadConfig } from './config';
-import { HealthController } from './health.controller';
+import { AppModule, configureApp } from './app.module';
+import { CONFIG, type loadConfig } from './config';
+import { prepareDatabase } from './database/setup';
 import { Infrastructure } from './infrastructure';
-import { bodyParsers } from './http/body-parsers';
-import { requestContext } from './http/diagnostics';
-import { ApiExceptionFilter } from './http/errors.filter';
-
-@Module({
-  controllers: [HealthController],
-  providers: [
-    { provide: CONFIG, useFactory: () => loadConfig(process.env) },
-    Infrastructure,
-  ],
-})
-class AppModule {}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new ConsoleLogger({ json: true }),
     bodyParser: false,
   });
-  app.use(requestContext);
-  app.use(helmet());
-  app.use(...bodyParsers);
-  app.useGlobalFilters(new ApiExceptionFilter());
-  app.setGlobalPrefix('api');
+  configureApp(app);
   app.enableShutdownHooks();
   const config = app.get<ReturnType<typeof loadConfig>>(CONFIG);
+  if (config.DB_AUTO_SETUP)
+    await prepareDatabase(app.get(Infrastructure).database);
   await app.listen(config.API_PORT, '0.0.0.0');
 }
 void bootstrap();

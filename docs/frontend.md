@@ -2,7 +2,7 @@
 
 ## Entry points
 
-`src/main.tsx` starts the mock API (development only), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forgot password, set password from an emailed link, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
+`src/main.tsx` starts the development service worker (fault injection, or the whole mock with `VITE_API_MODE=mock`), then renders one QueryClient and one router. `src/app/router.tsx` defines typed code-based routes: public pages (sign-in, forgot password, set password from an emailed link, forbidden, session expired) and one guarded subtree per role, each with its own layout in `src/layouts/`. Screens live in `src/routes/<role>/`; domain queries and components live in `src/features/<domain>/`; shared domain components (status badges, page header, query states) in `src/components/`; generated shadcn primitives stay in `src/components/ui`. [frontend-plan.md](frontend-plan.md) describes the full screen inventory and delivery phases.
 
 Route guards only improve navigation. The API is the authority: every screen must handle 401, 403 and 404 responses, and `src/app/query-client.ts` sends the user to the session-expired or sign-in page when any request reports the session is gone.
 
@@ -14,16 +14,16 @@ Put query keys/options beside each feature. Include every filter, institution id
 
 After a successful mutation, invalidate the specific affected query family with `queryClient.invalidateQueries({ queryKey: [...] })`; only report success once the server confirms it. The health refresh button is a working invalidation example. Do not retry writes by default. Clear institution-scoped cached data when identity or access context changes once authentication exists.
 
-## Mock API
+## Real API and mock API
 
-Until the backend implements a contract, `pnpm dev` serves it from [MSW](https://mswjs.io/) in `src/mocks/`: `db.ts` holds the seeded fictional cycle (persisted to localStorage), `services/` holds scope checks, business-time rules and (later) scoring, and `handlers/` maps REST routes to them. Unhandled requests, such as `/api/health`, pass through to the real API. The same handlers run in Vitest (`src/test-setup.ts`), so component tests exercise the contract too.
+Development runs against the real API (`apps/api`). The in-browser [MSW](https://mswjs.io/) mock in `src/mocks/` remains for component tests and as a reference: `db.ts` holds the seeded fictional cycle, `services/` the rules, and `handlers/` the REST routes. The same handlers run in Vitest (`src/test-setup.ts`), so component tests exercise the contract without a server.
 
-- Set `VITE_API_MODE=live` to bypass the mock in development. Production builds never include MSW: its worker lives in `dev-public/`, which Vite serves only in development. Regenerate it after upgrading msw with `pnpm --filter @cpi/web exec msw init dev-public --no-save`.
+- `VITE_API_MODE=mock` runs the mock in the browser instead of the real API (development only). Production builds never include MSW: its worker lives in `dev-public/`, which Vite serves only in development. Regenerate it after upgrading msw with `pnpm --filter @cpi/web exec msw init dev-public --no-save`.
+- In development the worker also injects network faults (`/api/__mock/fault`) for recovery rehearsals; against the real API it handles nothing else. The API serves the other development controls (`/api/__mock/reset`, `email-failure`, `expire-session`) on the same paths, outside production only, so the toolbar and e2e specs work in either mode.
 - The mock behaves like a server: it resolves the session, enforces role and assignment scope (out-of-scope reads return 404), and derives deadline flags from simulated business time. Keep business rules in `src/mocks/services/`, never in components.
-- The **Mock API** button (development only) changes latency, expires the session and resets demo data, for exercising loading and recovery states.
-- **Scripted year:** the administrator's Simulation clock page runs `src/mocks/scenario.ts`, which plays PRD §17.1 for all eight institutions by calling the mock API as each real account (so scope, workflow and audit rules apply), skipping steps already done. From a fresh run it reproduces the expected annual results (88.75, 70.00, 96.25 …), asserted in `src/mocks/annual.test.ts`. The real backend will need its own driver (HP2-28).
+- The **Dev controls** button (**Mock API** in mock mode; development only) expires the session, fails email delivery and resets demo data, for exercising loading and recovery states; in mock mode it also changes latency.
+- **Scripted year:** the administrator's Simulation clock page runs `src/mocks/scenario.ts`, which plays PRD §17.1 for all eight institutions by calling the mock API as each real account (so scope, workflow and audit rules apply), skipping steps already done. From a fresh run it reproduces the expected annual results (88.75, 70.00, 96.25 …), asserted in `src/mocks/annual.test.ts`; the real API runs the same script server-side (`apps/api/src/simulation/scenario.ts`), asserted in its integration tests.
 - The clock only moves forward; each boundary (reporting opens, reminders, deadline, overdue, cutoff, publication) is processed once per run. Start a new run to go back.
-- When a real endpoint lands, delete its handler; the screens should not change.
 
 ## Navigation and lists: Router + Table
 

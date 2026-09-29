@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test';
 
 test('Caddy serves deep links and keeps API/assets separate from SPA fallback', async ({
   request,

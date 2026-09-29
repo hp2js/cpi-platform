@@ -1,0 +1,1 @@
+ALTER TABLE "scoring_profiles" ADD COLUMN "position" serial NOT NULL;

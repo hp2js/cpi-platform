@@ -48,6 +48,7 @@ pnpm check            # lint, typecheck, tests, production builds
 pnpm format           # format source and docs
 pnpm format:check     # CI formatting check
 pnpm test:smoke       # running Docker stack: outages, recovery, DB persistence
+pnpm test:integration # running Docker services: API tests against a `_test` database
 pnpm test:e2e         # running dev stack: browser tests (Playwright)
 pnpm test:e2e:prod    # running `docker:prod` stack: adds web-server checks
 pnpm docker:up        # rebuild and start the development stack
@@ -66,6 +67,7 @@ pnpm db:migrate      # apply checked-in migrations to DATABASE_URL
 pnpm db:seed         # load synthetic fixtures
 ```
 
+- The API applies migrations when it starts and loads the fictional fixtures into an empty database (`DB_AUTO_SETUP=false` turns this off); restarts keep data.
 - Generate migrations on the host so the files land in the checkout. Commit the generated SQL and Drizzle metadata together, and review migrations before applying them.
 - Do not use schema push against shared environments.
 - To run a database command inside the development API container: `docker compose exec api pnpm --filter @cpi/api db:migrate`.

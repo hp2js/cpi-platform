@@ -6,10 +6,10 @@ import {
   type Institution,
 } from '@cpi/contracts';
 import type { MockDb } from '../db';
-import { committee, type MockBaseline } from '../seed/baselines';
-import type { MockUser } from '../seed/cast';
+import { committee, type MockBaseline } from '@cpi/contracts/fixtures';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import { accountStatus, sendLink, type PreparedLink } from './auth';
-import { parseCsv } from './csv';
+import { parseCsv } from '@cpi/contracts';
 
 /**
  * Onboarding institutions (FR01), one at a time or in bulk. Every new institution gets its

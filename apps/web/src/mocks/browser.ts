@@ -1,6 +1,7 @@
 import { setupWorker } from 'msw/browser';
 import { setBeforeRequest } from '@/lib/api';
 import { handlers } from './handlers';
+import { faultHandlers } from './handlers/faults';
 
 export const worker = setupWorker(...handlers);
 
@@ -31,7 +32,8 @@ function reactivate(): Promise<void> {
   });
 }
 
-export async function startMockApi() {
+export async function startMockApi(mode: 'mock' | 'faults-only') {
+  if (mode === 'faults-only') worker.resetHandlers(...faultHandlers);
   await worker.start({
     // Requests the mock does not define (e.g. /api/health) go to the real API.
     onUnhandledRequest: 'bypass',
