@@ -1,4 +1,4 @@
-import { suitabilityCheckKeys } from '@cpi/contracts';
+import { isEvidenceAnswer, suitabilityCheckKeys } from '@cpi/contracts';
 import type {
   Baseline,
   Foundations,
@@ -439,6 +439,7 @@ async function setup() {
           version: baseline.version,
           reason:
             'Administrative tasks artificially split the plan and dilute committee obligations.',
+          failedChecks: ['noFragmentation'],
         });
         log(
           officer,
@@ -447,18 +448,33 @@ async function setup() {
         baseline = { ...baseline, status: 'returned' };
       }
       if (baseline.status === 'returned') {
-        const keep = baseline.milestones
-          .filter((milestone) => !milestone.activity.startsWith('A-99'))
-          .map((milestone) => milestone.id);
-        baseline = await call<Baseline>(
+        // The institution drops the administrative tasks from its plan and proposes again.
+        const trivial = plan.plannedMilestones.filter(
+          (milestone) =>
+            milestone.periodId === baseline.periodId &&
+            baseline.milestones.some(
+              (item) =>
+                item.id === milestone.id && item.activity.startsWith('A-99'),
+            ),
+        );
+        for (const milestone of trivial)
+          await call(
+            focal(institutionId),
+            'DELETE',
+            `/api/institutions/${institutionId}/plan-milestones/${encodeURIComponent(milestone.id)}`,
+          );
+        const revised = await call<Plan>(
           focal(institutionId),
           'POST',
-          `/api/baselines/${baseline.id}/revise`,
-          { version: baseline.version, milestoneIds: keep },
+          `/api/institutions/${institutionId}/baselines/${baseline.periodId}/propose`,
+          { note: 'Administrative tasks removed as the officer asked.' },
         );
+        baseline = revised.baselines
+          .filter((item) => item.periodId === baseline.periodId)
+          .at(-1)!;
         log(
           focal(institutionId),
-          `Revised ${institutionId} ${baseline.periodLabel} baseline to ${keep.length} milestones`,
+          `Revised ${institutionId} ${baseline.periodLabel} baseline to ${baseline.milestones.length} milestones`,
         );
       }
       await call(officer, 'POST', `/api/baselines/${baseline.id}/approve`, {
@@ -606,7 +622,7 @@ export async function runScenario(): Promise<ScenarioResult> {
       const answers = structuredClone(bundle.draft!.answers);
       const swap = (id: string) => (id === wrong.id ? replacement : id);
       for (const value of Object.values(answers.questions))
-        if (value && typeof value === 'object')
+        if (isEvidenceAnswer(value))
           value.evidenceIds = value.evidenceIds.map(swap);
       for (const response of Object.values(answers.milestones))
         response.evidence = response.evidence.map((reference) => ({

@@ -5,8 +5,11 @@ import {
   initialAssignments,
   initialBaselines,
   initialBusinessTime,
+  initialActivities,
   initialForm,
   initialInstitutionTypes,
+  initialPlanApprovals,
+  initialPlannedMilestones,
   initialProfiles,
   initialSupervisions,
   initialRisks,
@@ -73,6 +76,7 @@ export async function loadFixtures(
       reminderDaysBefore: [7, 1],
       overdueNotice: true,
       dayCounting: cycle.dayCounting,
+      riskScale: cycle.riskScale,
     });
     await tx
       .insert(schema.periods)
@@ -96,6 +100,9 @@ export async function loadFixtures(
       ),
     );
     await tx.insert(schema.risks).values(initialRisks);
+    await tx.insert(schema.activities).values(initialActivities);
+    await tx.insert(schema.plannedMilestones).values(initialPlannedMilestones);
+    await tx.insert(schema.planApprovals).values(initialPlanApprovals);
     await tx.insert(schema.baselines).values(initialBaselines);
     const foundations = seedFoundations();
     // Foundation documents belong to the institution, not to a quarterly obligation.

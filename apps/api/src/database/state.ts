@@ -36,6 +36,7 @@ export async function loadCycle(db: Db): Promise<Cycle> {
     foundationDeadline: cycle.foundationDeadline,
     evaluationCutoff: cycle.evaluationCutoff,
     dayCounting: cycle.dayCounting,
+    riskScale: cycle.riskScale,
     periods: rows.map((period) => ({
       id: period.id,
       quarter: period.quarter,

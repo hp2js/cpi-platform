@@ -14,6 +14,7 @@ import { DirectoryController } from './directory/directory.controller';
 import { EventsController } from './events/events.controller';
 import { Events } from './events/events';
 import { FoundationsController } from './planning/foundations.controller';
+import { PlanEditorController } from './planning/plan-editor.controller';
 import { PlanningController } from './planning/planning.controller';
 import { ReportingController } from './reporting/reporting.controller';
 import { ReviewController } from './review/review.controller';
@@ -36,6 +37,7 @@ import { Infrastructure } from './infrastructure';
     ReportingController,
     ReviewController,
     PlanningController,
+    PlanEditorController,
     FoundationsController,
     AnnualController,
     EventsController,

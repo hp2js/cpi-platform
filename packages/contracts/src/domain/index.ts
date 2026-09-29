@@ -3,3 +3,7 @@ export * from './rational.js';
 export * from './scoring.js';
 export * from './time.js';
 export * from './days.js';
+export * from './reporting.js';
+export * from './forms.js';
+export * from './plans.js';
+export * from './pdf.js';

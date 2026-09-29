@@ -149,6 +149,48 @@ export async function requestFile(
   return response.blob();
 }
 
+/** A downloaded file with the name and type the server gave it. */
+export interface FetchedFile {
+  blob: Blob;
+  fileName: string | null;
+  mimeType: string;
+  /** The mock API serves a labelled stand-in when it has no stored contents. */
+  demonstration: boolean;
+}
+
+/** The file name from a Content-Disposition header, preferring the UTF-8 form. */
+export function dispositionFileName(header: string | null) {
+  if (!header) return null;
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1]!);
+    } catch {
+      /* fall through to the plain name */
+    }
+  }
+  return /filename="([^"]*)"/i.exec(header)?.[1] ?? null;
+}
+
+export async function fetchFile(
+  path: `/api/${string}`,
+  options: RequestOptions = {},
+): Promise<FetchedFile> {
+  const headers = new Headers(options.headers);
+  if (!headers.has('Accept')) headers.set('Accept', '*/*');
+  const response = await send(path, { timeoutMs: 30_000, ...options, headers });
+  const blob = await response.blob();
+  return {
+    blob,
+    fileName: dispositionFileName(response.headers.get('Content-Disposition')),
+    mimeType:
+      response.headers.get('Content-Type')?.split(';')[0]?.trim() ||
+      blob.type ||
+      'application/octet-stream',
+    demonstration: response.headers.get('X-Demonstration-Copy') === 'true',
+  };
+}
+
 export const healthQuery = queryOptions({
   queryKey: ['system', 'readiness'],
   queryFn: ({ signal }) =>

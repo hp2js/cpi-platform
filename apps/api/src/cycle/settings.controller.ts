@@ -13,6 +13,8 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 import {
   calendarUpdateSchema,
+  riskScaleUpdateSchema,
+  type RiskScaleSettings,
   institutionCreateSchema,
   institutionImportRequestSchema,
   institutionTypeUpdateSchema,
@@ -32,6 +34,7 @@ import { nextId, write, type Db, type Tx } from '../database/db';
 import {
   assignments,
   calendarChanges,
+  riskScaleChanges,
   cycles,
   formVersions,
   institutionTypes,
@@ -87,6 +90,23 @@ import {
  * Administrator settings (PRD §7.1, FR01, FR02, §10.1). Every change is audited; values that
  * would rewrite history (an opened period's deadline, a locked profile) are refused.
  */
+
+/** The cycle's declared 1–5 risk scale, with every change newest first. */
+async function riskScaleSettings(db: Db): Promise<RiskScaleSettings> {
+  const [{ cycle }, changes] = await Promise.all([
+    currentState(db),
+    db
+      .select({
+        at: riskScaleChanges.at,
+        by: riskScaleChanges.by,
+        summary: riskScaleChanges.summary,
+        reason: riskScaleChanges.reason,
+      })
+      .from(riskScaleChanges)
+      .orderBy(desc(riskScaleChanges.id)),
+  ]);
+  return { riskScale: cycle.riskScale, changes };
+}
 
 function parse<T>(schema: z.ZodType<T>, body: unknown) {
   const parsed = schema.safeParse(body);
@@ -515,6 +535,73 @@ export class SettingsController {
     return calendar(this.db);
   }
 
+  /* Risk rating scale: labels for the 1–5 ratings in risk registers (O16). */
+  @Get('risk-scale')
+  @Roles('administrator')
+  riskScale() {
+    return riskScaleSettings(this.db);
+  }
+
+  @Put('risk-scale')
+  @Roles('administrator')
+  updateRiskScale(@CurrentUser() user: User, @Body() body: unknown) {
+    return write(this.db, async (tx, businessTime) => {
+      const update = parse(riskScaleUpdateSchema, body);
+      const { cycle } = await currentState(tx);
+      const current = cycle.riskScale;
+      // Labels only: existing ratings keep their numbers, and severity stays their product.
+      const scale = {
+        probability: update.probability.map((label) => label.trim()),
+        impact: update.impact.map((label) => label.trim()),
+        source: update.source.trim(),
+      };
+      const errors: Record<string, string> = {};
+      const changes: string[] = [];
+      for (const axis of ['probability', 'impact'] as const) {
+        if (
+          new Set(scale[axis].map((label) => label.toLowerCase())).size !==
+          scale[axis].length
+        )
+          errors[axis] = 'Give each point of the scale its own label.';
+        if (JSON.stringify(scale[axis]) !== JSON.stringify(current[axis]))
+          changes.push(
+            `${axis === 'probability' ? 'Probability' : 'Impact'} labels → ${scale[axis].map((label, index) => `${index + 1} ${label}`).join(', ')}`,
+          );
+      }
+      if (scale.source !== current.source)
+        changes.push(`Source → ${scale.source}`);
+      if (Object.keys(errors).length)
+        throw new ApiError(
+          422,
+          'Some labels need attention.',
+          'risk_scale_invalid',
+          errors,
+        );
+      if (!changes.length)
+        throw new ApiError(422, 'Nothing has changed.', 'no_change');
+      await tx
+        .update(cycles)
+        .set({ riskScale: scale })
+        .where(eq(cycles.id, cycle.id));
+      const summary = changes.join('; ');
+      await tx.insert(riskScaleChanges).values({
+        at: businessTime,
+        by: user.displayName,
+        summary,
+        reason: update.reason,
+      });
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'settings.risk_scale',
+        { type: 'cycle', id: cycle.id },
+        `${summary}. Reason: ${update.reason}`,
+      );
+      return riskScaleSettings(tx);
+    });
+  }
+
   @Put('calendar')
   @Roles('administrator')
   updateCalendar(@CurrentUser() user: User, @Body() body: unknown) {
@@ -545,6 +632,14 @@ export class SettingsController {
       if (before.clarificationDays !== counting.clarificationDays)
         changes.push(
           `Clarification window ${before.clarificationDays} → ${counting.clarificationDays} days (new requests only)`,
+        );
+      if (before.reviewTargetDays !== counting.reviewTargetDays)
+        changes.push(
+          `Officer review target ${before.reviewTargetDays} → ${counting.reviewTargetDays} days`,
+        );
+      if (before.proposalLeadDays !== counting.proposalLeadDays)
+        changes.push(
+          `Baseline proposals due ${before.proposalLeadDays} → ${counting.proposalLeadDays} days before each quarter`,
         );
       if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
         changes.push(

@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { reportBundleSchema } from '@cpi/contracts';
 import { request } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { FileViewer } from '@/features/files/file-viewer';
+import { AnswerValue } from '@/features/reporting/answer-value';
 
 const openSupportView = (obligationId: string, reason: string) =>
   request(
@@ -27,29 +29,12 @@ const openSupportView = (obligationId: string, reason: string) =>
     { method: 'POST', json: { reason } },
   );
 
-function answerText(value: unknown, fileName: (id: string) => string) {
-  if (value === null || value === undefined || value === '')
-    return 'Not answered';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (typeof value === 'object' && 'evidenceIds' in value) {
-    const answer = value as {
-      evidenceIds: string[];
-      unavailable: { explanation: string } | null;
-    };
-    if (answer.unavailable)
-      return `Declared not available: ${answer.unavailable.explanation}`;
-    return answer.evidenceIds.length
-      ? answer.evidenceIds.map(fileName).join(', ')
-      : 'Not answered';
-  }
-  return String(value);
-}
-
 /** The draft as the institution last saved it, read only. */
 function DraftView({ bundle }: { bundle: ReportBundle }) {
   const draft = bundle.draft;
   const fileName = (id: string) =>
     bundle.evidence.find((item) => item.id === id)?.fileName ?? id;
+  const files = bundle.evidence.filter((item) => item.supersededBy === null);
   if (!bundle.form)
     return <p className="text-sm">The report form has not been published.</p>;
   if (!draft)
@@ -98,7 +83,11 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
                 <div key={question.id} className="rounded-md border p-2">
                   <dt className="font-medium">{question.label}</dt>
                   <dd>
-                    {answerText(draft.answers.questions[question.id], fileName)}
+                    <AnswerValue
+                      question={question}
+                      value={draft.answers.questions[question.id]}
+                      evidence={bundle.evidence}
+                    />
                   </dd>
                 </div>
               ),
@@ -106,6 +95,24 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
           </dl>
         </section>
       ))}
+      <section className="grid gap-2">
+        <h3 className="font-semibold">Files in the report</h3>
+        {files.length ? (
+          <ul className="grid gap-1">
+            {files.map((item) => (
+              <li key={item.id}>
+                <FileViewer file={item} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">No files are uploaded.</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Opening a file is logged. Files stay available to you for 30 minutes
+          after this support view.
+        </p>
+      </section>
     </div>
   );
 }

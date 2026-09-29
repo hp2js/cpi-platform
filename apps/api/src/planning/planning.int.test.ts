@@ -48,9 +48,13 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
         version: 1,
         reason:
           'Eight administrative tasks artificially split the plan and dilute committee obligations.',
+        failedChecks: ['noFragmentation'],
       })
     ).body as Baseline;
-    expect(returned.status).toBe('returned');
+    expect(returned).toMatchObject({
+      status: 'returned',
+      returned: { failedChecks: ['noFragmentation'] },
+    });
     const outsider = await api.client().signIn('officer-b');
     expect(
       (
@@ -62,36 +66,35 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       ).status,
     ).toBe(404);
 
-    // The institution revises by keeping a subset; mandatory meetings must stay.
+    // The institution drops the administrative tasks from its plan and proposes again.
     const focal = await api.client().signIn('focal-demo-004');
-    const mandatory = inflated.milestones.filter((m) => m.mandatory);
-    expect(
-      await focal.post(`/baselines/${inflated.id}/revise`, {
-        version: 1,
-        milestoneIds: [inflated.milestones.find((m) => !m.mandatory)!.id],
-      }),
-    ).toMatchObject({ status: 422, body: { code: 'mandatory_milestone' } });
-    const keep = [
-      ...mandatory,
-      ...inflated.milestones.filter((m) => !m.mandatory).slice(0, 2),
-    ];
-    const revised = await focal.post(`/baselines/${inflated.id}/revise`, {
-      version: 1,
-      milestoneIds: keep.map((m) => m.id),
-    });
-    expect(revised).toMatchObject({
-      status: 201,
-      body: { version: 2, status: 'proposed', locked: false },
-    });
+    const own = await focal.json<Plan>('/institutions/DEMO-004/plan');
+    for (const milestone of own.plannedMilestones.filter(
+      (item) =>
+        item.periodId === 'FY2026-27-Q2' && item.activityId === 'DEMO-004:A-99',
+    ))
+      await focal.delete(
+        `/institutions/DEMO-004/plan-milestones/${encodeURIComponent(milestone.id)}`,
+      );
+    const revised = await focal.post(
+      '/institutions/DEMO-004/baselines/FY2026-27-Q2/propose',
+      { note: 'Administrative tasks removed.' },
+    );
+    expect(revised.status).toBe(201);
+    const proposal = latest(revised.body as Plan, 'FY2026-27-Q2');
+    expect(proposal).toMatchObject({ version: 2, status: 'proposed' });
+    expect(proposal.milestones.map((milestone) => milestone.code)).toEqual([
+      'M-05',
+      'M-06',
+      'M-07',
+      'M-08',
+    ]);
     const approved = (
-      await officer.post(
-        `/baselines/${(revised.body as Baseline).id}/approve`,
-        {
-          version: 2,
-          rationale: 'Proportionate plan with both committee obligations.',
-          checks,
-        },
-      )
+      await officer.post(`/baselines/${proposal.id}/approve`, {
+        version: 2,
+        rationale: 'Proportionate plan with both committee obligations.',
+        checks,
+      })
     ).body as Baseline;
     expect(approved).toMatchObject({ status: 'approved', version: 2 });
     // Version 1 is kept.
@@ -119,6 +122,22 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       }),
     ).toMatchObject({ status: 409, body: { code: 'baseline_locked' } });
     const q2 = latest(plan, 'FY2026-27-Q2');
+    // A proposed baseline is changed through the plan, not amended.
+    expect(
+      await request({
+        periodId: q2.periodId,
+        milestoneId: q2.milestones[0]!.id,
+        change: 'remove',
+        toPeriodId: null,
+        reason: 'We will not need this milestone.',
+      }),
+    ).toMatchObject({ status: 409, body: { code: 'baseline_not_approved' } });
+    const officer = await api.client().signIn('officer-b');
+    await officer.post(`/baselines/${q2.id}/approve`, {
+      version: q2.version,
+      rationale: 'Covers the material risks with objective conditions.',
+      checks,
+    });
     expect(
       await request({
         periodId: q2.periodId,
@@ -136,7 +155,6 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       reason: 'Spot-check team is only available in Q3.',
     });
     expect(asked).toMatchObject({ status: 201, body: { status: 'pending' } });
-    const officer = await api.client().signIn('officer-b');
     const after = (
       await officer.post(
         `/amendments/${(asked.body as { id: string }).id}/decision`,
@@ -152,6 +170,12 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
         .map((baseline) => baseline.milestones.length);
     expect(lengths('FY2026-27-Q2')).toEqual([4, 3]);
     expect(lengths('FY2026-27-Q3').at(-1)).toBe(5);
+    // The plan follows the confirmed amendment, so a later proposal keeps the move.
+    expect(
+      after.plannedMilestones.find(
+        (milestone) => milestone.id === q2.milestones[1]!.id,
+      )?.periodId,
+    ).toBe('FY2026-27-Q3');
     expect(after.amendments[0]).toMatchObject({
       status: 'confirmed',
       decidedBy: 'Prevention Officer B',

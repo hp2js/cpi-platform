@@ -1,11 +1,15 @@
-import type {
-  ClarificationItem,
-  EvidenceAnswer,
-  EvidenceItem,
-  EvidenceReference,
-  Milestone,
-  Question,
-  ReportAnswers,
+import {
+  describeLimits,
+  isChecklistAnswer,
+  isRowsAnswer,
+  limitProblem,
+  type ClarificationItem,
+  type EvidenceAnswer,
+  type EvidenceItem,
+  type EvidenceReference,
+  type Milestone,
+  type Question,
+  type ReportAnswers,
 } from '@cpi/contracts';
 import { useForm } from '@tanstack/react-form';
 import { FileText, Upload } from 'lucide-react';
@@ -19,6 +23,7 @@ import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { evidenceCategoryLabel, fieldDomId, formatBytes } from './answers';
+import { FileViewer } from '@/features/files/file-viewer';
 
 // The form type is derived from the hook so field names and values stay checked.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- exists only to derive the form's type
@@ -44,6 +49,197 @@ function setterOf<T>(field: { handleChange: unknown }) {
 }
 
 const ACCEPT = '.pdf,.docx,.xlsx,.jpg,.jpeg,.png';
+
+/** Browser hints matching the question's limits; the server check is the one that counts. */
+function inputLimits(question: Pick<Question, 'type' | 'limits'>) {
+  const limits = question.limits;
+  if (!limits) return {};
+  if (question.type === 'number')
+    return {
+      min: limits.min,
+      max: limits.max,
+      step: limits.integer ? 1 : 'any',
+      inputMode: limits.integer ? ('numeric' as const) : ('decimal' as const),
+    };
+  if (question.type === 'date')
+    return { min: limits.earliest, max: limits.latest };
+  if (question.type === 'text' || question.type === 'long_text')
+    return { maxLength: limits.maxLength };
+  return {};
+}
+
+type Cell = string | number | boolean | null;
+
+/** A table the institution adds rows to, with the configured columns (FR03). */
+function RowsField({
+  id,
+  question,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  question: Question;
+  value: Record<string, Cell>[];
+  disabled?: boolean;
+  onChange: (rows: Record<string, Cell>[]) => void;
+}) {
+  const columns = question.columns ?? [];
+  const most = question.maxRows ?? 50;
+  const empty = () =>
+    Object.fromEntries(
+      columns.map((column) => [
+        column.id,
+        column.type === 'yes_no' ? null : '',
+      ]),
+    ) as Record<string, Cell>;
+  const set = (index: number, columnId: string, cell: Cell) =>
+    onChange(
+      value.map((row, position) =>
+        position === index ? { ...row, [columnId]: cell } : row,
+      ),
+    );
+  return (
+    <div className="grid gap-3">
+      {value.length === 0 && (
+        <p className="text-sm text-muted-foreground">No rows yet.</p>
+      )}
+      <ol className="grid gap-3">
+        {value.map((row, index) => (
+          <li
+            key={index}
+            aria-label={`Row ${index + 1}`}
+            className="grid gap-3 rounded-md border bg-background p-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Row {index + 1}</span>
+              <button
+                type="button"
+                disabled={disabled}
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50"
+                onClick={() =>
+                  onChange(value.filter((_, position) => position !== index))
+                }
+              >
+                Remove row {index + 1}
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {columns.map((column) => {
+                const cellId = `${id}-r${index}-${column.id}`;
+                const cell = row[column.id] ?? null;
+                const problem =
+                  cell !== null && String(cell).trim() !== ''
+                    ? limitProblem(column.limits, column.type, cell)
+                    : null;
+                const label = (
+                  <span id={`${cellId}-label`} className="text-sm font-medium">
+                    {column.label}
+                    {!column.required && (
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        (optional)
+                      </span>
+                    )}
+                  </span>
+                );
+                if (column.type === 'yes_no')
+                  return (
+                    <div key={column.id} className="grid gap-1.5">
+                      {label}
+                      <YesNo
+                        id={cellId}
+                        labelledBy={`${cellId}-label`}
+                        value={typeof cell === 'boolean' ? cell : null}
+                        onChange={(next) => set(index, column.id, next)}
+                      />
+                    </div>
+                  );
+                if (column.type === 'choice')
+                  return (
+                    <div key={column.id} className="grid gap-1.5">
+                      {label}
+                      <RadioGroup
+                        aria-labelledby={`${cellId}-label`}
+                        value={String(cell ?? '')}
+                        onValueChange={(next) => set(index, column.id, next)}
+                        className="flex flex-wrap gap-x-4 gap-y-1"
+                      >
+                        {(column.choices ?? []).map((choice, choiceIndex) => (
+                          <div key={choice} className="flex items-center gap-2">
+                            <RadioGroupItem
+                              value={choice}
+                              id={`${cellId}-${choiceIndex}`}
+                              disabled={disabled}
+                            />
+                            <Label
+                              htmlFor={`${cellId}-${choiceIndex}`}
+                              className="font-normal"
+                            >
+                              {choice}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  );
+                return (
+                  <div key={column.id} className="grid gap-1.5">
+                    <Label htmlFor={cellId} className="font-medium">
+                      {column.label}
+                      {!column.required && (
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          (optional)
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id={cellId}
+                      type={column.type}
+                      value={String(cell ?? '')}
+                      disabled={disabled}
+                      aria-invalid={problem ? true : undefined}
+                      aria-describedby={
+                        problem ? `${cellId}-problem` : undefined
+                      }
+                      {...inputLimits(column)}
+                      onChange={(event) =>
+                        set(index, column.id, event.target.value)
+                      }
+                    />
+                    {problem && (
+                      <p
+                        id={`${cellId}-problem`}
+                        className="text-sm text-destructive"
+                      >
+                        {problem}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div>
+        <button
+          type="button"
+          disabled={disabled || value.length >= most}
+          onClick={() => onChange([...value, empty()])}
+          className="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent disabled:opacity-50"
+        >
+          Add a row
+        </button>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {question.minRows
+            ? `At least ${question.minRows} ${question.minRows === 1 ? 'row' : 'rows'}, `
+            : ''}
+          up to {most}.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function FieldShell({
   id,
@@ -280,7 +476,7 @@ function EvidenceFile({ item }: { item: EvidenceItem }) {
         aria-hidden="true"
       />
       <span className="min-w-0">
-        <span className="block truncate font-medium">{item.fileName}</span>
+        <FileViewer file={item} className="block max-w-full truncate" />
         <span className="block text-xs text-muted-foreground">
           {formatBytes(item.sizeBytes)} · uploaded{' '}
           {formatDateTime(item.uploadedAt)}
@@ -314,7 +510,15 @@ export function QuestionField({
           <FieldShell
             id={id}
             required={question.required}
-            help={question.help}
+            help={
+              [
+                question.help,
+                question.limits &&
+                  `Accepted: ${describeLimits(question.limits)}.`,
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
             label={<span id={labelId}>{question.label}</span>}
           >
             {control}
@@ -325,6 +529,7 @@ export function QuestionField({
             return shell(
               <Textarea
                 aria-labelledby={labelId}
+                {...inputLimits(question)}
                 value={String(value ?? '')}
                 disabled={disabled}
                 onBlur={field.handleBlur}
@@ -333,16 +538,79 @@ export function QuestionField({
             );
           case 'text':
           case 'number':
-          case 'date':
+          case 'date': {
+            const problem =
+              field.state.meta.isBlurred && String(value ?? '').trim()
+                ? limitProblem(question.limits, question.type, value)
+                : null;
             return shell(
-              <Input
-                aria-labelledby={labelId}
-                type={question.type === 'text' ? 'text' : question.type}
-                value={String(value ?? '')}
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  aria-labelledby={labelId}
+                  aria-describedby={problem ? `${id}-problem` : undefined}
+                  aria-invalid={problem ? true : undefined}
+                  type={question.type === 'text' ? 'text' : question.type}
+                  value={String(value ?? '')}
+                  disabled={disabled}
+                  {...inputLimits(question)}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  className="max-w-md"
+                />
+                {question.limits?.unit && (
+                  <span className="text-sm text-muted-foreground">
+                    {question.limits.unit}
+                  </span>
+                )}
+                {problem && (
+                  <p
+                    id={`${id}-problem`}
+                    className="basis-full text-sm text-destructive"
+                  >
+                    {problem}
+                  </p>
+                )}
+              </div>,
+            );
+          }
+          case 'checklist': {
+            const answer = isChecklistAnswer(value) ? value : { items: {} };
+            return shell(
+              <ul className="grid gap-2">
+                {(question.items ?? []).map((item) => {
+                  const itemId = `${id}-${item.id}`;
+                  return (
+                    <li
+                      key={item.id}
+                      className="grid gap-2 rounded-md border bg-background p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                    >
+                      <span id={`${itemId}-label`}>{item.label}</span>
+                      <YesNo
+                        id={itemId}
+                        labelledBy={`${itemId}-label`}
+                        yes="Done"
+                        no="Not done"
+                        value={answer.items[item.id] ?? null}
+                        onChange={(next) =>
+                          field.handleChange({
+                            items: { ...answer.items, [item.id]: next },
+                          })
+                        }
+                      />
+                    </li>
+                  );
+                })}
+              </ul>,
+            );
+          }
+          case 'repeated':
+            return shell(
+              <RowsField
+                id={id}
+                question={question}
+                value={isRowsAnswer(value) ? value.rows : []}
                 disabled={disabled}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                className="max-w-md"
+                onChange={(rows) => field.handleChange({ rows })}
               />,
             );
           case 'yes_no':

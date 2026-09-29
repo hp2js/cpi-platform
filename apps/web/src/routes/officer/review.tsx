@@ -1,6 +1,5 @@
 import type {
   Decision,
-  EvidenceAnswer,
   EvidenceItem,
   EvidenceSuitability,
   Milestone,
@@ -8,7 +7,7 @@ import type {
   ReviewBundle,
 } from '@cpi/contracts';
 import { planQuery } from '@/features/planning/queries';
-import { EvidenceLink } from '@/features/reporting/evidence-link';
+import { FileViewer } from '@/features/files/file-viewer';
 import {
   SuitabilitySection,
   suitabilityStatus,
@@ -74,6 +73,7 @@ import { useSession } from '@/features/session/use-session';
 import { isApiError, setOverrideReason } from '@/lib/api';
 import { cycleQuery, institutionQuery } from '@/features/directory/queries';
 import { formatDateTime, formatDays } from '@/lib/dates';
+import { AnswerValue } from '@/features/reporting/answer-value';
 
 /** Officers review their assigned work; the supervisor reads every submission (PRD §5.2). */
 const reviewPath = (role: string) =>
@@ -333,7 +333,7 @@ function Evidence({
             />
             <span>
               {item ? (
-                <EvidenceLink evidenceId={item.id} fileName={item.fileName} />
+                <FileViewer file={item} />
               ) : (
                 <span className="font-medium">
                   File not attached to this revision
@@ -703,27 +703,16 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
       </h2>
       <dl className="mt-3 grid gap-3 text-sm">
         {questions.map((question) => {
-          const value = bundle.answers.questions[question.id];
-          let display: string;
-          if (question.type === 'evidence') {
-            const answer = value as EvidenceAnswer | undefined;
-            display = answer?.unavailable
-              ? `Declared not available: ${answer.unavailable.explanation}`
-              : bundle.evidence
-                  .filter((item) => answer?.evidenceIds.includes(item.id))
-                  .map((item) => item.fileName)
-                  .join(', ') || 'No file';
-          } else
-            display =
-              value === true
-                ? 'Yes'
-                : value === false
-                  ? 'No'
-                  : String(value ?? '') || '—';
           return (
             <div key={question.id}>
               <dt className="text-muted-foreground">{question.label}</dt>
-              <dd className="whitespace-pre-line">{display}</dd>
+              <dd className="whitespace-pre-line">
+                <AnswerValue
+                  question={question}
+                  value={bundle.answers.questions[question.id]}
+                  evidence={bundle.evidence}
+                />
+              </dd>
             </div>
           );
         })}
@@ -734,9 +723,9 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
       <ul className="mt-2 grid gap-1.5 text-sm">
         {bundle.evidence.map((item) => (
           <li key={item.id} className="text-muted-foreground">
-            <EvidenceLink evidenceId={item.id} fileName={item.fileName} /> ·{' '}
-            {evidenceCategoryLabel[item.category]} · version {item.version} ·{' '}
-            {formatBytes(item.sizeBytes)} · SHA-256 {item.sha256.slice(0, 12)}…
+            <FileViewer file={item} /> · {evidenceCategoryLabel[item.category]}{' '}
+            · version {item.version} · {formatBytes(item.sizeBytes)} · SHA-256{' '}
+            {item.sha256.slice(0, 12)}…
           </li>
         ))}
       </ul>

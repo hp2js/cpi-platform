@@ -18,6 +18,7 @@ import type { MockUser } from '@cpi/contracts/fixtures';
 import type { MockFoundationVersion } from '@cpi/contracts/fixtures';
 import { assignedOfficers, audit, notify } from '../services/events';
 import { checkUpload, sha256 } from '../services/evidence';
+import { storeFile } from '../services/files';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
@@ -196,6 +197,7 @@ export const foundationHandlers = [
           file: check.message,
         });
       const hash = await sha256(bytes);
+      await storeFile(hash, bytes);
       const db = getDb();
       const previous = db.foundationVersions
         .filter(

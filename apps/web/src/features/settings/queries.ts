@@ -2,6 +2,8 @@ import {
   adminAttentionSchema,
   calendarSettingsSchema,
   peopleSchema,
+  riskScaleSettingsSchema,
+  type RiskScaleUpdate,
   profilesStateSchema,
   scoringProfileSchema,
   simulationStateSchema,
@@ -25,6 +27,7 @@ import { request } from '@/lib/api';
 export const settingsKeys = {
   profiles: ['settings', 'profiles'] as const,
   calendar: ['settings', 'calendar'] as const,
+  riskScale: ['settings', 'risk-scale'] as const,
   people: ['settings', 'people'] as const,
 };
 
@@ -70,6 +73,17 @@ export const startRunWithProfile = (profileId: string) =>
   request('/api/simulation/reset', simulationStateSchema, {
     method: 'POST',
     json: { profileId },
+  });
+
+export const riskScaleQuery = queryOptions({
+  queryKey: settingsKeys.riskScale,
+  queryFn: ({ signal }) =>
+    request('/api/settings/risk-scale', riskScaleSettingsSchema, { signal }),
+});
+export const saveRiskScale = (update: RiskScaleUpdate) =>
+  request('/api/settings/risk-scale', riskScaleSettingsSchema, {
+    method: 'PUT',
+    json: update,
   });
 
 export const saveCalendar = (update: CalendarUpdate) =>

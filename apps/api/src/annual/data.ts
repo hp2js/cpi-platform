@@ -1,5 +1,6 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
+  isEvidenceAnswer,
   add,
   format2,
   mul,
@@ -623,7 +624,7 @@ export function oversight(
   });
   const evidenceComplete = currentSubmissions.filter(({ submission }) =>
     Object.values(submission.answers.questions).every(
-      (value) => !(value && typeof value === 'object' && value.unavailable),
+      (value) => !(isEvidenceAnswer(value) && value.unavailable),
     ),
   );
   const finalized = currentSubmissions.filter(

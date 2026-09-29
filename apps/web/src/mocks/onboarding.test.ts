@@ -39,6 +39,7 @@ describe('day counting (PRD §9.1)', () => {
       reportingDays: 15,
       clarificationDays: 7,
       reviewTargetDays: 10,
+      proposalLeadDays: 14,
     };
     // Thu 1 Oct 2026 + 7 working days = Mon 12 Oct.
     expect(
@@ -135,17 +136,28 @@ describe('onboarding institutions (FR01)', () => {
       status: 422,
     });
 
-    // Q1 has opened: a seeded historical baseline awaits confirmation; Q2–Q4 are proposed.
+    // Q1 has opened: a seeded historical baseline awaits confirmation. Q2–Q4 start with an
+    // empty plan for the institution to fill in and propose.
     await signInAs('officer-b');
     const plan = await request('/api/institutions/MDA-101/plan', planSchema);
     expect(plan.baselines.map((baseline) => baseline.status)).toEqual([
       'approved',
-      'proposed',
-      'proposed',
-      'proposed',
     ]);
     expect(plan.baselines[0]!.historicalSeed?.confirmedAt).toBeNull();
-    expect(plan.baselines[1]!.milestones.every((m) => m.mandatory)).toBe(true);
+    expect(plan.baselines[0]!.milestones.every((m) => m.mandatory)).toBe(true);
+    expect(plan).toMatchObject({
+      approval: null,
+      risks: [],
+      activities: [],
+      plannedMilestones: [],
+      editable: false,
+    });
+    expect(plan.proposals.map((proposal) => proposal.status)).toEqual([
+      'approved',
+      'not_proposed',
+      'not_proposed',
+      'not_proposed',
+    ]);
 
     await acceptInvitation('focal.mda-101@example.invalid');
     const q1 = await request(

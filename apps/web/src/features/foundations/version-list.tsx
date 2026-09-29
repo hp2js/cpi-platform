@@ -2,6 +2,7 @@ import type { FoundationIndicator } from '@cpi/contracts';
 import { FileText } from 'lucide-react';
 import { formatBytes } from '@/features/reporting/answers';
 import { formatCalendarDate, formatDateTime } from '@/lib/dates';
+import { FileViewer } from '@/features/files/file-viewer';
 
 const statusLabel = {
   active: 'Active',
@@ -23,9 +24,8 @@ export function VersionList({ indicator }: { indicator: FoundationIndicator }) {
               className="size-4 text-muted-foreground"
               aria-hidden="true"
             />
-            <span className="font-medium">
-              Version {version.version}: {version.evidence.fileName}
-            </span>
+            <span className="font-medium">Version {version.version}:</span>
+            <FileViewer file={version.evidence} />
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
               {statusLabel[version.status]}
             </span>

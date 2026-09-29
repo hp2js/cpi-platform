@@ -1,4 +1,4 @@
-import type { Milestone } from '../index.js';
+import type { BaselineCheck, Milestone } from '../index.js';
 import { cycle } from './cycle.js';
 import { institutions } from './cast.js';
 
@@ -27,7 +27,12 @@ export interface MockBaseline {
       noFragmentation: boolean;
     };
   } | null;
-  returned: { by: string; at: string; reason: string } | null;
+  returned: {
+    by: string;
+    at: string;
+    reason: string;
+    failedChecks: BaselineCheck[];
+  } | null;
 }
 
 /** One substantive risk and mitigation per fictional institution (PRD §3.3, §17.1). */
@@ -99,9 +104,24 @@ const officerFor = (institutionId: string) =>
 function milestone(
   institutionId: string,
   code: string,
-  fields: Omit<Milestone, 'id' | 'code' | 'weight'> & { weight?: number },
+  fields: Omit<Milestone, 'id' | 'code' | 'weight' | 'activityId'> & {
+    weight?: number;
+    activityCode: string | null;
+  },
 ): Milestone {
-  return { id: `${institutionId}:${code}`, code, weight: 1, ...fields };
+  const { activityCode, ...rest } = fields;
+  return {
+    id: `${institutionId}:${code}`,
+    code,
+    weight: 1,
+    activityId: activityCode && `${institutionId}:${activityCode}`,
+    ...rest,
+  };
+}
+
+/** The committee meetings added to every proposal: CPC-Qn and IAO-Qn for a new quarter. */
+export function committeeCodes(quarter: number): [string, string] {
+  return [`CPC-Q${quarter}`, `IAO-Q${quarter}`];
 }
 
 export function committee(
@@ -113,6 +133,7 @@ export function committee(
     milestone(institutionId, cpc, {
       title: 'Quarterly CPC meeting held',
       activity: 'Committee obligation',
+      activityCode: null,
       risk: 'All identified risks',
       completionCondition:
         'The Corruption Prevention Committee met during the quarter.',
@@ -122,6 +143,7 @@ export function committee(
     milestone(institutionId, iao, {
       title: 'Quarterly IAO meeting held',
       activity: 'Committee obligation',
+      activityCode: null,
       risk: 'All identified risks',
       completionCondition:
         'The Integrity Assurance Officers met during the quarter.',
@@ -145,6 +167,7 @@ function quarterMilestones(
           milestone(institutionId, code(1), {
             title: plan.milestone,
             activity: plan.activity,
+            activityCode: 'A-01',
             risk: plan.risk,
             completionCondition: plan.condition,
             evidenceExpectation:
@@ -154,6 +177,7 @@ function quarterMilestones(
           milestone(institutionId, code(2), {
             title: 'Staff trained on the corruption prevention procedure',
             activity: 'A-02 Train staff in affected functions',
+            activityCode: 'A-02',
             risk: plan.risk,
             completionCondition:
               'Training delivered to the staff named in the plan by quarter end.',
@@ -166,6 +190,7 @@ function quarterMilestones(
           milestone(institutionId, code(1), {
             title: `${plan.milestone}: quarter ${quarter} exception review`,
             activity: plan.activity,
+            activityCode: 'A-01',
             risk: plan.risk,
             completionCondition: `An exception review of the control was completed and recorded by the end of Q${quarter}.`,
             evidenceExpectation:
@@ -175,6 +200,7 @@ function quarterMilestones(
           milestone(institutionId, code(2), {
             title: 'Procurement approval spot-check completed',
             activity: 'A-03 Spot-check procurement approvals',
+            activityCode: 'A-03',
             risk: 'R-02 Weak oversight of procurement approvals',
             completionCondition: `A sample of at least ten approvals was checked in Q${quarter} and findings recorded.`,
             evidenceExpectation: 'Spot-check findings in the CPC minutes.',
@@ -203,6 +229,7 @@ function inflatedProposal(institutionId: string): Milestone[] {
     milestone(institutionId, `M-${20 + index}`, {
       title,
       activity: 'A-99 Administrative tasks',
+      activityCode: 'A-99',
       risk: 'R-01',
       completionCondition: `${title} completed.`,
       evidenceExpectation: 'Self-declaration.',

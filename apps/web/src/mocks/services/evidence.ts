@@ -80,17 +80,3 @@ export const evidenceCategories: EvidenceCategory[] = [
   'mitigation_plan',
   'other',
 ];
-
-// Uploaded bytes stay in memory for this page session only; the persisted store keeps metadata.
-const uploadedBytes = new Map<string, Uint8Array<ArrayBuffer>>();
-
-export function rememberFile(
-  evidenceId: string,
-  bytes: Uint8Array<ArrayBuffer>,
-) {
-  uploadedBytes.set(evidenceId, bytes);
-}
-
-export function fileBytes(evidenceId: string) {
-  return uploadedBytes.get(evidenceId);
-}

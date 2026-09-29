@@ -14,11 +14,16 @@ import type {
 } from '@cpi/contracts';
 import { initialBaselines, type MockBaseline } from '@cpi/contracts/fixtures';
 import {
-  approvedPlanReference,
+  initialActivities,
+  initialPlanApprovals,
+  initialPlannedMilestones,
   initialRisks,
   seedFoundations,
+  type MockActivity,
   type MockFoundationReview,
   type MockFoundationVersion,
+  type MockPlanApproval,
+  type MockPlannedMilestone,
   type MockRisk,
 } from '@cpi/contracts/fixtures';
 import type {
@@ -157,8 +162,11 @@ export interface MockDb {
   /** Development control: when set, the demo email sink rejects deliveries (AT12). */
   emailFailureMode: boolean;
   audit: AuditEvent[];
-  planReference: string;
+  /** The institution's own record of its plan approval (FR04). */
+  planApprovals: MockPlanApproval[];
   risks: MockRisk[];
+  activities: MockActivity[];
+  plannedMilestones: MockPlannedMilestone[];
   amendments: Amendment[];
   foundationVersions: MockFoundationVersion[];
   foundationReviews: MockFoundationReview[];
@@ -197,6 +205,7 @@ export interface MockDb {
     summary: string;
     reason: string;
   }[];
+  riskScaleChanges: MockDb['calendarChanges'];
   institutionTypes: MockInstitutionType[];
   /** Failed sign-ins per email (actual time), for throttling (PRD §13.1). */
   loginAttempts: Record<
@@ -255,10 +264,15 @@ export interface MockDelivery {
  * version makes every browser start again from the seed. `db.test.ts` compares the seed's
  * shape with `SCHEMA_SHAPE` so a change cannot go unnoticed.
  * 14: assignment cover and handover notes, draft `savedBy`, reassignment request kinds.
+ * 15: institution-owned plans: activities, planned milestones, plan approvals, milestone
+ * `activityId`, returned baselines' failed checks, proposal lead days.
+ * 16: the cycle's declared risk scale labels.
+ * 17: the risk scale's change log.
+ * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  */
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 18;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '14:cb7d5518';
+export const SCHEMA_SHAPE = '18:939f14ad';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -324,8 +338,10 @@ function seed(): MockDb {
     emailSink: [],
     emailFailureMode: false,
     audit: [],
-    planReference: approvedPlanReference,
+    planApprovals: structuredClone(initialPlanApprovals),
     risks: structuredClone(initialRisks),
+    activities: structuredClone(initialActivities),
+    plannedMilestones: structuredClone(initialPlannedMilestones),
     amendments: [],
     foundationVersions: foundations.versions,
     foundationReviews: [],
@@ -341,6 +357,7 @@ function seed(): MockDb {
     cycleProfileId: 'hackathon-mock-v1',
     reminders: { daysBefore: [7, 1], overdueNotice: true },
     calendarChanges: [],
+    riskScaleChanges: [],
     institutionTypes: structuredClone(initialInstitutionTypes),
     loginAttempts: {},
   };

@@ -23,9 +23,9 @@ import { loadCycle } from '../database/state';
 /*
  * Onboarding institutions (FR01), one at a time or in bulk, ported from the mock API's
  * services/institutions.ts. Every new institution gets its four obligations and a reviewing
- * officer. Its baselines hold the mandatory committee milestones: proposed for quarters still
- * to open, so the officer approves them as usual; for quarters already open, a simulation-only
- * SEEDED HISTORICAL BASELINE (PRD §10.4) when requested, otherwise none.
+ * officer, and an empty plan: the institution records its risks, activities and milestones and
+ * proposes each quarter's baseline (FR04). For quarters already open, a simulation-only SEEDED
+ * HISTORICAL BASELINE (PRD §10.4) of the committee milestones when requested, otherwise none.
  */
 
 const ID_PATTERN = /^[A-Z]+-\d{3}$/;
@@ -317,8 +317,9 @@ export async function createInstitution(
       periodId: period.id,
       state: 'not_started',
     });
+    // Quarters still ahead start empty: the institution proposes each baseline itself (FR04).
     const opened = now >= opensAt(period.endsOn);
-    if (opened && !seedOpenedQuarters) continue;
+    if (!opened || !seedOpenedQuarters) continue;
     const code = (offset: number) =>
       `M-${String(2 * (period.quarter - 1) + offset).padStart(2, '0')}`;
     await tx.insert(baselines).values({
@@ -328,30 +329,26 @@ export async function createInstitution(
       version: 1,
       returned: null,
       milestones: committee(input.id, code(1), code(2)),
-      status: opened ? 'approved' : 'proposed',
-      historicalSeed: opened
-        ? {
-            reason:
-              'SEEDED HISTORICAL BASELINE for the simulated year, loaded on onboarding because the quarter had already opened.',
-            loadedAt: businessTime,
-            confirmedBy: null,
-            confirmedAt: null,
-          }
-        : null,
-      approval: opened
-        ? {
-            by: `${admin.displayName} (onboarding load)`,
-            at: businessTime,
-            rationale:
-              'Loaded on onboarding for the simulated year; correspondence with the approved plan awaits officer confirmation.',
-            checks: {
-              materialCoverage: true,
-              objectiveConditions: true,
-              mandatoryObligations: true,
-              noFragmentation: true,
-            },
-          }
-        : null,
+      status: 'approved',
+      historicalSeed: {
+        reason:
+          'SEEDED HISTORICAL BASELINE for the simulated year, loaded on onboarding because the quarter had already opened.',
+        loadedAt: businessTime,
+        confirmedBy: null,
+        confirmedAt: null,
+      },
+      approval: {
+        by: `${admin.displayName} (onboarding load)`,
+        at: businessTime,
+        rationale:
+          'Loaded on onboarding for the simulated year; correspondence with the approved plan awaits officer confirmation.',
+        checks: {
+          materialCoverage: true,
+          objectiveConditions: true,
+          mandatoryObligations: true,
+          noFragmentation: true,
+        },
+      },
     });
   }
   if (input.focalUser) {

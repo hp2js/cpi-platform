@@ -57,6 +57,7 @@ describe('form versions (AT04, AT05)', () => {
         periodIds: ['FY2026-27-Q2', 'FY2026-27-Q3', 'FY2026-27-Q4'],
         sections,
         weights: draft.weights,
+        baseRevision: draft.revision,
       },
     });
     await request(`/api/forms/${draft.id}/publish`, formVersionSchema, {

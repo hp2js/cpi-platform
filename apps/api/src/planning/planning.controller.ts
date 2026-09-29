@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   amendmentDecisionSchema,
   amendmentRequestSchema,
@@ -7,27 +7,22 @@ import {
   confirmSeedRequestSchema,
   returnBaselineRequestSchema,
   type Baseline,
-  type Plan,
 } from '@cpi/contracts';
-import { approvedPlanReference } from '@cpi/contracts/fixtures';
 import { assignedInstitutionIds, canReadInstitution } from '../auth/scope';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { nextId, write, type Db, type Tx } from '../database/db';
 import {
   amendments,
   baselines,
-  institutions,
-  obligations,
   periods,
-  risks,
+  plannedMilestones,
 } from '../database/schema';
-import { toObligations } from '../directory/obligations';
+import { currentState } from '../database/state';
+import { periodLocked, planFor, toBaseline, type BaselineRow } from './plans';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { latestBaseline } from '../reporting/report';
-
-type BaselineRow = typeof baselines.$inferSelect;
 
 const reasonRequired = (code = 'reason_required') =>
   new ApiError(422, 'Give a reason of at least 10 characters.', code, {
@@ -45,69 +40,21 @@ async function periodOf(db: Db, periodId: string) {
 
 /** A baseline locks once reporting opens on its period or any work has started (PRD §10.4). */
 async function locked(db: Db, baseline: BaselineRow) {
-  const [obligation] = await db
-    .select()
-    .from(obligations)
-    .where(
-      and(
-        eq(obligations.institutionId, baseline.institutionId),
-        eq(obligations.periodId, baseline.periodId),
-      ),
-    );
-  if (!obligation || obligation.state !== 'not_started') return true;
-  const [view] = await toObligations(db, [obligation]);
-  return !view!.flags.includes('not_yet_due');
+  const { state } = await currentState(db);
+  return periodLocked(
+    db,
+    baseline.institutionId,
+    await periodOf(db, baseline.periodId),
+    state.businessTime,
+  );
 }
 
-async function toBaseline(db: Db, baseline: BaselineRow): Promise<Baseline> {
-  return {
-    ...baseline,
-    periodLabel: (await periodOf(db, baseline.periodId)).label,
-    locked: await locked(db, baseline),
-  };
-}
-
-async function planFor(db: Db, institutionId: string): Promise<Plan> {
-  const [[institution], riskRows, baselineRows, amendmentRows] =
-    await Promise.all([
-      db
-        .select({ name: institutions.name })
-        .from(institutions)
-        .where(eq(institutions.id, institutionId)),
-      db
-        .select()
-        .from(risks)
-        .where(eq(risks.institutionId, institutionId))
-        .orderBy(asc(risks.code)),
-      db
-        .select()
-        .from(baselines)
-        .where(eq(baselines.institutionId, institutionId))
-        .orderBy(asc(baselines.periodId), asc(baselines.version)),
-      db
-        .select()
-        .from(amendments)
-        .where(eq(amendments.institutionId, institutionId))
-        .orderBy(asc(amendments.seq)),
-    ]);
-  return {
-    institutionId,
-    institutionName: institution?.name ?? institutionId,
-    approvedPlanReference,
-    risks: riskRows.map((risk) => ({
-      id: risk.id,
-      code: risk.code,
-      description: risk.description,
-      cause: risk.cause,
-      probability: risk.probability,
-      impact: risk.impact,
-      severity: risk.probability * risk.impact,
-    })),
-    baselines: await Promise.all(
-      baselineRows.map((baseline) => toBaseline(db, baseline)),
-    ),
-    amendments: amendmentRows.map(({ seq, ...amendment }) => amendment),
-  };
+async function toContract(db: Db, baseline: BaselineRow): Promise<Baseline> {
+  return toBaseline(
+    baseline,
+    await periodOf(db, baseline.periodId),
+    await locked(db, baseline),
+  );
 }
 
 /** A new baseline version; the earlier version is kept (PRD §10.4). */
@@ -187,7 +134,7 @@ export class PlanningController {
   ) {
     if (!(await canReadInstitution(this.db, user, institutionId)))
       throw notFound();
-    return planFor(this.db, institutionId);
+    return planFor(this.db, user, institutionId);
   }
 
   @Post('baselines/:baselineId/approve')
@@ -265,7 +212,7 @@ export class PlanningController {
           link: '/institution/plan',
         },
       );
-      return toBaseline(tx, approved!);
+      return toContract(tx, approved!);
     });
   }
 
@@ -280,7 +227,22 @@ export class PlanningController {
     return write(this.db, async (tx, businessTime) => {
       const baseline = await this.assignedBaseline(tx, user, id);
       const parsed = returnBaselineRequestSchema.safeParse(body);
-      if (!parsed.success) throw reasonRequired();
+      if (!parsed.success) {
+        const fields = parsed.error.issues.map((issue) => issue.path[0]);
+        throw new ApiError(
+          422,
+          'Say which checks are not met and give a reason of at least 10 characters.',
+          'reason_required',
+          {
+            ...(fields.includes('reason')
+              ? { reason: 'Give a reason of at least 10 characters.' }
+              : {}),
+            ...(fields.includes('failedChecks')
+              ? { failedChecks: 'Choose at least one check that is not met.' }
+              : {}),
+          },
+        );
+      }
       await this.requireLatest(tx, baseline, parsed.data.version);
       if (baseline.status !== 'proposed')
         throw new ApiError(
@@ -293,7 +255,12 @@ export class PlanningController {
         .update(baselines)
         .set({
           status: 'returned',
-          returned: { by: user.displayName, at: businessTime, reason },
+          returned: {
+            by: user.displayName,
+            at: businessTime,
+            reason,
+            failedChecks: parsed.data.failedChecks,
+          },
         })
         .where(eq(baselines.id, id))
         .returning();
@@ -313,11 +280,11 @@ export class PlanningController {
         await institutionUsers(tx, baseline.institutionId),
         {
           title: `${(await periodOf(tx, baseline.periodId)).label} baseline returned for revision`,
-          body: 'Your officer returned the proposed baseline with feedback.',
+          body: `Your officer returned the proposed baseline: ${reason}`,
           link: '/institution/plan',
         },
       );
-      return toBaseline(tx, returned!);
+      return toContract(tx, returned!);
     });
   }
 
@@ -367,7 +334,7 @@ export class PlanningController {
         { type: 'baseline', id, version: baseline.version },
         'Confirmed correspondence with the fictional approved plan',
       );
-      return toBaseline(tx, confirmed!);
+      return toContract(tx, confirmed!);
     });
   }
 
@@ -397,6 +364,13 @@ export class PlanningController {
           409,
           'Reporting has opened for this period, so its baseline can no longer change.',
           'baseline_locked',
+        );
+      // Until approval, the institution changes its plan and proposes again instead.
+      if (baseline.status !== 'approved')
+        throw new ApiError(
+          409,
+          'This baseline is not approved yet. Change the planned milestones and propose it again.',
+          'baseline_not_approved',
         );
       if (milestone.mandatory)
         throw new ApiError(
@@ -566,6 +540,16 @@ export class PlanningController {
             approval: approval(target),
           });
         }
+        // The plan follows the confirmed change, so a later proposal does not undo it.
+        if (amendment.change === 'reschedule' && amendment.toPeriodId)
+          await tx
+            .update(plannedMilestones)
+            .set({ periodId: amendment.toPeriodId })
+            .where(eq(plannedMilestones.id, moved.id));
+        else
+          await tx
+            .delete(plannedMilestones)
+            .where(eq(plannedMilestones.id, moved.id));
       }
       await this.events.audit(
         tx,
@@ -587,96 +571,7 @@ export class PlanningController {
           link: '/institution/plan',
         },
       );
-      return planFor(tx, amendment.institutionId);
-    });
-  }
-
-  /** A returned proposal is revised by keeping a subset of its milestones; a new version is proposed. */
-  @Post('baselines/:baselineId/revise')
-  @Roles('institution')
-  revise(
-    @CurrentUser() user: User,
-    @Param('baselineId') id: string,
-    @Body() body: { version?: unknown; milestoneIds?: unknown } | undefined,
-  ) {
-    return write(this.db, async (tx, businessTime) => {
-      const [baseline] = await tx
-        .select()
-        .from(baselines)
-        .where(eq(baselines.id, id));
-      if (!baseline || baseline.institutionId !== user.institutionId)
-        throw notFound();
-      const milestoneIds = body?.milestoneIds;
-      if (
-        typeof body?.version !== 'number' ||
-        !Array.isArray(milestoneIds) ||
-        !milestoneIds.every((item) => typeof item === 'string')
-      )
-        throw new ApiError(
-          422,
-          'Choose the milestones to keep.',
-          'invalid_request',
-        );
-      await this.requireLatest(tx, baseline, body.version);
-      if (baseline.status !== 'returned')
-        throw new ApiError(
-          409,
-          'Only a returned proposal can be revised.',
-          'not_returned',
-        );
-      if (await locked(tx, baseline))
-        throw new ApiError(
-          409,
-          'Reporting has opened for this period.',
-          'baseline_locked',
-        );
-      const keep = baseline.milestones.filter((milestone) =>
-        milestoneIds.includes(milestone.id),
-      );
-      if (
-        baseline.milestones.some(
-          (milestone) => milestone.mandatory && !keep.includes(milestone),
-        )
-      )
-        throw new ApiError(
-          422,
-          'Committee meeting obligations must stay in the baseline.',
-          'mandatory_milestone',
-        );
-      if (keep.length === 0)
-        throw new ApiError(
-          422,
-          'Keep at least one milestone.',
-          'empty_baseline',
-        );
-      const revised = await insertVersion(tx, baseline, {
-        status: 'proposed',
-        milestones: keep,
-        returned: null,
-        approval: null,
-      });
-      const label = (await periodOf(tx, baseline.periodId)).label;
-      await this.events.audit(
-        tx,
-        businessTime,
-        user,
-        'baseline.revise',
-        { type: 'baseline', id: revised.id, version: revised.version },
-        `${keep.length} milestones proposed`,
-      );
-      await this.events.notify(
-        tx,
-        businessTime,
-        `${revised.id}:proposed`,
-        'baseline.proposed',
-        await assignedOfficers(tx, baseline.institutionId),
-        {
-          title: `Revised baseline proposed: ${baseline.institutionId} ${label}`,
-          body: `${keep.length} milestones are proposed for approval.`,
-          link: `/officer/institutions/${baseline.institutionId}`,
-        },
-      );
-      return toBaseline(tx, revised);
+      return planFor(tx, user, amendment.institutionId);
     });
   }
 }

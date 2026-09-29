@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { institutionIdSchema, instantSchema } from './common.js';
 import { dayCountingModeSchema, periodSchema } from './cycle.js';
-import { evidenceCategorySchema, formVersionSchema } from './forms.js';
+import {
+  evidenceCategorySchema,
+  formVersionSchema,
+  type Question,
+} from './forms.js';
 import { obligationSchema } from './institutions.js';
 import { clarificationSchema } from './clarifications.js';
 
@@ -12,6 +16,8 @@ export const milestoneSchema = z.object({
   title: z.string(),
   activity: z.string(),
   risk: z.string(),
+  /** The plan activity this milestone came from; null for the committee meetings. */
+  activityId: z.string().nullable(),
   completionCondition: z.string(),
   evidenceExpectation: z.string(),
   weight: z.number().int().positive(),
@@ -63,13 +69,60 @@ export const evidenceAnswerSchema = z.object({
 });
 export type EvidenceAnswer = z.infer<typeof evidenceAnswerSchema>;
 
+/** A checklist answer: each item done (true), not done (false) or not yet answered (null). */
+export const checklistAnswerSchema = z.object({
+  items: z.record(z.string(), z.boolean().nullable()),
+});
+export type ChecklistAnswer = z.infer<typeof checklistAnswerSchema>;
+
+export const cellValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+/** Repeated rows: one record per row, keyed by column ID. */
+export const rowsAnswerSchema = z.object({
+  rows: z.array(z.record(z.string(), cellValueSchema)).max(50),
+});
+export type RowsAnswer = z.infer<typeof rowsAnswerSchema>;
+
 export const answerValueSchema = z.union([
   z.string(),
   z.number(),
   z.boolean(),
   z.null(),
   evidenceAnswerSchema,
+  checklistAnswerSchema,
+  rowsAnswerSchema,
 ]);
+
+/** The unanswered value of a question, by type. */
+export function emptyAnswer(question: Question): AnswerValue {
+  switch (question.type) {
+    case 'evidence':
+      return { evidenceIds: [], unavailable: null };
+    case 'checklist':
+      return {
+        items: Object.fromEntries(
+          (question.items ?? []).map((item) => [item.id, null]),
+        ),
+      };
+    case 'repeated':
+      return { rows: [] };
+    case 'yes_no':
+      return null;
+    default:
+      return '';
+  }
+}
+
+export const isEvidenceAnswer = (value: unknown): value is EvidenceAnswer =>
+  typeof value === 'object' && value !== null && 'evidenceIds' in value;
+export const isChecklistAnswer = (value: unknown): value is ChecklistAnswer =>
+  typeof value === 'object' && value !== null && 'items' in value;
+export const isRowsAnswer = (value: unknown): value is RowsAnswer =>
+  typeof value === 'object' && value !== null && 'rows' in value;
 export type AnswerValue = z.infer<typeof answerValueSchema>;
 
 export const reportAnswersSchema = z.object({

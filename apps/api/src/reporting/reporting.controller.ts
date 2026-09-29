@@ -7,15 +7,17 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import type { Response } from 'express';
 import {
   daysLate,
+  demonstrationPdf,
   saveDraftRequestSchema,
   submitRequestSchema,
   type Completeness,
@@ -28,10 +30,12 @@ import { canReadInstitution } from '../auth/scope';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { nextId, write } from '../database/db';
 import {
+  auditEvents,
   clarifications,
   drafts,
   evidence,
   evidenceFiles,
+  foundationVersions,
   idempotencyKeys,
   institutions,
   obligations,
@@ -55,6 +59,9 @@ import {
 } from './rules';
 
 type Upload = { originalname: string; buffer: Buffer } | undefined;
+
+/** An administrator's audited support view opens a draft's files for this long. */
+const SUPPORT_WINDOW_MS = 30 * 60_000;
 
 /** Quarterly reporting by the institution (PRD §7.2, FR05–FR07). */
 @Controller()
@@ -257,11 +264,19 @@ export class ReportingController {
     });
   }
 
-  /** Reviewers see only files that were submitted; drafts stay private to the institution. */
+  /**
+   * Who may open a stored file (PRD §5.2, §13.1):
+   * - the institution's own users: every file of theirs, drafts included;
+   * - officers, supervisors and administrators in scope: submitted evidence and foundation
+   *   documents, which are theirs to review;
+   * - an administrator: a draft's files for 30 minutes after an audited support view of it.
+   * Anything else is indistinguishable from a missing file.
+   */
   @Get('evidence/:evidenceId/file')
   async file(
     @CurrentUser() user: User,
     @Param('evidenceId') id: string,
+    @Query('download') download: string | undefined,
     @Res() response: Response,
   ) {
     const [item] = await this.db
@@ -270,17 +285,47 @@ export class ReportingController {
       .where(eq(evidence.id, id));
     if (!item || !(await canReadInstitution(this.db, user, item.institutionId)))
       throw notFound();
+    let viaSupport = false;
     if (user.role !== 'institution') {
-      const [submitted] = await this.db
-        .select({ id: submissions.id })
-        .from(submissions)
-        .where(
-          sql`${submissions.evidenceIds} @> ${JSON.stringify([id])}::jsonb`,
-        )
-        .limit(1);
-      if (!submitted) throw notFound();
+      const [[submitted], [foundation]] = await Promise.all([
+        this.db
+          .select({ id: submissions.id })
+          .from(submissions)
+          .where(
+            sql`${submissions.evidenceIds} @> ${JSON.stringify([id])}::jsonb`,
+          )
+          .limit(1),
+        this.db
+          .select({ id: foundationVersions.id })
+          .from(foundationVersions)
+          .where(eq(foundationVersions.evidenceId, id))
+          .limit(1),
+      ]);
+      if (!submitted && !foundation) {
+        const [support] =
+          user.role === 'administrator' && item.obligationId
+            ? await this.db
+                .select({ id: auditEvents.id })
+                .from(auditEvents)
+                .where(
+                  and(
+                    eq(auditEvents.action, 'support.draft_view'),
+                    eq(auditEvents.objectId, item.obligationId),
+                    eq(auditEvents.actorName, user.displayName),
+                    eq(auditEvents.actorRole, 'administrator'),
+                    gt(
+                      auditEvents.actualTime,
+                      new Date(Date.now() - SUPPORT_WINDOW_MS).toISOString(),
+                    ),
+                  ),
+                )
+                .limit(1)
+            : [];
+        if (!support) throw notFound();
+        viaSupport = true;
+      }
     }
-    // Administrator access to evidence is logged (PRD §5.2).
+    // Administrator access to institution files is logged (PRD §5.2).
     if (user.role === 'administrator')
       await write(this.db, (tx, businessTime) =>
         this.events.audit(
@@ -289,11 +334,12 @@ export class ReportingController {
           user,
           'evidence.access',
           { type: 'evidence', id: item.id, version: item.version },
-          `${item.fileName} opened by an administrator`,
+          `${item.fileName} opened by an administrator${viaSupport ? ' during a support view' : ''}`,
         ),
       );
+    const kind = download === undefined ? 'inline' : 'attachment';
     const disposition = (name: string) =>
-      `inline; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+      `${kind}; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
     const [stored] = await this.db
       .select()
       .from(evidenceFiles)
@@ -301,25 +347,36 @@ export class ReportingController {
     if (stored) {
       response
         .type(item.mimeType)
+        .setHeader('Content-Length', String(stored.bytes.byteLength))
         .setHeader('Content-Disposition', disposition(item.fileName))
         .send(stored.bytes);
       return;
     }
-    // Seeded fixture documents have metadata only.
+    // Seeded fixture documents have metadata only: serve a labelled demonstration copy.
+    const name = item.fileName.replace(/\.[^.]+$/, '');
     response
-      .type('text/plain; charset=utf-8')
-      .setHeader('Content-Disposition', disposition(`${item.fileName}.txt`))
+      .type('application/pdf')
+      .setHeader(
+        'Content-Disposition',
+        disposition(`${name}-demonstration.pdf`),
+      )
+      .setHeader('X-Demonstration-Copy', 'true')
       .send(
-        [
-          `Demonstration placeholder for ${item.fileName}`,
-          '',
-          'This fictional fixture document has no stored contents.',
-          '',
-          `Category: ${item.category}`,
-          `Version: ${item.version}`,
-          `Size: ${item.sizeBytes} bytes`,
-          `SHA-256: ${item.sha256}`,
-        ].join('\n'),
+        Buffer.from(
+          demonstrationPdf(item.fileName, [
+            'DEMONSTRATION COPY',
+            '',
+            'This fictional document was seeded for the simulation and has no stored contents.',
+            'A file uploaded in the portal opens as uploaded.',
+            '',
+            `Category: ${item.category}`,
+            `Version: ${item.version}`,
+            `Uploaded by: ${item.uploadedBy}`,
+            `Uploaded: ${item.uploadedAt}`,
+            `Recorded size: ${item.sizeBytes} bytes`,
+            `SHA-256: ${item.sha256}`,
+          ]),
+        ),
       );
   }
 

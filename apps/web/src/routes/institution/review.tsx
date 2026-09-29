@@ -1,3 +1,4 @@
+import { isEvidenceAnswer } from '@cpi/contracts';
 import type {
   AccountingOfficer,
   Attestation,
@@ -41,6 +42,7 @@ import { institutionQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { FileViewer } from '@/features/files/file-viewer';
 
 const route = getRouteApi('/authed/institution/reports/$periodId/review');
 
@@ -49,8 +51,7 @@ function referencedIds(bundle: ReportBundle) {
   if (!answers) return [];
   const ids = new Set<string>();
   for (const value of Object.values(answers.questions))
-    if (value && typeof value === 'object')
-      value.evidenceIds.forEach((id) => ids.add(id));
+    if (isEvidenceAnswer(value)) value.evidenceIds.forEach((id) => ids.add(id));
   for (const response of Object.values(answers.milestones))
     response.evidence.forEach((reference) => ids.add(reference.evidenceId));
   return [...ids];
@@ -192,7 +193,7 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
                   className="size-4 text-muted-foreground"
                   aria-hidden="true"
                 />
-                <span className="font-medium">{item.fileName}</span>
+                <FileViewer file={item} />
                 <span className="text-muted-foreground">
                   {evidenceCategoryLabel[item.category]} ·{' '}
                   {formatBytes(item.sizeBytes)}

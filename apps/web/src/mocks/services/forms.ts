@@ -1,4 +1,9 @@
-import type { FormIssue, FormVersion } from '@cpi/contracts';
+import {
+  questionTypeIssues,
+  stableIdIssues,
+  type FormIssue,
+  type FormVersion,
+} from '@cpi/contracts';
 import { getDb } from '../db';
 import { activeProfile, profileIssues } from './profiles';
 
@@ -95,6 +100,7 @@ export function validateForm(form: FormVersion): FormIssue[] {
           path: `${path}.evidenceCategory`,
           message: 'Choose the evidence category.',
         });
+      issues.push(...questionTypeIssues(question, path));
       if (question.type === 'milestone_progress') {
         milestoneBlocks += 1;
         if (question.kind !== 'scored' || !question.required)
@@ -116,6 +122,13 @@ export function validateForm(form: FormVersion): FormIssue[] {
       path: 'sections',
       message: 'The form needs exactly one milestone progress block.',
     });
+
+  issues.push(
+    ...stableIdIssues(
+      form,
+      db.forms.filter((candidate) => candidate.id !== form.id),
+    ),
+  );
 
   // Scored criteria cannot change after activation (FR03, PRD §7.1).
   const base = form.basedOnVersion

@@ -2,6 +2,7 @@ import { QuarterDispositions } from '@/features/annual/quarter-dispositions';
 import { OfficerAssignment } from '@/features/supervision/officer-assignment';
 import {
   type Baseline,
+  type BaselineCheck,
   type BaselineChecks,
   type FoundationIndicator,
   type Plan,
@@ -33,6 +34,18 @@ import {
   RiskTable,
 } from '@/features/planning/baseline-view';
 import {
+  EQUAL_WEIGHTS_NOTE,
+  checkKeys,
+  checkLabels,
+  failedCheckLabels,
+  latestBaselines,
+  riskCoverage,
+} from '@/features/planning/labels';
+import {
+  ActivityTable,
+  PlanApprovalRecord,
+} from '@/features/planning/plan-editor';
+import {
   approveBaseline,
   confirmSeed,
   decideAmendment,
@@ -45,14 +58,6 @@ import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
 const route = getRouteApi('/authed/officer/institutions/$institutionId');
-
-const checkLabels: Record<keyof BaselineChecks, string> = {
-  materialCoverage: 'Milestones cover the material risks in the approved plan',
-  objectiveConditions: 'Each milestone has an objective completion condition',
-  mandatoryObligations:
-    'The quarterly CPC and IAO meeting obligations are included',
-  noFragmentation: 'No duplicate, trivial or artificially split milestones',
-};
 
 function usePlanMutation<T>(
   institutionId: string,
@@ -70,7 +75,7 @@ function usePlanMutation<T>(
 }
 
 /** Baseline approval with the anti-gaming rationale from PRD §10.4 and §10.7 (AT25, AT31). */
-function ApprovalPanel({ baseline }: { baseline: Baseline }) {
+function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
   const [checks, setChecks] = useState<BaselineChecks>({
     materialCoverage: false,
     objectiveConditions: false,
@@ -79,18 +84,18 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
   });
   const [rationale, setRationale] = useState('');
   const [returnReason, setReturnReason] = useState('');
+  const [failed, setFailed] = useState<BaselineCheck[]>([]);
   const approve = usePlanMutation(baseline.institutionId, () =>
     approveBaseline(baseline.id, baseline.version, rationale, checks),
   );
   const giveBack = usePlanMutation(baseline.institutionId, () =>
-    returnBaseline(baseline.id, baseline.version, returnReason),
+    returnBaseline(baseline.id, baseline.version, returnReason, failed),
   );
   const committee = baseline.milestones.filter(
     (milestone) => milestone.mandatory,
   ).length;
-  const byRisk = new Map<string, number>();
-  for (const milestone of baseline.milestones)
-    byRisk.set(milestone.risk, (byRisk.get(milestone.risk) ?? 0) + 1);
+  const coverage = riskCoverage(plan, baseline.milestones);
+  const uncovered = coverage.risks.filter((item) => item.milestones === 0);
   const large = baseline.milestones.length > 6;
   const allChecked = Object.values(checks).every(Boolean);
   return (
@@ -106,29 +111,65 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           )}
           % of the denominator)
         </dd>
-        <dt className="text-muted-foreground">Milestones per risk</dt>
+        <dt className="text-muted-foreground">Weights</dt>
+        <dd>{EQUAL_WEIGHTS_NOTE}</dd>
+        <dt className="text-muted-foreground">Risk coverage</dt>
         <dd>
-          {[...byRisk.entries()].map(([risk, count]) => (
-            <span key={risk} className="block">
-              {risk}: {count}
-            </span>
-          ))}
+          {coverage.risks.length === 0 ? (
+            'The institution has not recorded any risks.'
+          ) : (
+            <ul>
+              {coverage.risks.map(({ risk, milestones }) => (
+                <li key={risk.id}>
+                  {risk.code} {risk.description} (severity {risk.severity}):{' '}
+                  {milestones === 0 ? (
+                    <strong>no milestone this quarter</strong>
+                  ) : (
+                    `${milestones} ${milestones === 1 ? 'milestone' : 'milestones'}`
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </dd>
       </dl>
-      {large && (
+      {uncovered.length > 0 && (
         <p className="flex items-start gap-2 text-sm font-medium">
           <TriangleAlert
             className="mt-0.5 size-4 shrink-0"
             aria-hidden="true"
           />
-          This proposal is large. Check for duplicate, trivial or artificially
-          split milestones: they would inflate the result and shrink the
-          committee obligations’ share.
+          {uncovered.length === 1
+            ? 'One risk has'
+            : `${uncovered.length} risks have`}{' '}
+          no milestone this quarter. Check that this matches the approved plan’s
+          timing before confirming material coverage.
+        </p>
+      )}
+      {(large || coverage.split.length > 0) && (
+        <p className="flex items-start gap-2 text-sm font-medium">
+          <TriangleAlert
+            className="mt-0.5 size-4 shrink-0"
+            aria-hidden="true"
+          />
+          <span>
+            {coverage.split.length > 0
+              ? `${coverage.split
+                  .map(
+                    ({ activity, count }) =>
+                      `${activity?.code ?? 'An activity'} has ${count} milestones`,
+                  )
+                  .join('; ')}. `
+              : 'This proposal is large. '}
+            Check for duplicate, trivial or artificially split milestones: they
+            would inflate the result and shrink the committee obligations’
+            share.
+          </span>
         </p>
       )}
       <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">Confirm each check</legend>
-        {(Object.keys(checkLabels) as (keyof BaselineChecks)[]).map((key) => (
+        {checkKeys.map((key) => (
           <div key={key} className="flex items-start gap-2">
             <Checkbox
               id={`${baseline.id}-${key}`}
@@ -181,15 +222,44 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
           </p>
         )}
       </div>
-      <div className="grid gap-1.5 border-t pt-4">
-        <Label htmlFor={`${baseline.id}-return`}>
-          Or return it to the institution with feedback
-        </Label>
-        <Textarea
-          id={`${baseline.id}-return`}
-          value={returnReason}
-          onChange={(event) => setReturnReason(event.target.value)}
-        />
+      <div className="grid gap-3 border-t pt-4">
+        <fieldset className="grid gap-2">
+          <legend className="text-sm font-medium">
+            Or return it to the institution: which checks are not met?
+          </legend>
+          {checkKeys.map((key) => (
+            <div key={key} className="flex items-start gap-2">
+              <Checkbox
+                id={`${baseline.id}-failed-${key}`}
+                checked={failed.includes(key)}
+                onCheckedChange={(checked) =>
+                  setFailed((current) =>
+                    checked === true
+                      ? [...current, key]
+                      : current.filter((item) => item !== key),
+                  )
+                }
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor={`${baseline.id}-failed-${key}`}
+                className="leading-snug font-normal"
+              >
+                {failedCheckLabels[key]}
+              </Label>
+            </div>
+          ))}
+        </fieldset>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${baseline.id}-return`}>
+            Feedback for the institution
+          </Label>
+          <Textarea
+            id={`${baseline.id}-return`}
+            value={returnReason}
+            onChange={(event) => setReturnReason(event.target.value)}
+          />
+        </div>
         {giveBack.isError && (
           <p role="alert" className="text-sm text-destructive">
             {giveBack.error.message}
@@ -198,11 +268,21 @@ function ApprovalPanel({ baseline }: { baseline: Baseline }) {
         <div>
           <Button
             variant="outline"
-            disabled={returnReason.trim().length < 10 || giveBack.isPending}
+            disabled={
+              returnReason.trim().length < 10 ||
+              failed.length === 0 ||
+              giveBack.isPending
+            }
             onClick={() => giveBack.mutate(undefined)}
           >
             Return for revision
           </Button>
+          {(returnReason.trim().length < 10 || failed.length === 0) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Choose at least one check and give feedback of at least 10
+              characters.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -241,13 +321,26 @@ function SeedConfirmation({ baseline }: { baseline: Baseline }) {
 }
 
 function Baselines({ plan }: { plan: Plan }) {
-  const latest = new Map<string, Baseline>();
-  for (const baseline of plan.baselines)
-    if ((latest.get(baseline.periodId)?.version ?? 0) < baseline.version)
-      latest.set(baseline.periodId, baseline);
+  const latest = latestBaselines(plan);
+  const missing = plan.proposals.filter(
+    (proposal) =>
+      !latest.some((baseline) => baseline.periodId === proposal.periodId),
+  );
   return (
     <div className="grid gap-4">
-      {[...latest.values()].map((baseline) => (
+      {missing.length > 0 && (
+        <ul className="grid gap-2 rounded-lg border bg-card p-4 text-sm">
+          {missing.map((proposal) => (
+            <li key={proposal.periodId}>
+              <span className="font-medium">{proposal.periodLabel}:</span>{' '}
+              {proposal.locked
+                ? 'no baseline was proposed before reporting opened; the result stays pending.'
+                : `not proposed yet. The institution should propose it by ${formatDateTime(proposal.dueAt)}.`}
+            </li>
+          ))}
+        </ul>
+      )}
+      {latest.map((baseline) => (
         <article
           key={baseline.id}
           aria-labelledby={`obl-${baseline.periodId}`}
@@ -268,7 +361,7 @@ function Baselines({ plan }: { plan: Plan }) {
             <SeedConfirmation baseline={baseline} />
           )}
           {baseline.status === 'proposed' && (
-            <ApprovalPanel baseline={baseline} />
+            <ApprovalPanel plan={plan} baseline={baseline} />
           )}
         </article>
       ))}
@@ -601,7 +694,7 @@ export function OfficerInstitutionPage() {
             Amendments{pendingAmendments ? ` (${pendingAmendments})` : ''}
           </TabsTrigger>
           <TabsTrigger value="foundations">Foundations</TabsTrigger>
-          <TabsTrigger value="risks">Risks</TabsTrigger>
+          <TabsTrigger value="plan">Plan</TabsTrigger>
         </TabsList>
         <TabsContent value="quarters">
           <QuarterDispositions institutionId={institutionId} />
@@ -619,9 +712,28 @@ export function OfficerInstitutionPage() {
         <TabsContent value="foundations">
           <Foundations institutionId={institutionId} />
         </TabsContent>
-        <TabsContent value="risks">
-          <QueryView query={plan} label="risks">
-            {(data) => <RiskTable risks={data.risks} />}
+        <TabsContent value="plan">
+          <QueryView query={plan} label="plan">
+            {(data) => (
+              <div className="grid min-w-0 grid-cols-1 gap-6">
+                <PlanApprovalRecord plan={data} />
+                <section aria-labelledby="officer-risks" className="grid gap-3">
+                  <h2 id="officer-risks" className="text-lg font-semibold">
+                    Risk register
+                  </h2>
+                  <RiskTable risks={data.risks} />
+                </section>
+                <section
+                  aria-labelledby="officer-activities"
+                  className="grid gap-3"
+                >
+                  <h2 id="officer-activities" className="text-lg font-semibold">
+                    Mitigation activities
+                  </h2>
+                  <ActivityTable plan={data} />
+                </section>
+              </div>
+            )}
           </QueryView>
         </TabsContent>
       </Tabs>
