@@ -19,6 +19,7 @@ import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { evidenceCategoryLabel, fieldDomId, formatBytes } from './answers';
+import { FileViewer } from '@/features/files/file-viewer';
 
 // The form type is derived from the hook so field names and values stay checked.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- exists only to derive the form's type
@@ -280,7 +281,7 @@ function EvidenceFile({ item }: { item: EvidenceItem }) {
         aria-hidden="true"
       />
       <span className="min-w-0">
-        <span className="block truncate font-medium">{item.fileName}</span>
+        <FileViewer file={item} className="block max-w-full truncate" />
         <span className="block text-xs text-muted-foreground">
           {formatBytes(item.sizeBytes)} · uploaded{' '}
           {formatDateTime(item.uploadedAt)}

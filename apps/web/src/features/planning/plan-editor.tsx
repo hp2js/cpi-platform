@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { invalidateEvents } from '@/features/events/queries';
+import { FileViewer } from '@/features/files/file-viewer';
 import { foundationsQuery } from '@/features/foundations/queries';
 import {
   importPlan,
@@ -808,11 +809,16 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
           <dd>{approval.accountingOfficer || 'Not recorded'}</dd>
           <dt className="text-muted-foreground">Plan document</dt>
           <dd>
-            {document
-              ? `Version ${document.version}: ${document.evidence.fileName}`
-              : approval.documentVersionId
-                ? 'Linked version'
-                : 'Not linked'}
+            {document ? (
+              <>
+                Version {document.version}:{' '}
+                <FileViewer file={document.evidence} />
+              </>
+            ) : approval.documentVersionId ? (
+              'Linked version'
+            ) : (
+              'Not linked'
+            )}
           </dd>
           <dt className="text-muted-foreground">Recorded</dt>
           <dd>

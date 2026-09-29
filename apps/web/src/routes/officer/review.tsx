@@ -8,7 +8,7 @@ import type {
   ReviewBundle,
 } from '@cpi/contracts';
 import { planQuery } from '@/features/planning/queries';
-import { EvidenceLink } from '@/features/reporting/evidence-link';
+import { FileViewer } from '@/features/files/file-viewer';
 import {
   SuitabilitySection,
   suitabilityStatus,
@@ -333,7 +333,7 @@ function Evidence({
             />
             <span>
               {item ? (
-                <EvidenceLink evidenceId={item.id} fileName={item.fileName} />
+                <FileViewer file={item} />
               ) : (
                 <span className="font-medium">
                   File not attached to this revision
@@ -734,9 +734,9 @@ function OtherAnswers({ bundle }: { bundle: ReviewBundle }) {
       <ul className="mt-2 grid gap-1.5 text-sm">
         {bundle.evidence.map((item) => (
           <li key={item.id} className="text-muted-foreground">
-            <EvidenceLink evidenceId={item.id} fileName={item.fileName} /> ·{' '}
-            {evidenceCategoryLabel[item.category]} · version {item.version} ·{' '}
-            {formatBytes(item.sizeBytes)} · SHA-256 {item.sha256.slice(0, 12)}…
+            <FileViewer file={item} /> · {evidenceCategoryLabel[item.category]}{' '}
+            · version {item.version} · {formatBytes(item.sizeBytes)} · SHA-256{' '}
+            {item.sha256.slice(0, 12)}…
           </li>
         ))}
       </ul>

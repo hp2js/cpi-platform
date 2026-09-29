@@ -41,6 +41,7 @@ import { institutionQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { FileViewer } from '@/features/files/file-viewer';
 
 const route = getRouteApi('/authed/institution/reports/$periodId/review');
 
@@ -192,7 +193,7 @@ function ClaimsSummary({ bundle }: { bundle: ReportBundle }) {
                   className="size-4 text-muted-foreground"
                   aria-hidden="true"
                 />
-                <span className="font-medium">{item.fileName}</span>
+                <FileViewer file={item} />
                 <span className="text-muted-foreground">
                   {evidenceCategoryLabel[item.category]} ·{' '}
                   {formatBytes(item.sizeBytes)}
