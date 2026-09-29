@@ -168,7 +168,7 @@ Behaviour the mock must reproduce, because the UI depends on it:
 - **Scoring**: Section 10 rules (checklists, locked milestone denominator, equal quarters, foundations once, half-up display rounding) in `services/scoring.ts`, verified against the 88.75, 70.00 and 96.25 fixtures. This is a stand-in for HP2-18, not a second authority.
 - **Realism controls** (dev toolbar, dev builds only): latency, forced failure for the next request, session expiry, notification-delivery failure. These exercise the recovery paths HP2-35 requires.
 
-Switching: `VITE_API_MODE=mock` enables the worker (default for `pnpm dev` until the backend is ready). Production builds exclude MSW and its worker script entirely.
+Switching: `VITE_API_MODE=mock` runs the whole mock in the browser; by default `pnpm dev` uses the real API, and the worker only injects network faults. Production builds exclude MSW and its worker script entirely.
 
 ## 6. Contracts
 

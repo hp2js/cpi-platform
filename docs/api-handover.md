@@ -8,7 +8,7 @@ The frontend is complete against a mock API. This document lists every endpoint 
 
 - **Schemas** live in `packages/contracts/src/draft/` (zod, exported from `@cpi/contracts`). The frontend validates every response against them, so a shape mismatch shows as "The server returned an invalid response". Adopt them in Nest with the existing `SchemaValidationPipe`, or revise them and update the frontend in the same change.
 - **Errors** use the existing envelope `{ message, fieldErrors?, requestId?, code? }`. The frontend branches on `status` and `code` (listed below), shows `message` to users, and maps `fieldErrors` keys to fields. Messages must never contain submitted content.
-- **Retiring the mock:** the mock keeps its own session and data in the browser, so a single endpoint cannot move to the real API while the rest stay mocked (the mock would lose its signed-in user, and screens would read one store and write another). Each module is implemented in `apps/api`, covered by integration tests ported from `apps/web/src/mocks/*.test.ts` (`pnpm test:integration`), and exercised with `VITE_API_MODE=live pnpm dev`. When every endpoint exists, live mode becomes the default, the handlers are deleted, and `pnpm test:e2e` runs against the real API.
+- **The mock and the real API:** the web app uses the real API by default and `pnpm test:e2e` runs against it. The mock remains a second implementation for Vitest and `VITE_API_MODE=mock` development, so a behaviour change is made in both, with pure rules shared through `@cpi/contracts` (`src/domain/`), an integration test in `apps/api` (`pnpm test:integration`) and a unit test in `apps/web/src/mocks`.
 - **Times** are ISO-8601 instants with an offset. Business time comes from the server's clock (simulated in the demo); the browser never decides deadlines or lateness.
 
 ## Cross-cutting rules
@@ -176,7 +176,7 @@ Supervisors oversee the officers who review their institutions. Each institution
 
 - **Institution setup:** `POST /api/settings/institutions` takes `supervisorId` (nullable). CSV import accepts an optional `supervisor_email` column; when it is absent or blank and exactly one supervisor is active, that supervisor is assigned. `ManagedInstitution.supervisor` and `ManagedUser.assignedInstitutionIds` (a supervisor's institutions) expose the result.
 - **Safeguards:** a supervisor with current institutions cannot be deactivated (`409 supervisor_has_institutions`), and the last active supervisor cannot be deactivated (`409 last_supervisor`).
-- **Oversight digest:** as the clock crosses each boundary, every supervisor with something needing attention gets one `oversight.digest` notification summarizing missing reports, reviews past the target, clarifications past their window and institutions needing an extension decision. A live system would send it daily; replayed boundaries never repeat it.
+- **Oversight digest:** as the clock crosses each boundary, every supervisor with something needing attention gets one `oversight.digest` notification summarizing missing reports, reviews past the target, clarifications past their window, institutions needing an extension decision, institutions with no active focal person, and quarters under way without an approved baseline. One digest per clock move, keyed by the last new boundary crossed (`apps/api/src/simulation/digests.ts`); a live system would send it daily, and replayed boundaries never repeat it.
 
 ### Administrators (PRD §5.1, §5.2, §9, O17)
 

@@ -16,6 +16,7 @@ import {
 } from '../events/events';
 import { ApiError } from '../http/api-error';
 import { endExpiredCover } from '../supervision/assignments';
+import { sendDigests } from './digests';
 
 /*
  * Server-side demo clock (FR14). Advancing crosses named boundaries in order, and each boundary
@@ -58,7 +59,7 @@ async function process(
     .values({ runId, eventId: key })
     .onConflictDoNothing()
     .returning();
-  if (!fresh) return;
+  if (!fresh) return false;
   const period = cycle.periods.find((candidate) =>
     boundary.id.startsWith(`${candidate.label}-`),
   );
@@ -143,6 +144,7 @@ async function process(
         },
       );
   }
+  return true;
 }
 
 /**
@@ -159,13 +161,18 @@ export async function advanceTo(tx: Tx, events: Events, target: string) {
       'clock_backwards',
     );
   let now = state.businessTime;
+  // Digests summarize where things stand once per move, keyed by the last new boundary
+  // crossed, so a move across several boundaries sends one digest and a replay sends none.
+  let lastFresh: string | null = null;
   for (const boundary of list) {
     const at = Date.parse(boundary.at);
     if (at > to) continue;
     if (at > Date.parse(now)) now = boundary.at;
-    await process(tx, events, state.runId, now, cycle, reminders, boundary);
+    if (await process(tx, events, state.runId, now, cycle, reminders, boundary))
+      lastFresh = `${state.runId}:${boundary.id}`;
   }
   await tx.update(systemState).set({ businessTime: target });
   // Temporary cover that ended in the crossed interval returns to the officer who was away.
   await endExpiredCover(tx, events, target);
+  if (lastFresh) await sendDigests(tx, events, lastFresh, target);
 }
