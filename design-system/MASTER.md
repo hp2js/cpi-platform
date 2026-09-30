@@ -255,8 +255,11 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   `desktop`, officer, supervisor and admin headers show the wordmark beside the menu button,
   so every screen names the product. Primary nav: text links in `ink`,
   bold; the current item has a 4 px `primary` bottom bar and `primary` text (not colour alone:
-  the bar and `aria-current="page"`). Institution layout: tabs from `tablet`, a bottom bar below
-  it (4 items, labels always visible, current item has a 4 px top bar). Officer, supervisor and
+  the bar and `aria-current="page"`). Institution layout: from `desktop`, the same white side
+  navigation as the officer (wordmark, "Reporting for" the institution, the sections with
+  attention badges, then the year's quarters, each with its state in words, its due date and a
+  link to its report); tabs from `tablet` to `desktop`; a bottom bar below `tablet` (4 items,
+  labels always visible, current item has a 4 px top bar). Officer, supervisor and
   admin layouts: a side navigation from `desktop` (usa-sidenav: current item has a 4 px left bar
   and bold text) and an "Open navigation" button with a drawer below it. Officer and supervisor
   navigation is white; the admin console keeps the Adili `primary` sidebar with white text, a

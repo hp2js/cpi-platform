@@ -51,9 +51,10 @@ describe('sign-in and role routing', () => {
         name: 'What is due and what needs attention',
       }),
     ).toBeInTheDocument();
+    // The rail and the narrow-screen header both name it; CSS shows one (jsdom applies none).
     expect(
-      await screen.findByText('Demo County Licensing Office'),
-    ).toBeInTheDocument();
+      await screen.findAllByText('Demo County Licensing Office'),
+    ).not.toHaveLength(0);
     expect(
       await screen.findAllByText(/15 Oct 2026, 23:59 EAT/),
     ).not.toHaveLength(0);

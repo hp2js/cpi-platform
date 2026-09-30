@@ -23,14 +23,28 @@ export interface NavItem {
 }
 
 /** Vertical navigation list; the router marks the active link with aria-current="page". */
+/** A count people can read, announced with what it means. */
+export function AttentionBadge({ count }: { count: number | undefined }) {
+  if (!count) return null;
+  return (
+    <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-secondary-dark px-2 text-2xs leading-5 font-bold text-white">
+      {count}
+      <span className="sr-only"> needing attention</span>
+    </span>
+  );
+}
+
 export function NavList({
   items,
   tone = 'light',
   onNavigate,
+  counts,
 }: {
   items: readonly NavItem[];
   tone?: 'light' | 'dark';
   onNavigate?: () => void;
+  /** Things needing attention per destination, shown as a badge after the label. */
+  counts?: Partial<Record<string, number>>;
 }) {
   return (
     <ul className="grid">
@@ -50,6 +64,7 @@ export function NavList({
           >
             <Icon className="size-5 shrink-0" aria-hidden="true" />
             {label}
+            <AttentionBadge count={counts?.[String(to)]} />
           </Link>
         </li>
       ))}

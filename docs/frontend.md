@@ -74,6 +74,11 @@ focus trapping, Escape and focus restoration when adapting them.
 - **Layouts.** Pages sit on `bg-canvas`; headers, navigation, cards, tables and dialogs are
   white. The admin console keeps its Adili purple sidebar; the other roles use a white side
   navigation. Below `desktop`, every header shows the wordmark beside the menu button.
+- **Institution layout** (`layouts/institution-layout.tsx`). From `desktop` it is a workspace
+  like the officer's: a rail with the wordmark, whom the focal person reports for, the
+  sections (`NavList` with `counts` for attention badges) and the year's quarters, and a wide
+  content area. Below `desktop` it stays one column for form entry: header tabs on tablets and
+  the bottom bar on phones, which a focal person reporting from a phone reaches with a thumb.
 
 ## Selects, long lists and fixed chrome
 
