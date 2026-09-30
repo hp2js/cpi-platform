@@ -120,7 +120,7 @@ export function AccountingOfficerFields({
         CPC; their approval of each report is recorded by reference when the
         focal person submits (PRD §7.2).
       </p>
-      <div className="grid gap-3 tablet:grid-cols-2">
+      <div data-columns className="grid gap-3 tablet:grid-cols-2">
         <Field
           id={`${idPrefix}-ao-name`}
           label="Name"

@@ -53,6 +53,7 @@ function SheetContent({
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-columns
         className={cn(
           'fixed z-50 flex max-h-dvh max-w-full flex-col gap-4 overflow-y-auto overscroll-contain bg-white text-ink shadow-3',
           side === 'right' &&

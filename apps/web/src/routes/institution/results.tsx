@@ -24,12 +24,12 @@ export function ResultsPage() {
         actions={
           current && (
             <>
-              <Button variant="outline" onClick={() => window.print()}>
+              <Button variant="plain" onClick={() => window.print()}>
                 <Printer aria-hidden="true" />
                 Print
               </Button>
               <Button
-                variant="outline"
+                variant="plain"
                 onClick={() => exportCsv.mutate()}
                 disabled={exportCsv.isPending}
               >

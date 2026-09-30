@@ -1596,7 +1596,7 @@ export function ReviewPage() {
         actions={
           <Link
             to={queuePath(session.user.role)}
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'plain' })}
           >
             <ArrowLeft aria-hidden="true" />
             {session.user.role === 'officer' ? 'Queue' : 'Submissions'}

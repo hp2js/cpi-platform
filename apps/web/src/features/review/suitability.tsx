@@ -135,7 +135,7 @@ function FileChecks({
           {bundle.canDecide && (
             <div>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setEditing(true)}
               >

@@ -366,7 +366,7 @@ function CopyPassword({ password }: { password: string }) {
       </code>
       <Button
         type="button"
-        variant="outline"
+        variant="plain"
         size="sm"
         onClick={() => {
           void navigator.clipboard

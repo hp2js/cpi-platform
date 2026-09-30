@@ -160,7 +160,7 @@ export function ForgotPasswordPage() {
           <Link
             to="/sign-in"
             search={{ redirect: undefined }}
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'plain' })}
           >
             Back to sign in
           </Link>

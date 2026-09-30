@@ -82,7 +82,7 @@ export function AuditPage() {
         description="Every configuration, submission, review, assignment, publication and elevated action, with actor, object version and time. Entries cannot be edited or deleted."
         actions={
           <Button
-            variant="outline"
+            variant="plain"
             onClick={() =>
               void downloadExport(
                 `/api/audit.csv${auditSearch(query)}`,
@@ -98,6 +98,7 @@ export function AuditPage() {
       <form
         role="search"
         aria-label="Filter the audit log"
+        data-columns
         className="grid gap-4 rounded-lg border bg-white p-4 tablet:grid-cols-2 widescreen:grid-cols-3"
         onSubmit={(event) => event.preventDefault()}
       >
@@ -269,7 +270,7 @@ export function AuditPage() {
               </p>
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
+                  variant="plain"
                   size="sm"
                   disabled={result.page <= 1}
                   onClick={() => setPage(result.page - 1)}
@@ -277,7 +278,7 @@ export function AuditPage() {
                   Newer
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="plain"
                   size="sm"
                   disabled={result.page >= pages}
                   onClick={() => setPage(result.page + 1)}

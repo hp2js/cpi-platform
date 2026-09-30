@@ -74,7 +74,7 @@ function EditableCard({
         </div>
         {!editing && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             className="shrink-0"
             onClick={onEdit}
@@ -389,7 +389,7 @@ function AddFocalPerson({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="plain"
               onClick={() => setOpen(false)}
             >
               Cancel
@@ -574,7 +574,7 @@ export function InstitutionDetailPage() {
         actions={
           <Link
             to="/admin/institutions"
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'plain' })}
           >
             <ArrowLeft aria-hidden="true" />
             All institutions

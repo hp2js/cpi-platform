@@ -62,7 +62,7 @@ function DismissSuggestion({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="plain" size="sm">
           Keep the current officer
         </Button>
       </DialogTrigger>
@@ -90,7 +90,7 @@ function DismissSuggestion({
           </p>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
@@ -200,7 +200,7 @@ function ChangeSupervisor() {
         A supervisor sees only the institutions assigned to them, and the
         officers who review those institutions.
       </p>
-      <div className="grid grid-cols-1 gap-3 tablet:grid-cols-2">
+      <div data-columns className="grid grid-cols-1 gap-3 tablet:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="supervise-institution">Institution</Label>
           <Combobox
@@ -367,7 +367,10 @@ export function AssignmentsPage() {
               </button>
             </p>
           )}
-          <div className="grid grid-cols-1 gap-3 tablet:grid-cols-2">
+          <div
+            data-columns
+            className="grid grid-cols-1 gap-3 tablet:grid-cols-2"
+          >
             <div className="grid gap-2">
               <Label htmlFor="assign-institution">Institution</Label>
               <Combobox

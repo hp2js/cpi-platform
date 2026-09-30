@@ -489,7 +489,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
               </p>
               {conflict && (
                 <Button
-                  variant="outline"
+                  variant="plain"
                   size="sm"
                   className="mt-2"
                   onClick={() => void reload()}
@@ -1440,7 +1440,7 @@ export function FormEditorPage() {
         actions={
           <Link
             to="/admin/forms"
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'plain' })}
           >
             <ArrowLeft aria-hidden="true" />
             All versions

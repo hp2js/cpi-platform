@@ -279,7 +279,7 @@ function RiskForm({
       <Field id={`${id}-cause`} label="Cause" error={errors.cause}>
         <Textarea id={`${id}-cause`} {...bind('cause')} />
       </Field>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <div data-columns className="grid grid-cols-2 gap-x-4 gap-y-2">
         <Field
           aligned
           id={`${id}-probability`}
@@ -319,7 +319,7 @@ function RiskForm({
       )}
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -387,7 +387,10 @@ function ActivityForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]">
+      <div
+        data-columns
+        className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]"
+      >
         {text('code', 'Code', 'For example A-04.', true)}
         <Field
           aligned
@@ -411,7 +414,7 @@ function ActivityForm({
       <Field id={`${id}-strategy`} label="Strategy" error={errors.strategy}>
         <Textarea id={`${id}-strategy`} {...bind('strategy')} />
       </Field>
-      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
+      <div data-columns className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
         {text('output', 'Output', undefined, true)}
         {text('kpi', 'Key performance indicator', undefined, true)}
         {text('target', 'Target', undefined, true)}
@@ -424,7 +427,7 @@ function ActivityForm({
       )}
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -478,7 +481,10 @@ function MilestoneForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]">
+      <div
+        data-columns
+        className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]"
+      >
         <Field
           aligned
           id={`${id}-code`}
@@ -538,7 +544,7 @@ function MilestoneForm({
       </Field>
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -556,7 +562,11 @@ export function RiskDialog({ plan, risk }: { plan: Plan; risk?: Risk }) {
       description="Rate probability and impact on the cycle’s 1–5 scale, as in your risk assessment."
       trigger={
         risk ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${risk.code}`}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Edit ${risk.code}`}
+          >
             <Pencil aria-hidden="true" />
           </Button>
         ) : (
@@ -588,7 +598,7 @@ export function ActivityDialog({
         activity ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             aria-label={`Edit ${activity.code}`}
           >
             <Pencil aria-hidden="true" />
@@ -630,7 +640,7 @@ export function MilestoneDialog({
         milestone ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             aria-label={`Edit ${milestone.code}`}
           >
             <Pencil aria-hidden="true" />
@@ -685,7 +695,7 @@ export function RemovePlanItem({
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label={`Remove ${code}`}>
+        <Button variant="ghost" size="icon-sm" aria-label={`Remove ${code}`}>
           <Trash2 aria-hidden="true" />
         </Button>
       </AlertDialogTrigger>
@@ -760,7 +770,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       >
         <Input id={`${id}-body`} {...bind('approvingBody')} />
       </Field>
-      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
+      <div data-columns className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
         <Field
           aligned
           id={`${id}-date`}
@@ -807,7 +817,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       </Field>
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -849,7 +859,7 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
             title="Plan approval record"
             description="Record who approved your plan and when. Your officer reads baselines against it."
             trigger={
-              <Button variant="outline" size="sm">
+              <Button variant="ghost" size="sm">
                 <Pencil aria-hidden="true" />
                 {approval ? 'Edit' : 'Record approval'}
               </Button>
@@ -1048,7 +1058,7 @@ function ProposeForm({
       </Field>
       <FormError error={propose.error} fields={[]} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={propose.isPending}>
@@ -1285,7 +1295,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="plain"
                 onClick={() => setOpen(false)}
               >
                 Cancel

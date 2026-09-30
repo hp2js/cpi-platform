@@ -26,6 +26,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
+        data-columns
         className={cn(
           'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-mobile-lg -translate-x-1/2 -translate-y-1/2 grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-white p-6 text-ink shadow-3',
           className,
@@ -112,7 +113,7 @@ function AlertDialogCancel({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
     <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: 'outline' }), className)}
+      className={cn(buttonVariants({ variant: 'plain' }), className)}
       {...props}
     />
   );

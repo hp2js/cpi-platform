@@ -385,7 +385,7 @@ export function AnnualPage() {
         description="A result is releasable only when all four quarters have a final disposition and all three foundations are reviewed. Publication is by batch, after the evaluation cutoff."
         actions={
           <Button
-            variant="outline"
+            variant="plain"
             onClick={() => exportCsv.mutate()}
             disabled={exportCsv.isPending}
           >

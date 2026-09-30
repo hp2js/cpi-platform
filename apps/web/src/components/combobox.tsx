@@ -134,7 +134,7 @@ export function Combobox({
           disabled={disabled}
           className={cn(
             fieldControl,
-            'flex h-touch max-w-mobile-lg items-center justify-between gap-2 text-left',
+            'flex h-touch max-w-(--field-max) items-center justify-between gap-2 text-left',
             className,
           )}
         >

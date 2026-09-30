@@ -343,7 +343,7 @@ function ReportEditor({
               {conflict && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="plain"
                   size="sm"
                   className="mt-2"
                   onClick={onReload}
@@ -479,7 +479,7 @@ function Unavailable({ bundle }: { bundle: ReportBundle }) {
             to="/institution/receipts/$receiptId"
             params={{ receiptId: receipt.id }}
             className={buttonVariants({
-              variant: 'outline',
+              variant: 'plain',
               size: 'sm',
               className: 'mt-2',
             })}

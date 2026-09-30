@@ -24,7 +24,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       className={cn(
         fieldControl,
-        'flex h-touch max-w-mobile-lg items-center justify-between gap-2 text-left data-[placeholder]:text-base-dark [&>span]:truncate',
+        'flex h-touch max-w-(--field-max) items-center justify-between gap-2 text-left data-[placeholder]:text-base-dark [&>span]:truncate',
         className,
       )}
       {...props}

@@ -128,7 +128,7 @@ export function SuggestReassignment({
           </p>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button

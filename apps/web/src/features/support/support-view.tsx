@@ -190,7 +190,7 @@ export function SupportView({
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Close
           </Button>
           {!view.data && (

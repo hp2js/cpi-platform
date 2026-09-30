@@ -190,7 +190,7 @@ export function AddInstitution({
         >
           <fieldset className="grid gap-3">
             <legend className="mb-2 text-sm font-bold">Institution</legend>
-            <div className="grid gap-3 tablet:grid-cols-2">
+            <div data-columns className="grid gap-3 tablet:grid-cols-2">
               <TextField
                 id={`${id}-id`}
                 label="Institution ID"
@@ -282,7 +282,7 @@ export function AddInstitution({
               </Label>
             </div>
             {withFocal && (
-              <div className="grid gap-3 tablet:grid-cols-2">
+              <div data-columns className="grid gap-3 tablet:grid-cols-2">
                 <TextField
                   id={`${id}-focal-name`}
                   label="Name"
@@ -325,7 +325,7 @@ export function AddInstitution({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="plain"
               onClick={() => setOpen(false)}
             >
               Cancel
@@ -576,7 +576,7 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="plain"
                 onClick={() => setOpen(false)}
               >
                 Cancel

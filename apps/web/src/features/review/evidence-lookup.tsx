@@ -87,7 +87,10 @@ export function EvidenceLookup({
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-4 tablet:grid-cols-2 desktop:grid-cols-4">
+      <div
+        data-columns
+        className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-4 tablet:grid-cols-2 desktop:grid-cols-4"
+      >
         <div className="grid gap-2">
           <Label htmlFor="filter-institutionId">Institution</Label>
           <Combobox

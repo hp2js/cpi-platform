@@ -228,7 +228,7 @@ function TypeDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="plain"
               onClick={() => setOpen(false)}
             >
               Cancel
@@ -321,7 +321,7 @@ function TypesTable({ types }: { types: InstitutionType[] }) {
                     <TypeDialog
                       type={type}
                       trigger={
-                        <Button variant="outline" size="sm">
+                        <Button variant="ghost" size="sm">
                           Rename<span className="sr-only"> {type.label}</span>
                         </Button>
                       }

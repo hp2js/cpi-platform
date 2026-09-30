@@ -126,7 +126,7 @@ function RowsField({
                 Remove row {index + 1}
               </Button>
             </div>
-            <div className="grid gap-3 tablet:grid-cols-2">
+            <div data-columns className="grid gap-3 tablet:grid-cols-2">
               {columns.map((column) => {
                 const cellId = `${id}-r${index}-${column.id}`;
                 const cell = row[column.id] ?? null;

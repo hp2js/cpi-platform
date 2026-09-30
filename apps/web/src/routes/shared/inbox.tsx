@@ -53,7 +53,7 @@ function Item({ notification }: { notification: Notification }) {
       {(notification.link || !notification.readAt) && (
         <div className="mt-1">
           <Button
-            variant="outline"
+            variant="plain"
             size="sm"
             onClick={() => open.mutate()}
             disabled={open.isPending}
@@ -82,7 +82,7 @@ export function InboxPage() {
         description="Notifications about your work. Messages never include evidence or unreleased scores."
         actions={
           <Button
-            variant="outline"
+            variant="plain"
             onClick={() => readAll.mutate()}
             disabled={!inbox.data?.unread || readAll.isPending}
           >

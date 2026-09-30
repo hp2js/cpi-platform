@@ -102,7 +102,10 @@ function DayCountingFields({
           </div>
         ))}
       </RadioGroup>
-      <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2 widescreen:grid-cols-3">
+      <div
+        data-columns
+        className="grid grid-cols-1 gap-4 tablet:grid-cols-2 widescreen:grid-cols-3"
+      >
         <div className="grid content-start gap-2">
           <Label htmlFor="reporting-days">Deadline rule</Label>
           <div className="flex items-center gap-2">

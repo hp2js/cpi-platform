@@ -141,7 +141,7 @@ export default function PdfPreview({
       >
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           disabled={pageNumber <= 1}
           onClick={() => setPageNumber((value) => value - 1)}
         >
@@ -153,7 +153,7 @@ export default function PdfPreview({
         </span>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           disabled={pageNumber >= pages}
           onClick={() => setPageNumber((value) => value + 1)}
         >
@@ -163,7 +163,7 @@ export default function PdfPreview({
         <span className="mx-1 h-5 w-px bg-base-lighter" aria-hidden="true" />
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-label="Zoom out"
           onClick={() => step(-1)}
         >
@@ -171,7 +171,7 @@ export default function PdfPreview({
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-label="Zoom in"
           onClick={() => step(1)}
         >
@@ -179,7 +179,7 @@ export default function PdfPreview({
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-pressed={zoom === null}
           onClick={() => setZoom(null)}
         >

@@ -130,6 +130,8 @@
 
   /* Minimum target size, in px so the density setting below never shrinks it. */
   --spacing-touch: 44px;
+  /* The visual height of compact buttons; their target stays --spacing-touch. */
+  --spacing-compact: 36px;
 
   --radius-sm: 0.125rem;
   --radius-md: 0.25rem;
@@ -166,6 +168,12 @@
     --banner-h: 0px;
     --header-h: 0px;
     --sticky-top: calc(var(--banner-h) + var(--header-h));
+    /* Single-line fields cap at 480 px in single-column forms (see fieldControl). */
+    --field-max: var(--container-mobile-lg);
+  }
+  /* Dialogs, sheets and multi-column field rows: fields fill their column. */
+  [data-columns] {
+    --field-max: none;
   }
   /* Anchors, skip links and focused fields scroll clear of the fixed header. */
   /*

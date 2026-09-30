@@ -352,7 +352,7 @@ function QuarterAction({
       <Link
         to="/institution/receipts/$receiptId"
         params={{ receiptId: receipt.id }}
-        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        className={buttonVariants({ variant: 'plain', size: 'sm' })}
       >
         View receipt
       </Link>
@@ -511,7 +511,7 @@ export function InstitutionHomePage() {
         actions={
           <Link
             to="/institution/profile"
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            className={buttonVariants({ variant: 'plain', size: 'sm' })}
           >
             <Building2 aria-hidden="true" />
             Our institution
