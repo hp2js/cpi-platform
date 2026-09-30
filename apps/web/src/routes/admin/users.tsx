@@ -91,7 +91,7 @@ function StatusChange({ user }: { user: ManagedUser }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" size="sm">
           {user.active ? 'Deactivate' : 'Reactivate'}
           <span className="sr-only"> {user.displayName}</span>
         </Button>
@@ -434,7 +434,7 @@ export function ResendInvitation({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="ghost"
       size="sm"
       disabled={mutation.isPending}
       onClick={() => mutation.mutate()}
@@ -755,7 +755,7 @@ function UsersTable({
                   <UserStatus user={user} />
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex justify-end gap-1 whitespace-nowrap">
                     {user.status === 'invited' && (
                       <ResendInvitation user={user} onSent={onNotice} />
                     )}

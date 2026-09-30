@@ -264,16 +264,35 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   and bold text) and an "Open navigation" button with a drawer below it. Officer and supervisor
   navigation is white; the admin console keeps the Adili `primary` sidebar with white text, a
   white current-item bar and the wordmark's gold rule, in the drawer as well.
-- **Buttons.** `min-h-touch` (44 px), padding 12 × 20 px, `text-md` bold, `rounded-md`.
-  Default: `primary` → hover `primary-dark` → active `primary-darker`. Outline: white, inset
-  2 px `primary` border, `primary` text. Secondary (destructive): `secondary` → `secondary-dark`
-  → `secondary-darker`. Unstyled (link look) for low-emphasis actions. Disabled:
-  `disabled-lighter` fill, `disabled-dark` text, `cursor-not-allowed`; prefer
-  `aria-disabled` plus an explanation over hiding the reason.
+- **Buttons.** Two sizes, one target. `default` (page and form actions): `min-h-touch` (44 px),
+  padding 12 × 20 px, `text-md` bold, `rounded-md`. `sm`/`xs` and `icon-sm`/`icon-xs` (toolbars,
+  table rows, card headers): `min-h-compact`/`size-compact` (36 px) with `text-sm`, and an
+  invisible `::after` that keeps the hit area 44 px tall and at least 44 px wide, so the
+  target never shrinks. The guard test checks every size keeps a 44 px target.
+  Variants, in order of emphasis:
+  - Default: `primary` → hover `primary-dark` → active `primary-darker`. **One per area**: the
+    action that completes the task (Submit, Save, Add risk in its dialog, Publish).
+  - Outline: white, inset 2 px `primary` border, `primary` text. Real secondary actions that
+    change something (Save draft, Import from CSV, Add activity, Request clarification,
+    Return for revision).
+  - Plain: white, inset 1 px `base-dark` border, `ink` text. Dismissive and navigational
+    actions that change nothing: Cancel, Keep, Close, back links (All reports), View receipt,
+    Print, exports, pager Newer/Older, Retry. `AlertDialogCancel` uses it.
+  - Ghost: no border, `primary` text. Actions repeated on every table row or card (Edit,
+    Change role, Deactivate behind a confirmation) and icon-only row actions (`icon-sm`, with
+    an `aria-label`). A row keeps its actions on one line.
+  - Secondary (destructive): `secondary` → `secondary-dark` → `secondary-darker`, only to
+    confirm deleting, discarding or replacing work.
+  - Disabled: `disabled-lighter` fill, `disabled-dark` text, `cursor-not-allowed`; prefer
+    `aria-disabled` plus an explanation over hiding the reason.
 - **Form fields.** Label above the control (`text-sm`, normal weight, `ink`), hint below
   the label (`text-xs`, `base`), then the error message, then the control. Controls: 44 px high,
-  1 px `base-dark` border, square corners, white fill, max width `mobile-lg` (480 px) unless a
-  table cell or full-width textarea. Fields side by side in a row share the row's lines with CSS
+  1 px `base-dark` border, square corners, white fill. Width: single-line controls (input,
+  select, combobox) cap at `--field-max`, 480 px in a single-column form so a field's width
+  hints at its answer; inside a `data-columns` container (dialogs, drawers, multi-column field
+  rows and filter bars) `--field-max` is `none` and they fill their column, so fields side by
+  side line up. A width in `className` (a short code, a number of days) still wins. Textareas
+  always fill their container. Fields side by side in a row share the row's lines with CSS
   subgrid (label, hint, control, error), so their controls line up even when only one has a
   hint or an error. Use `SelectField` (Radix Select) for short fixed lists, `Combobox` for searchable lists,
   and the existing checkbox/radio wrappers; their visual states follow USWDS. Do not mix

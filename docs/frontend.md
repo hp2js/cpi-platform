@@ -64,6 +64,15 @@ focus trapping, Escape and focus restoration when adapting them.
 - **Confirmations.** An `AlertDialogAction` that deletes, discards or replaces work takes
   `variant="destructive"` (Adili red); every other confirmation keeps the primary style, and
   the safe choice is always the `AlertDialogCancel` beside it.
+- **Button hierarchy.** One `default` (filled) button per area, for the action that completes
+  the task. `outline` for secondary actions that change something; `plain` (grey) for actions
+  that change nothing: Cancel, Close, back links, View receipt, Print, exports, pagers;
+  `ghost` for actions repeated on each table row or card. Toolbars, rows and card headers use
+  `size="sm"` or `icon-sm` (36 px to look at, 44 px to hit); page and form actions keep the
+  default 44 px.
+- **Field width.** Put `data-columns` on any grid or form that places fields side by side;
+  inside it (and in every dialog and drawer, which set it themselves) inputs, selects and
+  comboboxes fill their column instead of capping at 480 px.
 - **Drawers on dark surfaces.** The sheet's close control uses the current text colour, so a
   drawer that sets `bg-primary text-white` (the admin navigation) keeps it visible.
 - **Side-by-side fields.** Fields in a two-column row share their rows with CSS subgrid
