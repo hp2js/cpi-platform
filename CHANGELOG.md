@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/hp2js/cpi-platform/compare/v0.2.0...v0.3.0) (2026-09-30)
+
+### Features
+
+* show what a clarification response changes and explain reporting terms ([7e1511c](https://github.com/hp2js/cpi-platform/commit/7e1511c6982f73272a9531ecd641f1ab94b651f1))
+* update design system for all components ([0c94f95](https://github.com/hp2js/cpi-platform/commit/0c94f95ea2f560403da00c9fd4feab5a7d89ba96))
+* **web:** rebuild the UI on USWDS design tokens and improve each persona's flow ([09078d5](https://github.com/hp2js/cpi-platform/commit/09078d5696049fd0fce730649c56a18dac07f56c)), references [#2491ff](https://github.com/hp2js/cpi-platform/issues/2491ff)
+
 ## [0.2.0](https://github.com/hp2js/cpi-platform/compare/v0.1.0...v0.2.0) (2026-09-29)
 
 ### Features
