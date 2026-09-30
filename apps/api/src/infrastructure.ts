@@ -11,6 +11,7 @@ import type { ReadinessResponse } from '@cpi/contracts';
 import { CONFIG, type AppConfig } from './config';
 import * as schema from './database/schema';
 import { errorCode } from './http/diagnostics';
+import { Objects } from './storage/objects';
 
 // node-postgres honours a per-query `query_timeout`; @types/pg does not declare it.
 const readinessProbe = { text: 'select 1', query_timeout: 1500 };
@@ -26,7 +27,7 @@ export class Infrastructure implements OnApplicationShutdown {
   readonly database;
   readonly redis: Redis;
 
-  constructor(@Inject(CONFIG) config: AppConfig) {
+  constructor(@Inject(CONFIG) config: AppConfig, private readonly objects: Objects) {
     this.pool = new Pool({
       connectionString: config.DATABASE_URL,
       connectionTimeoutMillis: 1500,
@@ -56,9 +57,10 @@ export class Infrastructure implements OnApplicationShutdown {
       // Readiness keeps its own short timeout, so an unresponsive database reports quickly.
       this.pool.query(readinessProbe),
       this.redis.ping(),
+      this.objects.ready(),
     ]);
     for (const [index, result] of results.entries()) {
-      const service = index === 0 ? 'database' : 'redis';
+      const service = ['database', 'redis', 'storage'][index]!;
       if (result.status === 'rejected')
         this.reportFailure(service, result.reason);
       else if (this.lastErrors.delete(service))
@@ -67,6 +69,7 @@ export class Infrastructure implements OnApplicationShutdown {
     const services: ReadinessResponse['services'] = {
       database: results[0]?.status === 'fulfilled' ? 'up' : 'down',
       redis: results[1]?.status === 'fulfilled' ? 'up' : 'down',
+      storage: results[2]?.status === 'fulfilled' ? 'up' : 'down',
     };
     return {
       status: Object.values(services).every((value) => value === 'up')

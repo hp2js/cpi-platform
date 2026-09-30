@@ -11,6 +11,13 @@ const schema = z.object({
   REDIS_URL: z
     .url()
     .refine((value) => /^rediss?:/.test(value), 'Use a Redis URL'),
+  S3_ENDPOINT: z.url().refine((value) => ['http:', 'https:'].includes(new URL(value).protocol)).default('http://127.0.0.1:19000'),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/).default('cpi-files'),
+  S3_ACCESS_KEY_ID: z.string().min(1).default('cpi-local'),
+  S3_SECRET_ACCESS_KEY: z.string().min(8).default('cpi-local-files-only'),
+  S3_FORCE_PATH_STYLE: z.stringbool().default(true),
+  S3_PREFIX: z.string().regex(/^evidence\/(?:[a-zA-Z0-9_-]+\/)*$/).default('evidence/'),
   /**
    * Demonstration deployment: lists the fictional accounts for one-click sign-in. Turn off
    * (DEMO_MODE=false) anywhere real people sign in.

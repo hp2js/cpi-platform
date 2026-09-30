@@ -2,10 +2,11 @@ packages:
   - apps/*
   - packages/*
 
+# msw's postinstall only copies its worker; apps/web generates it explicitly (see docs/frontend.md).
+ignoredBuiltDependencies:
+  - msw
+
 onlyBuiltDependencies:
   - '@nestjs/core'
   - esbuild
-
-# msw's postinstall only copies its worker; apps/web generates it explicitly (see docs/frontend.md).
-ignoredBuiltDependencies:
   - msw

@@ -454,6 +454,7 @@ export const evidence = pgTable('evidence', {
   mimeType: text().notNull(),
   sizeBytes: integer().notNull(),
   sha256: text().notNull(),
+  demonstration: boolean().notNull().default(false),
   uploadedAt: instant().notNull(),
   uploadedBy: text().notNull(),
   version: integer().notNull(),
@@ -461,16 +462,12 @@ export const evidence = pgTable('evidence', {
   supersededBy: text(),
 });
 
-/**
- * Uploaded bytes, stored beside their metadata in the same transaction.
- * ponytail: Postgres bytea is fine for 8 institutions at ≤100 MB per report; move to a private
- * object store (keyed by evidence ID) if storage volume or backup size becomes a concern.
- */
+/** Private object location; bytes remain nullable only for reads/backfill of older uploads. */
 export const evidenceFiles = pgTable('evidence_files', {
-  evidenceId: text()
-    .primaryKey()
-    .references(() => evidence.id),
-  bytes: bytea().notNull(),
+  evidenceId: text().primaryKey().references(() => evidence.id),
+  bytes: bytea(),
+  bucket: text(),
+  objectKey: text(),
 });
 
 export const foundationVersions = pgTable('foundation_versions', {

@@ -23,13 +23,13 @@ import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { nextId, write } from '../database/db';
 import {
   evidence,
-  evidenceFiles,
   foundationReviews,
   foundationVersions,
 } from '../database/schema';
 import { Events, assignedOfficers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import { Files } from '../storage/files';
 import { MAX_FILE_BYTES, checkUpload } from '../reporting/rules';
 import { foundationLabels, foundationsFor } from './foundations';
 
@@ -56,6 +56,7 @@ export class FoundationsController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    private readonly files: Files,
   ) {}
 
   private get db() {
@@ -76,7 +77,7 @@ export class FoundationsController {
   @Roles('institution')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: MAX_FILE_BYTES + 1, files: 1 },
+      limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 8, fieldSize: 4096, parts: 9 },
       defParamCharset: 'utf8',
     }),
   )
@@ -86,7 +87,7 @@ export class FoundationsController {
     @UploadedFile() file: Upload,
     @Body() body: Record<string, unknown> | undefined,
   ): Promise<Foundations> {
-    return write(this.db, async (tx, businessTime) => {
+    return this.files.withUpload((persist) => write(this.db, async (tx, businessTime) => {
       if (user.institutionId !== institutionId) throw notFound();
       if (!file)
         throw new ApiError(422, 'Choose a file to upload.', 'invalid_upload', {
@@ -142,7 +143,7 @@ export class FoundationsController {
         predecessorId: null,
         supersededBy: null,
       });
-      await tx.insert(evidenceFiles).values({ evidenceId, bytes: file.buffer });
+      await persist(tx, evidenceId, file.buffer, check.mimeType);
       // Supersession keeps the earlier version and its decisions; it never deletes history.
       await tx
         .update(foundationVersions)
@@ -192,7 +193,7 @@ export class FoundationsController {
         },
       );
       return foundationsFor(tx, institutionId, false);
-    });
+    }));
   }
 
   @Post('foundation-versions/:versionId/withdraw')

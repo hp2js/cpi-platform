@@ -109,7 +109,7 @@ export async function loadFixtures(
     await tx
       .insert(schema.evidence)
       .values(
-        foundations.evidence.map((item) => ({ ...item, obligationId: null })),
+        foundations.evidence.map((item) => ({ ...item, obligationId: null, demonstration: true })),
       );
     await tx.insert(schema.foundationVersions).values(foundations.versions);
   });

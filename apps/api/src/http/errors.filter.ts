@@ -11,6 +11,7 @@ import {
   readinessSchema,
   type ApiErrorBody,
 } from '@cpi/contracts';
+import { ApiError } from './api-error';
 import type { CorrelatedRequest } from './diagnostics';
 
 // Nest's unmatched-route 404 ("Cannot GET /path?query") echoes the URL, which can
@@ -36,9 +37,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return;
     }
     const parsed = apiErrorSchema.safeParse(raw);
+    const storageError = exception instanceof ApiError && status === 503 && parsed.success && ['storage_unavailable', 'file_unavailable'].includes(parsed.data.code ?? '');
     const body: ApiErrorBody = {
       message:
-        status >= 500
+        status >= 500 && !storageError
           ? 'An unexpected server error occurred.'
           : !parsed.success
             ? 'The request could not be completed.'
@@ -51,7 +53,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       body.fieldErrors = parsed.data.fieldErrors;
     }
     // The client branches on status and code (e.g. `session_expired`, `version_conflict`).
-    if (status < 500 && parsed.success && parsed.data.code) {
+    if ((status < 500 || storageError) && parsed.success && parsed.data.code) {
       body.code = parsed.data.code;
     }
     if (status >= 500) {

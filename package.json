@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/check-compiler.mjs",
-    "services:up": "docker compose up -d --wait postgres redis",
+    "services:up": "docker compose up -d --build --wait postgres redis minio minio-init",
     "docker:up": "docker compose up -d --build --wait",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f --tail=100",
@@ -31,7 +31,9 @@
     "test:e2e": "playwright test",
     "test:e2e:prod": "CPI_PRODUCTION=true playwright test",
     "release": "release-it",
-    "release:dry": "release-it --dry-run --ci"
+    "release:dry": "release-it --dry-run --ci",
+    "storage:migrate": "pnpm --filter @cpi/api storage:migrate",
+    "storage:gc": "pnpm --filter @cpi/api storage:gc"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
