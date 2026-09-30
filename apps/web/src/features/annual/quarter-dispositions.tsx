@@ -34,7 +34,7 @@ function CloseForm({
       ]),
   });
   return (
-    <div className="grid gap-2 rounded-md border border-dashed p-3">
+    <div className="grid gap-2 bg-base-lightest p-3">
       <Label htmlFor={`close-${obligationId}`}>
         Record non-response for {periodLabel} (implementation 0)
       </Label>

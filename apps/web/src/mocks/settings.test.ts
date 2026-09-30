@@ -3,7 +3,10 @@ import {
   accountSchema,
   assignmentHistorySchema,
   calendarSettingsSchema,
+  cycleSchema,
   peopleSchema,
+  planSchema,
+  riskScaleSettingsSchema,
   profilesStateSchema,
   scoringProfileSchema,
   sessionSchema,
@@ -189,6 +192,53 @@ describe('reporting calendar (FR02)', () => {
       await request('/api/simulation', simulationStateSchema)
     ).boundaries.map((boundary) => boundary.id);
     expect(boundaries).toContain('Q2-reminder-14');
+  });
+
+  it('labels the risk scale, refusing a repeated label, and keeps severity a number', async () => {
+    await signInAs('administrator');
+    const scale = () =>
+      request('/api/settings/risk-scale', riskScaleSettingsSchema);
+    const update = (json: object) =>
+      request('/api/settings/risk-scale', riskScaleSettingsSchema, {
+        method: 'PUT',
+        json,
+      });
+    const current = (await scale()).riskScale;
+    expect(current.probability[2]).toBe('Possible');
+    const reason = 'Labels confirmed against the EACC template.';
+    await expect(
+      update({
+        ...current,
+        impact: ['Low', 'Low', 'Moderate', 'Major', 'Severe'],
+        reason,
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      fieldErrors: { impact: 'Give each point of the scale its own label.' },
+    });
+    await expect(update({ ...current, reason })).rejects.toMatchObject({
+      status: 422,
+      code: 'no_change',
+    });
+    const saved = await update({
+      probability: ['Very low', 'Low', 'Medium', 'High', 'Very high'],
+      impact: current.impact,
+      source: 'EACC risk assessment template, 23rd Cycle guidelines, page 4.',
+      reason,
+    });
+    expect(saved.changes[0]).toMatchObject({
+      summary:
+        'Probability labels → 1 Very low, 2 Low, 3 Medium, 4 High, 5 Very high; Source → EACC risk assessment template, 23rd Cycle guidelines, page 4.',
+      reason,
+    });
+    expect(getDb().audit.at(-1)?.action).toBe('settings.risk_scale');
+    await signInAs('officer-a');
+    await expect(scale()).rejects.toMatchObject({ status: 403 });
+    await signInAs('focal-demo-001');
+    const cycle = await request('/api/cycles/current', cycleSchema);
+    expect(cycle.riskScale.probability[4]).toBe('Very high');
+    const plan = await request('/api/institutions/DEMO-001/plan', planSchema);
+    expect(plan.risks[0]).toMatchObject({ probability: 3, severity: 12 });
   });
 });
 

@@ -1,3 +1,8 @@
+import {
+  isChecklistAnswer,
+  isEvidenceAnswer,
+  isRowsAnswer,
+} from '@cpi/contracts';
 import { useUnsavedWork } from '@/features/session/unsaved-work';
 import type { EvidenceItem, ReportAnswers, ReportBundle } from '@cpi/contracts';
 import { useStore } from '@tanstack/react-form';
@@ -44,10 +49,11 @@ const route = getRouteApi('/authed/institution/reports/$periodId');
 /** Whether an answer has been given; a declared-unavailable document counts as answered. */
 function isAnswered(value: unknown) {
   if (value === null || value === undefined || value === '') return false;
-  if (typeof value === 'object' && 'evidenceIds' in value) {
-    const answer = value as { evidenceIds: string[]; unavailable: unknown };
-    return answer.evidenceIds.length > 0 || answer.unavailable !== null;
-  }
+  if (isEvidenceAnswer(value))
+    return value.evidenceIds.length > 0 || value.unavailable !== null;
+  if (isChecklistAnswer(value))
+    return Object.values(value.items).every((item) => item !== null);
+  if (isRowsAnswer(value)) return value.rows.length > 0;
   return true;
 }
 

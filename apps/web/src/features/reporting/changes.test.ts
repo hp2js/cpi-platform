@@ -52,6 +52,73 @@ const answers = (
   milestone: MilestoneResponse,
 ): ReportAnswers => ({ questions, milestones: { m1: milestone } });
 
+describe('answerChanges for checklist and repeated questions', () => {
+  const lists = {
+    sections: [
+      {
+        id: 'lists',
+        title: 'Lists',
+        questions: [
+          {
+            id: 'steps',
+            label: 'Steps taken',
+            type: 'checklist',
+            required: true,
+            kind: 'informational',
+            items: [
+              { id: 'a', label: 'Register opened' },
+              { id: 'b', label: 'Staff briefed' },
+            ],
+          },
+          {
+            id: 'meetings',
+            label: 'Meetings',
+            type: 'repeated',
+            required: false,
+            kind: 'informational',
+            columns: [
+              { id: 'held', label: 'Held on', type: 'date', required: true },
+              {
+                id: 'people',
+                label: 'Attendees',
+                type: 'number',
+                required: true,
+                limits: { unit: 'people' },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  } as unknown as FormVersion;
+
+  it('describes checklist items and table rows in words', () => {
+    const before: ReportAnswers = {
+      questions: { steps: { items: { a: true } }, meetings: { rows: [] } },
+      milestones: {},
+    };
+    const after: ReportAnswers = {
+      questions: {
+        steps: { items: { a: true, b: false } },
+        meetings: { rows: [{ held: '2026-09-12', people: 7 }] },
+      },
+      milestones: {},
+    };
+    expect(
+      answerChanges(lists, [], [], before, after).map(
+        ({ label, before: was, after: now }) => [label, was, now],
+      ),
+    ).toEqual([
+      [
+        'Steps taken',
+        'Register opened: Done; Staff briefed: Not answered',
+        'Register opened: Done; Staff briefed: Not done',
+      ],
+      ['Meetings', 'No rows', 'Row 1, Held on 2026-09-12, Attendees 7 people'],
+    ]);
+  });
+});
+
 describe('answerChanges', () => {
   it('reports nothing when the draft still matches the submitted revision', () => {
     const same = answers(

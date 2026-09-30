@@ -165,7 +165,11 @@ export function SimulationPage() {
                     <h3 className="text-sm font-bold">
                       Scripted year: {log.steps.length} steps
                     </h3>
-                    <ol className="max-h-80 overflow-y-auto rounded-md border bg-white p-3 text-xs">
+                    <ol
+                      tabIndex={0}
+                      aria-label="Scripted year steps"
+                      className="max-h-80 overflow-y-auto rounded-md border bg-white p-3 text-xs"
+                    >
                       {log.steps.map((step, index) => (
                         <li
                           key={index}

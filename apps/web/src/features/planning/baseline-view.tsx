@@ -1,5 +1,6 @@
 import type { Baseline, Risk } from '@cpi/contracts';
 import { CircleCheck, Clock, Lock, Undo2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import {
   Table,
   TableBody,
@@ -9,6 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useQuery } from '@tanstack/react-query';
+import { cycleQuery } from '@/features/directory/queries';
+import { failedCheckLabels, scalePoint } from '@/features/planning/labels';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +40,7 @@ export function BaselineStatus({ baseline }: { baseline: Baseline }) {
     <span className="flex flex-wrap items-center gap-2">
       <span
         className={cn(
-          'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold',
+          'inline-flex items-center gap-2 rounded-sm px-2 py-1 text-xs font-bold',
           className,
         )}
       >
@@ -123,13 +127,22 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
         </p>
       )}
       {baseline.returned && (
-        <p>
-          <span className="text-base-dark">
-            Returned by {baseline.returned.by},{' '}
-            {formatDateTime(baseline.returned.at)}:{' '}
-          </span>
-          {baseline.returned.reason}
-        </p>
+        <div>
+          <p>
+            <span className="text-base-dark">
+              Returned by {baseline.returned.by},{' '}
+              {formatDateTime(baseline.returned.at)}:{' '}
+            </span>
+            {baseline.returned.reason}
+          </p>
+          {baseline.returned.failedChecks.length > 0 && (
+            <ul className="mt-1 list-disc pl-5">
+              {baseline.returned.failedChecks.map((check) => (
+                <li key={check}>{failedCheckLabels[check]}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       {baseline.historicalSeed && (
         <p className="text-base-dark">
@@ -145,13 +158,27 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
 }
 
 /** Severity is the product on the cycle's 1–5 scale; no colour bands are inferred (O16). */
-export function RiskTable({ risks }: { risks: Risk[] }) {
+export function RiskTable({
+  risks,
+  actions,
+}: {
+  risks: Risk[];
+  actions?: (risk: Risk) => ReactNode;
+}) {
+  const scale = useQuery(cycleQuery).data?.riskScale;
+  if (!risks.length)
+    return (
+      <p className="rounded-lg border bg-white p-4 text-sm text-base-dark">
+        No risks recorded yet.
+      </p>
+    );
   return (
     <div className="overflow-x-auto rounded-lg border bg-white">
       <Table className="min-w-[40rem]">
         <TableCaption className="text-left">
-          Severity is probability × impact on the cycle's 1–5 scale. No rating
+          Severity is probability × impact on the cycle’s 1–5 scale. No rating
           bands are applied.
+          {scale && <span className="block">Scale labels: {scale.source}</span>}
         </TableCaption>
         <TableHeader>
           <TableRow>
@@ -160,6 +187,11 @@ export function RiskTable({ risks }: { risks: Risk[] }) {
             <TableHead scope="col">Probability</TableHead>
             <TableHead scope="col">Impact</TableHead>
             <TableHead scope="col">Severity</TableHead>
+            {actions && (
+              <TableHead scope="col">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -175,11 +207,20 @@ export function RiskTable({ risks }: { risks: Risk[] }) {
               <TableCell className="text-sm whitespace-normal">
                 {risk.cause}
               </TableCell>
-              <TableCell className="tabular-nums">{risk.probability}</TableCell>
-              <TableCell className="tabular-nums">{risk.impact}</TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">
+                {scalePoint(scale, 'probability', risk.probability)}
+              </TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">
+                {scalePoint(scale, 'impact', risk.impact)}
+              </TableCell>
               <TableCell className="font-bold tabular-nums">
                 {risk.severity}
               </TableCell>
+              {actions && (
+                <TableCell className="text-right whitespace-nowrap">
+                  {actions(risk)}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

@@ -97,7 +97,7 @@ export function FinalizedComparison({
         </p>
       </div>
       {data.comparison.length === 0 ? (
-        <p className="rounded-lg border border-dashed bg-white p-4 text-sm text-base-dark">
+        <p className="bg-base-lightest p-4 text-sm text-base-dark">
           No quarter has been finalized yet. Results appear here as reviews are
           finalized.
         </p>

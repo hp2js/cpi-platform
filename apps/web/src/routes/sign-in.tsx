@@ -142,7 +142,7 @@ function PasswordForm() {
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute top-1/2 right-0.5 size-8 -translate-y-1/2"
+            className="absolute top-1/2 right-0 size-touch -translate-y-1/2"
             aria-pressed={visible}
             onClick={() => setVisible(!visible)}
           >
@@ -233,7 +233,8 @@ function DemoAccountButton({
       type="button"
       disabled={disabled}
       onClick={onSelect}
-      className="group flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-primary-lighter focus-visible:relative focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:opacity-60"
+      data-focus-inset
+      className="group flex min-h-touch w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-primary-lighter focus-visible:relative disabled:cursor-not-allowed disabled:text-disabled-dark"
     >
       <span className="min-w-0 flex-1">
         <span className="block font-bold">{account.displayName}</span>
@@ -308,7 +309,7 @@ function RoleGroup({
             <h3 id={`role-${role}`} className="font-bold">
               {roleLabel[role]}
             </h3>
-            <span className="rounded-full bg-base-lightest px-2 py-1 text-xs font-bold text-base-dark">
+            <span className="rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold text-base-dark">
               {accounts.length}
               <span className="sr-only">
                 {accounts.length === 1 ? ' account' : ' accounts'}
@@ -335,7 +336,7 @@ function RoleGroup({
         </div>
       )}
       {shown.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-base-dark">
+        <p className="bg-base-lightest px-4 py-3 text-sm text-base-dark">
           No account matches “{filter.trim()}”.
         </p>
       ) : (
@@ -414,7 +415,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
         <Button
           type="button"
           size="lg"
-          className="fixed bottom-4 left-4 z-40 h-touch rounded-full px-5 shadow-3 tablet:bottom-6 tablet:left-6"
+          className="fixed bottom-4 left-4 z-40 h-touch rounded-md px-5 shadow-3 tablet:bottom-6 tablet:left-6"
         >
           <FlaskConical aria-hidden="true" />
           <span className="tablet:hidden">Demo accounts</span>
@@ -433,7 +434,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
         }}
       >
         <SheetHeader className="gap-1 border-b p-5 pr-12">
-          <p className="inline-flex w-fit items-center gap-2 rounded-full bg-warning-lighter px-3 py-1 text-xs font-bold text-ink">
+          <p className="inline-flex w-fit items-center gap-2 rounded-sm bg-warning-lighter px-2 py-1 text-xs font-bold text-ink">
             <FlaskConical className="size-3.5" aria-hidden="true" />
             Demonstration only
           </p>
@@ -459,9 +460,9 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
                         .getElementById(`demo-${role}`)
                         ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
                     }
-                    className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs font-bold hover:border-primary hover:text-primary focus-visible:outline-2"
+                    className="inline-flex min-h-touch items-center gap-2 rounded-md border border-base-dark bg-white px-3 py-2 text-xs font-bold hover:border-primary hover:text-primary"
                   >
-                    <Icon className="size-3.5" aria-hidden="true" />
+                    <Icon className="size-4" aria-hidden="true" />
                     {roleLabel[role]}
                     <span className="text-base-dark">{count}</span>
                   </button>

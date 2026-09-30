@@ -31,7 +31,7 @@ export function DeadlineCountdown({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-bold whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-xs font-bold whitespace-nowrap',
         styles[tone],
         className,
       )}

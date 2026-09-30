@@ -94,7 +94,7 @@ function NewVersion({
     : {};
   return (
     <form
-      className="grid gap-3 rounded-md border border-dashed p-4"
+      className="grid gap-3 bg-base-lightest p-4"
       onSubmit={(event) => {
         event.preventDefault();
         mutation.mutate();

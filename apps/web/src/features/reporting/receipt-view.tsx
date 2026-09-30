@@ -2,6 +2,7 @@ import type { Receipt } from '@cpi/contracts';
 import { FileText } from 'lucide-react';
 import { evidenceCategoryLabel, formatBytes } from './answers';
 import { formatDateTime, formatDays } from '@/lib/dates';
+import { FileViewer } from '@/features/files/file-viewer';
 
 /** The immutable acknowledgement of one submitted revision (FR07). No score is shown. */
 export function ReceiptView({ receipt }: { receipt: Receipt }) {
@@ -73,7 +74,7 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
                   className="size-4 text-base-dark"
                   aria-hidden="true"
                 />
-                <span className="font-bold">{item.fileName}</span>
+                <FileViewer file={item} />
                 <span className="text-base-dark">
                   {evidenceCategoryLabel[item.category]} ·{' '}
                   {formatBytes(item.sizeBytes)} · SHA-256{' '}

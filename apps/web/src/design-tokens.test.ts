@@ -61,7 +61,7 @@ describe('USWDS design tokens', () => {
 
   it('uses no token that the USWDS theme removed', () => {
     const removed =
-      /^(?:(?:bg|text|border|ring|fill|stroke|outline|divide)-(?:muted|accent|card|popover|background|foreground|destructive|input|ring|border|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+)(?:\/\d+)?|rounded(?:-[trblse]{1,2})?-(?:xs|xl|2xl|3xl)|shadow-(?:xs|sm|md|lg|xl|2xl)|font-(?:thin|extralight|medium|semibold|extrabold|black)|text-(?:4xl|5xl)|max-w-(?:xs|sm|md|lg|xl|[2-7]xl|prose)|animate-(?:in|out)|(?:min-h|h|size|min-w)-11|(?:sm|md|lg|xl|2xl|dark):.+)$/;
+      /^(?:(?:bg|text|border|ring|fill|stroke|outline|divide)-(?:muted|accent|card|popover|background|foreground|destructive|input|ring|border|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+)(?:\/\d+)?|rounded(?:-[trblse]{1,2})?-(?:xs|xl|2xl|3xl)|shadow-(?:xs|sm|md|lg|xl|2xl)|font-(?:thin|extralight|medium|semibold|extrabold|black)|text-(?:4xl|5xl)|max-w-(?:xs|sm|md|lg|xl|[2-7]xl|prose)|animate-(?:in|out)|(?:min-h|h|size|min-w)-11|opacity-(?:50|60|70)|border-dashed|backdrop-blur(?:-\S+)?|(?:sm|md|lg|xl|2xl|dark):.+)$/;
     expect(classesMatching(removed)).toEqual([]);
   });
 });

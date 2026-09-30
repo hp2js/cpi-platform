@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -9,7 +10,11 @@ import {
 } from '@nestjs/common';
 import { eq, ne } from 'drizzle-orm';
 import {
+  diffForms,
+  formDiscardSchema,
   formDraftUpdateSchema,
+  summarizeChanges,
+  type Cycle,
   type FormValidation,
   type FormVersion,
 } from '@cpi/contracts';
@@ -31,6 +36,17 @@ function issuesAsFieldErrors(issues: { path: string; message: string }[]) {
   const fieldErrors: Record<string, string> = {};
   for (const issue of issues) fieldErrors[issue.path] ??= issue.message;
   return fieldErrors;
+}
+
+const periodLabel = (cycle: Cycle) => (periodId: string) =>
+  cycle.periods.find((period) => period.id === periodId)?.label ?? periodId;
+
+/** A draft's differences from the version it was based on (FR03, AT04). */
+function changesOf(form: FormVersion, forms: FormVersion[], cycle: Cycle) {
+  const base = forms.find(
+    (candidate) => candidate.version === form.basedOnVersion,
+  );
+  return diffForms(base, form, periodLabel(cycle));
 }
 
 /** Everything the publication rules read (PRD §7.1, FR03). */
@@ -108,7 +124,11 @@ export class FormsController {
 
   @Put(':formId')
   @Roles('administrator')
-  update(@Param('formId') id: string, @Body() body: unknown) {
+  update(
+    @CurrentUser() user: User,
+    @Param('formId') id: string,
+    @Body() body: unknown,
+  ) {
     return write(this.db, async (tx, businessTime) => {
       const form = await this.find(tx, id);
       if (form.status !== 'draft')
@@ -130,17 +150,40 @@ export class FormsController {
             })),
           ),
         );
+      // Two administrators, or two tabs, cannot silently overwrite each other's edits.
+      if (parsed.data.baseRevision !== form.revision)
+        throw new ApiError(
+          409,
+          'Someone saved this draft after you opened it. Reload to see their changes, then make yours again.',
+          'version_conflict',
+        );
+      const { title, periodIds, sections } = parsed.data;
       const { profile } = await currentState(tx);
+      const [cycle, forms] = await Promise.all([loadCycle(tx), loadForms(tx)]);
+      const next = {
+        ...form,
+        title,
+        periodIds,
+        sections,
+        // A snapshot of the cycle profile's weights; they are set in Settings, not here.
+        weights: profile.weights,
+        updatedAt: businessTime,
+        revision: form.revision + 1,
+      };
+      next.changes = changesOf(next, forms, cycle);
       const [updated] = await tx
         .update(formVersions)
-        .set({
-          ...parsed.data,
-          // A snapshot of the cycle profile's weights; they are set in Settings, not here.
-          weights: profile.weights,
-          updatedAt: businessTime,
-        })
+        .set(next)
         .where(eq(formVersions.id, id))
         .returning();
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'form.draft_save',
+        { type: 'form', id, version: form.version },
+        `Draft version ${form.version} saved: ${summarizeChanges(next.changes)}`,
+      );
       return updated;
     });
   }
@@ -179,12 +222,17 @@ export class FormsController {
               ),
             })
             .where(eq(formVersions.id, other.id));
+      const changes = changesOf(form, context.forms, context.cycle);
+      const quarters = form.periodIds
+        .map(periodLabel(context.cycle))
+        .join(', ');
       const [published] = await tx
         .update(formVersions)
         .set({
           status: 'published',
           publishedAt: businessTime,
           weights: context.profile.weights,
+          changes,
         })
         .where(eq(formVersions.id, form.id))
         .returning();
@@ -194,7 +242,7 @@ export class FormsController {
         user,
         'form.publish',
         { type: 'form', id: form.id, version: form.version },
-        `Version ${form.version} for ${form.periodIds.length} period(s)`,
+        `Version ${form.version} for ${quarters}. ${form.basedOnVersion ? summarizeChanges(changes) : 'First version'}`,
       );
       await this.events.notify(
         tx,
@@ -204,12 +252,19 @@ export class FormsController {
         [
           ...(await usersWithRole(tx, 'institution')),
           ...(await usersWithRole(tx, 'officer')),
+          ...(await usersWithRole(tx, 'supervisor')),
         ],
         {
           title: `Reporting form version ${form.version} published`,
-          body: 'The quarterly progress report form is available for the assigned periods.',
+          body: form.basedOnVersion
+            ? `${quarters} will use version ${form.version}. Changes from version ${form.basedOnVersion}: ${summarizeChanges(changes)}.`
+            : `The quarterly progress report form is available for ${quarters}.`,
           link: (recipient) =>
-            recipient.role === 'institution' ? '/institution' : '/officer',
+            recipient.role === 'institution'
+              ? '/institution'
+              : recipient.role === 'supervisor'
+                ? '/supervisor/rules'
+                : '/officer/rules',
         },
       );
       return published;
@@ -218,7 +273,7 @@ export class FormsController {
 
   @Post()
   @Roles('administrator')
-  create() {
+  create(@CurrentUser() user: User) {
     return write(this.db, async (tx, businessTime) => {
       const context = await formContext(tx);
       if (context.forms.some((form) => form.status === 'draft'))
@@ -242,9 +297,68 @@ export class FormsController {
             (periodId) => !periodLocked(context, periodId),
           ),
           updatedAt: businessTime,
+          revision: 0,
+          changes: [],
         })
         .returning();
-      return draft;
+      const [withChanges] = await tx
+        .update(formVersions)
+        .set({ changes: changesOf(draft!, context.forms, context.cycle) })
+        .where(eq(formVersions.id, draft!.id))
+        .returning();
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'form.draft_create',
+        { type: 'form', id: draft!.id, version: draft!.version },
+        `Draft version ${draft!.version} started from version ${latest.version}`,
+      );
+      return withChanges;
+    });
+  }
+
+  /** An unpublished draft can be discarded with a reason; the first version cannot. */
+  @Delete(':formId')
+  @HttpCode(204)
+  @Roles('administrator')
+  discard(
+    @CurrentUser() user: User,
+    @Param('formId') id: string,
+    @Body() body: unknown,
+  ) {
+    return write(this.db, async (tx, businessTime) => {
+      const form = await this.find(tx, id);
+      if (form.status !== 'draft')
+        throw new ApiError(
+          409,
+          'Published versions are kept for the record and cannot be discarded.',
+          'version_locked',
+        );
+      const forms = await loadForms(tx);
+      if (!forms.some((candidate) => candidate.status === 'published'))
+        throw new ApiError(
+          409,
+          'The first version cannot be discarded. Edit it and publish it instead.',
+          'first_version',
+        );
+      const parsed = formDiscardSchema.safeParse(body);
+      if (!parsed.success)
+        throw new ApiError(
+          422,
+          'Give a reason of at least 10 characters.',
+          'reason_required',
+          { reason: 'Give a reason of at least 10 characters.' },
+        );
+      await tx.delete(formVersions).where(eq(formVersions.id, id));
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'form.discard',
+        { type: 'form', id, version: form.version },
+        `Draft version ${form.version} discarded: ${parsed.data.reason}`,
+      );
     });
   }
 }

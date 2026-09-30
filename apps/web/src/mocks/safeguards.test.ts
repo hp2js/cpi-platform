@@ -346,6 +346,7 @@ describe('baselines (FR04, AT25, AT31, AT17)', () => {
           version: 1,
           reason:
             'Eight administrative tasks artificially split the plan and dilute committee obligations.',
+          failedChecks: ['noFragmentation'],
         },
       },
     );
@@ -378,6 +379,32 @@ describe('baselines (FR04, AT25, AT31, AT17)', () => {
       }),
     ).rejects.toMatchObject({ status: 409, code: 'baseline_locked' });
     const target = q2(plan);
+    const amend = (milestoneId: string) =>
+      request('/api/institutions/DEMO-006/amendments', z.unknown(), {
+        method: 'POST',
+        json: {
+          periodId: target.periodId,
+          milestoneId,
+          change: 'remove',
+          toPeriodId: null,
+          reason: 'We will not need this milestone.',
+        },
+      });
+    // A proposed baseline is changed through the plan, not amended.
+    await expect(amend(target.milestones[0]!.id)).rejects.toMatchObject({
+      status: 409,
+      code: 'baseline_not_approved',
+    });
+    await signInAs('officer-b');
+    await request(`/api/baselines/${target.id}/approve`, z.unknown(), {
+      method: 'POST',
+      json: {
+        version: target.version,
+        rationale: 'Covers the material risks with objective conditions.',
+        checks,
+      },
+    });
+    await signInAs('focal-demo-006');
     await expect(
       request('/api/institutions/DEMO-006/amendments', z.unknown(), {
         method: 'POST',
@@ -426,6 +453,12 @@ describe('baselines (FR04, AT25, AT31, AT17)', () => {
       4, 3,
     ]);
     expect(q3Versions.at(-1)?.milestones).toHaveLength(5);
+    // The plan follows the confirmed amendment, so a later proposal keeps the move.
+    expect(
+      after.plannedMilestones.find(
+        (milestone) => milestone.id === target.milestones[1]!.id,
+      )?.periodId,
+    ).toBe('FY2026-27-Q3');
   });
 });
 

@@ -1,4 +1,10 @@
-import type { FormVersion, Milestone, ReportAnswers } from '@cpi/contracts';
+import {
+  emptyAnswer,
+  isEvidenceAnswer,
+  type FormVersion,
+  type Milestone,
+  type ReportAnswers,
+} from '@cpi/contracts';
 
 /**
  * Builds the answer structure for a form and baseline, keeping any saved values. This is
@@ -14,12 +20,7 @@ export function answersFor(
     (section) => section.questions,
   )) {
     if (question.type === 'milestone_progress') continue;
-    const empty =
-      question.type === 'evidence'
-        ? { evidenceIds: [], unavailable: null }
-        : question.type === 'yes_no'
-          ? null
-          : '';
+    const empty = emptyAnswer(question);
     questions[question.id] = saved?.questions[question.id] ?? empty;
   }
   const milestoneAnswers: ReportAnswers['milestones'] = {};
@@ -64,15 +65,14 @@ export function replaceEvidence(
 ): ReportAnswers {
   const questions: ReportAnswers['questions'] = {};
   for (const [id, value] of Object.entries(answers.questions)) {
-    questions[id] =
-      value && typeof value === 'object'
-        ? {
-            ...value,
-            evidenceIds: value.evidenceIds.map((evidenceId) =>
-              evidenceId === fromId ? toId : evidenceId,
-            ),
-          }
-        : value;
+    questions[id] = isEvidenceAnswer(value)
+      ? {
+          ...value,
+          evidenceIds: value.evidenceIds.map((evidenceId) =>
+            evidenceId === fromId ? toId : evidenceId,
+          ),
+        }
+      : value;
   }
   const milestones: ReportAnswers['milestones'] = {};
   for (const [id, response] of Object.entries(answers.milestones)) {

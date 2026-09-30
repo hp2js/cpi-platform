@@ -2,6 +2,7 @@ import type {
   Cycle,
   Foundations,
   Obligation,
+  Plan,
   Receipt,
   ReportBundle,
 } from '@cpi/contracts';
@@ -23,6 +24,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { inboxQuery } from '@/features/events/queries';
 import { formsQuery } from '@/features/forms/queries';
 import { foundationsQuery } from '@/features/foundations/queries';
+import { failedCheckLabels, proposalsDue } from '@/features/planning/labels';
+import { planQuery } from '@/features/planning/queries';
 import { receiptsQuery, reportQuery } from '@/features/reporting/queries';
 import { cycleQuery, obligationsQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
@@ -40,13 +43,14 @@ const arrow = <ArrowRight aria-hidden="true" />;
 
 /**
  * Everything the institution owes now, soonest deadline first: clarifications to answer,
- * reports that are open or late, and foundation documents still missing.
+ * reports that are open or late, foundation documents still missing, and baselines to propose.
  */
 function buildTodos({
   cycle,
   obligations,
   reports,
   foundations,
+  plan,
   formPublished,
   now,
   me,
@@ -55,6 +59,7 @@ function buildTodos({
   obligations: Obligation[];
   reports: Map<string, ReportBundle>;
   foundations: Foundations | undefined;
+  plan: Plan | undefined;
   formPublished: boolean;
   now: string;
   me: string;
@@ -144,6 +149,32 @@ function buildTodos({
         </Link>
       ),
     });
+  for (const proposal of plan ? proposalsDue(plan) : []) {
+    const returned = plan!.baselines
+      .filter((baseline) => baseline.periodId === proposal.periodId)
+      .at(-1)?.returned;
+    todos.push({
+      key: `propose-${proposal.periodId}`,
+      title: returned
+        ? `Revise and propose your ${proposal.periodLabel} baseline again`
+        : `Propose your ${proposal.periodLabel} baseline`,
+      detail: returned
+        ? `Returned by ${returned.by}: ${returned.failedChecks.map((check) => failedCheckLabels[check].toLowerCase()).join('; ') || returned.reason}.`
+        : proposal.plannedMilestones
+          ? `${proposal.plannedMilestones} ${proposal.plannedMilestones === 1 ? 'milestone is' : 'milestones are'} planned. Your officer approves the baseline before the quarter starts.`
+          : `Plan the quarter’s milestones and send them to your officer before the quarter starts.`,
+      deadline: proposal.dueAt,
+      action: (
+        <Link
+          to="/institution/plan"
+          hash={`bl-${proposal.periodId}`}
+          className={buttonVariants({ size: 'sm', variant: 'outline' })}
+        >
+          Open plan {arrow}
+        </Link>
+      ),
+    });
+  }
   return todos.sort(
     (a, b) =>
       (a.deadline ? Date.parse(a.deadline) : Infinity) -
@@ -366,6 +397,7 @@ function Overview({
       bundle.data ? [[bundle.data.obligation.id, bundle.data] as const] : [],
     ),
   );
+  const plan = useQuery(planQuery(session.user.institutionId ?? ''));
   const foundations = useQuery(
     foundationsQuery(session.user.institutionId ?? ''),
   );
@@ -374,6 +406,7 @@ function Overview({
     obligations,
     reports,
     foundations: foundations.data,
+    plan: plan.data,
     formPublished,
     now: session.clock.businessTime,
     me: session.user.displayName,

@@ -1,4 +1,4 @@
-import { shiftDays } from '@cpi/contracts';
+import { questionTypeIssues, shiftDays, stableIdIssues } from '@cpi/contracts';
 import type {
   CalendarSettings,
   ClockBoundary,
@@ -180,6 +180,7 @@ export function validateForm(
           path: `${path}.evidenceCategory`,
           message: 'Choose the evidence category.',
         });
+      issues.push(...questionTypeIssues(question, path));
       if (question.type === 'milestone_progress') {
         milestoneBlocks += 1;
         if (question.kind !== 'scored' || !question.required)
@@ -201,6 +202,14 @@ export function validateForm(
       path: 'sections',
       message: 'The form needs exactly one milestone progress block.',
     });
+
+  // An ID keeps its meaning in every version (FR03: stable identifiers).
+  issues.push(
+    ...stableIdIssues(
+      form,
+      context.forms.filter((candidate) => candidate.id !== form.id),
+    ),
+  );
 
   // Scored criteria cannot change after activation (FR03, PRD §7.1).
   const base = form.basedOnVersion

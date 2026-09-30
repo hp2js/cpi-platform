@@ -93,7 +93,7 @@ export function NewPasswordField({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute top-1/2 right-0.5 size-8 -translate-y-1/2"
+          className="absolute top-1/2 right-0 size-touch -translate-y-1/2"
           aria-pressed={visible}
           onClick={() => setVisible(!visible)}
         >

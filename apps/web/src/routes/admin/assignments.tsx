@@ -360,7 +360,7 @@ export function AssignmentsPage() {
               reassign.{' '}
               <button
                 type="button"
-                className="text-primary underline underline-offset-4"
+                className="usa-link min-h-touch"
                 onClick={() => setSuggestionId(undefined)}
               >
                 Stop applying

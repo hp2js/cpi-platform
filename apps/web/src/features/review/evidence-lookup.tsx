@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import { cycleQuery, institutionsQuery } from '@/features/directory/queries';
 import { evidenceCategoryLabel } from '@/features/reporting/answers';
-import { EvidenceLink } from '@/features/reporting/evidence-link';
+import { FileViewer } from '@/features/files/file-viewer';
 import { request } from '@/lib/api';
 
 interface Filters {
@@ -144,10 +144,7 @@ export function EvidenceLookup({
                 {list.map((row) => (
                   <TableRow key={`${row.submissionId}-${row.evidence.id}`}>
                     <TableHead scope="row" className="font-normal">
-                      <EvidenceLink
-                        evidenceId={row.evidence.id}
-                        fileName={row.evidence.fileName}
-                      />
+                      <FileViewer file={row.evidence} />
                       {row.evidence.version > 1 && (
                         <span className="block text-xs text-base-dark">
                           Version {row.evidence.version}

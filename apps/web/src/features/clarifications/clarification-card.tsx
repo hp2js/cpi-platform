@@ -54,7 +54,7 @@ export function ClarificationCard({
             {formatDateTime(clarification.requestedAt)}
           </p>
         </div>
-        <span className="rounded-full bg-base-lightest px-3 py-1 text-xs font-bold">
+        <span className="rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold">
           {status}
         </span>
       </header>

@@ -209,6 +209,10 @@ button:focus-visible,
 [role='tab']:focus-visible {
   outline-offset: 0.25rem;
 }
+/* Rows inside scrolling lists draw the outline inside, where the list cannot clip it. */
+[data-focus-inset]:focus-visible {
+  outline-offset: -0.25rem;
+}
 /* Programmatic focus targets (skip link, route change) are not controls. */
 :is(main, h1, h2, section)[tabindex='-1']:focus {
   outline: none;

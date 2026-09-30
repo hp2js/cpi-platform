@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { isEvidenceAnswer } from '@cpi/contracts';
 import type { Metric, Oversight } from '@cpi/contracts';
 import { getDb } from '../db';
 import { networkDelay } from '../services/latency';
@@ -73,7 +74,7 @@ export const oversightHandlers = [
     });
     const evidenceComplete = currentSubmissions.filter(({ submission }) =>
       Object.values(submission.answers.questions).every(
-        (value) => !(value && typeof value === 'object' && value.unavailable),
+        (value) => !(isEvidenceAnswer(value) && value.unavailable),
       ),
     );
     const finalized = currentSubmissions.filter(

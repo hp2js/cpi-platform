@@ -84,7 +84,7 @@ export function ResultsPage() {
                       simulation={result.simulation}
                     />
                   ) : (
-                    <p className="rounded-md border border-dashed p-4 text-sm">
+                    <p className="bg-base-lightest p-4 text-sm">
                       Superseded result:{' '}
                       {result.evaluation.total.status === 'calculated'
                         ? `${result.evaluation.total.points} / 100`

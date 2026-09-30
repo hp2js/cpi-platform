@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { EvidenceLink } from '@/features/reporting/evidence-link';
+import { FileViewer } from '@/features/files/file-viewer';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -98,7 +98,7 @@ function FileChecks({
     <li className="grid gap-3 rounded-lg border-2 border-base-lighter bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm">
-          <EvidenceLink evidenceId={item.id} fileName={item.fileName} />
+          <FileViewer file={item} />
           <span className="block text-base-dark">
             Cited by {citedBy.join(', ') || 'no milestone'}
           </span>

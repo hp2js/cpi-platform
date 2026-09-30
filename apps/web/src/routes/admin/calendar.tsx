@@ -50,7 +50,13 @@ function DayCountingFields({
 }) {
   const [holiday, setHoliday] = useState({ date: '', name: '' });
   const number =
-    (key: 'reportingDays' | 'clarificationDays' | 'reviewTargetDays') =>
+    (
+      key:
+        | 'reportingDays'
+        | 'clarificationDays'
+        | 'reviewTargetDays'
+        | 'proposalLeadDays',
+    ) =>
     (event: ChangeEvent<HTMLInputElement>) =>
       onChange({ ...values, [key]: Number(event.target.value) || 0 });
   return (
@@ -169,6 +175,32 @@ function DayCountingFields({
             and never block finalizing.
           </p>
           {errorFor('dayCounting.reviewTargetDays')}
+        </div>
+        <div className="grid content-start gap-2">
+          <Label htmlFor="proposal-lead-days">Baseline proposals due</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="proposal-lead-days"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={60}
+              className="w-24"
+              value={values.proposalLeadDays}
+              onChange={number('proposalLeadDays')}
+              aria-describedby="proposal-lead-days-hint"
+            />
+            <span className="text-sm">
+              {values.mode === 'working' ? 'working days' : 'days'} before each
+              quarter starts
+            </span>
+          </div>
+          <p id="proposal-lead-days-hint" className="text-xs text-base-dark">
+            Leaves the officer time to approve. Institutions see the date on
+            their to-do list; supervisors hear of quarters that start
+            unapproved.
+          </p>
+          {errorFor('dayCounting.proposalLeadDays')}
         </div>
       </div>
       <div className="grid gap-2">

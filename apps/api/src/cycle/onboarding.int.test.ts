@@ -80,17 +80,27 @@ describe.skipIf(!integration)('onboarding institutions', () => {
       await admin.post('/settings/institutions', newInstitution),
     ).toMatchObject({ status: 422, body: { code: 'invalid_institution' } });
 
-    // Q1 has opened: a seeded historical baseline awaits confirmation; Q2–Q4 are proposed.
+    // Q1 has opened: a seeded historical baseline awaits confirmation. Q2–Q4 start with an
+    // empty plan for the institution to fill in and propose (FR04).
     const officer = await api.client().signIn('officer-b');
     const plan = await officer.json<Plan>('/institutions/MDA-101/plan');
     expect(plan.baselines.map((baseline) => baseline.status)).toEqual([
       'approved',
-      'proposed',
-      'proposed',
-      'proposed',
     ]);
     expect(plan.baselines[0]!.historicalSeed?.confirmedAt).toBeNull();
-    expect(plan.baselines[1]!.milestones.every((m) => m.mandatory)).toBe(true);
+    expect(plan.baselines[0]!.milestones.every((m) => m.mandatory)).toBe(true);
+    expect(plan).toMatchObject({
+      approval: null,
+      risks: [],
+      activities: [],
+      plannedMilestones: [],
+    });
+    expect(plan.proposals.map((proposal) => proposal.status)).toEqual([
+      'approved',
+      'not_proposed',
+      'not_proposed',
+      'not_proposed',
+    ]);
     expect(
       (
         await api.db

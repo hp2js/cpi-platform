@@ -5,7 +5,7 @@ import {
   instantSchema,
   roleSchema,
 } from './common.js';
-import { dayCountingSchema } from './cycle.js';
+import { dayCountingSchema, riskScaleSchema } from './cycle.js';
 import { accountingOfficerSchema } from './institutions.js';
 import { indicatorWeightsSchema } from './forms.js';
 
@@ -133,6 +133,24 @@ export const calendarUpdateSchema = z.object({
   reason: z.string().trim().min(10).max(500),
 });
 export type CalendarUpdate = z.infer<typeof calendarUpdateSchema>;
+
+/** The cycle's declared 1–5 risk scale, with every change and its reason. */
+export const riskScaleSettingsSchema = z.object({
+  riskScale: riskScaleSchema,
+  changes: z.array(
+    z.object({
+      at: instantSchema,
+      by: z.string(),
+      summary: z.string(),
+      reason: z.string(),
+    }),
+  ),
+});
+export type RiskScaleSettings = z.infer<typeof riskScaleSettingsSchema>;
+export const riskScaleUpdateSchema = riskScaleSchema.extend({
+  reason: z.string().trim().min(10).max(500),
+});
+export type RiskScaleUpdate = z.infer<typeof riskScaleUpdateSchema>;
 
 export const managedUserSchema = z.object({
   id: z.string(),

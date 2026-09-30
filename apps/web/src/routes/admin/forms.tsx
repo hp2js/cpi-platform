@@ -1,3 +1,4 @@
+import type { FormVersion } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
@@ -21,6 +22,17 @@ import {
   invalidateForms,
 } from '@/features/forms/queries';
 import { formatDateTime } from '@/lib/dates';
+import { ChangeList } from '@/features/forms/change-list';
+
+/** "3 changes": questions and sections added, changed or removed. */
+function changeCount(form: FormVersion) {
+  const count = form.changes.filter(
+    (change) => change.kind !== 'periods',
+  ).length;
+  return count === 0
+    ? 'No question changes'
+    : `${count} ${count === 1 ? 'change' : 'changes'}`;
+}
 
 export function FormsPage() {
   const queryClient = useQueryClient();
@@ -86,6 +98,7 @@ export function FormsPage() {
                   <TableHead scope="col">Status</TableHead>
                   <TableHead scope="col">Periods</TableHead>
                   <TableHead scope="col">Published</TableHead>
+                  <TableHead scope="col">Changes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -113,6 +126,21 @@ export function FormsPage() {
                       {form.publishedAt
                         ? formatDateTime(form.publishedAt)
                         : '—'}
+                    </TableCell>
+                    <TableCell className="min-w-64 text-sm whitespace-normal">
+                      {form.basedOnVersion ? (
+                        <details>
+                          <summary className="cursor-pointer">
+                            {changeCount(form)} from version{' '}
+                            {form.basedOnVersion}
+                          </summary>
+                          <div className="mt-2">
+                            <ChangeList changes={form.changes} />
+                          </div>
+                        </details>
+                      ) : (
+                        'First version'
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

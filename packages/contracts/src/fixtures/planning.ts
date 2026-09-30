@@ -1,6 +1,11 @@
-import type { FoundationKind } from '../index.js';
+import type {
+  Activity,
+  FoundationKind,
+  PlanApproval,
+  PlannedMilestone,
+} from '../index.js';
 import { institutions } from './cast.js';
-import { plans } from './baselines.js';
+import { initialBaselines, plans } from './baselines.js';
 
 export interface MockRisk {
   id: string;
@@ -38,8 +43,99 @@ export const initialRisks: MockRisk[] = institutions.flatMap(
   },
 );
 
-export const approvedPlanReference =
-  'Approved CRAMP FY 2026/27, CPC resolution of 14 Aug 2026 (fictional)';
+export type MockActivity = Activity & { institutionId: string };
+export type MockPlannedMilestone = PlannedMilestone & { institutionId: string };
+export type MockPlanApproval = PlanApproval & { institutionId: string };
+
+/** The mitigation activities behind the seeded milestones, each linked to the risk it treats. */
+export const initialActivities: MockActivity[] = institutions.flatMap(
+  (institution) => {
+    const plan = plans[institution.id]!;
+    const activity = (
+      code: string,
+      risk: string,
+      fields: Omit<Activity, 'id' | 'code' | 'riskId'>,
+    ): MockActivity => ({
+      id: `${institution.id}:${code}`,
+      institutionId: institution.id,
+      code,
+      riskId: `${institution.id}:${risk}`,
+      ...fields,
+    });
+    return [
+      activity('A-01', 'R-01', {
+        title: plan.activity.replace(/^A-01 /, ''),
+        strategy: 'Replace discretion with a recorded, reviewable control.',
+        output: plan.milestone,
+        kpi: 'Share of cases handled through the control',
+        target: '100% of cases from Q1',
+        owner: 'Head of the affected function',
+        resourceReference: 'Recurrent budget, integrity vote',
+      }),
+      activity('A-02', 'R-01', {
+        title: 'Train staff in affected functions',
+        strategy: 'Build awareness of the prevention procedure.',
+        output: 'Staff trained',
+        kpi: 'Staff trained as a share of those named in the plan',
+        target: '90% by the end of Q1',
+        owner: 'Human resources manager',
+        resourceReference: 'Training budget',
+      }),
+      activity('A-03', 'R-02', {
+        title: 'Spot-check procurement approvals',
+        strategy: 'Sample approvals after the fact and act on findings.',
+        output: 'Quarterly spot-check report',
+        kpi: 'Approvals sampled each quarter',
+        target: 'At least ten each quarter from Q2',
+        owner: 'Internal audit',
+        resourceReference: 'Internal audit work plan',
+      }),
+      ...(institution.id === 'DEMO-004'
+        ? [
+            activity('A-99', 'R-01', {
+              title: 'Administrative tasks',
+              strategy: 'Support the committee’s work.',
+              output: 'Meetings arranged',
+              kpi: 'Tasks done',
+              target: 'All tasks',
+              owner: 'Secretariat',
+              resourceReference: '',
+            }),
+          ]
+        : []),
+    ];
+  },
+);
+
+/** The quarter's plan is what its latest seeded baseline holds, less the committee meetings. */
+export const initialPlannedMilestones: MockPlannedMilestone[] =
+  initialBaselines.flatMap((baseline) =>
+    baseline.milestones
+      .filter((milestone) => milestone.activityId)
+      .map((milestone) => ({
+        id: milestone.id,
+        institutionId: baseline.institutionId,
+        code: milestone.code,
+        activityId: milestone.activityId!,
+        periodId: baseline.periodId,
+        title: milestone.title,
+        completionCondition: milestone.completionCondition,
+        evidenceExpectation: milestone.evidenceExpectation,
+      })),
+  );
+
+export const initialPlanApprovals: MockPlanApproval[] = institutions.map(
+  (institution) => ({
+    institutionId: institution.id,
+    approvingBody: 'Corruption Prevention Committee',
+    approvedOn: '2026-08-14',
+    reference: 'CPC resolution 4/2026 (fictional)',
+    accountingOfficer: institution.accountingOfficer?.name ?? '',
+    documentVersionId: `fv-${institution.id}-mitigation_plan-1`,
+    recordedBy: `Focal person, ${institution.id}`,
+    recordedAt: '2026-09-20T11:00:00+03:00',
+  }),
+);
 
 export interface MockFoundationVersion {
   id: string;

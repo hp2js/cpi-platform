@@ -1,8 +1,15 @@
 import {
   baselineSchema,
+  planImportPreviewSchema,
+  planImportResultSchema,
   planSchema,
+  type ActivityRequest,
   type AmendmentRequest,
+  type BaselineCheck,
   type BaselineChecks,
+  type PlanApprovalRequest,
+  type PlannedMilestoneRequest,
+  type RiskRequest,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -36,10 +43,15 @@ export const approveBaseline = (
     method: 'POST',
     json: { version, rationale, checks },
   });
-export const returnBaseline = (id: string, version: number, reason: string) =>
+export const returnBaseline = (
+  id: string,
+  version: number,
+  reason: string,
+  failedChecks: BaselineCheck[],
+) =>
   request(`${baselinePath(id)}/return`, baselineSchema, {
     method: 'POST',
-    json: { version, reason },
+    json: { version, reason, failedChecks },
   });
 export const confirmSeed = (id: string, version: number) =>
   request(`${baselinePath(id)}/confirm-seed`, baselineSchema, {
@@ -64,6 +76,71 @@ export const decideAmendment = (
   request(`/api/amendments/${encodeURIComponent(id)}/decision`, planSchema, {
     method: 'POST',
     json: { decision, reason },
+  });
+
+const planPath = (institutionId: string) =>
+  `/api/institutions/${encodeURIComponent(institutionId)}` as const;
+
+/** The plan items the institution edits, each a collection under its institution. */
+export type PlanCollection = 'risks' | 'activities' | 'plan-milestones';
+type PlanItemRequest = {
+  risks: RiskRequest;
+  activities: ActivityRequest;
+  'plan-milestones': PlannedMilestoneRequest;
+};
+
+export const savePlanItem = <C extends PlanCollection>(
+  institutionId: string,
+  collection: C,
+  id: string | null,
+  item: PlanItemRequest[C],
+) =>
+  request(
+    `${planPath(institutionId)}/${collection}${id ? `/${encodeURIComponent(id)}` : ''}`,
+    planSchema,
+    { method: id ? 'PUT' : 'POST', json: item },
+  );
+export const removePlanItem = (
+  institutionId: string,
+  collection: PlanCollection,
+  id: string,
+) =>
+  request(
+    `${planPath(institutionId)}/${collection}/${encodeURIComponent(id)}`,
+    planSchema,
+    { method: 'DELETE' },
+  );
+export const savePlanApproval = (
+  institutionId: string,
+  approval: PlanApprovalRequest,
+) =>
+  request(`${planPath(institutionId)}/plan/approval`, planSchema, {
+    method: 'PUT',
+    json: approval,
+  });
+export const proposeBaseline = (
+  institutionId: string,
+  periodId: string,
+  note: string,
+) =>
+  request(
+    `${planPath(institutionId)}/baselines/${encodeURIComponent(periodId)}/propose`,
+    planSchema,
+    { method: 'POST', json: { note } },
+  );
+export const previewPlanImport = (institutionId: string, csv: string) =>
+  request(
+    `${planPath(institutionId)}/plan/import/preview`,
+    planImportPreviewSchema,
+    {
+      method: 'POST',
+      json: { csv },
+    },
+  );
+export const importPlan = (institutionId: string, csv: string) =>
+  request(`${planPath(institutionId)}/plan/import`, planImportResultSchema, {
+    method: 'POST',
+    json: { csv },
   });
 
 export async function invalidatePlan(

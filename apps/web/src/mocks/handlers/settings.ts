@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import {
   calendarUpdateSchema,
+  riskScaleUpdateSchema,
   institutionCreateSchema,
   institutionImportRequestSchema,
   institutionTypeUpdateSchema,
@@ -163,6 +164,14 @@ function calendar(): CalendarSettings {
       ]),
     ),
     changes: [...db.calendarChanges].reverse(),
+  };
+}
+
+function riskScaleSettings() {
+  const db = getDb();
+  return {
+    riskScale: structuredClone(db.cycle.riskScale),
+    changes: [...(db.riskScaleChanges ?? [])].reverse(),
   };
 }
 
@@ -427,6 +436,68 @@ export const settingsHandlers = [
     return HttpResponse.json(profilesState());
   }),
 
+  /* Risk rating scale: labels for the 1–5 ratings in risk registers (O16). */
+  http.get('/api/settings/risk-scale', async () => {
+    await networkDelay();
+    requireRole('administrator');
+    return HttpResponse.json(riskScaleSettings());
+  }),
+
+  http.put('/api/settings/risk-scale', async ({ request }) => {
+    await networkDelay();
+    const user = requireRole('administrator');
+    const update = await body(request, riskScaleUpdateSchema);
+    const current = getDb().cycle.riskScale;
+    // Labels only: existing ratings keep their numbers, and severity stays their product.
+    const scale = {
+      probability: update.probability.map((label) => label.trim()),
+      impact: update.impact.map((label) => label.trim()),
+      source: update.source.trim(),
+    };
+    const errors: Record<string, string> = {};
+    const changes: string[] = [];
+    for (const axis of ['probability', 'impact'] as const) {
+      if (
+        new Set(scale[axis].map((label) => label.toLowerCase())).size !==
+        scale[axis].length
+      )
+        errors[axis] = 'Give each point of the scale its own label.';
+      if (JSON.stringify(scale[axis]) !== JSON.stringify(current[axis]))
+        changes.push(
+          `${axis === 'probability' ? 'Probability' : 'Impact'} labels → ${scale[axis].map((label, index) => `${index + 1} ${label}`).join(', ')}`,
+        );
+    }
+    if (scale.source !== current.source)
+      changes.push(`Source → ${scale.source}`);
+    if (Object.keys(errors).length)
+      return apiError(
+        422,
+        'Some labels need attention.',
+        'risk_scale_invalid',
+        errors,
+      );
+    if (!changes.length)
+      return apiError(422, 'Nothing has changed.', 'no_change');
+    commit((db) => {
+      db.cycle.riskScale = scale;
+      const summary = changes.join('; ');
+      (db.riskScaleChanges ??= []).push({
+        at: db.businessTime,
+        by: user.displayName,
+        summary,
+        reason: update.reason,
+      });
+      audit(
+        db,
+        user,
+        'settings.risk_scale',
+        { type: 'cycle', id: db.cycle.id },
+        `${summary}. Reason: ${update.reason}`,
+      );
+    });
+    return HttpResponse.json(riskScaleSettings());
+  }),
+
   /* Reporting calendar (FR02). */
   http.get('/api/settings/calendar', async () => {
     await networkDelay();
@@ -467,6 +538,10 @@ export const settingsHandlers = [
     if (before.reviewTargetDays !== counting.reviewTargetDays)
       changes.push(
         `Officer review target ${before.reviewTargetDays} → ${counting.reviewTargetDays} days`,
+      );
+    if (before.proposalLeadDays !== counting.proposalLeadDays)
+      changes.push(
+        `Baseline proposals due ${before.proposalLeadDays} → ${counting.proposalLeadDays} days before each quarter`,
       );
     if (JSON.stringify(before.holidays) !== JSON.stringify(counting.holidays))
       changes.push(

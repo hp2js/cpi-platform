@@ -48,10 +48,10 @@ import {
 } from './queries';
 
 /**
- * Onboarding institutions (FR01). New institutions start with proposed baselines of the
- * mandatory committee milestones for quarters still to open. Quarters that have already opened
- * can take a simulation-only SEEDED HISTORICAL BASELINE (PRD §10.4); without it they stay
- * pending baseline approval, because a baseline cannot be activated after a quarter opens.
+ * Onboarding institutions (FR01). New institutions start with an empty plan: their focal
+ * persons record it and propose each quarter's baseline (FR04). Quarters that have already
+ * opened can take a simulation-only SEEDED HISTORICAL BASELINE (PRD §10.4); without it they
+ * stay pending baseline approval, because a baseline cannot be activated after a quarter opens.
  */
 
 function SeedOption({
@@ -176,8 +176,9 @@ export function AddInstitution({
         <DialogHeader>
           <DialogTitle>Add an institution</DialogTitle>
           <DialogDescription>
-            It gets four reporting obligations and a reviewing officer. Its
-            baselines start with the mandatory CPC and IAO milestones.
+            It gets four reporting obligations, a reviewing officer and an empty
+            plan, which its focal persons fill in and propose to the officer
+            quarter by quarter.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -362,7 +363,12 @@ function PreviewTable({ preview }: { preview: InstitutionImportPreview }) {
     ...preview.rows.filter((row) => !row.errors.length),
   ].slice(0, 200);
   return (
-    <div className="max-h-80 overflow-auto rounded-md border">
+    <div
+      tabIndex={0}
+      role="region"
+      aria-label="Rows in the file"
+      className="max-h-80 overflow-auto rounded-md border"
+    >
       <Table>
         <TableCaption className="sr-only">
           Rows in the file, problems first
@@ -476,8 +482,8 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
               .
             </p>
             <p className="text-sm text-base-dark">
-              Their officers were notified. Baselines for quarters still to open
-              are waiting for officer approval.
+              Their officers were notified. Each institution’s focal persons
+              record its plan and propose each quarter’s baseline.
             </p>
             <DialogFooter>
               <Button onClick={() => setOpen(false)}>Done</Button>
