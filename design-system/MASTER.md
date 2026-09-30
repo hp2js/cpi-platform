@@ -100,8 +100,9 @@ darker than USWDS red-50 so white text passes comfortably (6.6:1 on `secondary`;
 | `accent-cool-dark`    | `#28a0cb` |     | `accent-warm-dark`    | `#a67800` |
 | `accent-cool-darker`  | `#07648d` |     | `accent-warm-darker`  | `#3a2b00` |
 
-Gold (`accent-warm`) is a restrained brand highlight: the wordmark rule and demonstration
-role icons. Use `ink`, `primary` or `accent-warm-darker` text on gold, never white. The cool
+Gold (`accent-warm`) is a restrained brand highlight: the wordmark rule, demonstration role
+icons, and the demonstration panel on the sign-in page (`accent-warm-lighter` fill,
+`accent-warm` border). Use `ink`, `primary` or `accent-warm-darker` text on gold, never white. The cool
 accent and all state colours remain USWDS values.
 
 ### State
@@ -392,11 +393,25 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   DOM order on mobile and wrap on larger screens, so visual and keyboard order agree. Radix
   traps focus, handles Escape and restores focus; confirmations keep their safe cancel action.
   Do not add per-screen overflow fixes; the file viewer alone owns a dedicated preview layout.
+  **One scroll at a time:** a scroll area inside a dialog or drawer keeps its scroll
+  (`overscroll-behavior: contain`, set once in `styles.css`), so reaching the end of a preview,
+  table or list does not scroll the dialog or the page. A scroll area that holds absolutely
+  positioned content (the PDF page text for screen readers) is `relative`, so that content
+  cannot stretch the dialog.
 - **Drawers and popovers.** Drawers fit the dynamic viewport and scroll; headers reserve close
   control space. The close control takes the drawer's text colour, so it stays visible on a
   dark drawer. The combobox search row (icon and input) carries
   `data-focus-within`, so the whole row takes the focus ring, inside the popover edge. Popovers stay within available viewport height and width. Keep all controls
   reachable on short landscape screens and at enlarged text sizes.
+- **Scroll bars.** Never hidden. Tinted: a `base` thumb on a transparent track (3:1 or more on
+  every light surface), a translucent white thumb on purple surfaces (`data-surface="dark"`).
+  The page keeps the browser's scroll bar width, an easier target; inner scroll areas are thin.
+  Set once in `styles.css` (`scrollbar-color`, with a WebKit fallback); never style them per
+  component.
+- **Sign-in page.** One card with the sign-in form; the filled "Sign in" is its only primary
+  action. Demonstration accounts sit in a gold panel below the card ("Trying out the
+  platform?"), with an outline button that opens the drawer, so a demo is easy to find without
+  competing with the form. Nothing floats over the page.
 - **Class merging.** Always use `cn` from `lib/utils.ts`. It knows our custom container names
   and that `text-base` is a colour, not a font size. New tokens must update its configuration
   when needed; otherwise caller overrides can silently fail.

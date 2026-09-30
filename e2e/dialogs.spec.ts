@@ -83,7 +83,9 @@ test('demonstration drawer fits a short phone viewport and returns focus', async
   );
   await page.setViewportSize({ width: 390, height: 340 });
   await page.goto('/sign-in');
-  const trigger = page.getByRole('button', { name: /Demo accounts/ });
+  const trigger = page.getByRole('button', {
+    name: /Explore with a demonstration account/,
+  });
   await trigger.click();
   const dialog = page.getByRole('dialog');
   await withinViewport(page, dialog);

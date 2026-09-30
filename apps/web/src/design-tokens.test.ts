@@ -133,6 +133,9 @@ describe('Adili palette contrast', () => {
     ['base-dark', 'base-lightest'],
     ['base', 'white'],
     ['base', 'canvas'],
+    // The demonstration panel on the sign-in page.
+    ['base-dark', 'accent-warm-lighter'],
+    ['primary', 'accent-warm-lighter'],
     // Disabled text and ticks on the disabled fill, and disabled buttons' text.
     ['disabled-dark', 'disabled-lighter'],
     ['white', 'secondary'],
@@ -157,6 +160,9 @@ describe('Focus indicator contrast', () => {
     ['focus-on-dark', 'primary-dark'],
     // A disabled field still focuses (read-only) or shows its ring beside the fill.
     ['focus', 'disabled-lighter'],
+    // Scroll bar thumbs: base on light surfaces.
+    ['base', 'white'],
+    ['base', 'base-lightest'],
   ])('%s ring is visible on %s', (ring, surface) => {
     const light = Math.max(luminance(ring), luminance(surface));
     const dark = Math.min(luminance(ring), luminance(surface));

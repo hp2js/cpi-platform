@@ -192,7 +192,9 @@ export default function PdfPreview({
         tabIndex={0}
         role="region"
         aria-label={`${title}, page ${pageNumber}`}
-        className="min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
+        // Relative: the page text for screen readers is absolutely positioned, and must stay
+        // inside this scroller rather than stretch the dialog below the page.
+        className="relative min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
       >
         <canvas
           ref={canvas}
