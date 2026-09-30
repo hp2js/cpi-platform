@@ -177,7 +177,11 @@ function NewVersion({
           disabled={incomplete || mutation.isPending}
           aria-describedby={incomplete ? `${id}-hint` : undefined}
         >
-          {mutation.isPending ? 'Uploading…' : 'Record version'}
+          {mutation.isPending
+            ? progress === 1
+              ? 'Saving…'
+              : 'Uploading…'
+            : 'Record version'}
         </Button>
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>

@@ -27,7 +27,21 @@ function send<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    const abort = () => xhr.abort();
+    if (signal?.aborted) {
+      reject(new DOMException('Upload cancelled', 'AbortError'));
+      return;
+    }
     xhr.open('POST', apiUrl(path));
+    xhr.withCredentials = true;
+    xhr.timeout = 120_000;
+    xhr.onloadend = () => signal?.removeEventListener('abort', abort);
+    xhr.ontimeout = () =>
+      reject(
+        new Error(
+          'The upload timed out. Please retry; a completed upload will not be duplicated.',
+        ),
+      );
     xhr.setRequestHeader('Accept', 'application/json');
     xhr.responseType = 'text';
     xhr.upload.onprogress = (event) => {
@@ -71,7 +85,7 @@ function send<T>(
       );
     xhr.onabort = () =>
       reject(new DOMException('Upload cancelled', 'AbortError'));
-    signal?.addEventListener('abort', () => xhr.abort());
+    signal?.addEventListener('abort', abort, { once: true });
     xhr.send(body);
   });
 }

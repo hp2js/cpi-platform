@@ -12,13 +12,17 @@
     "test:integration": "tsc -p tsconfig.build.json && INTEGRATION=1 vitest run --no-file-parallelism --test-timeout=30000",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/database/migrate.ts",
-    "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts"
+    "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts",
+    "storage:migrate": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts migrate",
+    "storage:gc": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts gc"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1143.0",
     "@cpi/contracts": "workspace:*",
     "@nestjs/common": "12.1.0",
     "@nestjs/core": "12.1.0",
     "@nestjs/platform-express": "12.1.0",
+    "@smithy/node-http-handler": "4.12.1",
     "drizzle-orm": "0.45.3",
     "express": "5.2.1",
     "helmet": "8.3.0",

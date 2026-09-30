@@ -5,6 +5,7 @@ export const readinessSchema = z.object({
   services: z.object({
     database: z.enum(['up', 'down']),
     redis: z.enum(['up', 'down']),
+    storage: z.enum(['up', 'down']),
   }),
 });
 export type ReadinessResponse = z.infer<typeof readinessSchema>;

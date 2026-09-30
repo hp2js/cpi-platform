@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 if (!process.argv.includes('--confirm-local-data-loss')) {
   console.error(
-    'This deletes this project’s local PostgreSQL and Redis volumes. Run pnpm db:reset --confirm-local-data-loss to confirm.',
+    'This deletes this project’s local PostgreSQL, Redis and MinIO volumes (including uploaded files). Run pnpm db:reset --confirm-local-data-loss to confirm.',
   );
   process.exit(1);
 }

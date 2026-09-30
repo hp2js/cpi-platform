@@ -34,7 +34,6 @@ import {
   clarifications,
   drafts,
   evidence,
-  evidenceFiles,
   foundationVersions,
   idempotencyKeys,
   institutions,
@@ -47,6 +46,7 @@ import { currentState } from '../database/state';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import { Files } from '../storage/files';
 import { loadReport, ownObligation, toEvidenceItem } from './report';
 import {
   MAX_FILE_BYTES,
@@ -69,6 +69,7 @@ export class ReportingController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    private readonly files: Files,
   ) {}
 
   private get db() {
@@ -157,8 +158,13 @@ export class ReportingController {
   @Roles('institution')
   @UseInterceptors(
     FileInterceptor('file', {
-      // One byte over the limit, so an oversized file reaches the explained 422 below.
-      limits: { fileSize: MAX_FILE_BYTES + 1, files: 1 },
+      limits: {
+        fileSize: MAX_FILE_BYTES,
+        files: 1,
+        fields: 8,
+        fieldSize: 4096,
+        parts: 9,
+      },
       defParamCharset: 'utf8',
     }),
   )
@@ -169,99 +175,107 @@ export class ReportingController {
     @Body() body: { category?: unknown; replaces?: unknown } | undefined,
     @Res({ passthrough: true }) response: Response,
   ): Promise<EvidenceItem> {
-    return write(this.db, async (tx, businessTime) => {
-      const obligation = await ownObligation(tx, user, id);
-      const report = await loadReport(tx, obligation);
-      if (!report.bundle.editable)
-        throw new ApiError(
-          409,
-          'Evidence can only be added while the report is a draft.',
-          'not_editable',
+    return this.files.withUpload((persist) =>
+      write(this.db, async (tx, businessTime) => {
+        const obligation = await ownObligation(tx, user, id);
+        const report = await loadReport(tx, obligation);
+        if (!report.bundle.editable)
+          throw new ApiError(
+            409,
+            'Evidence can only be added while the report is a draft.',
+            'not_editable',
+          );
+        const category = body?.category;
+        const replaces =
+          typeof body?.replaces === 'string' && body.replaces
+            ? body.replaces
+            : undefined;
+        if (
+          !file ||
+          typeof category !== 'string' ||
+          !evidenceCategories.includes(category as never)
+        )
+          throw new ApiError(
+            422,
+            'Choose a file to upload.',
+            'invalid_upload',
+            {
+              file: 'Choose a file to upload.',
+            },
+          );
+        const check = checkUpload(file.originalname, file.buffer);
+        if (!check.ok)
+          throw new ApiError(422, check.message, 'upload_rejected', {
+            file: check.message,
+          });
+        const hash = createHash('sha256').update(file.buffer).digest('hex');
+        const current = report.evidence.filter(
+          (item) => item.supersededBy === null,
         );
-      const category = body?.category;
-      const replaces =
-        typeof body?.replaces === 'string' && body.replaces
-          ? body.replaces
+        // A retried upload of the same file returns the completed record instead of duplicating it.
+        const duplicate = current.find(
+          (item) => item.category === category && item.sha256 === hash,
+        );
+        if (duplicate) {
+          response.status(200);
+          return toEvidenceItem(duplicate);
+        }
+        const previous = replaces
+          ? current.find((item) => item.id === replaces)
           : undefined;
-      if (
-        !file ||
-        typeof category !== 'string' ||
-        !evidenceCategories.includes(category as never)
-      )
-        throw new ApiError(422, 'Choose a file to upload.', 'invalid_upload', {
-          file: 'Choose a file to upload.',
-        });
-      const check = checkUpload(file.originalname, file.buffer);
-      if (!check.ok)
-        throw new ApiError(422, check.message, 'upload_rejected', {
-          file: check.message,
-        });
-      const hash = createHash('sha256').update(file.buffer).digest('hex');
-      const current = report.evidence.filter(
-        (item) => item.supersededBy === null,
-      );
-      // A retried upload of the same file returns the completed record instead of duplicating it.
-      const duplicate = current.find(
-        (item) => item.category === category && item.sha256 === hash,
-      );
-      if (duplicate) {
-        response.status(200);
-        return toEvidenceItem(duplicate);
-      }
-      const previous = replaces
-        ? current.find((item) => item.id === replaces)
-        : undefined;
-      if (replaces && (!previous || previous.category !== category))
-        throw new ApiError(
-          422,
-          'The file being replaced was not found in this report.',
-          'invalid_upload',
-          { file: 'The file being replaced was not found.' },
+        if (replaces && (!previous || previous.category !== category))
+          throw new ApiError(
+            422,
+            'The file being replaced was not found in this report.',
+            'invalid_upload',
+            { file: 'The file being replaced was not found.' },
+          );
+        const used = current.reduce((sum, item) => sum + item.sizeBytes, 0);
+        if (
+          used - (previous?.sizeBytes ?? 0) + file.buffer.byteLength >
+          MAX_SUBMISSION_BYTES
+        )
+          throw new ApiError(
+            422,
+            'A report can include up to 100 MB of evidence.',
+            'upload_rejected',
+            { file: 'A report can include up to 100 MB of evidence.' },
+          );
+        const [item] = await tx
+          .insert(evidence)
+          .values({
+            id: await nextId(tx, 'ev'),
+            institutionId: obligation.institutionId,
+            obligationId: obligation.id,
+            category,
+            fileName: file.originalname,
+            mimeType: check.mimeType,
+            sizeBytes: file.buffer.byteLength,
+            sha256: hash,
+            uploadedAt: businessTime,
+            uploadedBy: user.displayName,
+            version: previous ? previous.version + 1 : 1,
+            predecessorId: previous?.id ?? null,
+            supersededBy: null,
+          })
+          .returning();
+        await persist(tx, item!.id, file.buffer, check.mimeType);
+        if (previous)
+          await tx
+            .update(evidence)
+            .set({ supersededBy: item!.id })
+            .where(eq(evidence.id, previous.id));
+        await this.events.audit(
+          tx,
+          businessTime,
+          user,
+          previous ? 'evidence.replace' : 'evidence.upload',
+          { type: 'evidence', id: item!.id, version: item!.version },
+          `${item!.fileName} (${item!.category}) for ${obligation.id}`,
         );
-      const used = current.reduce((sum, item) => sum + item.sizeBytes, 0);
-      if (used + file.buffer.byteLength > MAX_SUBMISSION_BYTES)
-        throw new ApiError(
-          422,
-          'A report can include up to 100 MB of evidence.',
-          'upload_rejected',
-          { file: 'A report can include up to 100 MB of evidence.' },
-        );
-      const [item] = await tx
-        .insert(evidence)
-        .values({
-          id: await nextId(tx, 'ev'),
-          institutionId: obligation.institutionId,
-          obligationId: obligation.id,
-          category,
-          fileName: file.originalname,
-          mimeType: check.mimeType,
-          sizeBytes: file.buffer.byteLength,
-          sha256: hash,
-          uploadedAt: businessTime,
-          uploadedBy: user.displayName,
-          version: previous ? previous.version + 1 : 1,
-          predecessorId: previous?.id ?? null,
-          supersededBy: null,
-        })
-        .returning();
-      await tx
-        .insert(evidenceFiles)
-        .values({ evidenceId: item!.id, bytes: file.buffer });
-      if (previous)
-        await tx
-          .update(evidence)
-          .set({ supersededBy: item!.id })
-          .where(eq(evidence.id, previous.id));
-      await this.events.audit(
-        tx,
-        businessTime,
-        user,
-        previous ? 'evidence.replace' : 'evidence.upload',
-        { type: 'evidence', id: item!.id, version: item!.version },
-        `${item!.fileName} (${item!.category}) for ${obligation.id}`,
-      );
-      return toEvidenceItem(item!);
-    });
+        return toEvidenceItem(item!);
+      }),
+    );
   }
 
   /**
@@ -340,16 +354,14 @@ export class ReportingController {
     const kind = download === undefined ? 'inline' : 'attachment';
     const disposition = (name: string) =>
       `${kind}; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-    const [stored] = await this.db
-      .select()
-      .from(evidenceFiles)
-      .where(eq(evidenceFiles.evidenceId, id));
+    response.setHeader('Cache-Control', 'private, no-store');
+    const stored = await this.files.read(item);
     if (stored) {
       response
         .type(item.mimeType)
-        .setHeader('Content-Length', String(stored.bytes.byteLength))
+        .setHeader('Content-Length', String(stored.byteLength))
         .setHeader('Content-Disposition', disposition(item.fileName))
-        .send(stored.bytes);
+        .send(stored);
       return;
     }
     // Seeded fixture documents have metadata only: serve a labelled demonstration copy.

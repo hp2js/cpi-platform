@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   customType,
   date,
   integer,
@@ -454,6 +456,7 @@ export const evidence = pgTable('evidence', {
   mimeType: text().notNull(),
   sizeBytes: integer().notNull(),
   sha256: text().notNull(),
+  demonstration: boolean().notNull().default(false),
   uploadedAt: instant().notNull(),
   uploadedBy: text().notNull(),
   version: integer().notNull(),
@@ -461,17 +464,25 @@ export const evidence = pgTable('evidence', {
   supersededBy: text(),
 });
 
-/**
- * Uploaded bytes, stored beside their metadata in the same transaction.
- * ponytail: Postgres bytea is fine for 8 institutions at ≤100 MB per report; move to a private
- * object store (keyed by evidence ID) if storage volume or backup size becomes a concern.
- */
-export const evidenceFiles = pgTable('evidence_files', {
-  evidenceId: text()
-    .primaryKey()
-    .references(() => evidence.id),
-  bytes: bytea().notNull(),
-});
+/** Private object location; bytes remain nullable only for reads/backfill of older uploads. */
+export const evidenceFiles = pgTable(
+  'evidence_files',
+  {
+    evidenceId: text()
+      .primaryKey()
+      .references(() => evidence.id),
+    bytes: bytea(),
+    bucket: text(),
+    objectKey: text(),
+  },
+  (table) => [
+    check(
+      'evidence_files_location',
+      sql`(${table.bytes} IS NOT NULL AND ${table.bucket} IS NULL AND ${table.objectKey} IS NULL) OR (${table.bytes} IS NULL AND ${table.bucket} IS NOT NULL AND ${table.objectKey} IS NOT NULL)`,
+    ),
+    unique('evidence_files_object_unique').on(table.bucket, table.objectKey),
+  ],
+);
 
 export const foundationVersions = pgTable('foundation_versions', {
   id: text().primaryKey(),

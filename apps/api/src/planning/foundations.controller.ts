@@ -23,13 +23,13 @@ import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { nextId, write } from '../database/db';
 import {
   evidence,
-  evidenceFiles,
   foundationReviews,
   foundationVersions,
 } from '../database/schema';
 import { Events, assignedOfficers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
+import { Files } from '../storage/files';
 import { MAX_FILE_BYTES, checkUpload } from '../reporting/rules';
 import { foundationLabels, foundationsFor } from './foundations';
 
@@ -56,6 +56,7 @@ export class FoundationsController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    private readonly files: Files,
   ) {}
 
   private get db() {
@@ -76,7 +77,13 @@ export class FoundationsController {
   @Roles('institution')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: MAX_FILE_BYTES + 1, files: 1 },
+      limits: {
+        fileSize: MAX_FILE_BYTES,
+        files: 1,
+        fields: 8,
+        fieldSize: 4096,
+        parts: 9,
+      },
       defParamCharset: 'utf8',
     }),
   )
@@ -86,113 +93,135 @@ export class FoundationsController {
     @UploadedFile() file: Upload,
     @Body() body: Record<string, unknown> | undefined,
   ): Promise<Foundations> {
-    return write(this.db, async (tx, businessTime) => {
-      if (user.institutionId !== institutionId) throw notFound();
-      if (!file)
-        throw new ApiError(422, 'Choose a file to upload.', 'invalid_upload', {
-          file: 'Choose a file to upload.',
+    return this.files.withUpload((persist) =>
+      write(this.db, async (tx, businessTime) => {
+        if (user.institutionId !== institutionId) throw notFound();
+        if (!file)
+          throw new ApiError(
+            422,
+            'Choose a file to upload.',
+            'invalid_upload',
+            {
+              file: 'Choose a file to upload.',
+            },
+          );
+        const fields = uploadFieldsSchema.safeParse({
+          kind: body?.kind,
+          approvalReference: body?.approvalReference,
+          effectiveFrom: body?.effectiveFrom,
+          claimedChecks: parseJson(body?.claimedChecks),
         });
-      const fields = uploadFieldsSchema.safeParse({
-        kind: body?.kind,
-        approvalReference: body?.approvalReference,
-        effectiveFrom: body?.effectiveFrom,
-        claimedChecks: parseJson(body?.claimedChecks),
-      });
-      if (!fields.success) {
-        const fieldErrors: Record<string, string> = {};
-        for (const issue of fields.error.issues)
-          fieldErrors[issue.path.join('.')] ??= 'Complete this field.';
-        throw new ApiError(
-          422,
-          'Complete the highlighted fields.',
-          'invalid_foundation',
-          fieldErrors,
-        );
-      }
-      const check = checkUpload(file.originalname, file.buffer);
-      if (!check.ok)
-        throw new ApiError(422, check.message, 'upload_rejected', {
-          file: check.message,
-        });
-      const { kind } = fields.data;
-      const [previous] = await tx
-        .select()
-        .from(foundationVersions)
-        .where(
-          and(
-            eq(foundationVersions.institutionId, institutionId),
-            eq(foundationVersions.kind, kind),
-          ),
-        )
-        .orderBy(desc(foundationVersions.version))
-        .limit(1);
-      const evidenceId = await nextId(tx, 'ev');
-      await tx.insert(evidence).values({
-        id: evidenceId,
-        institutionId,
-        obligationId: null,
-        category: kind,
-        fileName: file.originalname,
-        mimeType: check.mimeType,
-        sizeBytes: file.buffer.byteLength,
-        sha256: createHash('sha256').update(file.buffer).digest('hex'),
-        uploadedAt: businessTime,
-        uploadedBy: user.displayName,
-        version: 1,
-        predecessorId: null,
-        supersededBy: null,
-      });
-      await tx.insert(evidenceFiles).values({ evidenceId, bytes: file.buffer });
-      // Supersession keeps the earlier version and its decisions; it never deletes history.
-      await tx
-        .update(foundationVersions)
-        .set({ status: 'superseded', effectiveTo: fields.data.effectiveFrom })
-        .where(
-          and(
-            eq(foundationVersions.institutionId, institutionId),
-            eq(foundationVersions.kind, kind),
-            eq(foundationVersions.status, 'active'),
-          ),
-        );
-      const [version] = await tx
-        .insert(foundationVersions)
-        .values({
-          id: await nextId(tx, 'fv'),
+        if (!fields.success) {
+          const fieldErrors: Record<string, string> = {};
+          for (const issue of fields.error.issues)
+            fieldErrors[issue.path.join('.')] ??= 'Complete this field.';
+          throw new ApiError(
+            422,
+            'Complete the highlighted fields.',
+            'invalid_foundation',
+            fieldErrors,
+          );
+        }
+        const check = checkUpload(file.originalname, file.buffer);
+        if (!check.ok)
+          throw new ApiError(422, check.message, 'upload_rejected', {
+            file: check.message,
+          });
+        const { kind } = fields.data;
+        const [previous] = await tx
+          .select()
+          .from(foundationVersions)
+          .where(
+            and(
+              eq(foundationVersions.institutionId, institutionId),
+              eq(foundationVersions.kind, kind),
+            ),
+          )
+          .orderBy(desc(foundationVersions.version))
+          .limit(1);
+        const hash = createHash('sha256').update(file.buffer).digest('hex');
+        if (
+          previous?.status === 'active' &&
+          previous.approvalReference === fields.data.approvalReference.trim() &&
+          previous.effectiveFrom === fields.data.effectiveFrom &&
+          JSON.stringify(previous.claimedChecks) ===
+            JSON.stringify(fields.data.claimedChecks)
+        ) {
+          const [existing] = await tx
+            .select()
+            .from(evidence)
+            .where(eq(evidence.id, previous.evidenceId));
+          if (existing?.sha256 === hash)
+            return foundationsFor(tx, institutionId, false);
+        }
+        const evidenceId = await nextId(tx, 'ev');
+        await tx.insert(evidence).values({
+          id: evidenceId,
           institutionId,
-          kind,
-          version: (previous?.version ?? 0) + 1,
-          evidenceId,
-          approvalReference: fields.data.approvalReference.trim(),
-          effectiveFrom: fields.data.effectiveFrom,
-          effectiveTo: null,
-          status: 'active',
-          recordedAt: businessTime,
-          claimedChecks: fields.data.claimedChecks,
-          withdrawnReason: null,
-        })
-        .returning();
-      await this.events.audit(
-        tx,
-        businessTime,
-        user,
-        'foundation.upload',
-        { type: 'foundation', id: version!.id, version: version!.version },
-        `${foundationLabels[kind]} v${version!.version}, effective ${version!.effectiveFrom}`,
-      );
-      await this.events.notify(
-        tx,
-        businessTime,
-        version!.id,
-        'foundation.uploaded',
-        await assignedOfficers(tx, institutionId),
-        {
-          title: `New ${foundationLabels[kind].toLowerCase()} version: ${institutionId}`,
-          body: `Version ${version!.version} was recorded and needs review.`,
-          link: `/officer/institutions/${institutionId}`,
-        },
-      );
-      return foundationsFor(tx, institutionId, false);
-    });
+          obligationId: null,
+          category: kind,
+          fileName: file.originalname,
+          mimeType: check.mimeType,
+          sizeBytes: file.buffer.byteLength,
+          sha256: hash,
+          uploadedAt: businessTime,
+          uploadedBy: user.displayName,
+          version: 1,
+          predecessorId: null,
+          supersededBy: null,
+        });
+        await persist(tx, evidenceId, file.buffer, check.mimeType);
+        // Supersession keeps the earlier version and its decisions; it never deletes history.
+        await tx
+          .update(foundationVersions)
+          .set({ status: 'superseded', effectiveTo: fields.data.effectiveFrom })
+          .where(
+            and(
+              eq(foundationVersions.institutionId, institutionId),
+              eq(foundationVersions.kind, kind),
+              eq(foundationVersions.status, 'active'),
+            ),
+          );
+        const [version] = await tx
+          .insert(foundationVersions)
+          .values({
+            id: await nextId(tx, 'fv'),
+            institutionId,
+            kind,
+            version: (previous?.version ?? 0) + 1,
+            evidenceId,
+            approvalReference: fields.data.approvalReference.trim(),
+            effectiveFrom: fields.data.effectiveFrom,
+            effectiveTo: null,
+            status: 'active',
+            recordedAt: businessTime,
+            claimedChecks: fields.data.claimedChecks,
+            withdrawnReason: null,
+          })
+          .returning();
+        await this.events.audit(
+          tx,
+          businessTime,
+          user,
+          'foundation.upload',
+          { type: 'foundation', id: version!.id, version: version!.version },
+          `${foundationLabels[kind]} v${version!.version}, effective ${version!.effectiveFrom}`,
+        );
+        await this.events.notify(
+          tx,
+          businessTime,
+          version!.id,
+          'foundation.uploaded',
+          await assignedOfficers(tx, institutionId),
+          {
+            title: `New ${foundationLabels[kind].toLowerCase()} version: ${institutionId}`,
+            body: `Version ${version!.version} was recorded and needs review.`,
+            link: `/officer/institutions/${institutionId}`,
+          },
+        );
+        return foundationsFor(tx, institutionId, false);
+      }),
+    );
   }
 
   @Post('foundation-versions/:versionId/withdraw')
