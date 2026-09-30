@@ -10,6 +10,8 @@ export default tseslint.config(
       '**/coverage/**',
       'playwright-report/**',
       'test-results/**',
+      // Worktrees that local agent tools create inside the repo (full copies of it).
+      '.kilo/**',
     ],
   },
   js.configs.recommended,
