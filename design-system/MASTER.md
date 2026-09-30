@@ -281,6 +281,17 @@ Only what the app uses. Patterns follow USWDS guidance; React/Radix provide the 
 Tailwind classes in `apps/web/src/components/ui`. Minimum target size is 44 × 44 px for every
 control (stricter than WCAG 2.2's 24 px, as requested).
 
+- **Simulation bar.** Pinned above every signed-in layout (`components/simulation-banner.tsx`),
+  a region named "Simulation status". `accent-warm-lighter` fill, 1 px `accent-warm-dark` bottom
+  edge, `ink` text, a gold `Simulation` tag: the same gold as every other demonstration cue.
+  One line at every width: business time and the scoring profile, with "simulation profile, not
+  official EACC scoring" when the profile is a simulation one (phones: short date and "Not
+  official scoring"). Every value is live from the session and re-read every minute and
+  whenever the tab regains focus; when the run, business time or profile changes (someone
+  advanced or reset the clock), every screen is refetched. "About this simulation" opens a
+  popover explaining business time (with its time zone), the profile and the run, and links
+  staff to where they are managed (administrator: simulation clock and the profile; officers
+  and supervisors: rules in use). It stays when printing; the popover trigger does not.
 - **Header (basic header).** White bar, `base-lighter` bottom border. Wordmark left (product
   name with its 4 px gold rule, no seal), utility links right (inbox, account). Below
   `desktop`, officer, supervisor and admin headers show the wordmark beside the menu button,

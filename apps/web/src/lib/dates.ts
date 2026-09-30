@@ -41,6 +41,16 @@ export function formatDateTime(instant: string) {
   return `${parts.weekday} ${Number(parts.day)} ${MONTHS[Number(parts.month) - 1]} ${parts.year}, ${parts.hour}:${parts.minute} EAT`;
 }
 
+/** Day, month and time only, for tight spaces (the phone simulation bar): `1 Oct, 08:00`. */
+export function formatShortDateTime(instant: string) {
+  const parts = Object.fromEntries(
+    dateTime
+      .formatToParts(new Date(instant))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${Number(parts.day)} ${MONTHS[Number(parts.month) - 1]}, ${parts.hour}:${parts.minute}`;
+}
+
 /** Calendar dates (YYYY-MM-DD) carry no time, so they are formatted without shifting. */
 export function formatCalendarDate(date: string) {
   const [year, month, day] = date.split('-').map(Number);
