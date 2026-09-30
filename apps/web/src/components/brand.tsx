@@ -5,7 +5,7 @@ export function Brand({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       className={
         tone === 'dark'
           ? 'block text-lg leading-tight font-bold text-white'
-          : 'block text-lg leading-tight font-bold text-ink'
+          : 'block border-l-4 border-accent-warm pl-3 text-lg leading-tight font-bold text-primary'
       }
     >
       CPI Platform

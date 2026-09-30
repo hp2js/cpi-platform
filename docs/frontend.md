@@ -39,15 +39,24 @@ For a real write, validate at the server and use Query's mutation state. The agr
 
 ## Styling and components
 
-Tailwind v4 uses the Vite plugin and CSS-first configuration. Semantic theme tokens live only in `src/styles.css`; use `bg-primary`, `text-muted-foreground`, etc. rather than repeating hex colours in screens. Components were generated from the official shadcn/ui registry (new-york style) and are editable local code.
+Tailwind v4 uses the Vite plugin and CSS-first configuration. The canonical specification is
+[design-system/MASTER.md](../design-system/MASTER.md); runtime tokens live in `src/styles.css`.
+The theme combines the USWDS 3 foundation with the previously adopted Adili purple and gold.
+Use semantic classes such as `bg-primary`, `text-ink` and `text-base-dark`. Tailwind's default
+colours, font sizes, breakpoints, radii and shadows are reset; old shadcn theme names such as
+`text-muted-foreground` have no CSS.
 
-Add primitives from the repo root:
+Local components originated from shadcn and now follow the project's USWDS adaptation. Keep
+Radix behavior for dialogs, selects, menus and focus management. Do not install USWDS JavaScript
+alongside Radix or overwrite these wrappers with generated defaults. New components should
+reuse the patterns and tokens in MASTER; declare and pin any new dependency in this workspace.
 
-```sh
-pnpm dlx shadcn@4.21.0 add <component> -c apps/web
-```
-
-Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. The pinned CLI currently installs an unrelated npm package named `cn` and imports `cn` from it: remove it with `pnpm --filter @cpi/web remove cn` and point the imports back to `@/lib/utils`. If it offers to overwrite an existing component, decline and write the new wrapper by hand (as done for `alert-dialog.tsx`). Avoid installing another form/router/table system alongside the agreed libraries.
+Use `cn` from `@/lib/utils` when accepting class overrides. Its merge configuration understands
+our custom container widths and distinguishes `text-base` (colour) from font-size classes.
+Dialog and alert-dialog wrappers handle viewport limits, scrolling, wrapping and footer order.
+Use a width override for wider content; do not repeat overflow fixes in screens. Drawers and
+popovers also constrain themselves to the viewport. Preserve title/description associations,
+focus trapping, Escape and focus restoration when adapting them.
 
 ## Selects, long lists and fixed chrome
 
@@ -57,7 +66,10 @@ Review generated changes, retain theme tokens, pin newly added dependency versio
 
 ## Adili palette source
 
-The public [Adili portal](https://adili.eacc.go.ke/) supplies the visual reference. Its [stylesheet](https://adili.eacc.go.ke/css/app.css) defines primary `#530b61` and button hover `#470952`; the portal welcome text uses `#ffe79b`. The app uses that purple for primary actions and gold as a light accent with dark text. Neutral/background/destructive colours are local supporting tokens, not claimed official brand specifications. No EACC logo or official endorsement is reproduced.
+The retained brand colours and their provenance are documented once in
+[MASTER's colour section](../design-system/MASTER.md#colour). Purple is for primary actions,
+gold for restrained brand accents with dark text; validation and status retain their USWDS
+semantic colours. No EACC logo or official endorsement is reproduced.
 
 Keep text contrast, visible focus, labels, keyboard access, semantic headings and textual status indicators. Do not communicate validation or readiness using colour alone. Verify changes at narrow/mobile widths and with keyboard-only use.
 

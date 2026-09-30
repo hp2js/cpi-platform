@@ -262,7 +262,7 @@ function DemoAccountButton({
           {pending ? 'Signing in…' : 'Sign in'}
         </span>
         <ChevronRight
-          className="size-4 text-base-dark transition-colors group-hover:translate-x-0.5 group-hover:text-primary"
+          className="size-4 text-base-dark transition-colors group-hover:text-primary"
           aria-hidden="true"
         />
       </span>
@@ -301,7 +301,7 @@ function RoleGroup({
       className="grid scroll-mt-4 gap-2"
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-dark text-primary">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-warm text-primary">
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">

@@ -74,3 +74,36 @@ describe('pageSlots', () => {
     expect(pageSlots(9, 10)).toEqual([0, null, 8, 9]);
   });
 });
+
+// Read runtime values so palette edits cannot silently regress branded text contrast.
+const styles = import.meta.glob<string>('./styles.css', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})['./styles.css']!;
+function luminance(name: string) {
+  const hex = styles.match(
+    new RegExp(`--color-${name}:\\s*(#[a-f0-9]{6})`, 'i'),
+  )?.[1];
+  if (!hex) throw new Error(`Missing colour token ${name}`);
+  const [r, g, b] = [1, 3, 5].map((start) => {
+    const value = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return r! * 0.2126 + g! * 0.7152 + b! * 0.0722;
+}
+describe('Adili brand contrast', () => {
+  it.each([
+    ['white', 'primary'],
+    ['white', 'primary-dark'],
+    ['white', 'primary-darker'],
+    ['primary', 'primary-lighter'],
+    ['primary', 'accent-warm'],
+    ['ink', 'accent-warm'],
+    ['accent-warm-darker', 'accent-warm'],
+  ])('%s text is readable on %s', (foreground, background) => {
+    const light = Math.max(luminance(foreground), luminance(background));
+    const dark = Math.min(luminance(foreground), luminance(background));
+    expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});

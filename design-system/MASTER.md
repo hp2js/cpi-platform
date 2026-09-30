@@ -1,8 +1,13 @@
 # CPI Platform design system (MASTER)
 
-The visual language follows the U.S. Web Design System (USWDS 3) default theme, rebuilt in
-Tailwind v4 with no USWDS package and no styled component library. Values below were taken
-from designsystem.digital.gov (design tokens, state tokens, utilities, settings) on 2026-09-28.
+The visual language uses the U.S. Web Design System (USWDS 3) foundation with an Adili-inspired
+brand theme. Tailwind v4 implements the tokens; local React components and unstyled Radix
+primitives implement the controls. The USWDS CSS/JavaScript package is not installed. This is
+a local adaptation, not a claim of identical USWDS markup or certified compliance.
+
+USWDS supplies typography, spacing, hierarchy, form/error patterns and state colours. Adili
+supplies purple primary actions and a restrained gold accent. See [USWDS theme tokens](https://designsystem.digital.gov/design-tokens/color/theme-tokens/)
+and [modal guidance](https://designsystem.digital.gov/components/modal/).
 
 This is not a U.S. government site: no "official website" banner, federal seals or agency
 branding. The product name and a plain wordmark are the only brand elements.
@@ -24,7 +29,7 @@ If the two disagree, fix one of them in the same change.
 
 ## Colour
 
-Theme tokens, USWDS default theme. Classes: `bg-primary`, `text-ink`, `border-base-lighter`, …
+Semantic theme tokens, USWDS foundation with Adili brand overrides. Classes: `bg-primary`, `text-ink`, `border-base-lighter`, …
 
 ### Base (neutrals)
 
@@ -41,16 +46,21 @@ Theme tokens, USWDS default theme. Classes: `bg-primary`, `text-ink`, `border-ba
 | `ink`           | gray-90      | `#1b1b1b` | Body text, table borders                          |
 | `black`         | —            | `#000000` | Overlay scrim only (at reduced opacity)           |
 
-### Primary (blue)
+### Primary (Adili purple)
 
-| Token             | System token  | Hex       | Use                                      |
-| ----------------- | ------------- | --------- | ---------------------------------------- |
-| `primary-lighter` | blue-10       | `#d9e8f6` | Selected row, current-item fill          |
-| `primary-light`   | blue-30       | `#73b3e7` | Decorative accents only                  |
-| `primary`         | blue-60v      | `#005ea2` | Buttons, links (7.1:1), current nav item |
-| `primary-vivid`   | blue-warm-60v | `#0050d8` | Rarely: emphasis on white                |
-| `primary-dark`    | blue-warm-70v | `#1a4480` | Button hover, visited link               |
-| `primary-darker`  | blue-warm-80v | `#162e51` | Button active, dark header strip         |
+The previously adopted [Adili portal](https://adili.eacc.go.ke/) palette used primary
+`#530b61`, hover `#470952` and gold `#ffe79b` (recorded from its stylesheet and welcome text).
+The remaining purple/gold steps below are local supporting shades, not official EACC tokens.
+Use semantic classes rather than hex values in components. Branding does not replace state colours.
+
+| Token             | Hex       | Use                                              |
+| ----------------- | --------- | ------------------------------------------------ |
+| `primary-lighter` | `#f1e8f4` | Selected row, current-item fill                  |
+| `primary-light`   | `#c6a2d0` | Decorative accents only                          |
+| `primary`         | `#530b61` | Buttons with white text, links, current nav item |
+| `primary-vivid`   | `#702082` | Occasional emphasis on white                     |
+| `primary-dark`    | `#470952` | Button hover, visited link                       |
+| `primary-darker`  | `#35063e` | Button active, dark header strip                 |
 
 ### Secondary (red)
 
@@ -70,11 +80,15 @@ never confused with error messages.
 
 | Token                 | Hex       |     | Token                 | Hex       |
 | --------------------- | --------- | --- | --------------------- | --------- |
-| `accent-cool-lighter` | `#e1f3f8` |     | `accent-warm-lighter` | `#f2e4d4` |
-| `accent-cool-light`   | `#97d4ea` |     | `accent-warm-light`   | `#ffbc78` |
-| `accent-cool`         | `#00bde3` |     | `accent-warm`         | `#fa9441` |
-| `accent-cool-dark`    | `#28a0cb` |     | `accent-warm-dark`    | `#c05600` |
-| `accent-cool-darker`  | `#07648d` |     | `accent-warm-darker`  | `#775540` |
+| `accent-cool-lighter` | `#e1f3f8` |     | `accent-warm-lighter` | `#fff8e3` |
+| `accent-cool-light`   | `#97d4ea` |     | `accent-warm-light`   | `#fff0bd` |
+| `accent-cool`         | `#00bde3` |     | `accent-warm`         | `#ffe79b` |
+| `accent-cool-dark`    | `#28a0cb` |     | `accent-warm-dark`    | `#a67800` |
+| `accent-cool-darker`  | `#07648d` |     | `accent-warm-darker`  | `#3a2b00` |
+
+Gold (`accent-warm`) is a restrained brand highlight: the wordmark rule and demonstration
+role icons. Use `ink`, `primary` or `accent-warm-darker` text on gold, never white. The cool
+accent and all state colours remain USWDS values.
 
 ### State
 
@@ -110,7 +124,7 @@ itself changes density (its root font size setting). It is a percentage so a per
 text size still applies. **Pixel values in the tables below are at 16 px per rem; multiply by
 0.875 for what renders** (body 14 px, h1 28 px, `p-4` 14 px).
 
-Two things do not scale: breakpoints (media queries use the browser default, so `tablet` is
+Three things do not scale: the focus outline (4 px), breakpoints (media queries use the browser default, so `tablet` is
 still 640 px) and the minimum target, `--spacing-touch: 44px`, used as `min-h-touch`,
 `size-touch`, `min-w-touch` on every control. Do not use `h-11`/`min-h-11` for targets; the
 guard test rejects them.
@@ -219,7 +233,7 @@ border instead.
 
 ## Components
 
-Only what the app uses. Markup follows the USWDS component's structure and states; styling is
+Only what the app uses. Patterns follow USWDS guidance; React/Radix provide the accessible semantics and behavior. Styling is
 Tailwind classes in `apps/web/src/components/ui`. Minimum target size is 44 × 44 px for every
 control (stricter than WCAG 2.2's 24 px, as requested).
 
@@ -239,8 +253,9 @@ control (stricter than WCAG 2.2's 24 px, as requested).
 - **Form fields.** Label above the control (`text-sm`, normal weight, `ink`), hint below
   the label (`text-xs`, `base`), then the error message, then the control. Controls: 44 px high,
   1 px `base-dark` border, square corners, white fill, max width `mobile-lg` (480 px) unless a
-  table cell or full-width textarea. Use native `<select>`, checkbox and radio inputs styled
-  USWDS-style (tile variant for important choices).
+  table cell or full-width textarea. Use `SelectField` (Radix Select) for short fixed lists, `Combobox` for searchable lists,
+  and the existing checkbox/radio wrappers; their visual states follow USWDS. Do not mix
+  USWDS JavaScript with Radix on the same control.
 - **Error state (`usa-form-group--error`).** The group gets a 4 px `error-dark` left border
   and 16 px left padding; the message is bold `error-dark` text with an `id`, placed between
   label/hint and control; the control gets a 4 px `error-dark` border, `aria-invalid="true"`
@@ -277,6 +292,20 @@ control (stricter than WCAG 2.2's 24 px, as requested).
 - **Glossary** (`components/glossary.tsx`). A USWDS-style disclosure whose summary names the
   terms it defines, placed on the screens where those terms appear. Terms in our own copy
   are spelled out on first use, e.g. "Corruption Prevention Committee (CPC)".
+- **Dialogs and confirmations.** Centered white panels, `rounded-lg`, `shadow-3`, black 50%
+  scrim. Width is viewport minus 2rem, capped at `mobile-lg`; use `tablet:max-w-tablet`,
+  `tablet:max-w-measure` or `tablet:max-w-desktop` for genuinely wider content. Height is
+  capped at `calc(100dvh - 2rem)` with internal vertical scrolling. Keep a title and description,
+  reserve space for the 44 px close control, and let long titles wrap. Footer buttons follow
+  DOM order on mobile and wrap on larger screens, so visual and keyboard order agree. Radix
+  traps focus, handles Escape and restores focus; confirmations keep their safe cancel action.
+  Do not add per-screen overflow fixes; the file viewer alone owns a dedicated preview layout.
+- **Drawers and popovers.** Drawers fit the dynamic viewport and scroll; headers reserve close
+  control space. Popovers stay within available viewport height and width. Keep all controls
+  reachable on short landscape screens and at enlarged text sizes.
+- **Class merging.** Always use `cn` from `lib/utils.ts`. It knows our custom container names
+  and that `text-base` is a colour, not a font size. New tokens must update its configuration
+  when needed; otherwise caller overrides can silently fail.
 - **Step indicator.** No multi-step flow exists yet; do not build it until one does.
 
 Behaviour for dialogs, menus, popovers and tooltips (focus trapping, escape, return focus)

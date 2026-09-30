@@ -23,11 +23,11 @@ function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
   return (
     <AlertDialogPrimitive.Portal>
-      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70" />
+      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-white p-6 shadow-3 tablet:max-w-mobile-lg',
+          'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-mobile-lg -translate-x-1/2 -translate-y-1/2 grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-white p-6 text-ink shadow-3',
           className,
         )}
         {...props}
@@ -42,7 +42,10 @@ function AlertDialogHeader({
 }: React.ComponentProps<'div'>) {
   return (
     <div
-      className={cn('flex flex-col gap-2 text-left', className)}
+      className={cn(
+        'flex min-w-0 flex-col gap-2 text-left wrap-anywhere',
+        className,
+      )}
       {...props}
     />
   );
@@ -55,7 +58,7 @@ function AlertDialogFooter({
   return (
     <div
       className={cn(
-        'flex flex-col-reverse gap-2 tablet:flex-row tablet:justify-end',
+        'flex flex-col gap-2 tablet:flex-row tablet:flex-wrap tablet:justify-end',
         className,
       )}
       {...props}
@@ -81,7 +84,7 @@ function AlertDialogDescription({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
   return (
     <AlertDialogPrimitive.Description
-      className={cn('text-sm text-ink', className)}
+      className={cn('text-sm text-base-dark', className)}
       {...props}
     />
   );

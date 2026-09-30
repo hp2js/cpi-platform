@@ -175,7 +175,7 @@ function FormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className={`max-h-[90svh] overflow-y-auto ${wide ? 'tablet:max-w-measure' : 'tablet:max-w-mobile-lg'}`}
+        className={`${wide ? 'tablet:max-w-measure' : 'tablet:max-w-mobile-lg'}`}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -1077,7 +1077,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
           Import from CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
+      <DialogContent className="tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Import your plan</DialogTitle>
           <DialogDescription>

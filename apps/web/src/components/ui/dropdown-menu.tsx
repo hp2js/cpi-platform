@@ -39,7 +39,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-base-light bg-white py-1 text-ink shadow-2',
+          'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] max-w-[calc(100vw-2rem)] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-base-light bg-white py-1 text-ink shadow-2',
           className,
         )}
         {...props}
@@ -71,7 +71,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "relative flex cursor-default items-center gap-2 min-h-touch px-3 py-2 text-sm outline-hidden select-none focus:bg-primary-lighter focus:text-primary-darker data-[disabled]:pointer-events-none data-[disabled]:text-disabled-dark data-[inset]:pl-8 data-[variant=destructive]:text-error-dark data-[variant=destructive]:focus:bg-error-lighter data-[variant=destructive]:focus:text-error-darker [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-base-dark data-[variant=destructive]:*:[svg]:text-destructive!",
+        "relative flex cursor-default items-center gap-2 min-h-touch px-3 py-2 text-sm outline-hidden select-none focus:bg-primary-lighter focus:text-primary-darker data-[disabled]:pointer-events-none data-[disabled]:text-disabled-dark data-[inset]:pl-8 data-[variant=destructive]:text-error-dark data-[variant=destructive]:focus:bg-error-lighter data-[variant=destructive]:focus:text-error-darker [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-base-dark data-[variant=destructive]:*:[svg]:text-error-dark!",
         className,
       )}
       {...props}
@@ -224,7 +224,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border border-base-light bg-white py-1 text-ink shadow-3',
+        'z-50 min-w-[8rem] max-w-[calc(100vw-2rem)] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border border-base-light bg-white py-1 text-ink shadow-3',
         className,
       )}
       {...props}

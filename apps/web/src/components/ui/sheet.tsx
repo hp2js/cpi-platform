@@ -32,7 +32,7 @@ function SheetOverlay({
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
-      className={cn('fixed inset-0 z-50 bg-black/70', className)}
+      className={cn('fixed inset-0 z-50 bg-black/50', className)}
       {...props}
     />
   );
@@ -54,11 +54,11 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'fixed z-50 flex flex-col gap-4 bg-white shadow-3',
+          'fixed z-50 flex max-h-dvh max-w-full flex-col gap-4 overflow-y-auto overscroll-contain bg-white text-ink shadow-3',
           side === 'right' &&
-            'inset-y-0 right-0 h-full w-3/4 border-l tablet:max-w-mobile-lg',
+            'inset-y-0 right-0 h-dvh w-3/4 border-l tablet:max-w-mobile-lg',
           side === 'left' &&
-            'inset-y-0 left-0 h-full w-3/4 border-r tablet:max-w-mobile-lg',
+            'inset-y-0 left-0 h-dvh w-3/4 border-r tablet:max-w-mobile-lg',
           side === 'top' && 'inset-x-0 top-0 h-auto border-b',
           side === 'bottom' && 'inset-x-0 bottom-0 h-auto border-t',
           className,
@@ -81,7 +81,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn('flex flex-col gap-2 p-4', className)}
+      className={cn('flex shrink-0 flex-col gap-2 p-4 pr-12', className)}
       {...props}
     />
   );
@@ -91,7 +91,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn('mt-auto flex flex-col gap-2 p-4', className)}
+      className={cn('mt-auto flex shrink-0 flex-col gap-2 p-4', className)}
       {...props}
     />
   );
@@ -117,7 +117,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn('text-sm text-ink', className)}
+      className={cn('text-sm text-base-dark', className)}
       {...props}
     />
   );
