@@ -41,7 +41,10 @@ For a real write, validate at the server and use Query's mutation state. The agr
 
 Tailwind v4 uses the Vite plugin and CSS-first configuration. The canonical specification is
 [design-system/MASTER.md](../design-system/MASTER.md); runtime tokens live in `src/styles.css`.
-The theme combines the USWDS 3 foundation with the previously adopted Adili purple and gold.
+The theme is the USWDS 3 foundation (type scale, spacing, radii, form and alert patterns,
+state colours, focus) dressed in the Adili palette: purple primary, gold accent, purple-tinted
+neutrals, the Adili destructive red and a tinted `canvas` page background behind white
+surfaces. Token names stay USWDS's, so a palette change never touches component classes.
 Use semantic classes such as `bg-primary`, `text-ink` and `text-base-dark`. Tailwind's default
 colours, font sizes, breakpoints, radii and shadows are reset; old shadcn theme names such as
 `text-muted-foreground` have no CSS.
@@ -58,6 +61,20 @@ Use a width override for wider content; do not repeat overflow fixes in screens.
 popovers also constrain themselves to the viewport. Preserve title/description associations,
 focus trapping, Escape and focus restoration when adapting them.
 
+- **Confirmations.** An `AlertDialogAction` that deletes, discards or replaces work takes
+  `variant="destructive"` (Adili red); every other confirmation keeps the primary style, and
+  the safe choice is always the `AlertDialogCancel` beside it.
+- **Drawers on dark surfaces.** The sheet's close control uses the current text colour, so a
+  drawer that sets `bg-primary text-white` (the admin navigation) keeps it visible.
+- **Side-by-side fields.** Fields in a two-column row share their rows with CSS subgrid
+  (`Field aligned` in `features/planning/plan-editor.tsx`), so controls line up even when only
+  one field has a hint or an error. The parent grid sets the columns and `gap-y-2`.
+- **Inputs inside popovers** (the combobox search) carry `data-focus-inset`, which draws the
+  4 px focus outline inside the field where the popover edge cannot clip it.
+- **Layouts.** Pages sit on `bg-canvas`; headers, navigation, cards, tables and dialogs are
+  white. The admin console keeps its Adili purple sidebar; the other roles use a white side
+  navigation. Below `desktop`, every header shows the wordmark beside the menu button.
+
 ## Selects, long lists and fixed chrome
 
 - **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type.
@@ -66,10 +83,14 @@ focus trapping, Escape and focus restoration when adapting them.
 
 ## Adili palette source
 
-The retained brand colours and their provenance are documented once in
-[MASTER's colour section](../design-system/MASTER.md#colour). Purple is for primary actions,
-gold for restrained brand accents with dark text; validation and status retain their USWDS
-semantic colours. No EACC logo or official endorsement is reproduced.
+The brand colours and their provenance are documented once in
+[MASTER's colour section](../design-system/MASTER.md#colour). They are the values of the Adili
+theme the app used before the USWDS migration (`apps/web/src/styles.css` at `09078d5^`),
+recovered onto USWDS token names: purple for primary actions, gold for restrained accents with
+dark text, purple-tinted neutrals for text, borders and surfaces, and the Adili red for
+destructive actions. Validation and status keep their USWDS state colours, and focus stays
+USWDS blue. `src/design-tokens.test.ts` reads `styles.css` and fails if any text/surface pair
+drops below 4.5:1. No EACC logo or official endorsement is reproduced.
 
 Keep text contrast, visible focus, labels, keyboard access, semantic headings and textual status indicators. Do not communicate validation or readiness using colour alone. Verify changes at narrow/mobile widths and with keyboard-only use.
 

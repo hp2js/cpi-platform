@@ -1,12 +1,14 @@
 # CPI Platform design system (MASTER)
 
-The visual language uses the U.S. Web Design System (USWDS 3) foundation with an Adili-inspired
-brand theme. Tailwind v4 implements the tokens; local React components and unstyled Radix
+The visual language uses the U.S. Web Design System (USWDS 3) foundation with the Adili
+palette. Tailwind v4 implements the tokens; local React components and unstyled Radix
 primitives implement the controls. The USWDS CSS/JavaScript package is not installed. This is
 a local adaptation, not a claim of identical USWDS markup or certified compliance.
 
-USWDS supplies typography, spacing, hierarchy, form/error patterns and state colours. Adili
-supplies purple primary actions and a restrained gold accent. See [USWDS theme tokens](https://designsystem.digital.gov/design-tokens/color/theme-tokens/)
+USWDS supplies typography, spacing, hierarchy, form/error patterns, state colours and focus.
+Adili supplies the palette: purple primary actions, a restrained gold accent, purple-tinted
+neutrals for text, borders and surfaces, and its red for destructive actions. Token names stay
+USWDS's (`base-dark`, `secondary` …), so components never name a hex value or a brand. See [USWDS theme tokens](https://designsystem.digital.gov/design-tokens/color/theme-tokens/)
 and [modal guidance](https://designsystem.digital.gov/components/modal/).
 
 This is not a U.S. government site: no "official website" banner, federal seals or agency
@@ -29,22 +31,30 @@ If the two disagree, fix one of them in the same change.
 
 ## Colour
 
-Semantic theme tokens, USWDS foundation with Adili brand overrides. Classes: `bg-primary`, `text-ink`, `border-base-lighter`, …
+Semantic theme tokens: USWDS names carrying the Adili palette. Classes: `bg-primary`,
+`text-ink`, `border-base-lighter`, … The values are those of the app's Adili theme before the
+USWDS migration (`apps/web/src/styles.css` at `09078d5^`), extended into full scales where
+USWDS needs more steps. `apps/web/src/design-tokens.test.ts` reads `styles.css` and fails if
+any text/surface pair used below drops under 4.5:1.
 
-### Base (neutrals)
+### Base (Adili neutrals)
 
-| Token           | System token | Hex       | Use                                               |
-| --------------- | ------------ | --------- | ------------------------------------------------- |
-| `white`         | —            | `#ffffff` | Page and surface background                       |
-| `base-lightest` | gray-5       | `#f0f0f0` | Subtle panels, table stripes, disabled field fill |
-| `base-lighter`  | gray-cool-10 | `#dfe1e2` | Card borders, dividers, table header fill         |
-| `base-light`    | gray-cool-30 | `#a9aeb1` | Decorative borders only (fails 3:1 against white) |
-| `base`          | gray-cool-50 | `#71767a` | Hint text on white (4.6:1): use sparingly         |
-| `base-dark`     | gray-cool-60 | `#565c65` | Secondary text (6.9:1), form control borders      |
-| `base-darker`   | gray-cool-70 | `#3d4551` | Strong secondary text                             |
-| `base-darkest`  | gray-90      | `#1b1b1b` | Same as ink                                       |
-| `ink`           | gray-90      | `#1b1b1b` | Body text, table borders                          |
-| `black`         | —            | `#000000` | Overlay scrim only (at reduced opacity)           |
+Purple-tinted greys from the Adili theme. Pages sit on `canvas`; headers, navigation, cards,
+tables and dialogs are `white`.
+
+| Token           | Adili source     | Hex       | Use                                                   |
+| --------------- | ---------------- | --------- | ----------------------------------------------------- |
+| `white`         | card             | `#ffffff` | Surfaces: header, navigation, cards, tables, dialogs  |
+| `canvas`        | background       | `#faf8fb` | Page background behind the surfaces                   |
+| `base-lightest` | muted            | `#f1edf3` | Subtle panels, table stripes, disabled field fill     |
+| `base-lighter`  | border           | `#ddd5e1` | Card borders, dividers, table header fill             |
+| `base-light`    | input            | `#b7adbc` | Decorative borders only (fails 3:1 against white)     |
+| `base`          | (extended)       | `#736a79` | Hint text: 5.2:1 on white, 4.9:1 on canvas. Sparingly |
+| `base-dark`     | muted-foreground | `#635b69` | Secondary text (6.5:1), form control borders          |
+| `base-darker`   | (extended)       | `#463d4c` | Strong secondary text (10.3:1)                        |
+| `base-darkest`  | foreground       | `#271e2d` | Same as ink                                           |
+| `ink`           | foreground       | `#271e2d` | Body text (16:1 on white), table borders              |
+| `black`         | —                | `#000000` | Overlay scrim only (at reduced opacity)               |
 
 ### Primary (Adili purple)
 
@@ -62,19 +72,22 @@ Use semantic classes rather than hex values in components. Branding does not rep
 | `primary-dark`    | `#470952` | Button hover, visited link                       |
 | `primary-darker`  | `#35063e` | Button active, dark header strip                 |
 
-### Secondary (red)
+### Secondary (Adili destructive red)
 
-In USWDS "secondary" is red. It is used for destructive buttons and nothing else, so it is
-never confused with error messages.
+As in USWDS, "secondary" is the destructive colour: destructive buttons and the confirming
+action of a destructive dialog (`AlertDialogAction variant="destructive"`), nothing else, so it
+is never confused with error messages. The values are the Adili theme's destructive red,
+darker than USWDS red-50 so white text passes comfortably (6.6:1 on `secondary`; USWDS's
+`#d83933` gives 4.6:1).
 
-| Token               | System token | Hex       |
-| ------------------- | ------------ | --------- |
-| `secondary-lighter` | red-cool-10  | `#f3e1e4` |
-| `secondary-light`   | red-30       | `#f2938c` |
-| `secondary`         | red-50       | `#d83933` |
-| `secondary-vivid`   | red-cool-50v | `#e41d3d` |
-| `secondary-dark`    | red-60v      | `#b50909` |
-| `secondary-darker`  | red-70v      | `#8b0a03` |
+| Token               | Hex       |
+| ------------------- | --------- |
+| `secondary-lighter` | `#fef3f2` |
+| `secondary-light`   | `#fda29b` |
+| `secondary`         | `#b42318` |
+| `secondary-vivid`   | `#d92d20` |
+| `secondary-dark`    | `#912018` |
+| `secondary-darker`  | `#7a1a14` |
 
 ### Accent
 
@@ -238,12 +251,16 @@ Tailwind classes in `apps/web/src/components/ui`. Minimum target size is 44 × 4
 control (stricter than WCAG 2.2's 24 px, as requested).
 
 - **Header (basic header).** White bar, `base-lighter` bottom border. Wordmark left (product
-  name, no seal), utility links right (inbox, account). Primary nav: text links in `ink`,
+  name with its 4 px gold rule, no seal), utility links right (inbox, account). Below
+  `desktop`, officer, supervisor and admin headers show the wordmark beside the menu button,
+  so every screen names the product. Primary nav: text links in `ink`,
   bold; the current item has a 4 px `primary` bottom bar and `primary` text (not colour alone:
   the bar and `aria-current="page"`). Institution layout: tabs from `tablet`, a bottom bar below
   it (4 items, labels always visible, current item has a 4 px top bar). Officer, supervisor and
   admin layouts: a side navigation from `desktop` (usa-sidenav: current item has a 4 px left bar
-  and bold text) and an "Open navigation" button with a drawer below it.
+  and bold text) and an "Open navigation" button with a drawer below it. Officer and supervisor
+  navigation is white; the admin console keeps the Adili `primary` sidebar with white text, a
+  white current-item bar and the wordmark's gold rule, in the drawer as well.
 - **Buttons.** `min-h-touch` (44 px), padding 12 × 20 px, `text-md` bold, `rounded-md`.
   Default: `primary` → hover `primary-dark` → active `primary-darker`. Outline: white, inset
   2 px `primary` border, `primary` text. Secondary (destructive): `secondary` → `secondary-dark`
@@ -253,7 +270,9 @@ control (stricter than WCAG 2.2's 24 px, as requested).
 - **Form fields.** Label above the control (`text-sm`, normal weight, `ink`), hint below
   the label (`text-xs`, `base`), then the error message, then the control. Controls: 44 px high,
   1 px `base-dark` border, square corners, white fill, max width `mobile-lg` (480 px) unless a
-  table cell or full-width textarea. Use `SelectField` (Radix Select) for short fixed lists, `Combobox` for searchable lists,
+  table cell or full-width textarea. Fields side by side in a row share the row's lines with CSS
+  subgrid (label, hint, control, error), so their controls line up even when only one has a
+  hint or an error. Use `SelectField` (Radix Select) for short fixed lists, `Combobox` for searchable lists,
   and the existing checkbox/radio wrappers; their visual states follow USWDS. Do not mix
   USWDS JavaScript with Radix on the same control.
 - **Error state (`usa-form-group--error`).** The group gets a 4 px `error-dark` left border
@@ -266,7 +285,8 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   fill, `ink` text, padding 16 × 20 px, square corners, icon + bold heading + body. Variants:
   info, success, warning, error, and slim (no heading). `role="alert"` only for errors that
   just happened; otherwise `role="status"` or none.
-- **Cards.** White, 2 px `base-lighter` border, `rounded-lg`, no shadow. Header (bold
+- **Cards.** White, 1 px `base-lighter` border (the Adili weight; every bordered panel uses
+  the same one), `rounded-lg`, no shadow. Header (bold
   heading), body, footer (actions). Cards group related content; they are not links unless
   the whole card has one clear destination.
 - **Tables.** Borderless USWDS variant: 1 px `ink` bottom border under the header, 1 px
@@ -296,12 +316,16 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   scrim. Width is viewport minus 2rem, capped at `mobile-lg`; use `tablet:max-w-tablet`,
   `tablet:max-w-measure` or `tablet:max-w-desktop` for genuinely wider content. Height is
   capped at `calc(100dvh - 2rem)` with internal vertical scrolling. Keep a title and description,
-  reserve space for the 44 px close control, and let long titles wrap. Footer buttons follow
+  reserve space for the 44 px close control, and let long titles wrap. The confirming action of
+  a destructive dialog (delete, discard, start a new run) is `variant="destructive"`; the
+  safe `Cancel`/`Keep` action sits beside it. Footer buttons follow
   DOM order on mobile and wrap on larger screens, so visual and keyboard order agree. Radix
   traps focus, handles Escape and restores focus; confirmations keep their safe cancel action.
   Do not add per-screen overflow fixes; the file viewer alone owns a dedicated preview layout.
 - **Drawers and popovers.** Drawers fit the dynamic viewport and scroll; headers reserve close
-  control space. Popovers stay within available viewport height and width. Keep all controls
+  control space. The close control takes the drawer's text colour, so it stays visible on a
+  dark drawer. A text input inside a popover (the combobox search) carries
+  `data-focus-inset` so its focus outline is drawn inside and never clipped. Popovers stay within available viewport height and width. Keep all controls
   reachable on short landscape screens and at enlarged text sizes.
 - **Class merging.** Always use `cn` from `lib/utils.ts`. It knows our custom container names
   and that `text-base` is a colour, not a font size. New tokens must update its configuration
