@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { pageSlots } from '@/components/list-controls';
 
@@ -75,12 +77,10 @@ describe('pageSlots', () => {
   });
 });
 
-// Read runtime values so palette edits cannot silently regress branded text contrast.
-const styles = import.meta.glob<string>('./styles.css', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})['./styles.css']!;
+// Read the token source so palette edits cannot silently regress text contrast. Read from
+// disk: Vitest's CSS handling returns an empty string for a `?raw` stylesheet import.
+// Vitest runs in the package directory.
+const styles = readFileSync(join(process.cwd(), 'src/styles.css'), 'utf8');
 function luminance(name: string) {
   const hex = styles.match(
     new RegExp(`--color-${name}:\\s*(#[a-f0-9]{6})`, 'i'),
@@ -92,7 +92,7 @@ function luminance(name: string) {
   });
   return r! * 0.2126 + g! * 0.7152 + b! * 0.0722;
 }
-describe('Adili brand contrast', () => {
+describe('Adili palette contrast', () => {
   it.each([
     ['white', 'primary'],
     ['white', 'primary-dark'],
@@ -101,6 +101,20 @@ describe('Adili brand contrast', () => {
     ['primary', 'accent-warm'],
     ['ink', 'accent-warm'],
     ['accent-warm-darker', 'accent-warm'],
+    // Adili neutrals: body, secondary and hint text on every surface they sit on.
+    ['ink', 'white'],
+    ['ink', 'canvas'],
+    ['ink', 'base-lighter'],
+    ['base-darker', 'white'],
+    ['base-dark', 'white'],
+    ['base-dark', 'canvas'],
+    ['base-dark', 'base-lightest'],
+    ['base', 'white'],
+    ['base', 'canvas'],
+    // Destructive buttons carry white text.
+    ['white', 'secondary'],
+    ['white', 'secondary-dark'],
+    ['white', 'secondary-darker'],
   ])('%s text is readable on %s', (foreground, background) => {
     const light = Math.max(luminance(foreground), luminance(background));
     const dark = Math.min(luminance(foreground), luminance(background));

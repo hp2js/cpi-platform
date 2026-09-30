@@ -97,17 +97,24 @@ const count = (value: number, one: string, many: string) =>
 const fieldErrorsOf = (error: unknown) =>
   isApiError(error) ? error.fieldErrors : {};
 
+/**
+ * A labelled control with its hint and error. `aligned` fields share their parent grid's rows
+ * (CSS subgrid), so side-by-side fields line up their controls even when only one has a hint
+ * or an error; the parent sets `gap-y-2` and the columns.
+ */
 function Field({
   id,
   label,
   hint,
   error,
+  aligned,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
   error?: string;
+  aligned?: boolean;
   children: ReactElement<Record<string, unknown>>;
 }) {
   const describedBy =
@@ -121,20 +128,32 @@ function Field({
           'aria-describedby': describedBy,
           'aria-invalid': error ? true : undefined,
         });
+  const hintNode = hint ? (
+    <p id={`${id}-hint`} className="text-xs text-base-dark">
+      {hint}
+    </p>
+  ) : aligned ? (
+    <span aria-hidden="true" />
+  ) : null;
+  const errorNode = error ? (
+    <p id={`${id}-error`} className="text-sm text-error-dark">
+      {error}
+    </p>
+  ) : aligned ? (
+    <span aria-hidden="true" />
+  ) : null;
   return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      {hint && (
-        <p id={`${id}-hint`} className="text-xs text-base-dark">
-          {hint}
-        </p>
-      )}
+    <div
+      className={
+        aligned ? 'row-span-4 mb-2 grid grid-rows-subgrid' : 'grid gap-2'
+      }
+    >
+      <Label htmlFor={id} className="self-end">
+        {label}
+      </Label>
+      {hintNode}
       {control}
-      {error && (
-        <p id={`${id}-error`} className="text-sm text-error-dark">
-          {error}
-        </p>
-      )}
+      {errorNode}
     </div>
   );
 }
@@ -260,8 +279,9 @@ function RiskForm({
       <Field id={`${id}-cause`} label="Cause" error={errors.cause}>
         <Textarea id={`${id}-cause`} {...bind('cause')} />
       </Field>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         <Field
+          aligned
           id={`${id}-probability`}
           label="Probability (1–5)"
           hint="How likely the risk is to occur."
@@ -276,6 +296,7 @@ function RiskForm({
           />
         </Field>
         <Field
+          aligned
           id={`${id}-impact`}
           label="Impact (1–5)"
           hint="How serious it would be if it occurred."
@@ -346,8 +367,15 @@ function ActivityForm({
     key: keyof typeof values & string,
     label: string,
     hint?: string,
+    aligned?: boolean,
   ) => (
-    <Field id={`${id}-${key}`} label={label} hint={hint} error={errors[key]}>
+    <Field
+      aligned={aligned}
+      id={`${id}-${key}`}
+      label={label}
+      hint={hint}
+      error={errors[key]}
+    >
       <Input id={`${id}-${key}`} {...bind(key)} />
     </Field>
   );
@@ -359,9 +387,14 @@ function ActivityForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
-        {text('code', 'Code', 'For example A-04.')}
-        <Field id={`${id}-risk`} label="Risk treated" error={errors.riskId}>
+      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]">
+        {text('code', 'Code', 'For example A-04.', true)}
+        <Field
+          aligned
+          id={`${id}-risk`}
+          label="Risk treated"
+          error={errors.riskId}
+        >
           <SelectField
             id={`${id}-risk`}
             value={values.riskId}
@@ -378,11 +411,11 @@ function ActivityForm({
       <Field id={`${id}-strategy`} label="Strategy" error={errors.strategy}>
         <Textarea id={`${id}-strategy`} {...bind('strategy')} />
       </Field>
-      <div className="grid gap-4 tablet:grid-cols-2">
-        {text('output', 'Output')}
-        {text('kpi', 'Key performance indicator')}
-        {text('target', 'Target')}
-        {text('owner', 'Responsible')}
+      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
+        {text('output', 'Output', undefined, true)}
+        {text('kpi', 'Key performance indicator', undefined, true)}
+        {text('target', 'Target', undefined, true)}
+        {text('owner', 'Responsible', undefined, true)}
       </div>
       {text(
         'resourceReference',
@@ -445,8 +478,9 @@ function MilestoneForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
+      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]">
         <Field
+          aligned
           id={`${id}-code`}
           label="Code"
           hint="For example M-13."
@@ -454,7 +488,12 @@ function MilestoneForm({
         >
           <Input id={`${id}-code`} {...bind('code')} />
         </Field>
-        <Field id={`${id}-quarter`} label="Quarter" error={errors.periodId}>
+        <Field
+          aligned
+          id={`${id}-quarter`}
+          label="Quarter"
+          error={errors.periodId}
+        >
           <SelectField
             id={`${id}-quarter`}
             value={values.periodId}
@@ -721,8 +760,9 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       >
         <Input id={`${id}-body`} {...bind('approvingBody')} />
       </Field>
-      <div className="grid gap-4 tablet:grid-cols-2">
+      <div className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
         <Field
+          aligned
           id={`${id}-date`}
           label="Approval date"
           error={errors.approvedOn}
@@ -730,6 +770,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
           <Input id={`${id}-date`} type="date" {...bind('approvedOn')} />
         </Field>
         <Field
+          aligned
           id={`${id}-reference`}
           label="Resolution or minutes reference"
           error={errors.reference}

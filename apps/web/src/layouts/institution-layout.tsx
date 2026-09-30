@@ -113,10 +113,16 @@ export function InstitutionLayout() {
           <span className="text-xs font-bold tracking-wide text-base-dark uppercase">
             Reporting for
           </span>{' '}
+          {/* The ID alone until the name arrives, never "DEMO-001 (DEMO-001)". */}
           <span className="font-bold">
             {institution.data?.name ?? institutionId}
-          </span>{' '}
-          <span className="text-sm text-base-dark">({institutionId})</span>
+          </span>
+          {institution.data && (
+            <>
+              {' '}
+              <span className="text-sm text-base-dark">({institutionId})</span>
+            </>
+          )}
         </p>
         <nav
           aria-label="Institution"
