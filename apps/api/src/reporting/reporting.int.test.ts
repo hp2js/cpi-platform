@@ -38,6 +38,7 @@ describe.skipIf(!integration)('institution reporting', () => {
   it('keeps the report closed until a form is published', async () => {
     const bundle = await focal.json<ReportBundle>(`${path}/report`);
     expect(bundle.form).toBeNull();
+    expect(bundle.submitted).toBeNull();
     expect(bundle.editable).toBe(false);
     expect(bundle.baseline.status).toBe('approved');
   });
@@ -173,6 +174,8 @@ describe.skipIf(!integration)('institution reporting', () => {
     });
     expect(bundle.draft).toBeNull();
     expect(bundle.editable).toBe(false);
+    // The submitted answers come back, so a later clarification response can be compared.
+    expect(bundle.submitted?.revision).toBe(1);
     expect(
       (await focal.json<Receipt[]>('/receipts')).map((item) => item.id),
     ).toEqual([receipt.id]);

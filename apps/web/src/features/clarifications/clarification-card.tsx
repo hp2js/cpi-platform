@@ -32,15 +32,15 @@ export function ClarificationCard({
     <article
       aria-labelledby={`clar-${clarification.id}`}
       className={cn(
-        'grid gap-4 rounded-lg border bg-card p-5',
-        clarification.status === 'open' && 'border-secondary-foreground/30',
+        'grid gap-4 rounded-lg border bg-white p-5',
+        clarification.status === 'open' && 'border-ink',
       )}
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3
             id={`clar-${clarification.id}`}
-            className="flex items-center gap-2 font-semibold"
+            className="flex items-center gap-2 font-bold"
           >
             <MessageCircleQuestion
               className="size-5 text-primary"
@@ -49,12 +49,12 @@ export function ClarificationCard({
             {clarification.periodLabel} clarification on revision{' '}
             {clarification.revision}
           </h3>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-base-dark">
             Requested by {clarification.requestedBy},{' '}
             {formatDateTime(clarification.requestedAt)}
           </p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+        <span className="rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold">
           {status}
         </span>
       </header>
@@ -62,15 +62,13 @@ export function ClarificationCard({
         {clarification.items.map((item, index) => (
           <li
             key={index}
-            className="grid gap-1 rounded-md bg-muted/50 p-3 text-sm"
+            className="grid gap-1 rounded-md bg-base-lightest p-3 text-sm"
           >
-            <p className="font-medium">{item.criterion}</p>
+            <p className="font-bold">{item.criterion}</p>
             <p>{item.question}</p>
             {item.requestedEvidence && (
-              <p className="text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  Evidence requested:{' '}
-                </span>
+              <p className="text-base-dark">
+                <span className="font-bold text-ink">Evidence requested: </span>
                 {item.requestedEvidence}
               </p>
             )}
@@ -81,11 +79,11 @@ export function ClarificationCard({
         <p className="flex items-center gap-2">
           <CalendarClock className="size-4 text-primary" aria-hidden="true" />
           Respond by{' '}
-          <time dateTime={clarification.responseDueAt} className="font-medium">
+          <time dateTime={clarification.responseDueAt} className="font-bold">
             {formatDateTime(clarification.responseDueAt)}
           </time>
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-base-dark">
           {formatDays(clarification.windowDays, clarification.windowUnit)} from
           when the request was available and notified (
           {formatDateTime(clarification.notifiedAt)}). The window is for
@@ -93,13 +91,13 @@ export function ClarificationCard({
           work itself.
         </p>
         {clarification.overdue && (
-          <p className="flex items-center gap-2 font-medium text-destructive">
+          <p className="flex items-center gap-2 font-bold text-error-dark">
             <TriangleAlert className="size-4" aria-hidden="true" />
             The response window has passed.
           </p>
         )}
         {clarification.extensionRequired && (
-          <p className="flex items-center gap-2 font-medium">
+          <p className="flex items-center gap-2 font-bold">
             <TriangleAlert className="size-4" aria-hidden="true" />
             Extension decision required: the window ends after the evaluation
             cutoff, so the result stays pending until an authorized decision.

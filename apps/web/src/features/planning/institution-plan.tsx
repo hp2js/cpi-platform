@@ -85,7 +85,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
   });
   if (open.length === 0)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         No approved baseline is open for amendment. Until a quarter’s baseline
         is approved, change its planned milestones above and propose it again.
       </p>
@@ -96,22 +96,22 @@ function AmendmentForm({ plan }: { plan: Plan }) {
     (change === 'remove' || toPeriodId);
   return (
     <form
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
       onSubmit={(event) => {
         event.preventDefault();
         mutation.mutate();
       }}
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Removing or moving a planned milestone needs a reason and your officer’s
         confirmation. It applies only to periods that have not opened, and the
         original baseline is kept. Committee meeting obligations cannot be
         removed.
       </p>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-period">Period</Label>
         <SelectField
-          className="max-w-md"
+          className="max-w-mobile-lg"
           id="amend-period"
           value={periodId}
           onChange={(value) => {
@@ -124,10 +124,10 @@ function AmendmentForm({ plan }: { plan: Plan }) {
           }))}
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-milestone">Milestone</Label>
         <SelectField
-          className="max-w-md"
+          className="max-w-mobile-lg"
           id="amend-milestone"
           value={milestoneId}
           onChange={setMilestoneId}
@@ -139,7 +139,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         />
       </div>
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">Change</legend>
+        <legend className="text-sm font-bold">Change</legend>
         <RadioGroup
           value={change}
           onValueChange={(value) => setChange(value as 'remove' | 'reschedule')}
@@ -160,10 +160,10 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         </RadioGroup>
       </fieldset>
       {change === 'reschedule' && (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="amend-target">Move to</Label>
           <SelectField
-            className="max-w-md"
+            className="max-w-mobile-lg"
             id="amend-target"
             value={toPeriodId}
             onChange={setToPeriodId}
@@ -175,7 +175,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
           />
         </div>
       )}
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="amend-reason">Reason</Label>
         <Textarea
           id="amend-reason"
@@ -184,7 +184,7 @@ function AmendmentForm({ plan }: { plan: Plan }) {
         />
       </div>
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {isApiError(mutation.error)
             ? (Object.values(mutation.error.fieldErrors)[0] ??
               mutation.error.message)
@@ -210,15 +210,15 @@ function AmendmentList({ amendments }: { amendments: Amendment[] }) {
   return (
     <ul className="grid gap-2 text-sm">
       {amendments.map((amendment) => (
-        <li key={amendment.id} className="rounded-md border bg-card p-3">
-          <p className="font-medium">
+        <li key={amendment.id} className="rounded-md border bg-white p-3">
+          <p className="font-bold">
             {amendment.change === 'remove' ? 'Remove' : 'Move'}{' '}
             {amendment.milestoneCode} ·{' '}
             {amendment.status === 'pending'
               ? 'Awaiting officer'
               : amendment.status}
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-base-dark">
             Requested {formatDateTime(amendment.requestedAt)}:{' '}
             {amendment.reason}
           </p>
@@ -250,7 +250,7 @@ function PlannedMilestoneTable({
   );
   if (!milestones.length)
     return (
-      <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+      <p className="bg-base-lightest p-4 text-sm text-base-dark">
         No milestones planned for {proposal.periodLabel} yet.
         {editable &&
           ` Add the milestones your activities will reach in ${proposal.periodLabel}.`}
@@ -283,7 +283,7 @@ function PlannedMilestoneTable({
                   scope="row"
                   className="h-auto py-2 font-normal whitespace-normal"
                 >
-                  <span className="font-medium">{milestone.code}</span>{' '}
+                  <span className="font-bold">{milestone.code}</span>{' '}
                   {milestone.title}
                 </TableHead>
                 <TableCell className="text-sm whitespace-normal">
@@ -291,7 +291,7 @@ function PlannedMilestoneTable({
                 </TableCell>
                 <TableCell className="text-sm whitespace-normal">
                   {milestone.completionCondition}
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-base-dark">
                     Evidence: {milestone.evidenceExpectation}
                   </span>
                 </TableCell>
@@ -349,14 +349,14 @@ function QuarterBaseline({
   return (
     <article
       aria-labelledby={`bl-${proposal.periodId}`}
-      className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-card p-5"
+      className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-white p-5"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h3 id={`bl-${proposal.periodId}`} className="font-semibold">
+          <h3 id={`bl-${proposal.periodId}`} className="font-bold">
             {proposal.periodLabel} baseline
             {baseline && (
-              <span className="font-normal text-muted-foreground">
+              <span className="font-normal text-base-dark">
                 {' '}
                 · version {baseline.version} · {baseline.milestones.length}{' '}
                 milestones
@@ -364,7 +364,7 @@ function QuarterBaseline({
             )}
           </h3>
           {open && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Propose by {formatDateTime(proposal.dueAt)}; the quarter starts{' '}
               {formatDateTime(proposal.startsAt).replace(/, 00:00 EAT$/, '')}.
             </p>
@@ -375,7 +375,7 @@ function QuarterBaseline({
           {baseline ? (
             <BaselineStatus baseline={baseline} />
           ) : (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+            <span className="rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold">
               {proposal.locked
                 ? 'No baseline: pending approval'
                 : proposalStatus[proposal.status]}
@@ -387,7 +387,7 @@ function QuarterBaseline({
       {open ? (
         <>
           {proposal.status === 'proposed' && proposal.changedSinceProposal && (
-            <p className="rounded-md bg-accent p-3 text-sm">
+            <p className="rounded-md bg-primary-lighter p-3 text-sm">
               You changed the {proposal.periodLabel} milestones after version{' '}
               {baseline?.version} was proposed. Propose again so your officer
               approves what you plan.
@@ -398,7 +398,7 @@ function QuarterBaseline({
             proposal={proposal}
             editable={editable}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-base-dark">
             The quarter’s CPC and IAO meetings are added to every proposal.
           </p>
           {editable && (
@@ -421,13 +421,13 @@ function QuarterBaseline({
       ) : baseline ? (
         <MilestoneTable baseline={baseline} />
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           Reporting has opened without an approved baseline, so the quarter’s
           implementation result stays pending.
         </p>
       )}
       {versions.length > 1 && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-base-dark">
           Earlier versions kept:{' '}
           {versions
             .slice(0, -1)
@@ -460,9 +460,9 @@ function NextStep({ plan }: { plan: Plan }) {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-accent p-4 text-sm"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-dark bg-primary-lighter p-4 text-sm"
     >
-      <p className="font-medium">{message}</p>
+      <p className="font-bold">{message}</p>
       {plan.approval && next && <DeadlineCountdown deadline={next.dueAt} />}
     </div>
   );
@@ -488,10 +488,10 @@ export function InstitutionPlan() {
           >
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
-                <h2 id="risks-heading" className="text-lg font-semibold">
+                <h2 id="risks-heading" className="text-lg font-bold">
                   Risk register
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-base-dark">
                   The corruption risks from your risk assessment.
                 </p>
               </div>
@@ -527,10 +527,10 @@ export function InstitutionPlan() {
           >
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
-                <h2 id="activities-heading" className="text-lg font-semibold">
+                <h2 id="activities-heading" className="text-lg font-bold">
                   Mitigation activities
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-base-dark">
                   What you will do about each risk, and how progress is
                   measured.
                 </p>
@@ -561,16 +561,16 @@ export function InstitutionPlan() {
             className="grid min-w-0 grid-cols-1 gap-4"
           >
             <div>
-              <h2 id="baselines-heading" className="text-lg font-semibold">
+              <h2 id="baselines-heading" className="text-lg font-bold">
                 Quarterly baselines
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-base-dark">
                 Plan each quarter’s milestones and propose them before the
                 quarter starts. Your implementation result is measured against
                 the approved baseline. Once approved, changes need an amendment,
                 and none are possible after reporting opens.
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-base-dark">
                 {EQUAL_WEIGHTS_NOTE}
               </p>
             </div>
@@ -586,10 +586,10 @@ export function InstitutionPlan() {
             aria-labelledby="amend-heading"
             className="grid min-w-0 grid-cols-1 gap-3"
           >
-            <h2 id="amend-heading" className="text-lg font-semibold">
+            <h2 id="amend-heading" className="text-lg font-bold">
               Amendments
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               For an approved baseline whose quarter has not ended.
             </p>
             <AmendmentList amendments={data.amendments} />

@@ -14,20 +14,18 @@ export function ChangeList({ changes }: { changes: FormChange[] }) {
   return (
     <div className="grid gap-2 text-sm">
       {content.length === 0 ? (
-        <p className="text-muted-foreground">
-          No changes to sections or questions.
-        </p>
+        <p className="text-base-dark">No changes to sections or questions.</p>
       ) : (
-        <ul className="grid gap-1.5">
+        <ul className="grid gap-2">
           {content.map((change) => (
             <li key={`${change.target}-${change.id}-${change.kind}`}>
-              <span className="font-medium">
+              <span className="font-bold">
                 {kindLabels[change.kind]}{' '}
                 {change.target === 'section' ? 'section' : 'question'}:
               </span>{' '}
               {change.label || change.id}
               {change.details.length > 0 && (
-                <span className="text-muted-foreground">
+                <span className="text-base-dark">
                   {' '}
                   ({change.details.join('; ')})
                 </span>
@@ -37,7 +35,7 @@ export function ChangeList({ changes }: { changes: FormChange[] }) {
         </ul>
       )}
       {periods && (
-        <p className="text-muted-foreground">{periods.details.join('. ')}.</p>
+        <p className="text-base-dark">{periods.details.join('. ')}.</p>
       )}
     </div>
   );

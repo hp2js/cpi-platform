@@ -9,7 +9,7 @@ import { ArrowLeft, Pencil, Plus } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
-import { FlagList, WorkflowStateBadge } from '@/components/status';
+import { ObligationStatus } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -61,17 +61,15 @@ function EditableCard({
   return (
     <section
       aria-labelledby={headingId}
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 id={headingId} className="font-semibold">
+          <h2 id={headingId} className="font-bold">
             {title}
           </h2>
           {description && (
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {description}
-            </p>
+            <p className="mt-1 text-sm text-base-dark">{description}</p>
           )}
         </div>
         {!editing && (
@@ -93,11 +91,11 @@ function EditableCard({
 
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
-    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[12rem_1fr]">
+    <dl className="grid gap-x-6 gap-y-2 text-sm tablet:grid-cols-[12rem_1fr]">
       {rows.map(([term, detail]) => (
         <div key={term} className="contents">
-          <dt className="text-muted-foreground">{term}</dt>
-          <dd className="font-medium break-words">{detail}</dd>
+          <dt className="text-base-dark">{term}</dt>
+          <dd className="font-bold break-words">{detail}</dd>
         </div>
       ))}
     </dl>
@@ -176,7 +174,7 @@ function DetailsCard({
     >
       {editing ? (
         <form
-          className="grid max-w-2xl gap-3"
+          className="grid max-w-measure gap-3"
           onSubmit={(event) => {
             event.preventDefault();
             save.mutate(values);
@@ -197,7 +195,7 @@ function DetailsCard({
             error={errors.typeId}
           />
           {save.isError && Object.keys(errors).length === 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {save.error.message}
             </p>
           )}
@@ -255,7 +253,7 @@ function AccountingOfficerCard({
     >
       {editing ? (
         <form
-          className="grid max-w-2xl gap-3"
+          className="grid max-w-measure gap-3"
           onSubmit={(event) => {
             event.preventDefault();
             save.mutate({ accountingOfficer: values });
@@ -268,7 +266,7 @@ function AccountingOfficerCard({
             errors={errors}
           />
           {save.isError && Object.keys(errors).length === 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {save.error.message}
             </p>
           )}
@@ -384,7 +382,7 @@ function AddFocalPerson({
             onChange={(jobTitle) => setValues({ ...values, jobTitle })}
           />
           {mutation.isError && Object.keys(errors).length === 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -423,14 +421,14 @@ function FocalPersonsCard({
   return (
     <section
       aria-labelledby={headingId}
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 id={headingId} className="font-semibold">
+          <h2 id={headingId} className="font-bold">
             Focal persons
           </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-base-dark">
             Platform accounts that report for the institution. Deactivate or
             rename them on the Users page.
           </p>
@@ -470,8 +468,8 @@ function FocalPersonsCard({
               className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
             >
               <span>
-                <span className="block font-medium">{person.displayName}</span>
-                <span className="block text-muted-foreground">
+                <span className="block font-bold">{person.displayName}</span>
+                <span className="block text-base-dark">
                   {person.email}
                   {person.jobTitle && ` · ${person.jobTitle}`}
                 </span>
@@ -502,14 +500,14 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
   return (
     <section
       aria-labelledby={headingId}
-      className="grid gap-3 rounded-lg border bg-card p-5"
+      className="grid gap-3 rounded-lg border bg-white p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 id={headingId} className="font-semibold">
+          <h2 id={headingId} className="font-bold">
             Reporting and review
           </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-base-dark">
             Reviewed by {institution.officer?.name ?? 'nobody (unassigned)'};
             supervised by{' '}
             {institution.supervisor?.name ??
@@ -524,18 +522,20 @@ function ReportingCard({ institution }: { institution: ManagedInstitution }) {
           Change officer or supervisor
         </Link>
       </div>
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid gap-2 tablet:grid-cols-2">
         {cycle.data?.periods.map((period) => {
           const obligation = obligations.data?.find(
             (candidate) => candidate.periodId === period.id,
           );
           return (
-            <li key={period.id} className="grid gap-1.5 rounded-md border p-3">
-              <span className="text-sm font-medium">{period.label}</span>
+            <li key={period.id} className="grid gap-2 rounded-md border p-3">
+              <span className="text-sm font-bold">{period.label}</span>
               {obligation && (
-                <span className="flex flex-wrap items-start gap-1.5">
-                  <WorkflowStateBadge state={obligation.state} />
-                  <FlagList flags={obligation.flags} />
+                <span className="flex flex-wrap items-start gap-2">
+                  <ObligationStatus
+                    state={obligation.state}
+                    flags={obligation.flags}
+                  />
                 </span>
               )}
               {obligation &&
@@ -584,7 +584,7 @@ export function InstitutionDetailPage() {
       <QueryView query={people} label="institution">
         {(data) =>
           institution ? (
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 widescreen:grid-cols-2">
               <DetailsCard
                 key={`details-${institution.name}-${institution.typeId}`}
                 institution={institution}
@@ -598,7 +598,7 @@ export function InstitutionDetailPage() {
               <ReportingCard institution={institution} />
             </div>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="text-base-dark">
               No institution has the ID {institutionId}.{' '}
               <Link to="/admin/institutions" className="text-primary underline">
                 See all institutions

@@ -45,7 +45,7 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
     );
   return (
     <div className="grid gap-4 text-sm">
-      <p className="text-muted-foreground">
+      <p className="text-base-dark">
         Draft version {draft.version}
         {draft.savedAt &&
           `, saved ${formatDateTime(draft.savedAt)}${draft.savedBy ? ` by ${draft.savedBy}` : ''}`}
@@ -53,7 +53,7 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
       </p>
       {bundle.form.sections.map((section) => (
         <section key={section.id} className="grid gap-2">
-          <h3 className="font-semibold">{section.title}</h3>
+          <h3 className="font-bold">{section.title}</h3>
           <dl className="grid gap-2">
             {section.questions.map((question) =>
               question.type === 'milestone_progress' ? (
@@ -61,7 +61,7 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
                   const response = draft.answers.milestones[milestone.id];
                   return (
                     <div key={milestone.id} className="rounded-md border p-2">
-                      <dt className="font-medium">
+                      <dt className="font-bold">
                         {milestone.code} {milestone.title}
                       </dt>
                       <dd>
@@ -81,7 +81,7 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
                 })
               ) : (
                 <div key={question.id} className="rounded-md border p-2">
-                  <dt className="font-medium">{question.label}</dt>
+                  <dt className="font-bold">{question.label}</dt>
                   <dd>
                     <AnswerValue
                       question={question}
@@ -96,7 +96,7 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
         </section>
       ))}
       <section className="grid gap-2">
-        <h3 className="font-semibold">Files in the report</h3>
+        <h3 className="font-bold">Files in the report</h3>
         {files.length ? (
           <ul className="grid gap-1">
             {files.map((item) => (
@@ -106,9 +106,9 @@ function DraftView({ bundle }: { bundle: ReportBundle }) {
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground">No files are uploaded.</p>
+          <p className="text-base-dark">No files are uploaded.</p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-base-dark">
           Opening a file is logged. Files stay available to you for 30 minutes
           after this support view.
         </p>
@@ -153,7 +153,7 @@ export function SupportView({
           <span className="sr-only"> of the {periodLabel} report</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Support view: {periodLabel} report</DialogTitle>
           <DialogDescription>
@@ -170,7 +170,7 @@ export function SupportView({
             <DraftView bundle={view.data} />
           </div>
         ) : (
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor={`${id}-reason`}>Why do you need to see it?</Label>
             <Textarea
               id={`${id}-reason`}
@@ -178,7 +178,7 @@ export function SupportView({
               onChange={(event) => setReason(event.target.value)}
               aria-describedby={`${id}-hint`}
             />
-            <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+            <p id={`${id}-hint`} className="text-xs text-base-dark">
               For example, the focal person reported a problem saving the
               milestones section. At least 20 characters.
             </p>

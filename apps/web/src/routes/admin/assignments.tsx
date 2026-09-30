@@ -76,7 +76,7 @@ function DismissSuggestion({
             {suggestion.suggestedBy} is told your reason.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor={`dismiss-${suggestion.id}`}>Reason</Label>
           <Textarea
             id={`dismiss-${suggestion.id}`}
@@ -85,7 +85,7 @@ function DismissSuggestion({
           />
         </div>
         {mutation.isError && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-error-dark">
             {mutation.error.message}
           </p>
         )}
@@ -117,12 +117,12 @@ function Suggestions({
   return (
     <section
       aria-labelledby="suggestions-heading"
-      className="grid gap-3 rounded-lg border border-primary/30 bg-card p-5"
+      className="grid gap-3 rounded-lg border border-primary-dark bg-white p-5"
     >
-      <h2 id="suggestions-heading" className="font-semibold">
+      <h2 id="suggestions-heading" className="font-bold">
         Reassignment requests ({open.length})
       </h2>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Supervisors suggest reassignments and officers declare conflicts of
         interest; only you can reassign.
       </p>
@@ -133,20 +133,20 @@ function Suggestions({
             className="grid gap-2 rounded-md border p-3 text-sm"
           >
             {suggestion.kind === 'conflict_of_interest' ? (
-              <p className="font-medium">
+              <p className="font-bold">
                 Conflict of interest: {suggestion.institutionId}{' '}
                 {suggestion.institutionName}. {suggestion.suggestedBy} asks not
                 to review it.
               </p>
             ) : (
-              <p className="font-medium">
+              <p className="font-bold">
                 {suggestion.institutionId} {suggestion.institutionName}:{' '}
                 {suggestion.currentOfficerName ?? 'no officer'} →{' '}
                 {suggestion.suggestedOfficerName ?? 'an officer you choose'}
               </p>
             )}
             <p>{suggestion.reason}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-base-dark">
               {suggestion.suggestedBy}, {formatDateTime(suggestion.at)}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -191,17 +191,17 @@ function ChangeSupervisor() {
   return (
     <section
       aria-labelledby="supervise-heading"
-      className="grid grid-cols-1 content-start gap-3 rounded-lg border bg-card p-5"
+      className="grid grid-cols-1 content-start gap-3 rounded-lg border bg-white p-5"
     >
-      <h2 id="supervise-heading" className="font-semibold">
+      <h2 id="supervise-heading" className="font-bold">
         Change a supervisor
       </h2>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         A supervisor sees only the institutions assigned to them, and the
         officers who review those institutions.
       </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="grid gap-1.5">
+      <div className="grid grid-cols-1 gap-3 tablet:grid-cols-2">
+        <div className="grid gap-2">
           <Label htmlFor="supervise-institution">Institution</Label>
           <Combobox
             id="supervise-institution"
@@ -214,11 +214,11 @@ function ChangeSupervisor() {
               description: institution.name,
             }))}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-base-dark">
             Now: {current?.supervisorName ?? 'no supervisor'}
           </p>
         </div>
-        <div className="grid content-start gap-1.5">
+        <div className="grid content-start gap-2">
           <Label htmlFor="supervise-supervisor">New supervisor</Label>
           <Combobox
             id="supervise-supervisor"
@@ -245,12 +245,12 @@ function ChangeSupervisor() {
         onChange={(event) => setReason(event.target.value)}
       />
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
       {mutation.isSuccess && (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-sm font-bold">
           The supervisor is changed; access followed at once.
         </p>
       )}
@@ -338,17 +338,20 @@ export function AssignmentsPage() {
           }}
         />
       )}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 widescreen:grid-cols-2">
         <section
           ref={formRef}
           aria-labelledby="reassign-heading"
-          className="grid grid-cols-1 content-start gap-3 rounded-lg border bg-card p-5"
+          className="grid grid-cols-1 content-start gap-3 rounded-lg border bg-white p-5"
         >
-          <h2 id="reassign-heading" className="font-semibold">
+          <h2 id="reassign-heading" className="font-bold">
             Reassign an institution
           </h2>
           {applying && (
-            <p role="status" className="rounded-md bg-muted p-2 text-sm">
+            <p
+              role="status"
+              className="rounded-md bg-base-lightest p-2 text-sm"
+            >
               Applying {applying.suggestedBy}’s{' '}
               {applying.kind === 'conflict_of_interest'
                 ? 'conflict-of-interest declaration'
@@ -357,15 +360,15 @@ export function AssignmentsPage() {
               reassign.{' '}
               <button
                 type="button"
-                className="text-primary underline underline-offset-4"
+                className="usa-link min-h-touch"
                 onClick={() => setSuggestionId(undefined)}
               >
                 Stop applying
               </button>
             </p>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
+          <div className="grid grid-cols-1 gap-3 tablet:grid-cols-2">
+            <div className="grid gap-2">
               <Label htmlFor="assign-institution">Institution</Label>
               <Combobox
                 id="assign-institution"
@@ -382,7 +385,7 @@ export function AssignmentsPage() {
                 }))}
               />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor="assign-officer">New officer</Label>
               <Combobox
                 id="assign-officer"
@@ -407,11 +410,11 @@ export function AssignmentsPage() {
             aria-describedby="assign-reason-hint"
             onChange={(event) => setReason(event.target.value)}
           />
-          <p id="assign-reason-hint" className="text-sm text-muted-foreground">
+          <p id="assign-reason-hint" className="text-sm text-base-dark">
             At least 10 characters. The reason is kept in the assignment
             history.
           </p>
-          <div className="grid gap-2 rounded-md border bg-muted/40 p-3">
+          <div className="grid gap-2 rounded-md border bg-base-lightest p-3">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="assign-temporary"
@@ -423,7 +426,7 @@ export function AssignmentsPage() {
               </Label>
             </div>
             {temporary && (
-              <div className="grid gap-1.5 sm:max-w-xs">
+              <div className="grid gap-2 tablet:max-w-mobile">
                 <Label htmlFor="assign-cover-until">Cover ends on</Label>
                 <Input
                   id="assign-cover-until"
@@ -432,10 +435,7 @@ export function AssignmentsPage() {
                   onChange={(event) => setCoverUntil(event.target.value)}
                   aria-describedby="assign-cover-hint"
                 />
-                <p
-                  id="assign-cover-hint"
-                  className="text-xs text-muted-foreground"
-                >
+                <p id="assign-cover-hint" className="text-xs text-base-dark">
                   After that day the institution returns to its current officer
                   automatically.
                 </p>
@@ -449,15 +449,12 @@ export function AssignmentsPage() {
             aria-describedby="assign-handover-hint"
             onChange={(event) => setHandoverNote(event.target.value)}
           />
-          <p
-            id="assign-handover-hint"
-            className="text-sm text-muted-foreground"
-          >
+          <p id="assign-handover-hint" className="text-sm text-base-dark">
             What the new officer should know: reviews in progress, promises
             made, anything unusual. They see it on the institution’s page.
           </p>
           {mutation.isError && (
-            <p className="text-sm text-destructive">{mutation.error.message}</p>
+            <p className="text-sm text-error-dark">{mutation.error.message}</p>
           )}
           <div>
             <Button

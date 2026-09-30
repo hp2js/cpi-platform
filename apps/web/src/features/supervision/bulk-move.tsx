@@ -90,19 +90,19 @@ export function BulkMove() {
   return (
     <section
       aria-labelledby="bulk-heading"
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div>
-        <h2 id="bulk-heading" className="font-semibold">
+        <h2 id="bulk-heading" className="font-bold">
           Move several institutions
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-base-dark">
           For example, all of one officer’s institutions when they leave. Each
           institution keeps its own history entry and everyone involved is told.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="grid gap-1.5">
+      <div className="grid gap-3 tablet:grid-cols-3">
+        <div className="grid gap-2">
           <Label htmlFor="bulk-mode">Change the</Label>
           <SelectField
             id="bulk-mode"
@@ -114,7 +114,7 @@ export function BulkMove() {
             ]}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="bulk-from">Currently with</Label>
           <Combobox
             id="bulk-from"
@@ -132,7 +132,7 @@ export function BulkMove() {
             }))}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="bulk-filter">Filter institutions</Label>
           <Input
             id="bulk-filter"
@@ -166,11 +166,11 @@ export function BulkMove() {
               Select all {shown.length} shown
             </Label>
           </div>
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="text-sm text-base-dark">
             {selected.size} selected
           </p>
         </div>
-        <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border p-2 sm:grid-cols-2">
+        <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border p-2 tablet:grid-cols-2">
           {shown.map((institution) => (
             <li key={institution.id} className="flex items-start gap-2 p-1">
               <Checkbox
@@ -184,31 +184,31 @@ export function BulkMove() {
                     return next;
                   })
                 }
-                className="mt-0.5"
+                className="mt-1"
               />
               <Label
                 htmlFor={`bulk-${institution.id}`}
                 className="grid gap-0 font-normal"
               >
-                <span className="font-medium">
+                <span className="font-bold">
                   {institution.id} {institution.name}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-base-dark">
                   Now: {nameOf(holderOf(institution.id))}
                 </span>
               </Label>
             </li>
           ))}
           {shown.length === 0 && (
-            <li className="p-2 text-sm text-muted-foreground">
+            <li className="p-2 text-sm text-base-dark">
               No institutions match.
             </li>
           )}
         </ul>
       </fieldset>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="grid content-start gap-1.5">
+      <div className="grid gap-3 tablet:grid-cols-2">
+        <div className="grid content-start gap-2">
           <Label htmlFor="bulk-target">
             New {mode === 'officer' ? 'reviewing officer' : 'supervisor'}
           </Label>
@@ -225,7 +225,7 @@ export function BulkMove() {
             }))}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="bulk-reason">Reason</Label>
           <Textarea
             id="bulk-reason"
@@ -235,7 +235,7 @@ export function BulkMove() {
         </div>
       </div>
       {mode === 'officer' && (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="bulk-handover">Handover note (optional)</Label>
           <Textarea
             id="bulk-handover"
@@ -245,12 +245,12 @@ export function BulkMove() {
         </div>
       )}
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
       {mutation.data && (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-sm font-bold">
           Moved {mutation.data.changed.length}{' '}
           {mutation.data.changed.length === 1 ? 'institution' : 'institutions'}
           {mutation.data.unchanged.length > 0 &&

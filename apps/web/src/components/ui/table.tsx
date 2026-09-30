@@ -33,7 +33,7 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
       aria-label={scrollable ? 'Scrollable table' : undefined}
       // Only horizontal scrolling: a screen-reader-only caption sits just outside a short table
       // and would otherwise make an unfocusable vertical scroll area.
-      className="relative w-full overflow-x-auto overflow-y-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="relative w-full overflow-x-auto overflow-y-hidden"
     >
       <table
         data-slot="table"
@@ -48,7 +48,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
   return (
     <thead
       data-slot="table-header"
-      className={cn('[&_tr]:border-b', className)}
+      className={cn('[&_tr]:border-b [&_tr]:border-ink', className)}
       {...props}
     />
   );
@@ -69,7 +69,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        'border-t bg-muted/50 font-medium [&>tr]:last:border-b-0',
+        'border-t bg-base-lightest font-bold [&>tr]:last:border-b-0',
         className,
       )}
       {...props}
@@ -82,7 +82,7 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot="table-row"
       className={cn(
-        'border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted',
+        'border-b border-base-lighter has-aria-expanded:bg-base-lightest data-[state=selected]:bg-primary-lighter',
         className,
       )}
       {...props}
@@ -95,7 +95,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        'h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'h-touch px-4 py-2 text-left align-top font-bold [thead_&]:align-bottom whitespace-nowrap text-ink [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className,
       )}
       {...props}
@@ -108,7 +108,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
     <td
       data-slot="table-cell"
       className={cn(
-        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'px-4 py-2 align-top whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className,
       )}
       {...props}
@@ -124,7 +124,7 @@ function TableCaption({
     <caption
       data-slot="table-caption"
       className={cn(
-        'mt-4 px-2 pb-3 text-left text-sm text-muted-foreground',
+        'mt-4 px-2 pb-3 text-left text-sm text-base-dark',
         className,
       )}
       {...props}

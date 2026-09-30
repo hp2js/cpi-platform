@@ -58,6 +58,15 @@ export function reportingOpen(obligation: MockObligation) {
   return !toObligation(obligation).flags.includes('not_yet_due');
 }
 
+function latestSubmitted(obligationId: string) {
+  const latest = getDb()
+    .submissions.filter(
+      (submission) => submission.obligationId === obligationId,
+    )
+    .sort((a, b) => b.revision - a.revision)[0];
+  return latest ? { revision: latest.revision, answers: latest.answers } : null;
+}
+
 export function reportBundle(obligation: MockObligation): ReportBundle {
   const db = getDb();
   const form = formForObligation(obligation) ?? null;
@@ -79,6 +88,7 @@ export function reportBundle(obligation: MockObligation): ReportBundle {
     receipts: db.receipts.filter(
       (receipt) => receipt.obligationId === obligation.id,
     ),
+    submitted: latestSubmitted(obligation.id),
     editable:
       form !== null && reportingOpen(obligation) && isEditableState(obligation),
   };

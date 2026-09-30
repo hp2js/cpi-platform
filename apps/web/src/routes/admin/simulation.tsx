@@ -100,24 +100,22 @@ export function SimulationPage() {
         {(state) => {
           const next = state.boundaries.find((boundary) => !boundary.passed);
           return (
-            <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-6 widescreen:grid-cols-2">
               <section
                 aria-labelledby="run-heading"
-                className="grid content-start gap-4 rounded-lg border bg-card p-5"
+                className="grid content-start gap-4 rounded-lg border bg-white p-5"
               >
-                <h2 id="run-heading" className="font-semibold">
+                <h2 id="run-heading" className="font-bold">
                   Run {state.runId}
                 </h2>
-                <dl className="grid gap-1 text-sm sm:grid-cols-[12rem_1fr]">
-                  <dt className="text-muted-foreground">Business time</dt>
-                  <dd className="font-medium">
+                <dl className="grid gap-1 text-sm tablet:grid-cols-[12rem_1fr]">
+                  <dt className="text-base-dark">Business time</dt>
+                  <dd className="font-bold">
                     {formatDateTime(state.businessTime)}
                   </dd>
-                  <dt className="text-muted-foreground">
-                    Boundary events processed
-                  </dt>
+                  <dt className="text-base-dark">Boundary events processed</dt>
                   <dd>{state.processedEvents}</dd>
-                  <dt className="text-muted-foreground">Next boundary</dt>
+                  <dt className="text-base-dark">Next boundary</dt>
                   <dd>
                     {next
                       ? `${next.label}, ${formatDateTime(next.at)}`
@@ -164,16 +162,20 @@ export function SimulationPage() {
                 </div>
                 {log && (
                   <div className="grid gap-2">
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="text-sm font-bold">
                       Scripted year: {log.steps.length} steps
                     </h3>
-                    <ol className="max-h-80 overflow-y-auto rounded-md border bg-background p-3 text-xs">
+                    <ol
+                      tabIndex={0}
+                      aria-label="Scripted year steps"
+                      className="max-h-80 overflow-y-auto rounded-md border bg-white p-3 text-xs"
+                    >
                       {log.steps.map((step, index) => (
                         <li
                           key={index}
-                          className="grid grid-cols-[10rem_1fr] gap-2 py-0.5"
+                          className="grid grid-cols-[10rem_1fr] gap-2 py-1"
                         >
-                          <span className="text-muted-foreground">
+                          <span className="text-base-dark">
                             {formatDateTime(step.at)}
                           </span>
                           <span>{step.summary}</span>
@@ -185,16 +187,16 @@ export function SimulationPage() {
               </section>
               <section
                 aria-labelledby="timeline-heading"
-                className="grid content-start gap-3 rounded-lg border bg-card p-5"
+                className="grid content-start gap-3 rounded-lg border bg-white p-5"
               >
-                <h2 id="timeline-heading" className="font-semibold">
+                <h2 id="timeline-heading" className="font-bold">
                   Cycle boundaries
                 </h2>
                 <ol className="grid gap-1 text-sm">
                   {state.boundaries.map((boundary) => (
                     <li
                       key={boundary.id}
-                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md px-2 py-1.5 odd:bg-muted/40"
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md px-2 py-2 odd:bg-base-lightest"
                     >
                       <span className="flex items-center gap-2">
                         {boundary.passed ? (
@@ -204,14 +206,12 @@ export function SimulationPage() {
                           />
                         ) : (
                           <Clock
-                            className="size-4 text-muted-foreground"
+                            className="size-4 text-base-dark"
                             aria-hidden="true"
                           />
                         )}
                         <span
-                          className={
-                            boundary.passed ? 'text-muted-foreground' : ''
-                          }
+                          className={boundary.passed ? 'text-base-dark' : ''}
                         >
                           {boundary.label}
                           <span className="sr-only">
@@ -222,7 +222,7 @@ export function SimulationPage() {
                       <span className="flex items-center gap-2">
                         <time
                           dateTime={boundary.at}
-                          className="text-xs text-muted-foreground"
+                          className="text-xs text-base-dark"
                         >
                           {formatDateTime(boundary.at)}
                         </time>

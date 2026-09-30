@@ -51,7 +51,7 @@ function DeliveryTable({
     },
   });
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div className="overflow-x-auto rounded-lg border bg-white">
       <Table className="min-w-[52rem]">
         <TableCaption className="sr-only">{caption}</TableCaption>
         <TableHeader>
@@ -71,21 +71,21 @@ function DeliveryTable({
                 scope="row"
                 className="h-auto py-2 font-normal whitespace-normal"
               >
-                <span className="font-medium">{delivery.subject}</span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="font-bold">{delivery.subject}</span>
+                <span className="block text-xs text-base-dark">
                   {delivery.eventType}
                 </span>
               </TableHead>
               <TableCell className="text-sm">
                 {delivery.recipientName}
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs text-base-dark">
                   {delivery.recipientEmail}
                 </span>
               </TableCell>
               <TableCell className="text-sm">
                 {statusLabel[delivery.status]}
                 {delivery.lastError && (
-                  <span className="block text-xs text-destructive">
+                  <span className="block text-xs text-error-dark">
                     {delivery.lastError}
                   </span>
                 )}
@@ -116,7 +116,7 @@ function DeliveryTable({
         </TableBody>
       </Table>
       {mutation.isError && (
-        <p role="alert" className="p-3 text-sm text-destructive">
+        <p role="alert" className="p-3 text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
@@ -223,10 +223,10 @@ export function NotificationsPage() {
                 {list.map((message) => (
                   <li
                     key={message.id}
-                    className="rounded-lg border bg-card p-4 text-sm"
+                    className="rounded-lg border bg-white p-4 text-sm"
                   >
-                    <p className="font-medium">{message.subject}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-bold">{message.subject}</p>
+                    <p className="text-xs text-base-dark">
                       To {message.to} · {formatDateTime(message.deliveredAt)}
                     </p>
                     <p className="mt-2 whitespace-pre-line break-words">

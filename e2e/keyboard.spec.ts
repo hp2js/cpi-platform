@@ -157,3 +157,52 @@ test('dialogs trap focus and return it on Escape; the account menu works from th
     page.getByRole('heading', { name: 'Sign in', exact: true }),
   ).toBeVisible();
 });
+
+test('evidence checks start unanswered and cannot be saved half done', async ({
+  page,
+}) => {
+  const { review } = await midYear(page);
+  await signInAs(page, 'officer-a');
+  await page.goto(`/officer/reviews/${review}`);
+  const section = page.getByRole('region', { name: 'Evidence suitability' });
+  // A file is never passed by default (PRD §11): no outcome is pre-selected.
+  await expect(section.getByRole('radio', { checked: true })).toHaveCount(0);
+  await section
+    .getByRole('button', { name: /^Save checks/ })
+    .first()
+    .click();
+  await expect(
+    section.getByText('Choose Pass, Deficient or Not applicable'),
+  ).toHaveCount(5);
+  // Focus lands on the first unanswered check.
+  await expect(
+    section.getByRole('radio', { name: 'Pass' }).first(),
+  ).toBeFocused();
+  await expect(
+    section.getByText('Suitability not checked').first(),
+  ).toBeVisible();
+});
+
+test('an unsaved decision is flagged and not lost on leaving', async ({
+  page,
+}) => {
+  const { review } = await midYear(page);
+  await signInAs(page, 'officer-a');
+  await page.goto(`/officer/reviews/${review}`);
+  const card = page.getByRole('article', { name: /^M-01 / });
+  // Before the file is checked, the card says why accepting would be refused.
+  await expect(card.getByText(/before accepting/)).toBeVisible();
+  await passSuitability(page);
+  await expect(card.getByText(/before accepting/)).toBeHidden();
+  await card.getByRole('radio', { name: /^Accept:/ }).check();
+  await expect(card.getByText('Unsaved choice')).toBeVisible();
+  const progress = page.getByRole('navigation', { name: 'Review progress' });
+  await expect(progress.getByText('Not saved: M-01')).toBeVisible();
+  // Leaving asks first; staying keeps the choice.
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await page.getByRole('link', { name: 'Queue' }).click();
+  await expect(card.getByRole('radio', { name: /^Accept:/ })).toBeChecked();
+  await card.getByRole('button', { name: 'Save decision' }).click();
+  await expect(card.getByText('Unsaved choice')).toBeHidden();
+  await expect(progress.getByText(/Not saved/)).toBeHidden();
+});

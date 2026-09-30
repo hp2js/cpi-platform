@@ -39,9 +39,9 @@ function ReportBody({ data }: { data: ConsolidatedReport }) {
       {data.unreleased.length > 0 && (
         <section
           aria-labelledby="unreleased-heading"
-          className="grid gap-3 rounded-lg border bg-card p-5"
+          className="grid gap-3 rounded-lg border bg-white p-5"
         >
-          <h2 id="unreleased-heading" className="font-semibold">
+          <h2 id="unreleased-heading" className="font-bold">
             Not released ({data.unreleased.length})
           </h2>
           {data.unreleased.length > unreleased.pageSize && (
@@ -56,9 +56,9 @@ function ReportBody({ data }: { data: ConsolidatedReport }) {
           <ul className="grid gap-3 text-sm">
             {(printing ? data.unreleased : unreleased.visible).map((row) => (
               <li key={row.institutionId} className="break-inside-avoid">
-                <span className="font-medium">{row.institutionId}</span>{' '}
+                <span className="font-bold">{row.institutionId}</span>{' '}
                 {row.institutionName}
-                <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                <ul className="mt-1 list-disc pl-5 text-base-dark">
                   {row.reasons.map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
@@ -86,9 +86,9 @@ function ReportBody({ data }: { data: ConsolidatedReport }) {
           aria-labelledby={`rel-${result.id}`}
           className="grid gap-3 break-inside-avoid"
         >
-          <h2 id={`rel-${result.id}`} className="text-lg font-semibold">
+          <h2 id={`rel-${result.id}`} className="text-lg font-bold">
             {result.institutionId} {result.institutionName}{' '}
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-sm font-normal text-base-dark">
               · version {result.version}, published{' '}
               {formatDateTime(result.publishedAt)}
             </span>
@@ -166,7 +166,7 @@ export function ReportsPage() {
       <QueryView query={report} label="consolidated report">
         {(data) => (
           <div className="grid gap-8">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               {data.cycleLabel} · {data.profileName}
               {data.simulation &&
                 ' (simulation profile, not official EACC scoring)'}{' '}
@@ -180,7 +180,7 @@ export function ReportsPage() {
         )}
       </QueryView>
       {csv.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {csv.error.message}
         </p>
       )}

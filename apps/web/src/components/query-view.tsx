@@ -27,7 +27,7 @@ export function QueryView<T>({
   if (query.data !== undefined) {
     if (isEmpty?.(query.data))
       return (
-        <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+        <div className="bg-base-lightest px-5 py-6 text-sm text-ink">
           {empty}
         </div>
       );

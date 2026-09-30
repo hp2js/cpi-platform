@@ -177,11 +177,11 @@ function Preview({ form }: { form: FormVersion }) {
       {form.sections.map((section) => (
         <section key={section.id} className="grid gap-4">
           <div>
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-bold">
               {section.title || 'Untitled section'}
             </h2>
             {section.description && (
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-base-dark">
                 {section.description}
               </p>
             )}
@@ -197,7 +197,7 @@ function Preview({ form }: { form: FormVersion }) {
                 />
               ))
             ) : (
-              <div key={question.id} className="rounded-lg border bg-card p-4">
+              <div key={question.id} className="rounded-lg border bg-white p-4">
                 <QuestionField
                   form={previewForm}
                   question={question}
@@ -223,9 +223,9 @@ function CycleProfile() {
     <section
       id="edit-profile"
       aria-labelledby="profile-heading"
-      className="grid gap-2 rounded-lg border bg-card p-5"
+      className="grid gap-2 rounded-lg border bg-white p-5"
     >
-      <h2 id="profile-heading" className="font-semibold">
+      <h2 id="profile-heading" className="font-bold">
         Scoring profile
       </h2>
       {profile ? (
@@ -234,25 +234,25 @@ function CycleProfile() {
             <Link
               to="/admin/profiles/$profileId"
               params={{ profileId: profile.id }}
-              className="font-medium text-primary underline-offset-4 hover:underline"
+              className="font-bold text-primary underline-offset-4 hover:underline"
             >
               {profile.name}
             </Link>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-base-dark">
               {' '}
               · {weightSummary(profile)}
             </span>
           </p>
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+          <p className="flex items-start gap-2 text-sm text-base-dark">
             {profiles.data?.locked && (
-              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <Lock className="mt-1 size-4 shrink-0" aria-hidden="true" />
             )}
             {profiles.data?.lockedReason ??
               'Weights and checklists come from the cycle’s profile, not the form. Choose or change it in Scoring profiles before the first version is published.'}
           </p>
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">Loading the profile…</p>
+        <p className="text-sm text-base-dark">Loading the profile…</p>
       )}
     </section>
   );
@@ -262,12 +262,12 @@ function Issues({ issues }: { issues: FormIssue[] }) {
   if (issues.length === 0)
     return <p className="text-sm">No issues: this version can be published.</p>;
   return (
-    <ul className="grid gap-1.5 text-sm">
+    <ul className="grid gap-2 text-sm">
       {issues.map((issue) => (
         <li key={`${issue.path}-${issue.message}`}>
           <a
             href={`#${issueAnchor(issue.path)}`}
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            className="font-bold text-primary underline-offset-4 hover:underline"
           >
             {issueLocation(issue.path)}
           </a>
@@ -362,14 +362,14 @@ function DraftEditor({ form }: { form: FormVersion }) {
       <Tabs defaultValue="edit" className="grid gap-6">
         <div
           data-sticky
-          className="sticky top-(--sticky-top) z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur lg:-mx-8 lg:px-8"
+          className="z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-lighter bg-white px-4 py-3 tablet:sticky tablet:top-(--sticky-top) desktop:-mx-8 desktop:px-8"
         >
           <TabsList>
             <TabsTrigger value="edit">Edit</TabsTrigger>
             <TabsTrigger value="preview">Preview as institution</TabsTrigger>
           </TabsList>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground" aria-live="polite">
+            <span className="text-sm text-base-dark" aria-live="polite">
               {save.isPending
                 ? 'Saving…'
                 : dirty
@@ -445,7 +445,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
                       The reason is kept in the audit log.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label htmlFor="discard-reason">Reason</Label>
                     <Textarea
                       id="discard-reason"
@@ -454,7 +454,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
                     />
                   </div>
                   {discard.isError && (
-                    <p role="alert" className="text-sm text-destructive">
+                    <p role="alert" className="text-sm text-error-dark">
                       {discard.error.message}
                     </p>
                   )}
@@ -512,12 +512,12 @@ function DraftEditor({ form }: { form: FormVersion }) {
         <TabsContent value="edit" className="grid gap-6">
           <section
             aria-labelledby="checks-heading"
-            className="rounded-lg border bg-card p-5"
+            className="rounded-lg border bg-white p-5"
           >
-            <h2 id="checks-heading" className="font-semibold">
+            <h2 id="checks-heading" className="font-bold">
               Publication checks
             </h2>
-            <p className="mb-3 text-sm text-muted-foreground">
+            <p className="mb-3 text-sm text-base-dark">
               Checked by the server against the last saved draft.
               {dirty && ' Save to re-check your changes.'}
             </p>
@@ -531,12 +531,12 @@ function DraftEditor({ form }: { form: FormVersion }) {
           {form.basedOnVersion && (
             <section
               aria-labelledby="changes-heading"
-              className="rounded-lg border bg-card p-5"
+              className="rounded-lg border bg-white p-5"
             >
-              <h2 id="changes-heading" className="font-semibold">
+              <h2 id="changes-heading" className="font-bold">
                 Changes from version {form.basedOnVersion}
               </h2>
-              <p className="mb-3 text-sm text-muted-foreground">
+              <p className="mb-3 text-sm text-base-dark">
                 As last saved. Institutions, officers and supervisors see this
                 summary when the version is published.
                 {dirty && ' Save to include your latest edits.'}
@@ -547,7 +547,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
 
           <editor.Field name="title">
             {(field) => (
-              <div id="edit-title" className="grid max-w-2xl gap-1.5">
+              <div id="edit-title" className="grid max-w-measure gap-2">
                 <Label htmlFor="form-title">Form title</Label>
                 <Input
                   id="form-title"
@@ -564,12 +564,12 @@ function DraftEditor({ form }: { form: FormVersion }) {
             {(field) => (
               <fieldset
                 id="edit-periods"
-                className="grid gap-3 rounded-lg border bg-card p-5"
+                className="grid gap-3 rounded-lg border bg-white p-5"
               >
-                <legend className="px-1 font-semibold">
+                <legend className="px-1 font-bold">
                   Periods using this version
                 </legend>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-base-dark">
                   Periods that have started reporting keep the version they
                   started on.
                 </p>
@@ -607,12 +607,12 @@ function DraftEditor({ form }: { form: FormVersion }) {
               key={section.id}
               id={`edit-s${sectionIndex}`}
               aria-label={`Section ${sectionIndex + 1}`}
-              className="grid scroll-mt-24 gap-4 rounded-lg border bg-card p-5"
+              className="grid scroll-mt-24 gap-4 rounded-lg border bg-white p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <h2 className="font-semibold">
+                <h2 className="font-bold">
                   Section {sectionIndex + 1}{' '}
-                  <span className="font-mono text-xs font-normal text-muted-foreground">
+                  <span className="font-mono text-xs font-normal text-base-dark">
                     {section.id}
                   </span>
                 </h2>
@@ -631,10 +631,10 @@ function DraftEditor({ form }: { form: FormVersion }) {
                   </Button>
                 )}
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 tablet:grid-cols-2">
                 <editor.Field name={`sections[${sectionIndex}].title`}>
                   {(field) => (
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label htmlFor={`s${sectionIndex}-title`}>
                         Section title
                       </Label>
@@ -650,7 +650,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
                 </editor.Field>
                 <editor.Field name={`sections[${sectionIndex}].description`}>
                   {(field) => (
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label htmlFor={`s${sectionIndex}-description`}>
                         Description (optional)
                       </Label>
@@ -753,7 +753,7 @@ function AddQuestion({ onAdd }: { onAdd: (type: QuestionType) => void }) {
   const selectId = useId();
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor={selectId} className="text-sm">
           New question type
         </Label>
@@ -795,19 +795,19 @@ function QuestionEditor({
   return (
     <li
       id={domId}
-      className="grid scroll-mt-24 gap-3 rounded-md border bg-background p-4"
+      className="grid scroll-mt-24 gap-3 rounded-md border bg-white p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm">
-          <span className="font-medium">{typeLabels[question.type]}</span>{' '}
-          <span className="text-muted-foreground">
+          <span className="font-bold">{typeLabels[question.type]}</span>{' '}
+          <span className="text-base-dark">
             ·{' '}
             {scored
               ? 'Scored: implementation milestones from each locked baseline'
               : 'Informational: never changes a score'}{' '}
             ·{' '}
           </span>
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="font-mono text-xs text-base-dark">
             {question.id}
           </span>
         </p>
@@ -859,10 +859,10 @@ function QuestionEditor({
           )}
         </div>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 tablet:grid-cols-2">
         <editor.Field name={`${base}.label`}>
           {(field) => (
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${domId}-label`}>Question label</Label>
               <Input
                 id={`${domId}-label`}
@@ -874,7 +874,7 @@ function QuestionEditor({
         </editor.Field>
         <editor.Field name={`${base}.help`}>
           {(field) => (
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${domId}-help`}>Help text (optional)</Label>
               <Textarea
                 id={`${domId}-help`}
@@ -911,7 +911,7 @@ function QuestionEditor({
         {question.type === 'evidence' && (
           <editor.Field name={`${base}.evidenceCategory`}>
             {(field) => (
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor={`${domId}-category`}>Evidence category</Label>
                 <SelectField
                   className="w-48"
@@ -934,7 +934,7 @@ function QuestionEditor({
       {question.type === 'choice' && (
         <editor.Field name={`${base}.choices`}>
           {(field) => (
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${domId}-choices`}>Options, one per line</Label>
               <Textarea
                 id={`${domId}-choices`}
@@ -1027,7 +1027,7 @@ function NumberSetting({
   step?: string;
 }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
@@ -1076,11 +1076,11 @@ function LimitsEditor({
     <details
       // Open at first when limits exist; after that the person decides.
       open={initiallyOpen}
-      className="rounded-md border border-dashed p-3 text-sm"
+      className="bg-base-lightest p-3 text-sm"
     >
-      <summary className="cursor-pointer font-medium">
+      <summary className="cursor-pointer font-bold">
         Answer limits:{' '}
-        <span className="font-normal text-muted-foreground">
+        <span className="font-normal text-base-dark">
           {value ? describeLimits(value) : 'none'}
         </span>
       </summary>
@@ -1103,7 +1103,7 @@ function LimitsEditor({
                 value={limits.max}
                 onChange={(max) => set({ max })}
               />
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor={`${id}-unit`}>Unit</Label>
                 <Input
                   id={`${id}-unit`}
@@ -1139,7 +1139,7 @@ function LimitsEditor({
           )}
           {type === 'date' && (
             <>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor={`${id}-earliest`}>Earliest</Label>
                 <Input
                   id={`${id}-earliest`}
@@ -1150,7 +1150,7 @@ function LimitsEditor({
                   }
                 />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor={`${id}-latest`}>Latest</Label>
                 <Input
                   id={`${id}-latest`}
@@ -1188,7 +1188,7 @@ function ItemsEditor({
   ];
   return (
     <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">
+      <legend className="text-sm font-bold">
         Checklist items, each answered done or not done
       </legend>
       <ol className="grid gap-2">
@@ -1274,14 +1274,14 @@ function ColumnsEditor({
     );
   return (
     <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">Columns of each row</legend>
+      <legend className="text-sm font-bold">Columns of each row</legend>
       <ol className="grid gap-3">
         {value.map((column, index) => (
           <li
             key={column.id}
-            className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_10rem_auto_auto] sm:items-end"
+            className="grid gap-2 rounded-md border p-3 tablet:grid-cols-[1fr_10rem_auto_auto] tablet:items-end"
           >
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-${column.id}-label`}>
                 Column {index + 1}
               </Label>
@@ -1293,7 +1293,7 @@ function ColumnsEditor({
                 }
               />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-${column.id}-type`}>Type</Label>
               <SelectField
                 id={`${id}-${column.id}-type`}
@@ -1337,7 +1337,7 @@ function ColumnsEditor({
               <span className="sr-only">Remove column {index + 1}</span>
             </Button>
             {column.type === 'choice' && (
-              <div className="grid gap-1.5 sm:col-span-4">
+              <div className="grid gap-2 tablet:col-span-4">
                 <Label htmlFor={`${id}-${column.id}-choices`}>
                   Options, one per line
                 </Label>
@@ -1353,7 +1353,7 @@ function ColumnsEditor({
               </div>
             )}
             {column.type === 'number' && (
-              <div className="flex flex-wrap gap-4 sm:col-span-4">
+              <div className="flex flex-wrap gap-4 tablet:col-span-4">
                 <NumberSetting
                   id={`${id}-${column.id}-min`}
                   label="Lowest"

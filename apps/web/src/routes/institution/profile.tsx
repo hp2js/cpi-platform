@@ -38,7 +38,7 @@ function AccountingOfficerForm({ profile }: { profile: InstitutionProfile }) {
   const errors = isApiError(save.error) ? save.error.fieldErrors : {};
   return (
     <form
-      className="grid max-w-2xl gap-4 rounded-lg border bg-card p-5"
+      className="grid max-w-measure gap-4 rounded-lg border bg-white p-5"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate();
@@ -50,17 +50,17 @@ function AccountingOfficerForm({ profile }: { profile: InstitutionProfile }) {
         onChange={setValues}
         errors={errors}
       />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Keep this current when your Accounting Officer changes. Your reviewing
         officer is told, and the change is recorded.
       </p>
       {save.isSuccess && !dirty && (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-sm font-bold">
           The Accounting Officer’s details are saved.
         </p>
       )}
       {save.isError && Object.keys(errors).length === 0 && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {save.error.message}
         </p>
       )}
@@ -93,32 +93,32 @@ function Details({ profile }: { profile: InstitutionProfile }) {
     <div className="grid gap-6">
       <section
         aria-labelledby="details-heading"
-        className="grid max-w-2xl gap-3 rounded-lg border bg-card p-5"
+        className="grid max-w-measure gap-3 rounded-lg border bg-white p-5"
       >
-        <h2 id="details-heading" className="font-semibold">
+        <h2 id="details-heading" className="font-bold">
           Details
         </h2>
-        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+        <dl className="grid gap-x-6 gap-y-2 text-sm tablet:grid-cols-[10rem_1fr]">
           {rows.map(([term, detail]) => (
             <div key={term} className="contents">
-              <dt className="text-muted-foreground">{term}</dt>
-              <dd className="font-medium">{detail}</dd>
+              <dt className="text-base-dark">{term}</dt>
+              <dd className="font-bold">{detail}</dd>
             </div>
           ))}
         </dl>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           The name, type and ID are managed by the administrator. Contact them
           if these are wrong.
         </p>
       </section>
       <section
         aria-labelledby="team-heading"
-        className="grid max-w-2xl gap-3 rounded-lg border bg-card p-5"
+        className="grid max-w-measure gap-3 rounded-lg border bg-white p-5"
       >
-        <h2 id="team-heading" className="font-semibold">
+        <h2 id="team-heading" className="font-bold">
           Focal persons
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           Everyone who reports for {profile.institution.name}. The administrator
           adds and removes focal persons.
         </p>
@@ -129,11 +129,11 @@ function Details({ profile }: { profile: InstitutionProfile }) {
               className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
             >
               <span>
-                <span className="block font-medium">
+                <span className="block font-bold">
                   {person.displayName}
                   {person.displayName === session.user.displayName && ' (you)'}
                 </span>
-                <span className="block text-muted-foreground">
+                <span className="block text-base-dark">
                   {person.email}
                   {person.jobTitle && ` · ${person.jobTitle}`}
                 </span>

@@ -107,20 +107,20 @@ function StatusChange({ user }: { user: ManagedUser }) {
               : 'They can sign in again with their earlier role and scope.'}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor={`status-reason-${user.id}`}>Reason</Label>
           <Textarea
             id={`status-reason-${user.id}`}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
           />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             At least 10 characters; kept in the audit log.
           </p>
           {lastFocal ? (
             <div
               role="alert"
-              className="grid gap-2 rounded-md border border-destructive/40 p-3 text-sm"
+              className="grid gap-2 rounded-md border border-error-dark p-3 text-sm"
             >
               <p>{mutation.error?.message}</p>
               <div className="flex items-start gap-2">
@@ -128,7 +128,7 @@ function StatusChange({ user }: { user: ManagedUser }) {
                   id={`status-confirm-${user.id}`}
                   checked={confirmed}
                   onCheckedChange={(value) => setConfirmed(value === true)}
-                  className="mt-0.5"
+                  className="mt-1"
                 />
                 <Label
                   htmlFor={`status-confirm-${user.id}`}
@@ -140,7 +140,7 @@ function StatusChange({ user }: { user: ManagedUser }) {
             </div>
           ) : (
             mutation.isError && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-error-dark">
                 {mutation.error.message}
               </p>
             )
@@ -226,7 +226,7 @@ function ChangeRole({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor={`${id}-role`}>New role</Label>
             <SelectField
               id={`${id}-role`}
@@ -239,7 +239,7 @@ function ChangeRole({
             />
           </div>
           {role === 'institution' && (
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-institution`}>Institution</Label>
               <Combobox
                 id={`${id}-institution`}
@@ -256,7 +256,7 @@ function ChangeRole({
               />
             </div>
           )}
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor={`${id}-reason`}>Reason</Label>
             <Textarea
               id={`${id}-reason`}
@@ -265,7 +265,7 @@ function ChangeRole({
             />
           </div>
           {mutation.isError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -358,7 +358,7 @@ function EditUser({ user }: { user: ManagedUser }) {
             error={errors.jobTitle}
           />
           {mutation.isError && Object.keys(errors).length === 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -396,12 +396,12 @@ export function UserStatus({
       user.invitationExpiresAt !== null &&
       Date.parse(user.invitationExpiresAt) < Date.now();
     return (
-      <span className="grid max-w-40 justify-items-start gap-0.5">
+      <span className="grid max-w-40 justify-items-start gap-1">
         <Badge variant={expired ? 'destructive' : 'secondary'}>
           {expired ? 'Invitation expired' : 'Invited'}
         </Badge>
         {user.invitationExpiresAt && !expired && (
-          <span className="text-xs whitespace-normal text-muted-foreground">
+          <span className="text-xs whitespace-normal text-base-dark">
             Link expires {formatDateTime(user.invitationExpiresAt)}
           </span>
         )}
@@ -522,7 +522,7 @@ function AddUser({
           Add user
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="tablet:max-w-tablet">
         <DialogHeader>
           <DialogTitle>Add a user</DialogTitle>
           <DialogDescription>
@@ -542,8 +542,8 @@ function AddUser({
             mutation.mutate();
           }}
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid content-start gap-1.5">
+          <div className="grid gap-3 tablet:grid-cols-2">
+            <div className="grid content-start gap-2">
               <Label htmlFor={`${id}-role`}>Role</Label>
               <SelectField
                 id={`${id}-role`}
@@ -563,7 +563,7 @@ function AddUser({
               />
             </div>
             {values.role === 'institution' && (
-              <div className="grid content-start gap-1.5">
+              <div className="grid content-start gap-2">
                 <Label htmlFor={`${id}-institution`}>Institution</Label>
                 <Combobox
                   id={`${id}-institution`}
@@ -581,7 +581,7 @@ function AddUser({
                   invalid={Boolean(errors.institutionId)}
                 />
                 {errors.institutionId && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-error-dark">
                     {errors.institutionId}
                   </p>
                 )}
@@ -612,7 +612,7 @@ function AddUser({
             />
           </div>
           {mutation.isError && Object.keys(errors).length === 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -707,7 +707,7 @@ function UsersTable({
           label="Find a user"
           placeholder="Name, email, title or institution"
         />
-        <div className="grid w-56 gap-1.5">
+        <div className="grid w-56 gap-2">
           <Label htmlFor="user-role-filter">Role</Label>
           <SelectField
             id="user-role-filter"
@@ -723,7 +723,7 @@ function UsersTable({
           />
         </div>
       </div>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table>
           <TableCaption className="sr-only">Users</TableCaption>
           <TableHeader>
@@ -741,8 +741,8 @@ function UsersTable({
             {controls.visible.map((user) => (
               <TableRow key={user.id}>
                 <TableHead scope="row" className="whitespace-normal">
-                  <span className="block font-medium">{user.displayName}</span>
-                  <span className="block text-xs font-normal text-muted-foreground">
+                  <span className="block font-bold">{user.displayName}</span>
+                  <span className="block text-xs font-normal text-base-dark">
                     {user.email}
                     {user.jobTitle && ` · ${user.jobTitle}`}
                   </span>
@@ -761,7 +761,7 @@ function UsersTable({
                     )}
                     <EditUser user={user} />
                     {user.id === selfId ? (
-                      <span className="self-center text-sm text-muted-foreground">
+                      <span className="self-center text-sm text-base-dark">
                         You
                       </span>
                     ) : (

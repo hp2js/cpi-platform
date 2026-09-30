@@ -12,7 +12,7 @@ export function MetricChart({ metrics }: { metrics: Metric[] }) {
   return (
     <svg
       viewBox={`0 0 ${width} ${metrics.length * rowHeight + 10}`}
-      className="w-full max-w-2xl"
+      className="w-full max-w-measure"
       aria-hidden="true"
       focusable="false"
     >
@@ -20,7 +20,7 @@ export function MetricChart({ metrics }: { metrics: Metric[] }) {
         const y = index * rowHeight + 6;
         return (
           <g key={metric.id}>
-            <text x={0} y={y + 16} className="fill-foreground text-[12px]">
+            <text x={0} y={y + 16} className="fill-ink text-[12px]">
               {metric.label}
             </text>
             <rect
@@ -29,7 +29,7 @@ export function MetricChart({ metrics }: { metrics: Metric[] }) {
               width={barWidth}
               height={16}
               rx={3}
-              className="fill-muted"
+              className="fill-base-lightest"
             />
             {metric.percent !== null && (
               <rect
@@ -44,7 +44,7 @@ export function MetricChart({ metrics }: { metrics: Metric[] }) {
             <text
               x={labelWidth + barWidth + 8}
               y={y + 16}
-              className="fill-foreground text-[12px] tabular-nums"
+              className="fill-ink text-[12px] tabular-nums"
             >
               {metric.percent === null ? 'N/A' : `${metric.percent}%`}
             </text>

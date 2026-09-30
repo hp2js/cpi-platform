@@ -6,11 +6,10 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { makeQueryClient } from './app/query-client';
 import { makeRouter } from './app/router';
 import { hasUnsavedWork } from './features/session/unsaved-work';
+import { mockApi } from './lib/api';
 import './styles.css';
 
-/** The real API by default; VITE_API_MODE=mock runs the in-browser mock instead (dev only). */
-const mockMode =
-  import.meta.env.DEV && import.meta.env.VITE_API_MODE === 'mock';
+const mockMode = mockApi;
 const DevToolbar = import.meta.env.DEV
   ? lazy(() =>
       import('./mocks/dev-toolbar').then((module) => ({

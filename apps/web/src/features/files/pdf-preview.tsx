@@ -113,13 +113,13 @@ export default function PdfPreview({
 
   if (error)
     return (
-      <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <p className="bg-base-lightest p-6 text-center text-sm text-base-dark">
         {error}
       </p>
     );
   if (!document)
     return (
-      <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <p className="bg-base-lightest p-6 text-center text-sm text-base-dark">
         Reading the PDF…
       </p>
     );
@@ -160,7 +160,7 @@ export default function PdfPreview({
           Next page
           <ChevronRight aria-hidden="true" />
         </Button>
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+        <span className="mx-1 h-5 w-px bg-base-lighter" aria-hidden="true" />
         <Button
           size="sm"
           variant="outline"
@@ -192,12 +192,12 @@ export default function PdfPreview({
         tabIndex={0}
         role="region"
         aria-label={`${title}, page ${pageNumber}`}
-        className="min-h-0 overflow-auto rounded-md border bg-muted p-2"
+        className="min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
       >
         <canvas
           ref={canvas}
           aria-hidden="true"
-          className="mx-auto block bg-white shadow-sm"
+          className="mx-auto block bg-white"
         />
         <p className="sr-only" data-testid="pdf-page-text">
           {text || 'This page has no text.'}

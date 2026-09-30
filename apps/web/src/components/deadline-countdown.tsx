@@ -4,11 +4,10 @@ import { deadlineCountdown } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 const styles = {
-  late: 'border-destructive/40 bg-destructive/10 text-destructive',
-  today:
-    'border-amber-500/50 bg-amber-100 text-amber-950 dark:bg-amber-500/20 dark:text-amber-100',
-  soon: 'border-amber-500/40 bg-amber-50 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100',
-  later: 'border-border bg-muted text-muted-foreground',
+  late: 'border-error-dark bg-error-dark text-error-dark',
+  today: 'border-warning bg-warning-lighter text-ink',
+  soon: 'border-warning bg-warning-lighter text-ink',
+  later: 'border-base-lighter bg-base-lightest text-base-dark',
 } as const;
 
 /**
@@ -32,7 +31,7 @@ export function DeadlineCountdown({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-xs font-bold whitespace-nowrap',
         styles[tone],
         className,
       )}

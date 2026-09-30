@@ -37,9 +37,9 @@ export function ProfilesPage() {
             <div className="grid grid-cols-1 gap-6">
               <section
                 aria-labelledby="in-use-heading"
-                className="rounded-lg border bg-card p-5"
+                className="rounded-lg border bg-white p-5"
               >
-                <h2 id="in-use-heading" className="font-semibold">
+                <h2 id="in-use-heading" className="font-bold">
                   In use for {cycle.data?.label ?? 'this cycle'}
                 </h2>
                 <p className="mt-1">
@@ -47,7 +47,7 @@ export function ProfilesPage() {
                     <Link
                       to="/admin/profiles/$profileId"
                       params={{ profileId: inUse.id }}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      className="font-bold text-primary underline-offset-4 hover:underline"
                     >
                       {inUse.name}
                     </Link>
@@ -55,25 +55,22 @@ export function ProfilesPage() {
                     'No profile'
                   )}
                   {inUse && (
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-base-dark">
                       {' '}
                       · {weightSummary(inUse)}
                     </span>
                   )}
                 </p>
-                <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                <p className="mt-2 flex items-start gap-2 text-sm text-base-dark">
                   {data.locked && (
-                    <Lock
-                      className="mt-0.5 size-4 shrink-0"
-                      aria-hidden="true"
-                    />
+                    <Lock className="mt-1 size-4 shrink-0" aria-hidden="true" />
                   )}
                   {data.lockedReason ??
                     'Not locked yet: an approved profile can still be applied before the first form version is published.'}
                 </p>
               </section>
 
-              <div className="overflow-x-auto rounded-lg border bg-card">
+              <div className="overflow-x-auto rounded-lg border bg-white">
                 <Table>
                   <TableCaption className="sr-only">
                     Scoring profiles
@@ -93,13 +90,13 @@ export function ProfilesPage() {
                           <Link
                             to="/admin/profiles/$profileId"
                             params={{ profileId: profile.id }}
-                            className="font-medium text-primary underline-offset-4 hover:underline"
+                            className="font-bold text-primary underline-offset-4 hover:underline"
                           >
                             {profile.name}
                           </Link>
                         </TableHead>
                         <TableCell>
-                          <span className="flex flex-wrap gap-1.5">
+                          <span className="flex flex-wrap gap-2">
                             <Badge variant="outline">
                               {statusLabel[profile.status]}
                             </Badge>
@@ -121,7 +118,7 @@ export function ProfilesPage() {
                   </TableBody>
                 </Table>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-base-dark">
                 To make a new profile, open an existing one and copy it.
                 Profiles are simulation settings: none is an official EACC
                 scoring method.

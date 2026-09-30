@@ -122,16 +122,16 @@ function Field({
           'aria-invalid': error ? true : undefined,
         });
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       {hint && (
-        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+        <p id={`${id}-hint`} className="text-xs text-base-dark">
           {hint}
         </p>
       )}
       {control}
       {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive">
+        <p id={`${id}-error`} className="text-sm text-error-dark">
           {error}
         </p>
       )}
@@ -146,7 +146,7 @@ function FormError({ error, fields }: { error: unknown; fields: string[] }) {
     fields.includes(key),
   );
   return (
-    <p role="alert" className="text-sm text-destructive">
+    <p role="alert" className="text-sm text-error-dark">
       {shown
         ? 'Some values need attention.'
         : error instanceof Error
@@ -175,7 +175,7 @@ function FormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className={`max-h-[90svh] overflow-y-auto ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}
+        className={`max-h-[90svh] overflow-y-auto ${wide ? 'tablet:max-w-measure' : 'tablet:max-w-mobile-lg'}`}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -291,7 +291,7 @@ function RiskForm({
         </Field>
       </div>
       {riskScale && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-base-dark">
           Scale labels: {riskScale.source} Severity is probability × impact,
           with no rating bands.
         </p>
@@ -359,7 +359,7 @@ function ActivityForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
+      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
         {text('code', 'Code', 'For example A-04.')}
         <Field id={`${id}-risk`} label="Risk treated" error={errors.riskId}>
           <SelectField
@@ -378,7 +378,7 @@ function ActivityForm({
       <Field id={`${id}-strategy`} label="Strategy" error={errors.strategy}>
         <Textarea id={`${id}-strategy`} {...bind('strategy')} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 tablet:grid-cols-2">
         {text('output', 'Output')}
         {text('kpi', 'Key performance indicator')}
         {text('target', 'Target')}
@@ -445,7 +445,7 @@ function MilestoneForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
+      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
         <Field
           id={`${id}-code`}
           label="Code"
@@ -659,7 +659,7 @@ export function RemovePlanItem({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {remove.isError && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-error-dark">
             {remove.error.message}
           </p>
         )}
@@ -720,7 +720,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       >
         <Input id={`${id}-body`} {...bind('approvingBody')} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 tablet:grid-cols-2">
         <Field
           id={`${id}-date`}
           label="Approval date"
@@ -789,14 +789,14 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
   return (
     <section
       aria-labelledby="approval-heading"
-      className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-card p-5"
+      className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border bg-white p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 id="approval-heading" className="text-lg font-semibold">
+          <h2 id="approval-heading" className="text-lg font-bold">
             Plan approval
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Your Corruption Risk Assessment and Mitigation Plan, as approved
             within the institution.
           </p>
@@ -818,16 +818,16 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
         )}
       </div>
       {approval ? (
-        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[12rem_1fr]">
-          <dt className="text-muted-foreground">Approved by</dt>
+        <dl className="grid gap-x-6 gap-y-2 text-sm tablet:grid-cols-[12rem_1fr]">
+          <dt className="text-base-dark">Approved by</dt>
           <dd>
             {approval.approvingBody}, {formatCalendarDate(approval.approvedOn)}
           </dd>
-          <dt className="text-muted-foreground">Reference</dt>
+          <dt className="text-base-dark">Reference</dt>
           <dd>{approval.reference}</dd>
-          <dt className="text-muted-foreground">Accounting Officer</dt>
+          <dt className="text-base-dark">Accounting Officer</dt>
           <dd>{approval.accountingOfficer || 'Not recorded'}</dd>
-          <dt className="text-muted-foreground">Plan document</dt>
+          <dt className="text-base-dark">Plan document</dt>
           <dd>
             {document ? (
               <>
@@ -840,7 +840,7 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
               'Not linked'
             )}
           </dd>
-          <dt className="text-muted-foreground">Recorded</dt>
+          <dt className="text-base-dark">Recorded</dt>
           <dd>
             {approval.recordedBy}, {formatDateTime(approval.recordedAt)}
           </dd>
@@ -867,7 +867,7 @@ export function ActivityTable({
 }) {
   if (!plan.activities.length)
     return (
-      <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+      <p className="rounded-lg border bg-white p-4 text-sm text-base-dark">
         No activities yet.
         {plan.editable &&
           ' Add the mitigation activities from your plan, each linked to the risk it treats.'}
@@ -875,7 +875,7 @@ export function ActivityTable({
     );
   const riskOf = new Map(plan.risks.map((risk) => [risk.id, risk]));
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-lg border bg-white">
       <Table className="min-w-[48rem]">
         <TableCaption className="sr-only">
           Mitigation activities and the risks they treat
@@ -900,9 +900,9 @@ export function ActivityTable({
                 scope="row"
                 className="h-auto py-2 font-normal whitespace-normal"
               >
-                <span className="font-medium">{activity.code}</span>{' '}
+                <span className="font-bold">{activity.code}</span>{' '}
                 {activity.title}
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs text-base-dark">
                   {activity.strategy}
                 </span>
               </TableHead>
@@ -911,14 +911,14 @@ export function ActivityTable({
               </TableCell>
               <TableCell className="text-sm whitespace-normal">
                 {activity.output}
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs text-base-dark">
                   {activity.kpi}: {activity.target}
                 </span>
               </TableCell>
               <TableCell className="text-sm whitespace-normal">
                 {activity.owner}
                 {activity.resourceReference && (
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-base-dark">
                     {activity.resourceReference}
                   </span>
                 )}
@@ -1077,7 +1077,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
           Import from CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Import your plan</DialogTitle>
           <DialogDescription>
@@ -1087,12 +1087,12 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
         </DialogHeader>
         {run.isSuccess ? (
           <div className="grid gap-3">
-            <p role="status" className="font-medium">
+            <p role="status" className="font-bold">
               Imported {count(run.data.risks, 'risk', 'risks')},{' '}
               {count(run.data.activities, 'activity', 'activities')} and{' '}
               {count(run.data.milestones, 'milestone', 'milestones')}.
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Propose each quarter’s baseline when its milestones are ready.
             </p>
             <DialogFooter>
@@ -1137,7 +1137,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label htmlFor={`${id}-file`}>CSV file</Label>
               <Input
                 id={`${id}-file`}
@@ -1148,7 +1148,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
             </div>
             {preview.isPending && <p className="text-sm">Checking the file…</p>}
             {preview.isError && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-error-dark">
                 {preview.error.message}
               </p>
             )}
@@ -1157,7 +1157,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                 {result.fileErrors.length > 0 ? (
                   <ul
                     role="alert"
-                    className="list-disc pl-5 text-sm text-destructive"
+                    className="list-disc pl-5 text-sm text-error-dark"
                   >
                     {result.fileErrors.map((error) => (
                       <li key={error}>{error}</li>
@@ -1167,9 +1167,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                   <p
                     role="status"
                     className={
-                      result.invalid
-                        ? 'font-medium text-destructive'
-                        : 'font-medium'
+                      result.invalid ? 'font-bold text-error-dark' : 'font-bold'
                     }
                   >
                     {csv?.name}: {result.valid} ready
@@ -1178,7 +1176,12 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                   </p>
                 )}
                 {result.rows.length > 0 && (
-                  <div className="max-h-80 overflow-auto rounded-md border">
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Rows in the file"
+                    className="max-h-80 overflow-auto rounded-md border"
+                  >
                     <Table>
                       <TableCaption className="sr-only">
                         Rows in the file, problems first
@@ -1201,19 +1204,19 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
                               scope="row"
                               className="font-normal whitespace-normal"
                             >
-                              <span className="block font-medium">
+                              <span className="block font-bold">
                                 {row.code || '—'}{' '}
-                                <span className="font-normal text-muted-foreground">
+                                <span className="font-normal text-base-dark">
                                   {row.record}
                                 </span>
                               </span>
-                              <span className="block text-xs text-muted-foreground">
+                              <span className="block text-xs text-base-dark">
                                 {row.title}
                               </span>
                             </TableHead>
                             <TableCell className="text-sm whitespace-normal">
                               {row.errors.length ? (
-                                <ul className="list-disc pl-4 text-destructive">
+                                <ul className="list-disc pl-4 text-error-dark">
                                   {row.errors.map((error) => (
                                     <li key={error}>{error}</li>
                                   ))}
@@ -1233,7 +1236,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
               </div>
             )}
             {run.isError && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-error-dark">
                 {run.error.message}
               </p>
             )}

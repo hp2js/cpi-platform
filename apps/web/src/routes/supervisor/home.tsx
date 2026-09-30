@@ -1,6 +1,7 @@
 import type { Metric, Oversight } from '@cpi/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { getRouteApi, useNavigate } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
+import { CircleCheck } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Combobox } from '@/components/combobox';
@@ -29,20 +30,28 @@ import {
   type OversightSearch,
 } from '@/features/oversight/queries';
 import { formatDateTime } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 
 const route = getRouteApi('/authed/supervisor/');
 
 function MetricCard({ metric }: { metric: Metric }) {
   return (
-    <div className="grid gap-1 rounded-lg border bg-card p-4">
-      <p className="text-sm font-medium">{metric.label}</p>
-      <p className="text-2xl font-semibold tabular-nums">
+    <div className="grid gap-1 rounded-lg border-2 border-base-lighter bg-white p-4">
+      <p className="text-sm font-bold">{metric.label}</p>
+      {/* "Not applicable" is a fact, not a result: it gets body size, not a headline. */}
+      <p
+        className={
+          metric.percent === null
+            ? 'text-md text-base-dark'
+            : 'text-xl font-bold tabular-nums'
+        }
+      >
         {metric.percent === null ? 'Not applicable' : `${metric.percent}%`}
       </p>
       <p className="text-sm tabular-nums">
         {metric.numerator} of {metric.denominator}
       </p>
-      <p className="text-xs text-muted-foreground">{metric.definition}</p>
+      <p className="text-xs text-base-dark">{metric.definition}</p>
     </div>
   );
 }
@@ -74,10 +83,10 @@ function Filters({ search }: { search: OversightSearch }) {
     <form
       role="search"
       aria-label="Filter oversight"
-      className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4"
+      className="flex flex-wrap items-end gap-4 rounded-lg border bg-white p-4"
       onSubmit={(event) => event.preventDefault()}
     >
-      <div className="grid w-40 gap-1.5">
+      <div className="grid w-40 gap-2">
         <Label htmlFor="filter-period">Quarter</Label>
         <SelectField
           id="filter-period"
@@ -92,7 +101,7 @@ function Filters({ search }: { search: OversightSearch }) {
           ]}
         />
       </div>
-      <div className="grid w-full gap-1.5 sm:w-80">
+      <div className="grid w-full gap-2 tablet:w-80">
         <Label htmlFor="filter-institution">Institution</Label>
         <Combobox
           id="filter-institution"
@@ -107,7 +116,7 @@ function Filters({ search }: { search: OversightSearch }) {
           }))}
         />
       </div>
-      <div className="grid w-full gap-1.5 sm:w-64">
+      <div className="grid w-full gap-2 tablet:w-64">
         <Label htmlFor="filter-officer">Officer</Label>
         <Combobox
           id="filter-officer"
@@ -122,30 +131,115 @@ function Filters({ search }: { search: OversightSearch }) {
   );
 }
 
+/**
+ * What the supervisor acts on (PRD §11: coverage and bottlenecks), first on the page. Each
+ * count says whose move it is and opens the submissions list.
+ */
+function NeedsAttention({ data }: { data: Oversight }) {
+  const pastTarget = data.trends.reduce(
+    (sum, point) => sum + point.reviewOverdue,
+    0,
+  );
+  const items = [
+    {
+      label: 'Past the review target',
+      detail: `Over ${data.reviewTarget.days} ${data.reviewTarget.unit === 'working' ? 'working days' : 'days'} from receipt without a final decision`,
+      count: pastTarget,
+      urgent: true,
+    },
+    {
+      label: 'Awaiting officer action',
+      detail: 'Submitted and waiting for the assigned officer',
+      count: data.backlog.awaitingOfficer,
+      urgent: false,
+    },
+    {
+      label: 'Awaiting institution clarification',
+      detail: 'The officer asked a question; the institution must answer',
+      count: data.backlog.awaitingInstitution,
+      urgent: false,
+    },
+  ];
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  return (
+    <section aria-labelledby="attention-heading" className="grid gap-3">
+      <h2 id="attention-heading" className="text-lg font-bold">
+        Needs attention
+      </h2>
+      {total === 0 ? (
+        <p className="flex items-center gap-2 text-sm">
+          <CircleCheck
+            className="size-5 shrink-0 text-success-darker"
+            aria-hidden="true"
+          />
+          Nothing is waiting on review in this view.
+        </p>
+      ) : (
+        <ul className="grid gap-3 tablet:grid-cols-3">
+          {items.map((item) => (
+            <li
+              key={item.label}
+              className={cn(
+                'grid gap-1 border-2 border-base-lighter bg-white p-4',
+                item.count > 0 &&
+                  (item.urgent
+                    ? 'border-l-8 border-l-error'
+                    : 'border-l-8 border-l-warning'),
+              )}
+            >
+              <p className="text-sm font-bold">{item.label}</p>
+              <p className="text-xl font-bold tabular-nums">{item.count}</p>
+              <p className="text-xs text-base-dark">{item.detail}</p>
+              {item.count > 0 && (
+                <Link
+                  to="/supervisor/submissions"
+                  className="mt-1 text-sm usa-link"
+                >
+                  View submissions
+                  <span className="sr-only"> {item.label.toLowerCase()}</span>
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function Metrics({ data }: { data: Oversight }) {
+  // A chart of zeros and "not applicable" says nothing the table does not.
+  const charted = data.metrics.some((metric) => metric.numerator > 0);
   return (
     <section aria-labelledby="metrics-heading" className="grid gap-4">
       <div>
-        <h2 id="metrics-heading" className="text-lg font-semibold">
+        <h2 id="metrics-heading" className="text-lg font-bold">
           Coverage and review
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           As of {formatDateTime(data.asOf)} · {data.profileName}
           {data.simulation && ' (simulation profile)'} · future obligations are
           excluded from due-report rates.
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 tablet:grid-cols-2 widescreen:grid-cols-5">
         {data.metrics.map((metric) => (
           <MetricCard key={metric.id} metric={metric} />
         ))}
       </div>
-      <div className="grid gap-6 rounded-lg border bg-card p-5 lg:grid-cols-2">
-        <MetricChart metrics={data.metrics} />
+      <div
+        className={cn(
+          'grid gap-6 rounded-lg border-2 border-base-lighter bg-white p-5',
+          charted && 'desktop:grid-cols-2',
+        )}
+      >
+        {charted && <MetricChart metrics={data.metrics} />}
         <Table>
-          <TableCaption className="text-left">
-            The chart shows the same values as this table.
-          </TableCaption>
+          {charted && (
+            <TableCaption className="text-left">
+              The chart shows the same values as this table.
+            </TableCaption>
+          )}
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Metric</TableHead>
@@ -174,16 +268,8 @@ function Metrics({ data }: { data: Oversight }) {
           </TableBody>
         </Table>
       </div>
-      <dl className="grid gap-3 sm:grid-cols-4">
+      <dl className="grid gap-3 tablet:grid-cols-2">
         {[
-          {
-            label: 'Awaiting officer action',
-            value: data.backlog.awaitingOfficer,
-          },
-          {
-            label: 'Awaiting institution clarification',
-            value: data.backlog.awaitingInstitution,
-          },
           {
             label: 'Closed without submission',
             value: data.backlog.closedNonresponse,
@@ -197,12 +283,13 @@ function Metrics({ data }: { data: Oversight }) {
             detail: `${data.averageReviewed.included} of ${data.averageReviewed.expected} institution-quarters finalized`,
           },
         ].map(({ label, value, detail }) => (
-          <div key={label} className="rounded-lg border bg-card p-4">
-            <dt className="text-sm text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
-            {detail && (
-              <dd className="text-sm text-muted-foreground">{detail}</dd>
-            )}
+          <div
+            key={label}
+            className="rounded-lg border-2 border-base-lighter bg-white p-4"
+          >
+            <dt className="text-sm text-base-dark">{label}</dt>
+            <dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+            {detail && <dd className="text-sm text-base-dark">{detail}</dd>}
           </div>
         ))}
       </dl>
@@ -232,13 +319,14 @@ export function SupervisorHomePage() {
       <QueryView query={oversight} label="oversight metrics">
         {(data) => (
           <>
+            <NeedsAttention data={data} />
             <Metrics data={data} />
             <Trends data={data} />
           </>
         )}
       </QueryView>
       <section aria-labelledby="coverage-heading" className="grid gap-3">
-        <h2 id="coverage-heading" className="text-lg font-semibold">
+        <h2 id="coverage-heading" className="text-lg font-bold">
           Institution-quarter status
         </h2>
         <QueryView query={cycle} label="reporting calendar">

@@ -71,7 +71,7 @@ export function EvidenceLookup({
     label: string,
     options: [string, string][],
   ) => (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <Label htmlFor={`filter-${key}`}>{label}</Label>
       <SelectField
         id={`filter-${key}`}
@@ -87,8 +87,8 @@ export function EvidenceLookup({
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="grid gap-1.5">
+      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-4 tablet:grid-cols-2 desktop:grid-cols-4">
+        <div className="grid gap-2">
           <Label htmlFor="filter-institutionId">Institution</Label>
           <Combobox
             id="filter-institutionId"
@@ -124,7 +124,7 @@ export function EvidenceLookup({
         empty="No submitted files match these filters."
       >
         {(list) => (
-          <div className="overflow-x-auto rounded-lg border bg-card">
+          <div className="overflow-x-auto rounded-lg border bg-white">
             <Table className="min-w-[52rem]">
               <TableCaption className="sr-only">
                 Submitted evidence, {list.length}{' '}
@@ -146,16 +146,16 @@ export function EvidenceLookup({
                     <TableHead scope="row" className="font-normal">
                       <FileViewer file={row.evidence} />
                       {row.evidence.version > 1 && (
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block text-xs text-base-dark">
                           Version {row.evidence.version}
                         </span>
                       )}
                     </TableHead>
                     <TableCell className="whitespace-normal">
-                      <span className="block font-medium">
+                      <span className="block font-bold">
                         {row.institutionId}
                       </span>
-                      <span className="block text-xs text-muted-foreground">
+                      <span className="block text-xs text-base-dark">
                         {row.institutionName}
                       </span>
                     </TableCell>
@@ -171,7 +171,7 @@ export function EvidenceLookup({
                       >
                         {row.periodLabel} · revision {row.revision}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">
+                      <span className="block text-xs text-base-dark">
                         {row.reviewState === 'finalized'
                           ? 'Finalized'
                           : 'Awaiting review'}

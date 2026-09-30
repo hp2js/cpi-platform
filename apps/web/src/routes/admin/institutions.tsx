@@ -75,7 +75,7 @@ function InstitutionsTable({
           label="Find an institution"
           placeholder="ID, name, officer or contact"
         />
-        <div className="grid w-60 gap-1.5">
+        <div className="grid w-60 gap-2">
           <Label htmlFor="institution-type-filter">Type</Label>
           <SelectField
             id="institution-type-filter"
@@ -93,7 +93,7 @@ function InstitutionsTable({
           />
         </div>
       </div>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[52rem]">
           <TableCaption className="sr-only">Institutions</TableCaption>
           <TableHeader>
@@ -112,10 +112,10 @@ function InstitutionsTable({
                   <Link
                     to="/admin/institutions/$institutionId"
                     params={{ institutionId: institution.id }}
-                    className="block font-medium text-primary underline-offset-4 hover:underline"
+                    className="block font-bold text-primary underline-offset-4 hover:underline"
                   >
                     {institution.id}
-                    <span className="block text-xs font-normal text-muted-foreground">
+                    <span className="block text-xs font-normal text-base-dark">
                       {institution.name}
                     </span>
                   </Link>
@@ -132,12 +132,12 @@ function InstitutionsTable({
                       <span className="block">
                         {institution.accountingOfficer.name}
                       </span>
-                      <span className="block text-muted-foreground">
+                      <span className="block text-base-dark">
                         {institution.accountingOfficer.designation}
                       </span>
                     </>
                   ) : (
-                    <span className="text-destructive">Not recorded</span>
+                    <span className="text-error-dark">Not recorded</span>
                   )}
                 </TableCell>
                 <TableCell className="text-sm">
@@ -145,7 +145,7 @@ function InstitutionsTable({
                   {institution.focalPersons.filter(
                     (person) => person.status === 'active',
                   ).length || (
-                    <span className="text-destructive">
+                    <span className="text-error-dark">
                       None active
                       {institution.focalPersons.some(
                         (person) => person.status === 'invited',
@@ -221,7 +221,7 @@ function TypeDialog({
             error={errors.label}
           />
           {mutation.isError && !errors.label && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -265,7 +265,7 @@ function TypeStatus({ type }: { type: InstitutionType }) {
         <span className="sr-only"> {type.label}</span>
       </Button>
       {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {mutation.error.message}
         </p>
       )}
@@ -277,7 +277,7 @@ function TypesTable({ types }: { types: InstitutionType[] }) {
   return (
     <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-2xl text-sm text-muted-foreground">
+        <p className="max-w-measure text-sm text-base-dark">
           The list offered when adding or editing an institution and matched by
           name in CSV imports. Retiring a type keeps it on the institutions that
           have it but stops it being chosen for new ones.
@@ -291,7 +291,7 @@ function TypesTable({ types }: { types: InstitutionType[] }) {
           }
         />
       </div>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table>
           <TableCaption className="sr-only">Institution types</TableCaption>
           <TableHeader>

@@ -3,31 +3,35 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Slot } from 'radix-ui';
 
+/** USWDS button (usa-button): 44 px minimum target, bold, 4 px radius, no shadows. */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-md font-bold leading-tight no-underline transition-colors disabled:cursor-not-allowed disabled:bg-disabled-lighter disabled:text-disabled-dark disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default:
+          'bg-primary text-white hover:bg-primary-dark active:bg-primary-darker',
+        // usa-button--secondary: USWDS's red, reserved for destructive actions.
         destructive:
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40',
+          'bg-secondary text-white hover:bg-secondary-dark active:bg-secondary-darker',
         outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'bg-white text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] hover:text-primary-dark hover:shadow-[inset_0_0_0_2px_var(--color-primary-dark)] active:text-primary-darker active:shadow-[inset_0_0_0_2px_var(--color-primary-darker)]',
+        // usa-button--base
+        secondary: 'bg-base-dark text-white hover:bg-base-darker active:bg-ink',
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'text-primary hover:bg-base-lightest hover:text-primary-dark active:text-primary-darker',
+        // usa-button--unstyled
+        link: 'font-normal text-primary underline underline-offset-2 hover:text-primary-dark disabled:bg-transparent',
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: 'h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
-        icon: 'size-9',
-        'icon-xs': "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        default: 'min-h-touch px-5 py-3 text-md',
+        xs: 'min-h-touch px-3 py-2 text-sm',
+        sm: 'min-h-touch px-4 py-2 text-sm',
+        lg: 'min-h-12 px-6 py-4 text-lg',
+        icon: 'size-touch',
+        'icon-xs': 'size-touch',
+        'icon-sm': 'size-touch',
+        'icon-lg': 'size-12',
       },
     },
     defaultVariants: {

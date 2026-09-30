@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { QueryView } from '@/components/query-view';
-import { FlagList, WorkflowStateBadge } from '@/components/status';
+import { ObligationStatus } from '@/components/status';
 import {
   Table,
   TableBody,
@@ -41,7 +41,7 @@ export function ReviewQueueTable({
       }
     >
       {(list) => (
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="overflow-x-auto rounded-lg border-2 border-base-lighter bg-white">
           <Table className="min-w-[48rem]">
             <TableCaption className="sr-only">
               {status === 'open'
@@ -61,7 +61,12 @@ export function ReviewQueueTable({
             </TableHeader>
             <TableBody>
               {list.map((item) => (
-                <TableRow key={item.submissionId}>
+                // The institution link stretches over the row, so the whole row opens the
+                // review while keyboard and screen reader users still meet one link.
+                <TableRow
+                  key={item.submissionId}
+                  className="relative hover:bg-base-lightest"
+                >
                   <TableHead
                     scope="row"
                     className="h-auto py-3 font-normal whitespace-normal"
@@ -75,11 +80,14 @@ export function ReviewQueueTable({
                             : '/admin/reviews/$submissionId'
                       }
                       params={{ submissionId: item.submissionId }}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      className="font-bold usa-link after:absolute after:inset-0"
                     >
                       {item.institutionId}
+                      <span className="sr-only">
+                        , review {item.periodLabel} revision {item.revision}
+                      </span>
                     </Link>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-base-dark">
                       {item.institutionName}
                     </span>
                   </TableHead>
@@ -88,8 +96,7 @@ export function ReviewQueueTable({
                   </TableCell>
                   <TableCell>
                     <span className="flex flex-col items-start gap-1">
-                      <WorkflowStateBadge state={item.state} />
-                      <FlagList flags={item.flags} />
+                      <ObligationStatus state={item.state} flags={item.flags} />
                     </span>
                   </TableCell>
                   <TableCell className="text-sm">

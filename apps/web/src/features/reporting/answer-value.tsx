@@ -51,11 +51,11 @@ export function AnswerValue({
   if (question.type === 'checklist') {
     const answer = isChecklistAnswer(value) ? value.items : {};
     return (
-      <ul className="grid gap-0.5">
+      <ul className="grid gap-1">
         {(question.items ?? []).map((item) => (
           <li key={item.id}>
             {item.label}:{' '}
-            <span className="font-medium">
+            <span className="font-bold">
               {answer[item.id] === true
                 ? 'Done'
                 : answer[item.id] === false
@@ -90,7 +90,7 @@ export function AnswerValue({
           <TableBody>
             {rows.map((row, index) => (
               <TableRow key={index}>
-                <TableHead scope="row" className="text-muted-foreground">
+                <TableHead scope="row" className="text-base-dark">
                   {index + 1}
                 </TableHead>
                 {columns.map((column) => (

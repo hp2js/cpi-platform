@@ -67,7 +67,7 @@ function useAttention(institutionId: string) {
 function AttentionBadge({ count }: { count: number | undefined }) {
   if (!count) return null;
   return (
-    <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs leading-5 font-semibold text-white">
+    <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-secondary-dark px-2 text-2xs leading-5 font-bold text-white">
       {count}
       <span className="sr-only"> needing attention</span>
     </span>
@@ -86,7 +86,7 @@ export function InstitutionLayout() {
   const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
   const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
-    <div className="min-h-svh bg-background pb-20 md:pb-0">
+    <div className="min-h-svh bg-white pb-20 tablet:pb-0">
       <SkipLink />
       <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
         <SimulationBanner session={session} />
@@ -94,9 +94,9 @@ export function InstitutionLayout() {
       <header
         ref={headerRef}
         data-sticky
-        className="sticky top-(--banner-h) z-30 border-b bg-card"
+        className="sticky top-(--banner-h) z-30 border-b bg-white"
       >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-3 sm:px-6">
+        <div className="mx-auto flex max-w-desktop items-center justify-between gap-4 px-4 pt-3 tablet:px-6">
           <Link
             to="/institution"
             activeOptions={{ exact: true }}
@@ -109,20 +109,18 @@ export function InstitutionLayout() {
             <AccountMenu session={session} />
           </div>
         </div>
-        <p className="mx-auto max-w-5xl px-4 pt-2 pb-1 sm:px-6">
-          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <p className="mx-auto max-w-desktop px-4 pt-2 pb-1 tablet:px-6">
+          <span className="text-xs font-bold tracking-wide text-base-dark uppercase">
             Reporting for
           </span>{' '}
-          <span className="font-semibold">
+          <span className="font-bold">
             {institution.data?.name ?? institutionId}
           </span>{' '}
-          <span className="text-sm text-muted-foreground">
-            ({institutionId})
-          </span>
+          <span className="text-sm text-base-dark">({institutionId})</span>
         </p>
         <nav
           aria-label="Institution"
-          className="mx-auto hidden max-w-5xl px-4 sm:px-6 md:block"
+          className="mx-auto hidden max-w-desktop px-4 tablet:px-6 tablet:block"
         >
           <ul className="flex gap-1">
             {nav.map(({ to, label, exact }) => (
@@ -130,7 +128,7 @@ export function InstitutionLayout() {
                 <Link
                   to={to}
                   activeOptions={{ exact }}
-                  className="inline-flex items-center border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground data-[status=active]:border-primary data-[status=active]:text-foreground"
+                  className="inline-flex min-h-touch items-center border-b-4 border-transparent px-4 py-3 text-sm font-bold text-ink no-underline hover:text-primary data-[status=active]:border-primary data-[status=active]:text-primary"
                 >
                   {label}
                   <AttentionBadge count={attention[to]} />
@@ -143,16 +141,16 @@ export function InstitutionLayout() {
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto max-w-5xl px-4 py-6 sm:px-6"
+        className="outline-none mx-auto max-w-desktop px-4 py-6 tablet:px-6"
       >
         <Outlet />
       </main>
       <nav
         aria-label="Institution"
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-white tablet:hidden"
       >
         <ul
-          className="mx-auto grid max-w-md"
+          className="mx-auto grid max-w-mobile-lg"
           style={{
             gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))`,
           }}
@@ -162,7 +160,7 @@ export function InstitutionLayout() {
               <Link
                 to={to}
                 activeOptions={{ exact }}
-                className="flex flex-col items-center gap-0.5 py-2 text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-primary"
+                className="flex min-h-14 flex-col items-center justify-center gap-1 border-t-4 border-transparent py-2 text-xs text-ink data-[status=active]:border-primary data-[status=active]:font-bold data-[status=active]:text-primary"
               >
                 <span className="relative">
                   <Icon className="size-5" aria-hidden="true" />

@@ -189,6 +189,17 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
     .getByLabel('Page or section in exception-review.pdf')
     .fill('Page 1');
   await page.getByRole('button', { name: 'Review and submit' }).click();
+  // Before submitting, the response shows what it changes against revision 1.
+  const changes = page.getByRole('region', {
+    name: 'What you changed since revision 1',
+  });
+  await expect(
+    changes
+      .getByRole('row')
+      .filter({ hasText: 'M-01 supporting evidence' })
+      .getByRole('cell')
+      .last(),
+  ).toContainText('exception-review.pdf (Page 1)');
   await page.getByLabel(/I am authorized to submit/).check();
   await page
     .getByLabel('Your role or delegation reference')

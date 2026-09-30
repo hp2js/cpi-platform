@@ -21,18 +21,18 @@ import { SkipLink } from '@/layouts/shared';
 
 function Shell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-white">
       <SkipLink />
-      <header className="border-b bg-card px-6 py-4">
+      <header className="border-b bg-white px-6 py-4">
         <Brand />
       </header>
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12 sm:px-6"
+        className="outline-none mx-auto flex w-full max-w-mobile-lg flex-1 flex-col justify-center px-4 py-12 tablet:px-6"
       >
-        <div className="grid gap-5 rounded-2xl border bg-card p-6 shadow-xs">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <div className="grid gap-5 rounded-lg border bg-white p-6">
+          <h1 className="text-xl font-bold tracking-tight">{title}</h1>
           {children}
         </div>
       </main>
@@ -76,7 +76,7 @@ export function NewPasswordField({
     ],
   ] as const;
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <Input
@@ -93,7 +93,7 @@ export function NewPasswordField({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute top-1/2 right-0.5 size-8 -translate-y-1/2"
+          className="absolute top-1/2 right-0 size-touch -translate-y-1/2"
           aria-pressed={visible}
           onClick={() => setVisible(!visible)}
         >
@@ -103,14 +103,14 @@ export function NewPasswordField({
           </span>
         </Button>
       </div>
-      <ul id={`${id}-rules`} className="grid gap-0.5 text-sm">
+      <ul id={`${id}-rules`} className="grid gap-1 text-sm">
         {rules.map(([rule, met]) => (
           <li
             key={rule}
             className={
               met && value
-                ? 'flex items-center gap-1.5'
-                : 'flex items-center gap-1.5 text-muted-foreground'
+                ? 'flex items-center gap-2'
+                : 'flex items-center gap-2 text-base-dark'
             }
           >
             {met && value ? (
@@ -125,11 +125,11 @@ export function NewPasswordField({
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-base-dark">
         A passphrase of a few words is easy to remember. Pasting from a password
         manager is fine.
       </p>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-error-dark">{error}</p>}
     </div>
   );
 }
@@ -148,12 +148,12 @@ export function ForgotPasswordPage() {
         <div className="grid gap-4">
           <p role="status" className="flex items-start gap-2">
             <MailCheck
-              className="mt-0.5 size-5 shrink-0 text-primary"
+              className="mt-1 size-5 shrink-0 text-primary"
               aria-hidden="true"
             />
             {mutation.data.message}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             In this demonstration, emails go to the demo email sink, which the
             administrator can open under Notifications.
           </p>
@@ -173,11 +173,11 @@ export function ForgotPasswordPage() {
             mutation.mutate();
           }}
         >
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             Enter the email you sign in with. If it belongs to an account, we
             send a link to choose a new password.
           </p>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor="reset-email">Email</Label>
             <Input
               id="reset-email"
@@ -189,7 +189,7 @@ export function ForgotPasswordPage() {
             />
           </div>
           {mutation.isError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
             </p>
           )}
@@ -257,7 +257,7 @@ export function SetPasswordPage() {
   if (!link.data)
     return (
       <Shell title="Checking your link">
-        <p role="status" className="text-muted-foreground">
+        <p role="status" className="text-base-dark">
           One moment…
         </p>
       </Shell>
@@ -269,7 +269,7 @@ export function SetPasswordPage() {
     <Shell title={invitation ? 'Set up your account' : 'Choose a new password'}>
       <p className="flex items-start gap-2 text-sm">
         <KeyRound
-          className="mt-0.5 size-4 shrink-0 text-primary"
+          className="mt-1 size-4 shrink-0 text-primary"
           aria-hidden="true"
         />
         <span>
@@ -301,7 +301,7 @@ export function SetPasswordPage() {
           email={link.data.email}
           error={errors.password}
         />
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="confirm-password">Confirm the password</Label>
           <Input
             id="confirm-password"
@@ -312,13 +312,13 @@ export function SetPasswordPage() {
             aria-invalid={mismatch || undefined}
           />
           {mismatch && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-error-dark">
               The passwords do not match.
             </p>
           )}
         </div>
         {mutation.isError && Object.keys(errors).length === 0 && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-error-dark">
             {mutation.error.message}
           </p>
         )}

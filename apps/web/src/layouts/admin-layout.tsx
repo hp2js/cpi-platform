@@ -81,7 +81,7 @@ const sections = [
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 bg-primary p-4 text-primary-foreground">
+    <div className="flex min-h-full flex-col gap-6 bg-primary-darker p-4 text-white">
       <Link
         to="/admin"
         activeOptions={{ exact: true }}
@@ -93,10 +93,10 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <nav aria-label="Administration" className="grid gap-5">
         {sections.map((section) => (
           <div key={section.heading}>
-            <p className="px-3 text-xs font-semibold tracking-wide text-primary-foreground/60 uppercase">
+            <p className="px-3 text-xs font-bold tracking-wide text-white uppercase">
               {section.heading}
             </p>
-            <div className="mt-1.5">
+            <div className="mt-2">
               <NavList
                 items={section.items}
                 tone="dark"
@@ -120,7 +120,7 @@ export function AdminLayout() {
   const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
   const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-white">
       <SkipLink />
       <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
         <SimulationBanner session={session} />
@@ -128,7 +128,7 @@ export function AdminLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto bg-primary lg:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto bg-primary-darker desktop:block"
         >
           <AdminSidebar />
         </aside>
@@ -136,11 +136,11 @@ export function AdminLayout() {
           <header
             ref={headerRef}
             data-sticky
-            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-card px-4 py-2 lg:justify-end"
+            className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button variant="ghost" size="icon" className="desktop:hidden">
                   <Menu aria-hidden="true" />
                   <span className="sr-only">Open navigation</span>
                 </Button>
@@ -158,7 +158,7 @@ export function AdminLayout() {
           <main
             id="main"
             tabIndex={-1}
-            className="outline-none flex-1 px-4 py-6 lg:px-8"
+            className="outline-none flex-1 px-4 py-6 desktop:px-8"
           >
             <Outlet />
           </main>

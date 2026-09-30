@@ -13,8 +13,9 @@ import {
   useBlocker,
   useNavigate,
 } from '@tanstack/react-router';
-import { ArrowRight, CircleCheck, Lock, Save } from 'lucide-react';
+import { ArrowRight, CircleAlert, CircleCheck, Lock, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { WorkflowStateBadge } from '@/components/status';
@@ -67,8 +68,8 @@ function ReportContents({
   const form = bundle.form!;
   return (
     <nav aria-label="Report sections" className="grid gap-2 text-sm">
-      <p className="font-semibold">In this report</p>
-      <ol className="grid gap-1">
+      <h2 className="text-md font-bold">In this report</h2>
+      <ol className="grid">
         {form.sections.map((section) => {
           let answered = 0;
           let total = 0;
@@ -92,17 +93,17 @@ function ReportContents({
             <li key={section.id}>
               <a
                 href={`#section-${section.id}`}
-                className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+                className="flex min-h-touch items-start justify-between gap-2 border-b border-base-lighter py-2 text-ink no-underline hover:text-primary"
               >
                 <span>{section.title}</span>
                 <span
                   className={cn(
                     'shrink-0 tabular-nums',
-                    done ? 'text-primary' : 'text-muted-foreground',
+                    done ? 'font-bold text-success-darker' : 'text-base-dark',
                   )}
                 >
                   {done ? (
-                    <CircleCheck className="inline size-4" aria-hidden="true" />
+                    <CircleCheck className="inline size-5" aria-hidden="true" />
                   ) : null}{' '}
                   {answered} of {total}
                   <span className="sr-only"> answered</span>
@@ -262,16 +263,25 @@ function ReportEditor({
     >
       <div
         data-sticky
-        className="sticky top-(--sticky-top) z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6"
+        className="z-20 -mx-4 tablet:sticky tablet:top-(--sticky-top) flex flex-wrap items-center justify-between gap-3 border-b border-base-lighter bg-white px-4 py-3 tablet:-mx-6 tablet:px-6"
       >
         <p className="text-sm" aria-live="polite">
           {save.isPending ? (
             'Saving…'
           ) : dirty ? (
-            <span className="font-medium">Unsaved changes</span>
+            <span className="inline-flex items-center gap-2 font-bold">
+              <CircleAlert
+                className="size-5 text-warning-darker"
+                aria-hidden="true"
+              />
+              Unsaved changes
+            </span>
           ) : savedAt ? (
-            <span className="inline-flex items-center gap-1.5">
-              <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+            <span className="inline-flex items-center gap-2">
+              <CircleCheck
+                className="size-5 text-success-darker"
+                aria-hidden="true"
+              />
               Draft saved {formatDateTime(savedAt)}
               {savedBy &&
                 savedBy !== session.user.displayName &&
@@ -283,9 +293,10 @@ function ReportEditor({
             'Not saved yet'
           )}
         </p>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 tablet:w-auto">
           <Button
             type="submit"
+            className="grow tablet:grow-0"
             variant="outline"
             disabled={save.isPending || !dirty}
           >
@@ -294,6 +305,7 @@ function ReportEditor({
           </Button>
           <Button
             type="button"
+            className="grow tablet:grow-0"
             disabled={save.isPending}
             onClick={() => void reviewAndSubmit()}
           >
@@ -321,7 +333,7 @@ function ReportEditor({
                       href="/sign-in"
                       target="_blank"
                       rel="noopener"
-                      className="font-medium underline"
+                      className="font-bold underline"
                     >
                       Sign in again in a new tab
                     </a>
@@ -356,7 +368,7 @@ function ReportEditor({
           aria-label="Questioned milestones"
           className="flex flex-wrap items-center gap-2 text-sm"
         >
-          <span className="font-medium">Go to:</span>
+          <span className="font-bold">Go to:</span>
           {questioned.map((milestone) => (
             <a
               key={milestone.id}
@@ -369,7 +381,7 @@ function ReportEditor({
         </nav>
       )}
       {bundle.obligation.state === 'clarification_requested' && (
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-measure text-sm text-ink">
           This draft starts from your last submitted revision. Change only what
           the clarification asks about; unchanged answers keep their earlier
           review. Submitting creates a new revision and keeps your earlier
@@ -377,8 +389,8 @@ function ReportEditor({
         </p>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
-        <aside className="rounded-lg border bg-card p-3 lg:sticky lg:top-[calc(var(--sticky-top)+5rem)] lg:order-last">
+      <div className="grid gap-8 desktop:grid-cols-[minmax(0,1fr)_16rem] desktop:items-start">
+        <aside className="rounded-lg border-2 border-base-lighter bg-white p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+5rem)] desktop:order-last">
           <ReportContents bundle={bundle} values={values} />
         </aside>
         <div className="grid gap-8">
@@ -391,12 +403,12 @@ function ReportEditor({
               <div>
                 <h2
                   id={`section-${section.id}`}
-                  className="text-lg font-semibold"
+                  className="text-lg leading-tight font-bold"
                 >
                   {section.title}
                 </h2>
                 {section.description && (
-                  <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                  <p className="mt-1 max-w-measure text-sm text-base-dark">
                     {section.description}
                   </p>
                 )}
@@ -417,7 +429,7 @@ function ReportEditor({
                 ) : (
                   <div
                     key={question.id}
-                    className="rounded-lg border bg-card p-4 sm:p-5"
+                    className="rounded-lg border-2 border-base-lighter bg-white p-4 tablet:p-6"
                   >
                     <QuestionField
                       form={reportForm}
@@ -524,6 +536,7 @@ export function ReportPage() {
           )
         }
       />
+      <Glossary />
       <QueryView query={bundle} label="report">
         {(data) =>
           data.editable ? (

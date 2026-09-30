@@ -197,3 +197,7 @@ export const healthQuery = queryOptions({
     request('/api/health/ready', readinessSchema, { signal }),
   refetchInterval: 30_000,
 });
+
+/** The real API by default; VITE_API_MODE=mock runs the in-browser mock instead (dev only). */
+export const mockApi =
+  import.meta.env.DEV && import.meta.env.VITE_API_MODE === 'mock';

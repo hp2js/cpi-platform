@@ -71,21 +71,18 @@ export function AnnualResultView({
     <div className="grid gap-6">
       <section
         aria-labelledby={`total-${evaluation.institutionId}`}
-        className="rounded-lg border bg-card p-5"
+        className="rounded-lg border bg-white p-5"
       >
-        <h3 id={`total-${evaluation.institutionId}`} className="font-semibold">
+        <h3 id={`total-${evaluation.institutionId}`} className="font-bold">
           Annual result
         </h3>
         {evaluation.total.status === 'calculated' ? (
           <div className="mt-2 grid gap-1">
-            <p className="text-3xl font-semibold tabular-nums">
+            <p className="text-xl font-bold tabular-nums">
               {evaluation.total.points}
-              <span className="text-base font-normal text-muted-foreground">
-                {' '}
-                / 100
-              </span>
+              <span className="text-sm font-normal text-base-dark"> / 100</span>
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Foundations {evaluation.total.foundationPoints} + implementation{' '}
               {evaluation.total.implementationPoints} (
               {evaluation.weights.implementation} × average of four quarters,{' '}
@@ -95,15 +92,15 @@ export function AnnualResultView({
           </div>
         ) : (
           <div className="mt-2 text-sm">
-            <p className="font-medium">Pending: not yet calculable</p>
-            <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+            <p className="font-bold">Pending: not yet calculable</p>
+            <ul className="mt-1 list-disc pl-5 text-base-dark">
               {evaluation.total.reasons.map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
           </div>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-3 text-xs text-base-dark">
           {profileName}
           {simulation && ' · simulation profile, not official EACC scoring'}.
           Late reporting is shown separately; no late penalty is applied in this
@@ -112,7 +109,7 @@ export function AnnualResultView({
         </p>
       </section>
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[44rem]">
           <TableCaption className="text-left">
             Foundations are counted once, from the version effective at the
@@ -145,7 +142,7 @@ export function AnnualResultView({
         </Table>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[52rem]">
           <TableCaption className="text-left">
             Each quarter contributes up to{' '}
@@ -182,7 +179,7 @@ export function AnnualResultView({
                 </TableCell>
                 <TableCell className="text-sm">
                   {quarter.late ? (
-                    <span className="inline-flex items-center gap-1 font-medium">
+                    <span className="inline-flex items-center gap-1 font-bold">
                       <AlarmClock className="size-4" aria-hidden="true" />
                       Late by{' '}
                       {formatDays(quarter.daysLate ?? 0, quarter.daysLateUnit)}
@@ -193,7 +190,7 @@ export function AnnualResultView({
                     '—'
                   )}
                   {quarter.firstSubmittedAt && (
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-base-dark">
                       First submitted {formatDateTime(quarter.firstSubmittedAt)}
                       {quarter.firstCompleteEvidenceAt
                         ? quarter.firstCompleteEvidenceAt !==
@@ -206,7 +203,7 @@ export function AnnualResultView({
                 </TableCell>
                 <TableCell className="text-sm whitespace-normal">
                   {quarter.reviewedBy && (
-                    <span className="block text-muted-foreground">
+                    <span className="block text-base-dark">
                       {quarter.reviewedBy}
                     </span>
                   )}
@@ -215,7 +212,7 @@ export function AnnualResultView({
                   )}
                   {quarter.rejected.map((rejected) => (
                     <span key={rejected.code} className="block">
-                      <span className="font-medium">{rejected.code}</span> not
+                      <span className="font-bold">{rejected.code}</span> not
                       accepted: {rejected.reason}
                     </span>
                   ))}

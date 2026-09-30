@@ -66,14 +66,14 @@ function RiskScaleForm({ settings }: { settings: RiskScaleSettings }) {
           <AlertDescription>{save.error.message}</AlertDescription>
         </Alert>
       )}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 tablet:grid-cols-2">
         {axes.map(([axis, title, hint]) => (
           <fieldset
             key={axis}
-            className="grid content-start gap-3 rounded-lg border bg-card p-5"
+            className="grid content-start gap-3 rounded-lg border bg-white p-5"
           >
-            <legend className="px-1 font-semibold">{title}</legend>
-            <p className="text-sm text-muted-foreground">{hint}.</p>
+            <legend className="px-1 font-bold">{title}</legend>
+            <p className="text-sm text-base-dark">{hint}.</p>
             {values[axis].map((label, index) => (
               <div
                 key={index}
@@ -103,12 +103,12 @@ function RiskScaleForm({ settings }: { settings: RiskScaleSettings }) {
               </div>
             ))}
             {errors[axis] && (
-              <p className="text-sm text-destructive">{errors[axis]}</p>
+              <p className="text-sm text-error-dark">{errors[axis]}</p>
             )}
           </fieldset>
         ))}
       </div>
-      <div className="grid max-w-2xl gap-1.5">
+      <div className="grid max-w-measure gap-2">
         <Label htmlFor="scale-source">Source of these labels</Label>
         <Textarea
           id="scale-source"
@@ -118,15 +118,15 @@ function RiskScaleForm({ settings }: { settings: RiskScaleSettings }) {
           }
           aria-describedby="scale-source-hint"
         />
-        <p id="scale-source-hint" className="text-xs text-muted-foreground">
+        <p id="scale-source-hint" className="text-xs text-base-dark">
           Shown with the scale wherever risks are rated. Name the document and
           version, for example the EACC risk assessment template.
         </p>
         {errors.source && (
-          <p className="text-sm text-destructive">{errors.source}</p>
+          <p className="text-sm text-error-dark">{errors.source}</p>
         )}
       </div>
-      <div className="grid max-w-2xl gap-1.5">
+      <div className="grid max-w-measure gap-2">
         <Label htmlFor="scale-reason">Reason for the change</Label>
         <Textarea
           id="scale-reason"
@@ -142,7 +142,7 @@ function RiskScaleForm({ settings }: { settings: RiskScaleSettings }) {
           Save scale
         </Button>
         {dirty && reason.trim().length < 10 && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-base-dark">
             Give a reason of at least 10 characters.
           </p>
         )}
@@ -165,11 +165,11 @@ export function RiskScalePage() {
           <div className="grid grid-cols-1 gap-8">
             <RiskScaleForm settings={data} />
             <section aria-labelledby="scale-changes-heading">
-              <h2 id="scale-changes-heading" className="text-lg font-semibold">
+              <h2 id="scale-changes-heading" className="text-lg font-bold">
                 Change log
               </h2>
               {data.changes.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-base-dark">
                   No changes since the cycle was set up.
                 </p>
               ) : (
@@ -177,10 +177,10 @@ export function RiskScalePage() {
                   {data.changes.map((change) => (
                     <li
                       key={change.at + change.summary}
-                      className="rounded-lg border bg-card p-4 text-sm"
+                      className="rounded-lg border bg-white p-4 text-sm"
                     >
-                      <p className="font-medium">{change.summary}</p>
-                      <p className="text-muted-foreground">
+                      <p className="font-bold">{change.summary}</p>
+                      <p className="text-base-dark">
                         {formatDateTime(change.at)} by {change.by}. Reason:{' '}
                         {change.reason}
                       </p>

@@ -8,7 +8,7 @@ import {
   ListSearch,
   useListControls,
 } from '@/components/list-controls';
-import { FlagList, WorkflowStateBadge, flagLabel } from '@/components/status';
+import { ObligationStatus, flagLabel } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -96,7 +96,7 @@ export function SupervisorInstitutionsPage() {
               label="Find an institution"
               placeholder="ID, name, type or officer"
             />
-            <div className="overflow-x-auto rounded-lg border bg-card">
+            <div className="overflow-x-auto rounded-lg border bg-white">
               <Table className="min-w-[44rem]">
                 <TableCaption className="sr-only">
                   Institutions assigned to you
@@ -116,11 +116,11 @@ export function SupervisorInstitutionsPage() {
                         <Link
                           to="/supervisor/institutions/$institutionId"
                           params={{ institutionId: institution.id }}
-                          className="font-medium text-primary underline-offset-4 hover:underline"
+                          className="font-bold text-primary underline-offset-4 hover:underline"
                         >
                           {institution.id}
                         </Link>
-                        <span className="block text-xs font-normal text-muted-foreground">
+                        <span className="block text-xs font-normal text-base-dark">
                           {institution.name}
                         </span>
                       </TableHead>
@@ -130,7 +130,7 @@ export function SupervisorInstitutionsPage() {
                       <TableCell>{officer}</TableCell>
                       <TableCell className="text-sm whitespace-normal">
                         {institution.activeFocalPersons === 0 && (
-                          <span className="block font-medium text-destructive">
+                          <span className="block font-bold text-error-dark">
                             No active focal person
                           </span>
                         )}
@@ -171,12 +171,12 @@ function Quarters({ institutionId }: { institutionId: string }) {
     );
   return (
     <section aria-labelledby="quarters-heading" className="grid gap-3">
-      <h2 id="quarters-heading" className="text-lg font-semibold">
+      <h2 id="quarters-heading" className="text-lg font-bold">
         Quarters
       </h2>
       <QueryView query={obligations} label="quarters">
         {(list) => (
-          <div className="overflow-x-auto rounded-lg border bg-card">
+          <div className="overflow-x-auto rounded-lg border bg-white">
             <Table className="min-w-[40rem]">
               <TableCaption className="sr-only">
                 Reporting status by quarter
@@ -201,9 +201,11 @@ function Quarters({ institutionId }: { institutionId: string }) {
                         {period?.label ?? obligation.periodId}
                       </TableHead>
                       <TableCell>
-                        <span className="flex flex-col items-start gap-1.5">
-                          <WorkflowStateBadge state={obligation.state} />
-                          <FlagList flags={obligation.flags} />
+                        <span className="flex flex-col items-start gap-2">
+                          <ObligationStatus
+                            state={obligation.state}
+                            flags={obligation.flags}
+                          />
                         </span>
                       </TableCell>
                       <TableCell className="tabular-nums">
@@ -225,7 +227,7 @@ function Quarters({ institutionId }: { institutionId: string }) {
                             </span>
                           </Link>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-base-dark">
                             Not submitted
                           </span>
                         )}
@@ -246,7 +248,7 @@ function Baselines({ institutionId }: { institutionId: string }) {
   const plan = useQuery(planQuery(institutionId));
   return (
     <section aria-labelledby="baselines-heading" className="grid gap-3">
-      <h2 id="baselines-heading" className="text-lg font-semibold">
+      <h2 id="baselines-heading" className="text-lg font-bold">
         Quarterly baselines
       </h2>
       <QueryView query={plan} label="baselines">
@@ -260,13 +262,13 @@ function Baselines({ institutionId }: { institutionId: string }) {
             ).values(),
           ];
           return (
-            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <ul className="grid gap-2 tablet:grid-cols-2 widescreen:grid-cols-4">
               {latest.map((baseline) => (
                 <li
                   key={baseline.id}
-                  className="grid gap-1 rounded-lg border bg-card p-3 text-sm"
+                  className="grid gap-1 rounded-lg border bg-white p-3 text-sm"
                 >
-                  <span className="font-medium">{baseline.periodLabel}</span>
+                  <span className="font-bold">{baseline.periodLabel}</span>
                   <span>
                     <Badge
                       variant={
@@ -280,7 +282,7 @@ function Baselines({ institutionId }: { institutionId: string }) {
                           : 'Awaiting approval'}
                     </Badge>
                   </span>
-                  <span className="text-muted-foreground">
+                  <span className="text-base-dark">
                     {baseline.milestones.length} milestones · version{' '}
                     {baseline.version}
                   </span>
@@ -347,7 +349,7 @@ export function SupervisorInstitutionPage() {
               </AlertDescription>
             </Alert>
           )}
-          <dl className="grid gap-x-6 gap-y-2 rounded-lg border bg-card p-5 text-sm sm:grid-cols-[12rem_1fr]">
+          <dl className="grid gap-x-6 gap-y-2 rounded-lg border bg-white p-5 text-sm tablet:grid-cols-[12rem_1fr]">
             {[
               ['Reviewing officer', officer?.officerName ?? 'Unassigned'],
               ['Supervisor', supervisor?.supervisorName ?? '—'],
@@ -359,8 +361,8 @@ export function SupervisorInstitutionPage() {
               ],
             ].map(([term, detail]) => (
               <div key={term} className="contents">
-                <dt className="text-muted-foreground">{term}</dt>
-                <dd className="font-medium">{detail}</dd>
+                <dt className="text-base-dark">{term}</dt>
+                <dd className="font-bold">{detail}</dd>
               </div>
             ))}
           </dl>

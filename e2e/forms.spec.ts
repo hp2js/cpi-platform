@@ -8,6 +8,9 @@ test.skip(
 );
 
 async function scan(page: Page) {
+  // Scan from the top: a field the last step left under the pinned save bar would otherwise
+  // count as an obscured target, whatever the page's design.
+  await page.evaluate(() => window.scrollTo(0, 0));
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();

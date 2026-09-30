@@ -81,8 +81,8 @@ function ExtensionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
       </Button>
     );
   return (
-    <div className="grid gap-2 rounded-md border bg-background p-3">
-      <p className="text-sm text-muted-foreground">
+    <div className="grid gap-2 rounded-md border bg-white p-3">
+      <p className="text-sm text-base-dark">
         The extension lets evidence and review finish. It never shortens a
         response window and does not change other deadlines or lateness.
       </p>
@@ -94,7 +94,7 @@ function ExtensionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
         onChange={(event) => setUntilDate(event.target.value)}
       />
       {errors.untilDate && (
-        <p className="text-sm text-destructive">{errors.untilDate}</p>
+        <p className="text-sm text-error-dark">{errors.untilDate}</p>
       )}
       <Label htmlFor={`${id}-by`}>Authorized by</Label>
       <Input
@@ -109,7 +109,7 @@ function ExtensionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
         onChange={(event) => setReason(event.target.value)}
       />
       {mutation.isError && !errors.untilDate && (
-        <p className="text-sm text-destructive">{mutation.error.message}</p>
+        <p className="text-sm text-error-dark">{mutation.error.message}</p>
       )}
       <div className="flex gap-2">
         <Button
@@ -155,7 +155,7 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
       </Button>
     );
   return (
-    <div className="grid gap-2 rounded-md border bg-background p-3">
+    <div className="grid gap-2 rounded-md border bg-white p-3">
       <Label htmlFor={`corr-period-${evaluation.institutionId}`}>
         Quarter to correct
       </Label>
@@ -175,7 +175,7 @@ function CorrectionForm({ evaluation }: { evaluation: AnnualEvaluation }) {
         onChange={(event) => setReason(event.target.value)}
       />
       {mutation.isError && (
-        <p className="text-sm text-destructive">{mutation.error.message}</p>
+        <p className="text-sm text-error-dark">{mutation.error.message}</p>
       )}
       <div className="flex gap-2">
         <Button
@@ -240,7 +240,7 @@ function EvaluationList({
           label="Find an institution"
           placeholder="ID, name or officer"
         />
-        <div className="grid w-52 gap-1.5">
+        <div className="grid w-52 gap-2">
           <Label htmlFor="annual-state">Status</Label>
           <SelectField
             id="annual-state"
@@ -269,7 +269,7 @@ function EvaluationList({
           return (
             <li
               key={evaluation.institutionId}
-              className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[auto_1fr_auto] md:items-start"
+              className="grid gap-3 rounded-lg border bg-white p-4 tablet:grid-cols-[auto_1fr_auto] tablet:items-start"
             >
               <Checkbox
                 id={`publish-${evaluation.institutionId}`}
@@ -286,16 +286,16 @@ function EvaluationList({
                 className="mt-1"
               />
               <div className="grid gap-1 text-sm">
-                <p className="font-semibold">
+                <p className="font-bold">
                   {evaluation.institutionId}{' '}
-                  <span className="font-normal text-muted-foreground">
+                  <span className="font-normal text-base-dark">
                     {evaluation.institutionName} · {evaluation.officerName}
                   </span>
                 </p>
                 <div>
                   {evaluation.total.status === 'calculated' ? (
                     <>
-                      <span className="font-semibold tabular-nums">
+                      <span className="font-bold tabular-nums">
                         {evaluation.total.points}
                       </span>{' '}
                       / 100 · {status(evaluation)}
@@ -309,7 +309,7 @@ function EvaluationList({
                           : 'items'}{' '}
                         outstanding
                       </summary>
-                      <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                      <ul className="mt-1 list-disc pl-5 text-base-dark">
                         {evaluation.total.reasons.map((reason) => (
                           <li key={reason}>{reason}</li>
                         ))}
@@ -317,7 +317,7 @@ function EvaluationList({
                     </details>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-base-dark">
                   {evaluation.quarters
                     .map(
                       (quarter) =>
@@ -329,12 +329,12 @@ function EvaluationList({
               {(evaluation.holds.length > 0 || evaluation.extension) && (
                 <div className="grid gap-1 text-sm">
                   {evaluation.holds.map((hold) => (
-                    <p key={hold} className="font-medium">
+                    <p key={hold} className="font-bold">
                       {hold}
                     </p>
                   ))}
                   {evaluation.extension && (
-                    <p className="text-muted-foreground">
+                    <p className="text-base-dark">
                       Extension authorized by{' '}
                       {evaluation.extension.authorizedBy}, recorded by{' '}
                       {evaluation.extension.recordedBy}{' '}
@@ -476,7 +476,7 @@ export function AnnualPage() {
         }}
       </QueryView>
       {exportCsv.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {exportCsv.error.message}
         </p>
       )}

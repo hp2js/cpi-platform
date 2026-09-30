@@ -93,7 +93,7 @@ export function DevToolbar({
         type="button"
         variant="outline"
         size="sm"
-        className="fixed right-3 bottom-24 z-50 shadow-md md:bottom-3"
+        className="fixed right-3 bottom-24 z-50 shadow-2 tablet:bottom-3"
         onClick={() => setOpen(true)}
       >
         <FlaskConical aria-hidden="true" />
@@ -105,10 +105,10 @@ export function DevToolbar({
     <section
       data-print-hide
       aria-label={`${name} controls`}
-      className="fixed right-3 bottom-24 z-50 w-72 rounded-lg border bg-card p-4 text-sm shadow-lg md:bottom-3"
+      className="fixed right-3 bottom-24 z-50 w-72 rounded-lg border bg-white p-4 text-sm shadow-3 tablet:bottom-3"
     >
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">{name} controls</h2>
+        <h2 className="font-bold">{name} controls</h2>
         <Button
           type="button"
           variant="ghost"
@@ -119,13 +119,13 @@ export function DevToolbar({
           <span className="sr-only">Close {name} controls</span>
         </Button>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
+      <p className="mt-1 text-xs text-base-dark">
         Development only. Data is fictional and stored{' '}
         {live ? 'in the development database' : 'in this browser'}.
       </p>
       {!live && (
         <div className="mt-3 grid gap-1">
-          <label htmlFor="dev-latency" className="font-medium">
+          <label htmlFor="dev-latency" className="font-bold">
             Network latency
           </label>
           <SelectField

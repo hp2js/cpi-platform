@@ -58,7 +58,7 @@ function Current() {
   );
   return (
     <section aria-labelledby="current-heading" className="grid gap-3">
-      <h2 id="current-heading" className="text-lg font-semibold">
+      <h2 id="current-heading" className="text-lg font-bold">
         Your institutions and their officers
       </h2>
       <ListSearch
@@ -66,7 +66,7 @@ function Current() {
         label="Find an institution"
         placeholder="ID, name or officer"
       />
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-white">
         <Table className="min-w-[44rem]">
           <TableCaption className="sr-only">
             Institutions assigned to you and their reviewing officers
@@ -88,11 +88,11 @@ function Current() {
                   <Link
                     to="/supervisor/institutions/$institutionId"
                     params={{ institutionId: institution.id }}
-                    className="font-medium text-primary underline-offset-4 hover:underline"
+                    className="font-bold text-primary underline-offset-4 hover:underline"
                   >
                     {institution.id}
                   </Link>
-                  <span className="block text-xs font-normal text-muted-foreground">
+                  <span className="block text-xs font-normal text-base-dark">
                     {institution.name}
                   </span>
                 </TableHead>
@@ -124,15 +124,15 @@ function Current() {
 function Suggestions({ list }: { list: ReassignmentSuggestion[] }) {
   return (
     <section aria-labelledby="suggestions-heading" className="grid gap-3">
-      <h2 id="suggestions-heading" className="text-lg font-semibold">
+      <h2 id="suggestions-heading" className="text-lg font-bold">
         Reassignment requests
       </h2>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Your suggestions, and conflicts of interest declared by officers about
         your institutions. The administrator decides.
       </p>
       {list.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           None yet. Suggest a reassignment from the table above.
         </p>
       ) : (
@@ -140,10 +140,10 @@ function Suggestions({ list }: { list: ReassignmentSuggestion[] }) {
           {list.map((suggestion) => (
             <li
               key={suggestion.id}
-              className="grid gap-1.5 rounded-lg border bg-card p-4 text-sm"
+              className="grid gap-2 rounded-lg border bg-white p-4 text-sm"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">
+                <span className="font-bold">
                   {suggestion.kind === 'conflict_of_interest'
                     ? `${suggestion.institutionId}: conflict of interest declared by ${suggestion.suggestedBy}`
                     : `${suggestion.institutionId}: ${suggestion.currentOfficerName ?? 'no officer'} → ${suggestion.suggestedOfficerName ?? 'the administrator’s choice'}`}
@@ -157,13 +157,13 @@ function Suggestions({ list }: { list: ReassignmentSuggestion[] }) {
                 </Badge>
               </div>
               <p>{suggestion.reason}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-base-dark">
                 Sent {formatDateTime(suggestion.at)}
                 {suggestion.resolvedAt &&
                   ` · ${statusLabel[suggestion.status]} by ${suggestion.resolvedBy}, ${formatDateTime(suggestion.resolvedAt)}`}
               </p>
               {suggestion.resolutionNote && (
-                <p className="rounded-md bg-muted p-2">
+                <p className="rounded-md bg-base-lightest p-2">
                   {suggestion.resolutionNote}
                 </p>
               )}

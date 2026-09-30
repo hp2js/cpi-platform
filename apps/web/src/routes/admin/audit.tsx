@@ -98,14 +98,14 @@ export function AuditPage() {
       <form
         role="search"
         aria-label="Filter the audit log"
-        className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-3"
+        className="grid gap-4 rounded-lg border bg-white p-4 tablet:grid-cols-2 widescreen:grid-cols-3"
         onSubmit={(event) => event.preventDefault()}
       >
-        <div className="grid gap-1.5 md:col-span-2 xl:col-span-3">
+        <div className="grid gap-2 tablet:col-span-2 widescreen:col-span-3">
           <Label htmlFor="audit-search">Search</Label>
           <div className="relative">
             <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-base-dark"
               aria-hidden="true"
             />
             <Input
@@ -114,11 +114,11 @@ export function AuditPage() {
               placeholder="Summary, object ID, person or action"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              className="pl-9"
+              className="pl-10"
             />
           </div>
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="audit-action">Action</Label>
           <Combobox
             id="audit-action"
@@ -132,7 +132,7 @@ export function AuditPage() {
             }))}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="audit-actor">Person</Label>
           <Combobox
             id="audit-actor"
@@ -146,7 +146,7 @@ export function AuditPage() {
             }))}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="audit-type">Object type</Label>
           <SelectField
             id="audit-type"
@@ -158,7 +158,7 @@ export function AuditPage() {
             ]}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="audit-from">From (business date)</Label>
           <Input
             id="audit-from"
@@ -167,7 +167,7 @@ export function AuditPage() {
             onChange={(event) => set({ from: event.target.value || undefined })}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="audit-to">To (business date)</Label>
           <Input
             id="audit-to"
@@ -199,11 +199,11 @@ export function AuditPage() {
         {(result) => (
           // One column capped at the page width: the wide table scrolls inside its container.
           <div className="grid min-w-0 grid-cols-1 gap-3">
-            <p role="status" className="text-sm text-muted-foreground">
+            <p role="status" className="text-sm text-base-dark">
               {result.total} {result.total === 1 ? 'event' : 'events'}, newest
               first
             </p>
-            <div className="min-w-0 rounded-lg border bg-card">
+            <div className="min-w-0 rounded-lg border bg-white">
               <Table className="min-w-[60rem]">
                 <TableCaption className="sr-only">
                   Audit events, newest first
@@ -226,7 +226,7 @@ export function AuditPage() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {event.actorName}
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block text-xs text-base-dark">
                           {roleLabel[event.actorRole]}
                         </span>
                       </TableCell>
@@ -244,7 +244,7 @@ export function AuditPage() {
                       <TableCell className="text-sm">
                         {event.objectType} {event.objectId}
                         {event.objectVersion && (
-                          <span className="block text-xs text-muted-foreground">
+                          <span className="block text-xs text-base-dark">
                             version {event.objectVersion}
                           </span>
                         )}
@@ -264,7 +264,7 @@ export function AuditPage() {
               aria-label="Audit log pages"
               className="flex flex-wrap items-center justify-between gap-2"
             >
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-base-dark">
                 Page {result.page} of {pages}
               </p>
               <div className="flex gap-2">

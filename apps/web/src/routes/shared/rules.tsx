@@ -37,10 +37,10 @@ function Profile({ profile }: { profile: ScoringProfile }) {
   return (
     <section
       aria-labelledby="profile-heading"
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h2 id="profile-heading" className="text-lg font-semibold">
+        <h2 id="profile-heading" className="text-lg font-bold">
           Scoring profile: {profile.name}
         </h2>
         <Badge variant="outline">Version {profile.version}</Badge>
@@ -49,24 +49,24 @@ function Profile({ profile }: { profile: ScoringProfile }) {
         )}
       </div>
       {profile.sourceNote && (
-        <p className="text-sm text-muted-foreground">{profile.sourceNote}</p>
+        <p className="text-sm text-base-dark">{profile.sourceNote}</p>
       )}
-      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[12rem_1fr]">
+      <dl className="grid gap-x-6 gap-y-2 text-sm tablet:grid-cols-[12rem_1fr]">
         {rows.map(([term, detail]) => (
           <div key={term} className="contents">
-            <dt className="text-muted-foreground">{term}</dt>
-            <dd className="font-medium">{detail}</dd>
+            <dt className="text-base-dark">{term}</dt>
+            <dd className="font-bold">{detail}</dd>
           </div>
         ))}
         <div className="contents">
-          <dt className="text-muted-foreground">Rounding</dt>
-          <dd className="font-medium">Half up, two decimals</dd>
+          <dt className="text-base-dark">Rounding</dt>
+          <dd className="font-bold">Half up, two decimals</dd>
         </div>
       </dl>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 tablet:grid-cols-3">
         {checklists.map(([title, items]) => (
-          <div key={title} className="grid content-start gap-1.5">
-            <h3 className="text-sm font-semibold">{title} checklist</h3>
+          <div key={title} className="grid content-start gap-2">
+            <h3 className="text-sm font-bold">{title} checklist</h3>
             <ol className="list-decimal space-y-1 pl-5 text-sm">
               {items.map((item) => (
                 <li key={item}>{item}</li>
@@ -89,25 +89,23 @@ function Form({
   return (
     <section
       aria-labelledby={`form-${form.id}`}
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h2 id={`form-${form.id}`} className="text-lg font-semibold">
+        <h2 id={`form-${form.id}`} className="text-lg font-bold">
           {form.title}
         </h2>
         <Badge variant="outline">Version {form.version}</Badge>
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-base-dark">
         Published {form.publishedAt ? formatDateTime(form.publishedAt) : '—'}.
         Used for {form.periodIds.map(periodLabel).join(', ') || 'no quarter'}.
       </p>
       {form.sections.map((section) => (
         <div key={section.id} className="grid gap-2">
-          <h3 className="font-semibold">{section.title}</h3>
+          <h3 className="font-bold">{section.title}</h3>
           {section.description && (
-            <p className="text-sm text-muted-foreground">
-              {section.description}
-            </p>
+            <p className="text-sm text-base-dark">{section.description}</p>
           )}
           <ul className="divide-y rounded-md border">
             {section.questions.map((question) => (
@@ -117,7 +115,7 @@ function Form({
               >
                 <span className="min-w-0 flex-1">
                   {question.label}
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-base-dark">
                     {questionTypeLabels[question.type]}
                     {question.evidenceCategory &&
                       ` · ${evidenceCategoryLabel[question.evidenceCategory]}`}
@@ -147,30 +145,30 @@ function ScaleSection({ scale }: { scale: RiskScale }) {
   return (
     <section
       aria-labelledby="scale-heading"
-      className="grid gap-4 rounded-lg border bg-card p-5"
+      className="grid gap-4 rounded-lg border bg-white p-5"
     >
       <div>
-        <h2 id="scale-heading" className="text-lg font-semibold">
+        <h2 id="scale-heading" className="text-lg font-bold">
           Risk rating scale
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           Severity is probability × impact, with no rating bands. Labels:{' '}
           {scale.source}
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 tablet:grid-cols-2">
         {(
           [
             ['Probability', scale.probability],
             ['Impact', scale.impact],
           ] as const
         ).map(([title, labels]) => (
-          <div key={title} className="grid content-start gap-1.5">
-            <h3 className="text-sm font-semibold">{title}</h3>
+          <div key={title} className="grid content-start gap-2">
+            <h3 className="text-sm font-bold">{title}</h3>
             <ol className="space-y-1 text-sm">
               {labels.map((label, index) => (
                 <li key={label} className="flex gap-2">
-                  <span className="w-4 text-right text-muted-foreground tabular-nums">
+                  <span className="w-4 text-right text-base-dark tabular-nums">
                     {index + 1}
                   </span>
                   {label}

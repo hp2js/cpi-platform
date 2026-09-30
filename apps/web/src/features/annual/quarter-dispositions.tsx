@@ -34,7 +34,7 @@ function CloseForm({
       ]),
   });
   return (
-    <div className="grid gap-2 rounded-md border border-dashed p-3">
+    <div className="grid gap-2 bg-base-lightest p-3">
       <Label htmlFor={`close-${obligationId}`}>
         Record non-response for {periodLabel} (implementation 0)
       </Label>
@@ -44,7 +44,7 @@ function CloseForm({
         onChange={(event) => setReason(event.target.value)}
       />
       {mutation.isError && (
-        <p className="text-sm text-destructive">{mutation.error.message}</p>
+        <p className="text-sm text-error-dark">{mutation.error.message}</p>
       )}
       <div>
         <Button
@@ -75,13 +75,13 @@ export function QuarterDispositions({
         );
         if (!evaluation)
           return (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               No evaluation is available.
             </p>
           );
         return (
           <div className="grid gap-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-base-dark">
               Evaluation cutoff{' '}
               {data.cutoffPassed ? 'has passed' : 'has not passed yet'}. A
               quarter without a submission can be closed only after the cutoff,
@@ -91,11 +91,11 @@ export function QuarterDispositions({
               {evaluation.quarters.map((quarter) => (
                 <li
                   key={quarter.periodId}
-                  className="grid gap-2 rounded-lg border bg-card p-4 text-sm"
+                  className="grid gap-2 rounded-lg border bg-white p-4 text-sm"
                 >
                   <p>
-                    <span className="font-semibold">{quarter.periodLabel}</span>{' '}
-                    · {label[quarter.status]}
+                    <span className="font-bold">{quarter.periodLabel}</span> ·{' '}
+                    {label[quarter.status]}
                     {quarter.implementation &&
                       ` · ${quarter.implementation.numerator} of ${quarter.implementation.denominator} milestones accepted`}
                     {quarter.late && ' · late'}

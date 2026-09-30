@@ -42,16 +42,16 @@ function Profile({ account }: { account: Account }) {
   return (
     <form
       aria-labelledby={`${id}-heading`}
-      className="grid max-w-2xl gap-4 rounded-lg border bg-card p-5"
+      className="grid max-w-measure gap-4 rounded-lg border bg-white p-5"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate();
       }}
     >
-      <h2 id={`${id}-heading`} className="font-semibold">
+      <h2 id={`${id}-heading`} className="font-bold">
         Your details
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 tablet:grid-cols-2">
         <TextField
           id={`${id}-name`}
           label="Name"
@@ -83,12 +83,12 @@ function Profile({ account }: { account: Account }) {
         />
       </div>
       {save.isSuccess && !dirty && (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-sm font-bold">
           Your details are saved.
         </p>
       )}
       {save.isError && Object.keys(errors).length === 0 && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {save.error.message}
         </p>
       )}
@@ -132,16 +132,16 @@ function Access({ account }: { account: Account }) {
   return (
     <section
       aria-labelledby="access-heading"
-      className="grid max-w-2xl gap-3 rounded-lg border bg-card p-5"
+      className="grid max-w-measure gap-3 rounded-lg border bg-white p-5"
     >
-      <h2 id="access-heading" className="font-semibold">
+      <h2 id="access-heading" className="font-bold">
         Sign-in and access
       </h2>
-      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+      <dl className="grid gap-x-6 gap-y-2 text-sm tablet:grid-cols-[10rem_1fr]">
         {rows.map(([term, detail]) => (
           <div key={term} className="contents">
-            <dt className="text-muted-foreground">{term}</dt>
-            <dd className="font-medium break-words">{detail}</dd>
+            <dt className="text-base-dark">{term}</dt>
+            <dd className="font-bold break-words">{detail}</dd>
           </div>
         ))}
       </dl>
@@ -168,13 +168,13 @@ function Password({ account }: { account: Account }) {
   return (
     <form
       aria-labelledby={`${id}-heading`}
-      className="grid max-w-2xl gap-4 rounded-lg border bg-card p-5"
+      className="grid max-w-measure gap-4 rounded-lg border bg-white p-5"
       onSubmit={(event) => {
         event.preventDefault();
         change.mutate();
       }}
     >
-      <h2 id={`${id}-heading`} className="font-semibold">
+      <h2 id={`${id}-heading`} className="font-bold">
         Password
       </h2>
       {/* Lets password managers update the saved entry for this account. */}
@@ -185,7 +185,7 @@ function Password({ account }: { account: Account }) {
         readOnly
         hidden
       />
-      <div className="grid gap-1.5 sm:max-w-sm">
+      <div className="grid gap-2 tablet:max-w-mobile-lg">
         <Label htmlFor={`${id}-current`}>Current password</Label>
         <Input
           id={`${id}-current`}
@@ -198,10 +198,10 @@ function Password({ account }: { account: Account }) {
           aria-invalid={errors.currentPassword ? true : undefined}
         />
         {errors.currentPassword && (
-          <p className="text-sm text-destructive">{errors.currentPassword}</p>
+          <p className="text-sm text-error-dark">{errors.currentPassword}</p>
         )}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 tablet:grid-cols-2">
         <NewPasswordField
           id={`${id}-new`}
           label="New password"
@@ -210,7 +210,7 @@ function Password({ account }: { account: Account }) {
           email={account.email}
           error={errors.newPassword}
         />
-        <div className="grid content-start gap-1.5">
+        <div className="grid content-start gap-2">
           <Label htmlFor={`${id}-confirm`}>Confirm the new password</Label>
           <Input
             id={`${id}-confirm`}
@@ -223,19 +223,19 @@ function Password({ account }: { account: Account }) {
             aria-invalid={mismatch || undefined}
           />
           {mismatch && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-error-dark">
               The passwords do not match.
             </p>
           )}
         </div>
       </div>
       {change.isSuccess && (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-sm font-bold">
           Your password is changed. Use it next time you sign in.
         </p>
       )}
       {change.isError && Object.keys(errors).length === 0 && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-error-dark">
           {change.error.message}
         </p>
       )}

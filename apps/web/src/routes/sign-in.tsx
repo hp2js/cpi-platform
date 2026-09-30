@@ -105,7 +105,7 @@ function PasswordForm() {
         mutation.mutate({ email, password });
       }}
     >
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="sign-in-email">Email</Label>
         <Input
           id="sign-in-email"
@@ -117,7 +117,7 @@ function PasswordForm() {
           required
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <div className="flex items-baseline justify-between gap-2">
           <Label htmlFor="sign-in-password">Password</Label>
           <Link
@@ -142,7 +142,7 @@ function PasswordForm() {
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute top-1/2 right-0.5 size-8 -translate-y-1/2"
+            className="absolute top-1/2 right-0 size-touch -translate-y-1/2"
             aria-pressed={visible}
             onClick={() => setVisible(!visible)}
           >
@@ -207,7 +207,7 @@ function ProviderButton({
             control.
           </li>
         </ul>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-base-dark">
           Until then, sign in with your email and password.
         </p>
         <DialogFooter showCloseButton />
@@ -233,12 +233,13 @@ function DemoAccountButton({
       type="button"
       disabled={disabled}
       onClick={onSelect}
-      className="group flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent focus-visible:relative focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+      data-focus-inset
+      className="group flex min-h-touch w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-primary-lighter focus-visible:relative disabled:cursor-not-allowed disabled:text-disabled-dark"
     >
       <span className="min-w-0 flex-1">
-        <span className="block font-medium">{account.displayName}</span>
+        <span className="block font-bold">{account.displayName}</span>
         {account.institutionName ? (
-          <span className="block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-xs text-base-dark">
             <span className="sr-only">, </span>
             {account.institutionName}
           </span>
@@ -250,7 +251,7 @@ function DemoAccountButton({
           )
         )}
       </span>
-      <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+      <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-primary">
         <span
           className={
             pending
@@ -261,7 +262,7 @@ function DemoAccountButton({
           {pending ? 'Signing in…' : 'Sign in'}
         </span>
         <ChevronRight
-          className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+          className="size-4 text-base-dark transition-colors group-hover:translate-x-0.5 group-hover:text-primary"
           aria-hidden="true"
         />
       </span>
@@ -300,28 +301,28 @@ function RoleGroup({
       className="grid scroll-mt-4 gap-2"
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-dark text-primary">
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 id={`role-${role}`} className="font-semibold">
+            <h3 id={`role-${role}`} className="font-bold">
               {roleLabel[role]}
             </h3>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold text-base-dark">
               {accounts.length}
               <span className="sr-only">
                 {accounts.length === 1 ? ' account' : ' accounts'}
               </span>
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-sm text-base-dark">{description}</p>
         </div>
       </div>
       {searchable && (
         <div className="relative">
           <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-base-dark"
             aria-hidden="true"
           />
           <Input
@@ -330,16 +331,16 @@ function RoleGroup({
             placeholder="Filter by name or institution"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="pl-9"
+            className="pl-10"
           />
         </div>
       )}
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
+        <p className="bg-base-lightest px-4 py-3 text-sm text-base-dark">
           No account matches “{filter.trim()}”.
         </p>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+        <ul className="divide-y overflow-hidden rounded-lg border bg-white">
           {shown.map((account) => (
             <li key={account.id}>
               <DemoAccountButton
@@ -360,7 +361,7 @@ function CopyPassword({ password }: { password: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <code className="rounded-md border bg-background px-2 py-1 font-mono text-sm font-medium">
+      <code className="rounded-md border bg-white px-2 py-1 font-mono text-sm font-bold">
         {password}
       </code>
       <Button
@@ -414,18 +415,18 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
         <Button
           type="button"
           size="lg"
-          className="fixed bottom-4 left-4 z-40 h-11 rounded-full px-5 shadow-lg sm:bottom-6 sm:left-6"
+          className="fixed bottom-4 left-4 z-40 h-touch rounded-md px-5 shadow-3 tablet:bottom-6 tablet:left-6"
         >
           <FlaskConical aria-hidden="true" />
-          <span className="sm:hidden">Demo accounts</span>
-          <span className="hidden sm:inline">
+          <span className="tablet:hidden">Demo accounts</span>
+          <span className="hidden tablet:inline">
             Explore with a demonstration account
           </span>
         </Button>
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full gap-0 outline-none sm:max-w-md"
+        className="w-full gap-0 outline-none tablet:max-w-mobile-lg"
         // Start on the sheet itself: no keyboard popping up on phones, and Tab reaches the list.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -433,7 +434,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
         }}
       >
         <SheetHeader className="gap-1 border-b p-5 pr-12">
-          <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">
+          <p className="inline-flex w-fit items-center gap-2 rounded-sm bg-warning-lighter px-2 py-1 text-xs font-bold text-ink">
             <FlaskConical className="size-3.5" aria-hidden="true" />
             Demonstration only
           </p>
@@ -445,7 +446,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
             sign out at any time to switch.
           </SheetDescription>
           {accounts.data && (
-            <nav aria-label="Roles" className="mt-2 flex flex-wrap gap-1.5">
+            <nav aria-label="Roles" className="mt-2 flex flex-wrap gap-2">
               {roleOrder.map(({ role, icon: Icon }) => {
                 const count = accounts.data.filter(
                   (account) => account.role === role,
@@ -459,11 +460,11 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
                         .getElementById(`demo-${role}`)
                         ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
                     }
-                    className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+                    className="inline-flex min-h-touch items-center gap-2 rounded-md border border-base-dark bg-white px-3 py-2 text-xs font-bold hover:border-primary hover:text-primary"
                   >
-                    <Icon className="size-3.5" aria-hidden="true" />
+                    <Icon className="size-4" aria-hidden="true" />
                     {roleLabel[role]}
-                    <span className="text-muted-foreground">{count}</span>
+                    <span className="text-base-dark">{count}</span>
                   </button>
                 );
               })}
@@ -501,10 +502,10 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
           </div>
         </div>
         {config.demoPassword && (
-          <div className="grid gap-2 border-t bg-muted/40 p-5 text-sm">
+          <div className="grid gap-2 border-t bg-base-lightest p-5 text-sm">
             <p>
-              <span className="font-medium">Prefer the sign-in form?</span>{' '}
-              <span className="text-muted-foreground">
+              <span className="font-bold">Prefer the sign-in form?</span>{' '}
+              <span className="text-base-dark">
                 Every demo email above works with this password.
               </span>
             </p>
@@ -519,28 +520,28 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
 export function SignInPage() {
   const config = useQuery(authConfigQuery);
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-white">
       <SkipLink />
-      <header className="border-b bg-card px-6 py-4">
+      <header className="border-b bg-white px-6 py-4">
         <Brand />
       </header>
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 pt-10 pb-24 sm:px-6"
+        className="outline-none mx-auto flex w-full max-w-mobile-lg flex-1 flex-col justify-center px-4 pt-10 pb-20 tablet:px-6"
       >
         <section
           aria-labelledby="sign-in-heading"
-          className="grid gap-6 rounded-2xl border bg-card p-6 shadow-xs sm:p-8"
+          className="grid gap-6 rounded-lg border bg-white p-6 tablet:p-8"
         >
           <div>
             <h1
               id="sign-in-heading"
-              className="text-2xl font-semibold tracking-tight"
+              className="text-xl font-bold tracking-tight"
             >
               Sign in
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-base-dark">
               Corruption prevention reporting and review.
             </p>
           </div>
@@ -548,13 +549,13 @@ export function SignInPage() {
           {config.data && config.data.providers.length > 0 && (
             <>
               <div
-                className="flex items-center gap-3 text-xs text-muted-foreground"
+                className="flex items-center gap-3 text-xs text-base-dark"
                 role="separator"
                 aria-label="or"
               >
-                <span className="h-px flex-1 bg-border" />
+                <span className="h-px flex-1 bg-base-lighter" />
                 or
-                <span className="h-px flex-1 bg-border" />
+                <span className="h-px flex-1 bg-base-lighter" />
               </div>
               <div className="grid gap-2">
                 {config.data.providers.map((provider) => (
@@ -563,7 +564,7 @@ export function SignInPage() {
               </div>
             </>
           )}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-base-dark">
             New to the platform? Your administrator sends you an invitation by
             email to set your password.
           </p>

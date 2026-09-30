@@ -127,9 +127,20 @@ test('publish, report, submit, review and finalize one quarter', async ({
     page.getByText(/Declared not available: IAO minutes/),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Submit report' }).click();
+  // USWDS error summary: it takes focus, and each item moves focus to its field.
+  const summary = page
+    .getByRole('alert')
+    .filter({ hasText: 'There is a problem' });
+  await expect(summary).toBeFocused();
+  await expect(page.locator('#attest-authorized-error')).toHaveText(
+    'Confirm that you are authorized to submit.',
+  );
+  await summary
+    .getByRole('link', { name: 'Confirm that you are authorized to submit.' })
+    .click();
   await expect(
-    page.getByText('Confirm that you are authorized to submit.'),
-  ).toBeVisible();
+    page.getByLabel(/I am authorized to submit this report/),
+  ).toBeFocused();
   await page.getByLabel(/I am authorized to submit this report/).check();
   await page
     .getByLabel('Your role or delegation reference')

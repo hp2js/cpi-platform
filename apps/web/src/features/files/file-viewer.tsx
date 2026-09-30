@@ -164,7 +164,7 @@ function SpreadsheetPreview({ blob }: { blob: Blob }) {
           <TableBody>
             {rows.map((row, rowIndex) => (
               <TableRow key={rowIndex}>
-                <TableHead scope="row" className="text-muted-foreground">
+                <TableHead scope="row" className="text-base-dark">
                   {rowIndex + 1}
                 </TableHead>
                 {Array.from({ length: width }, (_, index) => (
@@ -204,7 +204,7 @@ function DocumentPreview({ blob, title }: { blob: Blob; title: string }) {
   if (html === null)
     return <PreviewMessage>Reading the document…</PreviewMessage>;
   const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title.replace(/[<&]/g, '')}</title><style>
-    body{font:15px/1.6 system-ui,sans-serif;color:#1f2328;background:#fff;max-width:48rem;margin:0 auto;padding:2rem}
+    @font-face{font-family:'Public Sans';font-weight:300 700;src:url('/fonts/public-sans-latin-wght-normal.woff2') format('woff2')}body{font:16px/1.62 'Public Sans',system-ui,sans-serif;color:#1b1b1b;background:#fff;max-width:48rem;margin:0 auto;padding:2rem}
     table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}img{max-width:100%}
   </style></head><body>${html || '<p><em>The document has no text.</em></p>'}</body></html>`;
   return (
@@ -234,7 +234,7 @@ function TextPreview({ blob }: { blob: Blob }) {
   return (
     <pre
       tabIndex={0}
-      className="h-full min-h-96 overflow-auto rounded-md border bg-muted p-4 text-sm whitespace-pre-wrap"
+      className="h-full min-h-96 overflow-auto rounded-md border bg-base-lightest p-4 text-sm whitespace-pre-wrap"
     >
       {text ?? 'Reading the file…'}
     </pre>
@@ -243,7 +243,7 @@ function TextPreview({ blob }: { blob: Blob }) {
 
 function PreviewMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+    <div className="flex min-h-64 flex-col items-center justify-center gap-2 bg-base-lightest p-6 text-center text-sm text-base-dark">
       {children}
     </div>
   );
@@ -292,7 +292,7 @@ function Preview({
             tabIndex={0}
             role="region"
             aria-label="Image"
-            className="min-h-0 overflow-auto rounded-md border bg-muted p-2"
+            className="min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
           >
             <img
               src={url}
@@ -358,7 +358,7 @@ function ViewerBody({ file: item }: { file: ViewableFile }) {
     return <PreviewMessage>Opening the file…</PreviewMessage>;
   if (state.status === 'error')
     return (
-      <p role="alert" className="text-sm text-destructive">
+      <p role="alert" className="text-sm text-error-dark">
         {state.message}
       </p>
     );
@@ -385,7 +385,7 @@ function ViewerBody({ file: item }: { file: ViewableFile }) {
         )}
       </div>
       {file.demonstration ? (
-        <p role="note" className="rounded-md bg-accent p-3 text-sm">
+        <p role="note" className="rounded-md bg-primary-lighter p-3 text-sm">
           Demonstration copy: the mock has no stored contents for this file, so
           a labelled stand-in is shown. Uploaded files open as uploaded.
         </p>
@@ -425,16 +425,13 @@ export function FileViewer({
       <DialogTrigger asChild>
         <button
           type="button"
-          className={cn(
-            'text-left font-medium break-all text-primary underline-offset-4 hover:underline focus-visible:underline',
-            className,
-          )}
+          className={cn('usa-link text-left font-bold break-all', className)}
         >
           {file.fileName}
           <span className="sr-only"> (view or download)</span>
         </button>
       </DialogTrigger>
-      <DialogContent className="grid h-[90svh] max-h-[90svh] grid-cols-1 grid-rows-[auto_1fr] p-4 sm:max-w-5xl sm:p-6">
+      <DialogContent className="grid h-[90svh] max-h-[90svh] grid-cols-1 grid-rows-[auto_1fr] p-4 tablet:max-w-desktop tablet:p-6">
         <DialogHeader className="min-w-0 pr-8 text-left">
           <DialogTitle className="break-all">{file.fileName}</DialogTitle>
           <DialogDescription>
