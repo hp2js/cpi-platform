@@ -8,7 +8,7 @@ export function Glossary({ className }: { className?: string }) {
   return (
     <details
       className={cn(
-        'rounded-lg border-2 border-base-lighter bg-white px-5 py-3 text-sm',
+        'rounded-lg border border-base-lighter bg-white px-5 py-3 text-sm',
         className,
       )}
     >

@@ -520,7 +520,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
 export function SignInPage() {
   const config = useQuery(authConfigQuery);
   return (
-    <div className="flex min-h-svh flex-col bg-white">
+    <div className="flex min-h-svh flex-col bg-canvas">
       <SkipLink />
       <header className="border-b bg-white px-6 py-4">
         <Brand />

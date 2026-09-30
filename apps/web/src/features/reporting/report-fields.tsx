@@ -110,7 +110,7 @@ function RowsField({
           <li
             key={index}
             aria-label={`Row ${index + 1}`}
-            className="grid gap-3 rounded-lg border-2 border-base-lighter bg-white p-4"
+            className="grid gap-3 rounded-lg border border-base-lighter bg-white p-4"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-bold">Row {index + 1}</span>
@@ -291,7 +291,7 @@ function RadioTile({
   return (
     <Label
       htmlFor={id}
-      className="min-h-touch cursor-pointer gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed"
+      className="min-h-touch cursor-pointer gap-3 rounded-md border border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed"
     >
       <RadioGroupItem value={value} id={id} disabled={disabled} />
       {label}
@@ -690,7 +690,7 @@ export function QuestionField({
                     {files.map((item) => (
                       <li
                         key={item.id}
-                        className="flex flex-wrap items-center gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
+                        className="flex flex-wrap items-center gap-3 rounded-md border border-base-lighter bg-white px-4 py-2"
                       >
                         <Checkbox
                           id={`${id}-${item.id}`}
@@ -850,7 +850,7 @@ function EvidenceReferences({
                   return (
                     <li
                       key={item.id}
-                      className="grid gap-2 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
+                      className="grid gap-2 rounded-md border border-base-lighter bg-white px-4 py-2"
                     >
                       <div className="flex items-center gap-3">
                         <Checkbox
@@ -926,7 +926,7 @@ export function MilestoneCard({
       id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
       className={cn(
-        'grid scroll-mt-28 gap-4 rounded-lg border-2 border-base-lighter bg-white p-4 tablet:p-6',
+        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 tablet:p-6',
         questions.length > 0 && 'border-l-8 border-l-warning',
       )}
     >

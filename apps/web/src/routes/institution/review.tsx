@@ -174,7 +174,7 @@ function ChangesSinceSubmitted({
   return (
     <section
       aria-labelledby="changes-heading"
-      className="rounded-lg border-2 border-base-lighter bg-white p-5"
+      className="rounded-lg border border-base-lighter bg-white p-5"
     >
       <h2 id="changes-heading" className="font-bold">
         What you changed since revision {revision}

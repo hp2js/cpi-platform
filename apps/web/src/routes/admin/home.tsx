@@ -124,7 +124,7 @@ function ComingUp({ cycle, now }: { cycle: Cycle; now: string }) {
       {events.map((event) => (
         <li
           key={event.title}
-          className="grid gap-1 rounded-lg border-2 border-base-lighter bg-white p-4"
+          className="grid gap-1 rounded-lg border border-base-lighter bg-white p-4"
         >
           <p className="font-bold">{event.title}</p>
           <p className="text-sm">

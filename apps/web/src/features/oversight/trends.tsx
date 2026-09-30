@@ -152,7 +152,7 @@ export function Trends({
       </div>
       <div
         className={cn(
-          'grid gap-6 rounded-lg border-2 border-base-lighter bg-white p-5',
+          'grid gap-6 rounded-lg border border-base-lighter bg-white p-5',
           anyDue && 'widescreen:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]',
         )}
       >

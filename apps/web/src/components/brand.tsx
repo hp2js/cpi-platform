@@ -4,7 +4,7 @@ export function Brand({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
     <span
       className={
         tone === 'dark'
-          ? 'block text-lg leading-tight font-bold text-white'
+          ? 'block border-l-4 border-accent-warm pl-3 text-lg leading-tight font-bold text-white'
           : 'block border-l-4 border-accent-warm pl-3 text-lg leading-tight font-bold text-primary'
       }
     >

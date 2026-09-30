@@ -1,8 +1,9 @@
 @import 'tailwindcss';
 
 /*
- * USWDS foundation with Adili brand colours (design-system/MASTER.md). Tailwind's defaults are reset, not extended,
- * so only these colours, sizes, radii, shadows and breakpoints exist.
+ * USWDS foundation (type, spacing, radii, states, focus) with the Adili palette: purple primary,
+ * gold accent, purple-tinted neutrals and the Adili destructive red (design-system/MASTER.md).
+ * Tailwind's defaults are reset, not extended, so only these tokens exist.
  */
 @theme {
   --color-*: initial;
@@ -19,14 +20,16 @@
 
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-ink: #1b1b1b;
-  --color-base-lightest: #f0f0f0;
-  --color-base-lighter: #dfe1e2;
-  --color-base-light: #a9aeb1;
-  --color-base: #71767a;
-  --color-base-dark: #565c65;
-  --color-base-darker: #3d4551;
-  --color-base-darkest: #1b1b1b;
+  /* Adili neutrals: purple-tinted greys from the Adili portal palette, on USWDS names. */
+  --color-canvas: #faf8fb;
+  --color-ink: #271e2d;
+  --color-base-lightest: #f1edf3;
+  --color-base-lighter: #ddd5e1;
+  --color-base-light: #b7adbc;
+  --color-base: #736a79;
+  --color-base-dark: #635b69;
+  --color-base-darker: #463d4c;
+  --color-base-darkest: #271e2d;
 
   --color-primary-lighter: #f1e8f4;
   --color-primary-light: #c6a2d0;
@@ -35,12 +38,13 @@
   --color-primary-dark: #470952;
   --color-primary-darker: #35063e;
 
-  --color-secondary-lighter: #f3e1e4;
-  --color-secondary-light: #f2938c;
-  --color-secondary: #d83933;
-  --color-secondary-vivid: #e41d3d;
-  --color-secondary-dark: #b50909;
-  --color-secondary-darker: #8b0a03;
+  /* Destructive actions only: the Adili portal's red, darker than USWDS red-50 for white text. */
+  --color-secondary-lighter: #fef3f2;
+  --color-secondary-light: #fda29b;
+  --color-secondary: #b42318;
+  --color-secondary-vivid: #d92d20;
+  --color-secondary-dark: #912018;
+  --color-secondary-darker: #7a1a14;
 
   --color-accent-cool-lighter: #e1f3f8;
   --color-accent-cool-light: #97d4ea;
@@ -174,7 +178,7 @@
     scroll-padding-top: calc(var(--sticky-top) + 0.75rem);
   }
   body {
-    @apply m-0 bg-white font-sans text-sm text-ink antialiased;
+    @apply m-0 bg-canvas font-sans text-sm text-ink antialiased;
   }
   :where(a:not([class])) {
     @apply text-primary underline underline-offset-2 visited:text-primary-dark hover:text-primary-dark;

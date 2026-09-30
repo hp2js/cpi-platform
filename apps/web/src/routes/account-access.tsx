@@ -21,7 +21,7 @@ import { SkipLink } from '@/layouts/shared';
 
 function Shell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-svh flex-col bg-white">
+    <div className="flex min-h-svh flex-col bg-canvas">
       <SkipLink />
       <header className="border-b bg-white px-6 py-4">
         <Brand />

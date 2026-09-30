@@ -1333,7 +1333,7 @@ function ReviewProgress({
     <nav
       aria-label="Review progress"
       data-print-hide
-      className="border-2 border-base-lighter bg-white px-4 py-2"
+      className="border border-base-lighter bg-white px-4 py-2"
     >
       <ol className="flex flex-wrap gap-x-6">
         {steps.map((step) => {

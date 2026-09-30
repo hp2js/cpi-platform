@@ -86,7 +86,7 @@ export function InstitutionLayout() {
   const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
   const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
-    <div className="min-h-svh bg-white pb-20 tablet:pb-0">
+    <div className="min-h-svh bg-canvas pb-20 tablet:pb-0">
       <SkipLink />
       <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
         <SimulationBanner session={session} />

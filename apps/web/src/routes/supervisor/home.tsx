@@ -36,7 +36,7 @@ const route = getRouteApi('/authed/supervisor/');
 
 function MetricCard({ metric }: { metric: Metric }) {
   return (
-    <div className="grid gap-1 rounded-lg border-2 border-base-lighter bg-white p-4">
+    <div className="grid gap-1 rounded-lg border border-base-lighter bg-white p-4">
       <p className="text-sm font-bold">{metric.label}</p>
       {/* "Not applicable" is a fact, not a result: it gets body size, not a headline. */}
       <p
@@ -180,7 +180,7 @@ function NeedsAttention({ data }: { data: Oversight }) {
             <li
               key={item.label}
               className={cn(
-                'grid gap-1 border-2 border-base-lighter bg-white p-4',
+                'grid gap-1 border border-base-lighter bg-white p-4',
                 item.count > 0 &&
                   (item.urgent
                     ? 'border-l-8 border-l-error'
@@ -229,7 +229,7 @@ function Metrics({ data }: { data: Oversight }) {
       </div>
       <div
         className={cn(
-          'grid gap-6 rounded-lg border-2 border-base-lighter bg-white p-5',
+          'grid gap-6 rounded-lg border border-base-lighter bg-white p-5',
           charted && 'desktop:grid-cols-2',
         )}
       >
@@ -285,7 +285,7 @@ function Metrics({ data }: { data: Oversight }) {
         ].map(({ label, value, detail }) => (
           <div
             key={label}
-            className="rounded-lg border-2 border-base-lighter bg-white p-4"
+            className="rounded-lg border border-base-lighter bg-white p-4"
           >
             <dt className="text-sm text-base-dark">{label}</dt>
             <dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>

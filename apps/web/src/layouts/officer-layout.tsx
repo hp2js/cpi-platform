@@ -125,7 +125,7 @@ export function OfficerLayout() {
   const bannerRef = useMeasuredHeight<HTMLDivElement>('--banner-h');
   const headerRef = useMeasuredHeight<HTMLElement>('--header-h');
   return (
-    <div className="flex min-h-svh flex-col bg-white">
+    <div className="flex min-h-svh flex-col bg-canvas">
       <SkipLink />
       <div ref={bannerRef} data-sticky className="sticky top-0 z-40">
         <SimulationBanner session={session} />
@@ -143,6 +143,7 @@ export function OfficerLayout() {
             data-sticky
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
+            <div className="flex min-w-0 items-center gap-2 desktop:hidden">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="desktop:hidden">
@@ -158,6 +159,10 @@ export function OfficerLayout() {
                 <OfficerRail onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
+              <Link to="/officer" aria-label="Assigned work" className="min-w-0">
+                <Brand />
+              </Link>
+            </div>
             <div className="flex items-center gap-1">
               <InboxLink to="/officer/inbox" />
               <AccountMenu session={session} />
