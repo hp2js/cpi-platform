@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   customType,
   date,
   integer,
@@ -468,7 +470,10 @@ export const evidenceFiles = pgTable('evidence_files', {
   bytes: bytea(),
   bucket: text(),
   objectKey: text(),
-});
+}, (table) => [
+  check('evidence_files_location', sql`(${table.bytes} IS NOT NULL AND ${table.bucket} IS NULL AND ${table.objectKey} IS NULL) OR (${table.bytes} IS NULL AND ${table.bucket} IS NOT NULL AND ${table.objectKey} IS NOT NULL)`),
+  unique('evidence_files_object_unique').on(table.bucket, table.objectKey),
+]);
 
 export const foundationVersions = pgTable('foundation_versions', {
   id: text().primaryKey(),

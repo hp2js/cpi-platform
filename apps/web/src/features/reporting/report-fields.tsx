@@ -465,7 +465,7 @@ function UploadButton({
             aria-label={`Uploading ${status.name}`}
           />
           <p aria-live="polite" className="text-xs text-base-dark">
-            Uploading {status.name}… {Math.round(status.progress * 100)}%
+            {status.progress >= 1 ? `Saving ${status.name}…` : `Uploading ${status.name}… ${Math.round(status.progress * 100)}%`}
           </p>
         </div>
       )}

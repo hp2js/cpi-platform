@@ -36,6 +36,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
       res.status(status).json(readiness.data);
       return;
     }
+    if (status === 413 && req.headers['content-type']?.startsWith('multipart/form-data')) {
+      res.status(413).json({ message: 'Files must be 20 MB or smaller.', code: 'upload_rejected', fieldErrors: { file: 'Files must be 20 MB or smaller.' }, requestId: req.requestId });
+      return;
+    }
     const parsed = apiErrorSchema.safeParse(raw);
     const storageError = exception instanceof ApiError && status === 503 && parsed.success && ['storage_unavailable', 'file_unavailable'].includes(parsed.data.code ?? '');
     const body: ApiErrorBody = {

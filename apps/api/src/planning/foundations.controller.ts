@@ -127,6 +127,11 @@ export class FoundationsController {
         )
         .orderBy(desc(foundationVersions.version))
         .limit(1);
+      const hash = createHash('sha256').update(file.buffer).digest('hex');
+      if (previous?.status === 'active' && previous.approvalReference === fields.data.approvalReference.trim() && previous.effectiveFrom === fields.data.effectiveFrom && JSON.stringify(previous.claimedChecks) === JSON.stringify(fields.data.claimedChecks)) {
+        const [existing] = await tx.select().from(evidence).where(eq(evidence.id, previous.evidenceId));
+        if (existing?.sha256 === hash) return foundationsFor(tx, institutionId, false);
+      }
       const evidenceId = await nextId(tx, 'ev');
       await tx.insert(evidence).values({
         id: evidenceId,
@@ -136,7 +141,7 @@ export class FoundationsController {
         fileName: file.originalname,
         mimeType: check.mimeType,
         sizeBytes: file.buffer.byteLength,
-        sha256: createHash('sha256').update(file.buffer).digest('hex'),
+        sha256: hash,
         uploadedAt: businessTime,
         uploadedBy: user.displayName,
         version: 1,

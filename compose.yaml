@@ -46,6 +46,7 @@ services:
       target: server
     logging: *logging
     environment:
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:19001
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cpi-local-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cpi-local-admin-only}
     ports: ['127.0.0.1:19000:9000', '127.0.0.1:19001:9001']
