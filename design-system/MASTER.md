@@ -112,7 +112,13 @@ accent and all state colours remain USWDS values.
 | error    | `#f4e3db`  | `#f39268` | `#d54309` | `#b50909` | `#6f3331` |
 | warning  | `#faf3d1`  | `#fee685` | `#ffbe2e` | `#e5a000` | `#936f38` |
 | success  | `#ecf3ec`  | `#70e17b` | `#00a91c` | `#008817` | `#216e1f` |
-| disabled | `#c9c9c9`  | `#919191` | `#757575` | `#454545` | `#1b1b1b` |
+| disabled | `#ebe6ee`  | `#b7adbc` | `#8a8190` | `#635b69` | `#463d4c` |
+
+The disabled family is USWDS's `$theme-color-disabled-*`, tinted to the Adili neutrals: the
+stock greys were the only cold grey in the interface, and their dark fill made disabled
+controls the loudest thing on a form. `disabled-lighter` is the fill, `disabled-light` the
+border (the same as `base-light`), `disabled-dark` text on the fill (5.3:1, the same as
+`base-dark`) and `disabled` unfilled text (3.7:1 on white, lighter than hint text).
 
 `emergency` `#9c3d10` and `emergency-dark` `#332d29` are defined but unused.
 
@@ -331,12 +337,14 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   colours.
 - **Disabled and read-only.** One disabled treatment for every control, as USWDS's
   `u-disabled`: `disabled-lighter` fill, `disabled-light` border, `disabled-dark` text and
-  icons, `cursor-not-allowed`. A checked checkbox fills `disabled-light` with a white tick; a
-  checked radio keeps a `disabled-dark` dot; a radio card greys as a whole. The checkbox or
+  icons, `cursor-not-allowed`. A checked checkbox or radio keeps the `disabled-lighter` fill
+  with a `disabled-dark` tick or dot; a radio card greys as a whole. The checkbox or
   radio label turns `disabled-dark`; field labels above a control stay `ink`. Unfilled
   controls (ghost and link buttons, list rows, options) only change their text to `disabled`.
   Read-only fields (a value to copy, not change) get a `base-lightest` fill and `base-light`
-  border so they don't look editable; they stay focusable and selectable.
+  border so they don't look editable; they stay focusable and selectable. The fill is close to
+  the disabled one on purpose; what tells them apart is the text (`ink`, can be copied, versus
+  `disabled-dark`) and the cursor.
 - **Error state (`usa-form-group--error`).** The group gets a 4 px `error-dark` left border
   and 16 px left padding; the message is bold `error-dark` text with an `id`, placed between
   label/hint and control; the control gets a 4 px `error-dark` border, `aria-invalid="true"`

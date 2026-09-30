@@ -77,11 +77,16 @@
   --color-success: #00a91c;
   --color-success-dark: #008817;
   --color-success-darker: #216e1f;
-  --color-disabled-lighter: #c9c9c9;
-  --color-disabled-light: #919191;
-  --color-disabled: #757575;
-  --color-disabled-dark: #454545;
-  --color-disabled-darker: #1b1b1b;
+  /*
+   * Disabled ($theme-color-disabled-*), tinted to the Adili neutrals so disabled controls recede
+   * instead of standing out as the only cold grey: a light fill, the light border grey, and
+   * secondary-text grey for their text (5.3:1 on the fill, still readable).
+   */
+  --color-disabled-lighter: #ebe6ee;
+  --color-disabled-light: #b7adbc;
+  --color-disabled: #8a8190;
+  --color-disabled-dark: #635b69;
+  --color-disabled-darker: #463d4c;
   --color-emergency: #9c3d10;
   --color-emergency-dark: #332d29;
   /* Focus (USWDS $theme-focus-color): Adili purple on light surfaces, gold on purple ones. */

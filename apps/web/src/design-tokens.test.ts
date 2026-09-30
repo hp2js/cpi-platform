@@ -133,7 +133,8 @@ describe('Adili palette contrast', () => {
     ['base-dark', 'base-lightest'],
     ['base', 'white'],
     ['base', 'canvas'],
-    // Destructive buttons carry white text.
+    // Disabled text and ticks on the disabled fill, and disabled buttons' text.
+    ['disabled-dark', 'disabled-lighter'],
     ['white', 'secondary'],
     ['white', 'secondary-dark'],
     ['white', 'secondary-darker'],
@@ -154,9 +155,23 @@ describe('Focus indicator contrast', () => {
     ['focus', 'accent-warm-lighter'],
     ['focus-on-dark', 'primary'],
     ['focus-on-dark', 'primary-dark'],
+    // A disabled field still focuses (read-only) or shows its ring beside the fill.
+    ['focus', 'disabled-lighter'],
   ])('%s ring is visible on %s', (ring, surface) => {
     const light = Math.max(luminance(ring), luminance(surface));
     const dark = Math.min(luminance(ring), luminance(surface));
     expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('Disabled state', () => {
+  // Exempt from WCAG contrast, but it must still read as a control and stay legible.
+  it.each([
+    ['disabled', 'white', 3],
+    ['disabled-light', 'white', 2],
+  ])('%s is visible on %s', (foreground, background, minimum) => {
+    const light = Math.max(luminance(foreground), luminance(background));
+    const dark = Math.min(luminance(foreground), luminance(background));
+    expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(minimum);
   });
 });
