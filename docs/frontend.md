@@ -79,7 +79,7 @@ focus trapping, Escape and focus restoration when adapting them.
   (`Field aligned` in `features/planning/plan-editor.tsx`), so controls line up even when only
   one field has a hint or an error. The parent grid sets the columns and `gap-y-2`.
 - **Inputs inside popovers** (the combobox search) carry `data-focus-inset`, which draws the
-  4 px focus outline inside the field where the popover edge cannot clip it.
+  focus outline inside the field where the popover edge cannot clip it.
 - **Layouts.** Pages sit on `bg-canvas`; headers, navigation, cards, tables and dialogs are
   white. The admin console keeps its Adili purple sidebar; the other roles use a white side
   navigation. Below `desktop`, every header shows the wordmark beside the menu button.
@@ -102,9 +102,12 @@ The brand colours and their provenance are documented once in
 theme the app used before the USWDS migration (`apps/web/src/styles.css` at `09078d5^`),
 recovered onto USWDS token names: purple for primary actions, gold for restrained accents with
 dark text, purple-tinted neutrals for text, borders and surfaces, and the Adili red for
-destructive actions. Validation and status keep their USWDS state colours, and focus stays
-USWDS blue. `src/design-tokens.test.ts` reads `styles.css` and fails if any text/surface pair
-drops below 4.5:1. No EACC logo or official endorsement is reproduced.
+destructive actions. Validation and status keep their USWDS state colours. Focus keeps the
+USWDS rules (solid, always visible, never removed) in Adili purple, and gold on purple surfaces:
+mark a purple surface with `data-surface="dark"` so its focus ring switches. Never set an
+outline colour in a component; use `--focus-color`. `src/design-tokens.test.ts` reads
+`styles.css` and fails if any text/surface pair drops below 4.5:1 or a focus ring below 3:1 on
+its surface. No EACC logo or official endorsement is reproduced.
 
 Keep text contrast, visible focus, labels, keyboard access, semantic headings and textual status indicators. Do not communicate validation or readiness using colour alone. Verify changes at narrow/mobile widths and with keyboard-only use.
 

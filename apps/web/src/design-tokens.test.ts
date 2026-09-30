@@ -143,3 +143,20 @@ describe('Adili palette contrast', () => {
     expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe('Focus indicator contrast', () => {
+  // WCAG 1.4.11 / 2.4.13: the ring needs 3:1 against every surface it is drawn on.
+  it.each([
+    ['focus', 'white'],
+    ['focus', 'canvas'],
+    ['focus', 'base-lightest'],
+    ['focus', 'primary-lighter'],
+    ['focus', 'accent-warm-lighter'],
+    ['focus-on-dark', 'primary'],
+    ['focus-on-dark', 'primary-dark'],
+  ])('%s ring is visible on %s', (ring, surface) => {
+    const light = Math.max(luminance(ring), luminance(surface));
+    const dark = Math.min(luminance(ring), luminance(surface));
+    expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
+  });
+});

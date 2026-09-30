@@ -443,8 +443,8 @@ function UploadButton({
           htmlFor={inputId}
           className={
             replaces
-              ? 'min-h-touch cursor-pointer gap-2 rounded-md px-3 font-bold text-primary underline underline-offset-2 peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:text-disabled hover:text-primary-dark'
-              : 'min-h-touch cursor-pointer gap-2 rounded-md bg-white px-4 font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:bg-disabled-lighter peer-disabled:text-disabled-dark peer-disabled:shadow-none hover:text-primary-dark'
+              ? 'min-h-touch cursor-pointer gap-2 rounded-md px-3 font-bold text-primary underline underline-offset-2 peer-focus:outline-3 peer-focus:outline-offset-4 peer-focus:outline-(--focus-color) peer-disabled:cursor-not-allowed peer-disabled:text-disabled hover:text-primary-dark'
+              : 'min-h-touch cursor-pointer gap-2 rounded-md bg-white px-4 font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] peer-focus:outline-3 peer-focus:outline-offset-4 peer-focus:outline-(--focus-color) peer-disabled:cursor-not-allowed peer-disabled:bg-disabled-lighter peer-disabled:text-disabled-dark peer-disabled:shadow-none hover:text-primary-dark'
           }
         >
           <Upload className="size-5" aria-hidden="true" />

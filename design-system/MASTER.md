@@ -5,8 +5,9 @@ palette. Tailwind v4 implements the tokens; local React components and unstyled 
 primitives implement the controls. The USWDS CSS/JavaScript package is not installed. This is
 a local adaptation, not a claim of identical USWDS markup or certified compliance.
 
-USWDS supplies typography, spacing, hierarchy, form/error patterns, state colours and focus.
-Adili supplies the palette: purple primary actions, a restrained gold accent, purple-tinted
+USWDS supplies typography, spacing, hierarchy, form/error patterns, state colours and the focus
+rules (always visible, solid, never removed).
+Adili supplies the palette, including the focus colour: purple primary actions, a restrained gold accent, purple-tinted
 neutrals for text, borders and surfaces, and its red for destructive actions. Token names stay
 USWDS's (`base-dark`, `secondary` …), so components never name a hex value or a brand. See [USWDS theme tokens](https://designsystem.digital.gov/design-tokens/color/theme-tokens/)
 and [modal guidance](https://designsystem.digital.gov/components/modal/).
@@ -124,9 +125,31 @@ State colour usage (contrast against white or the `-lighter` fill):
 
 ### Focus
 
-`focus` = blue-40v `#2491ff`. Every focusable element gets `outline: 4px solid #2491ff`
-(`$theme-focus-width: 0.5` = 4 px, offset 0), shown on `:focus-visible`. The outline is
-never removed and never replaced by a translucent ring.
+Focus uses the USWDS focus settings (`$theme-focus-color`, `-width`, `-offset`), which USWDS
+exposes for theming, set to the Adili palette. What USWDS requires is kept: every focusable
+element shows a solid outline, it is never removed or replaced by a translucent ring, and it
+contrasts at least 3:1 with every surface it is drawn on (`design-tokens.test.ts` checks the
+pairs).
+
+| Token           | Hex       | Where                                         |
+| --------------- | --------- | --------------------------------------------- |
+| `focus`         | `#530b61` | Light surfaces (white, canvas, tinted fills)  |
+| `focus-on-dark` | `#ffe79b` | Purple surfaces, marked `data-surface="dark"` |
+
+Styles read the runtime variable `--focus-color`, which `data-surface="dark"` switches to gold
+(the admin sidebar and its drawer).
+
+- Controls (links, buttons, tabs, rows): 3 px on `:focus-visible`. Buttons, `role="button"` and
+  tabs sit it 4 px off their edge, as USWDS does, so it stays clear of a filled purple button.
+- Fields (input, select trigger, combobox, textarea): 2 px at offset 0 on any focus, including a
+  click, so people see where they type. It thickens the field's own edge into a purple frame
+  rather than haloing it. An invalid field keeps its 4 px `error-dark` border inside the ring.
+- Checkboxes and radios: 2 px, 2 px off, so a checked purple box keeps a visible gap.
+- `data-focus-inset` draws the outline inside (offset −3 px) where a scrolling list or popover
+  edge would clip it.
+
+The earlier USWDS blue (`#2491ff`, 4 px on everything) was replaced because it was the only
+blue in the interface and, on every clicked field, as loud as the primary action.
 
 ## Density
 
@@ -137,7 +160,7 @@ itself changes density (its root font size setting). It is a percentage so a per
 text size still applies. **Pixel values in the tables below are at 16 px per rem; multiply by
 0.875 for what renders** (body 14 px, h1 28 px, `p-4` 14 px).
 
-Three things do not scale: the focus outline (4 px), breakpoints (media queries use the browser default, so `tablet` is
+Three things do not scale: the focus outline (2–3 px), breakpoints (media queries use the browser default, so `tablet` is
 still 640 px) and the minimum target, `--spacing-touch: 44px`, used as `min-h-touch`,
 `size-touch`, `min-w-touch` on every control. Do not use `h-11`/`min-h-11` for targets; the
 guard test rejects them.

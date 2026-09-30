@@ -81,7 +81,10 @@ const sections = [
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 bg-primary p-4 text-white">
+    <div
+      data-surface="dark"
+      className="flex min-h-full flex-col gap-6 bg-primary p-4 text-white"
+    >
       <Link
         to="/admin"
         activeOptions={{ exact: true }}
@@ -152,6 +155,7 @@ export function AdminLayout() {
                 </SheetTrigger>
                 <SheetContent
                   side="left"
+                  data-surface="dark"
                   className="w-72 border-0 bg-primary p-0 text-white"
                 >
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
