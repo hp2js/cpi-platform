@@ -78,8 +78,10 @@ focus trapping, Escape and focus restoration when adapting them.
 - **Side-by-side fields.** Fields in a two-column row share their rows with CSS subgrid
   (`Field aligned` in `features/planning/plan-editor.tsx`), so controls line up even when only
   one field has a hint or an error. The parent grid sets the columns and `gap-y-2`.
-- **Inputs inside popovers** (the combobox search) carry `data-focus-inset`, which draws the
-  focus outline inside the field where the popover edge cannot clip it.
+- **Search rows inside popovers** (the combobox search: icon and input) carry
+  `data-focus-within`: the whole row takes the field's focus ring, drawn inside the popover
+  edge so it is never clipped, and the input draws none of its own. Rows in scrolling lists
+  carry `data-focus-inset` for the same reason.
 - **Layouts.** Pages sit on `bg-canvas`; headers, navigation, cards, tables and dialogs are
   white. The admin console keeps its Adili purple sidebar; the other roles use a white side
   navigation. Below `desktop`, every header shows the wordmark beside the menu button.
@@ -91,7 +93,7 @@ focus trapping, Escape and focus restoration when adapting them.
 
 ## Selects, long lists and fixed chrome
 
-- **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type.
+- **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type. Both look the same, down to the chevron, placeholder and popup; never restyle one without the other. Disabled and read-only states come from `fieldControl` and the checkbox/radio wrappers, never from classes in a screen (MASTER: _Disabled and read-only_).
 - **Long lists.** Anything sized by institutions (up to 500+) uses `useListControls` with `ListSearch` and `ListPager` from `components/list-controls.tsx`: filter by typed words, 20–50 rows a page. A printable list pages on screen and uses `usePrinting()` so the printed copy is complete.
 - **Fixed chrome.** Layouts pin the simulation banner, header and desktop sidebar with `sticky`. `useMeasuredHeight` writes their heights to `--banner-h` and `--header-h`; in-page sticky bars use `top-(--sticky-top)`, and `scroll-padding-top` keeps anchors and focused fields clear of the header. Mark sticky elements with `data-sticky` so print resets them.
 

@@ -291,7 +291,7 @@ function RadioTile({
   return (
     <Label
       htmlFor={id}
-      className="min-h-touch cursor-pointer gap-3 rounded-md border border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed"
+      className="min-h-touch cursor-pointer gap-3 rounded-md border border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed has-disabled:border-disabled-light has-disabled:bg-disabled-lighter has-disabled:text-disabled-dark has-disabled:has-data-[state=checked]:border-disabled-light has-disabled:has-data-[state=checked]:bg-disabled-lighter"
     >
       <RadioGroupItem value={value} id={id} disabled={disabled} />
       {label}

@@ -250,6 +250,17 @@ button:focus-visible,
 [data-focus-inset]:focus {
   outline-offset: -3px;
 }
+/*
+ * A row that acts as one field (the combobox search: icon and input) takes the field's ring
+ * itself, inside its edge, and the input inside it does not draw a second one.
+ */
+[data-focus-within]:focus-within {
+  outline: 2px solid var(--focus-color);
+  outline-offset: -2px;
+}
+[data-focus-within] :is(input, textarea):focus {
+  outline: none;
+}
 /* Programmatic focus targets (skip link, route change) are not controls. */
 :is(main, h1, h2, section)[tabindex='-1']:focus {
   outline: none;

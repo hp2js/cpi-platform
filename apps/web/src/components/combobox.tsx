@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
 import { useId, useMemo, useState, type KeyboardEvent } from 'react';
 import {
   Popover,
@@ -138,14 +138,14 @@ export function Combobox({
             className,
           )}
         >
-          <span className={cn('truncate', !selected && 'text-base-dark')}>
+          <span className={cn('truncate', !selected && 'text-base')}>
             {selected
               ? selected.description
                 ? `${selected.label} · ${selected.description}`
                 : selected.label
               : placeholder}
           </span>
-          <ChevronsUpDown
+          <ChevronDown
             className="size-5 shrink-0 text-ink"
             aria-hidden="true"
           />
@@ -159,14 +159,16 @@ export function Combobox({
           (event.currentTarget as HTMLElement).querySelector('input')?.focus();
         }}
       >
-        <div className="flex items-center gap-2 border-b border-base-lighter px-2">
+        {/* The row, icon and all, is the field: its focus ring is drawn inside the popup edge. */}
+        <div
+          data-focus-within
+          className="flex items-center gap-2 border-b border-base-lighter px-3"
+        >
           <Search
             className="size-4 shrink-0 text-base-dark"
             aria-hidden="true"
           />
           <input
-            // Inset outline: the popover edge would clip one drawn outside the field.
-            data-focus-inset
             role="combobox"
             aria-label={searchPlaceholder}
             aria-controls={listId}

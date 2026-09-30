@@ -47,7 +47,7 @@ tables and dialogs are `white`.
 | --------------- | ---------------- | --------- | ----------------------------------------------------- |
 | `white`         | card             | `#ffffff` | Surfaces: header, navigation, cards, tables, dialogs  |
 | `canvas`        | background       | `#faf8fb` | Page background behind the surfaces                   |
-| `base-lightest` | muted            | `#f1edf3` | Subtle panels, table stripes, disabled field fill     |
+| `base-lightest` | muted            | `#f1edf3` | Subtle panels, table stripes, read-only field fill    |
 | `base-lighter`  | border           | `#ddd5e1` | Card borders, dividers, table header fill             |
 | `base-light`    | input            | `#b7adbc` | Decorative borders only (fails 3:1 against white)     |
 | `base`          | (extended)       | `#736a79` | Hint text: 5.2:1 on white, 4.9:1 on canvas. Sparingly |
@@ -145,8 +145,9 @@ Styles read the runtime variable `--focus-color`, which `data-surface="dark"` sw
   click, so people see where they type. It thickens the field's own edge into a purple frame
   rather than haloing it. An invalid field keeps its 4 px `error-dark` border inside the ring.
 - Checkboxes and radios: 2 px, 2 px off, so a checked purple box keeps a visible gap.
-- `data-focus-inset` draws the outline inside (offset −3 px) where a scrolling list or popover
-  edge would clip it.
+- `data-focus-inset` draws the outline inside (offset −3 px) where a scrolling list would clip
+  it. `data-focus-within` marks a row that acts as one field (the combobox search: icon and
+  input): the row takes the 2 px field ring inside its edge, and its input draws none.
 
 The earlier USWDS blue (`#2491ff`, 4 px on everything) was replaced because it was the only
 blue in the interface and, on every clicked field, as loud as the primary action.
@@ -306,8 +307,9 @@ control (stricter than WCAG 2.2's 24 px, as requested).
     an `aria-label`). A row keeps its actions on one line.
   - Secondary (destructive): `secondary` → `secondary-dark` → `secondary-darker`, only to
     confirm deleting, discarding or replacing work.
-  - Disabled: `disabled-lighter` fill, `disabled-dark` text, `cursor-not-allowed`; prefer
-    `aria-disabled` plus an explanation over hiding the reason.
+  - Disabled: the shared disabled treatment (see **Disabled and read-only**). Ghost and link
+    buttons stay unfilled and turn `disabled` grey. Say why an action is unavailable next to
+    it rather than hiding it.
 - **Form fields.** Label above the control (`text-sm`, normal weight, `ink`), hint below
   the label (`text-xs`, `base`), then the error message, then the control. Controls: 44 px high,
   1 px `base-dark` border, square corners, white fill. Width: single-line controls (input,
@@ -320,6 +322,21 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   hint or an error. Use `SelectField` (Radix Select) for short fixed lists, `Combobox` for searchable lists,
   and the existing checkbox/radio wrappers; their visual states follow USWDS. Do not mix
   USWDS JavaScript with Radix on the same control.
+- **Selects and comboboxes look the same.** Both use the field box (`fieldControl` in
+  `components/ui/input.tsx`), a single `ChevronDown` in `ink`, and `base` text for a placeholder
+  ("Choose…"). Their lists share one popup: white, 1 px `base-light` border, `rounded-md`,
+  `shadow-2`, 44 px options, the highlighted option on `primary-lighter` with `primary-darker`
+  text, a check beside the chosen one, and unavailable options in `disabled` grey with
+  `cursor-not-allowed`. Menu items (`DropdownMenu`) follow the same highlight and disabled
+  colours.
+- **Disabled and read-only.** One disabled treatment for every control, as USWDS's
+  `u-disabled`: `disabled-lighter` fill, `disabled-light` border, `disabled-dark` text and
+  icons, `cursor-not-allowed`. A checked checkbox fills `disabled-light` with a white tick; a
+  checked radio keeps a `disabled-dark` dot; a radio card greys as a whole. The checkbox or
+  radio label turns `disabled-dark`; field labels above a control stay `ink`. Unfilled
+  controls (ghost and link buttons, list rows, options) only change their text to `disabled`.
+  Read-only fields (a value to copy, not change) get a `base-lightest` fill and `base-light`
+  border so they don't look editable; they stay focusable and selectable.
 - **Error state (`usa-form-group--error`).** The group gets a 4 px `error-dark` left border
   and 16 px left padding; the message is bold `error-dark` text with an `id`, placed between
   label/hint and control; the control gets a 4 px `error-dark` border, `aria-invalid="true"`
@@ -369,8 +386,8 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   Do not add per-screen overflow fixes; the file viewer alone owns a dedicated preview layout.
 - **Drawers and popovers.** Drawers fit the dynamic viewport and scroll; headers reserve close
   control space. The close control takes the drawer's text colour, so it stays visible on a
-  dark drawer. A text input inside a popover (the combobox search) carries
-  `data-focus-inset` so its focus outline is drawn inside and never clipped. Popovers stay within available viewport height and width. Keep all controls
+  dark drawer. The combobox search row (icon and input) carries
+  `data-focus-within`, so the whole row takes the focus ring, inside the popover edge. Popovers stay within available viewport height and width. Keep all controls
   reachable on short landscape screens and at enlarged text sizes.
 - **Class merging.** Always use `cn` from `lib/utils.ts`. It knows our custom container names
   and that `text-base` is a colour, not a font size. New tokens must update its configuration

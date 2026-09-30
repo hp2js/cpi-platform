@@ -30,9 +30,9 @@ const buttonVariants = cva(
         plain:
           'bg-white text-ink shadow-[inset_0_0_0_1px_var(--color-base-dark)] hover:bg-base-lightest active:bg-base-lighter',
         ghost:
-          'text-primary hover:bg-base-lightest hover:text-primary-dark active:text-primary-darker',
+          'text-primary hover:bg-base-lightest hover:text-primary-dark active:text-primary-darker disabled:bg-transparent disabled:text-disabled',
         // usa-button--unstyled
-        link: 'font-normal text-primary underline underline-offset-2 hover:text-primary-dark disabled:bg-transparent',
+        link: 'font-normal text-primary underline underline-offset-2 hover:text-primary-dark disabled:bg-transparent disabled:text-disabled',
       },
       // Primary and form actions are 44 px. Compact sizes (secondary actions, toolbars, rows)
       // look 36 px; an invisible ::after keeps the 44 px target, so no hit area shrinks.

@@ -24,7 +24,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       className={cn(
         fieldControl,
-        'flex h-touch max-w-(--field-max) items-center justify-between gap-2 text-left data-[placeholder]:text-base-dark [&>span]:truncate',
+        'flex h-touch max-w-(--field-max) items-center justify-between gap-2 text-left data-[placeholder]:text-base [&>span]:truncate',
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'relative flex min-h-touch cursor-pointer items-center gap-2 py-2 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:text-disabled-dark data-[highlighted]:bg-primary-lighter data-[highlighted]:text-primary-darker',
+        'relative flex min-h-touch cursor-pointer items-center gap-2 py-2 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:text-disabled data-[highlighted]:bg-primary-lighter data-[highlighted]:text-primary-darker',
         className,
       )}
       {...props}
