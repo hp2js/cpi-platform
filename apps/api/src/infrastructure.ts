@@ -27,7 +27,10 @@ export class Infrastructure implements OnApplicationShutdown {
   readonly database;
   readonly redis: Redis;
 
-  constructor(@Inject(CONFIG) config: AppConfig, private readonly objects: Objects) {
+  constructor(
+    @Inject(CONFIG) config: AppConfig,
+    private readonly objects: Objects,
+  ) {
     this.pool = new Pool({
       connectionString: config.DATABASE_URL,
       connectionTimeoutMillis: 1500,

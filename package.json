@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/check-compiler.mjs",
-    "services:up": "docker compose up -d --build --wait postgres redis minio minio-init",
+    "services:up": "docker compose up -d --build --wait postgres redis minio && docker compose run --build --rm minio-init",
     "docker:up": "docker compose up -d --build --wait",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f --tail=100",

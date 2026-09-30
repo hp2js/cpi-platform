@@ -31,7 +31,13 @@ for (const dependency of ['redis', 'postgres', 'minio']) {
     assert.equal(response.status, 503);
     const body = await response.json();
     assert.equal(
-      body.services[dependency === 'postgres' ? 'database' : dependency === 'minio' ? 'storage' : 'redis'],
+      body.services[
+        dependency === 'postgres'
+          ? 'database'
+          : dependency === 'minio'
+            ? 'storage'
+            : 'redis'
+      ],
       'down',
     );
   } finally {

@@ -46,7 +46,9 @@ function freePort() {
 
 export async function startApi(env: Record<string, string> = {}) {
   const objectPrefix = `evidence/tests/${randomUUID()}/`;
-  const objects = new Objects(loadConfig({ ...process.env, S3_PREFIX: objectPrefix }));
+  const objects = new Objects(
+    loadConfig({ ...process.env, S3_PREFIX: objectPrefix }),
+  );
   const urls = testUrls();
   const admin = new Pool({ connectionString: urls.admin });
   try {
@@ -103,8 +105,12 @@ export async function startApi(env: Record<string, string> = {}) {
     client: () => new Client(url),
     async stop() {
       server.kill();
-      await new Promise<void>((resolve) => { if (server.exitCode !== null || server.signalCode !== null) resolve(); else server.once('exit', () => resolve()); });
-      for await (const location of objects.list()) await objects.remove(location);
+      await new Promise<void>((resolve) => {
+        if (server.exitCode !== null || server.signalCode !== null) resolve();
+        else server.once('exit', () => resolve());
+      });
+      for await (const location of objects.list())
+        await objects.remove(location);
       objects.onApplicationShutdown();
       await pool.end();
     },

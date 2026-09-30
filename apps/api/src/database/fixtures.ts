@@ -106,11 +106,13 @@ export async function loadFixtures(
     await tx.insert(schema.baselines).values(initialBaselines);
     const foundations = seedFoundations();
     // Foundation documents belong to the institution, not to a quarterly obligation.
-    await tx
-      .insert(schema.evidence)
-      .values(
-        foundations.evidence.map((item) => ({ ...item, obligationId: null, demonstration: true })),
-      );
+    await tx.insert(schema.evidence).values(
+      foundations.evidence.map((item) => ({
+        ...item,
+        obligationId: null,
+        demonstration: true,
+      })),
+    );
     await tx.insert(schema.foundationVersions).values(foundations.versions);
   });
 }
