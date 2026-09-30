@@ -120,22 +120,30 @@ export function SupervisorLayout() {
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
             <div className="flex min-w-0 items-center gap-2 desktop:hidden">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="desktop:hidden">
-                  <Menu aria-hidden="true" />
-                  <span className="sr-only">Open navigation</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetTitle className="sr-only">Navigation</SheetTitle>
-                <SheetDescription className="sr-only">
-                  Supervisor sections
-                </SheetDescription>
-                <SupervisorRail onNavigate={() => setOpen(false)} />
-              </SheetContent>
-            </Sheet>
-              <Link to="/supervisor" aria-label="Oversight overview" className="min-w-0">
+              <Sheet open={open} onOpenChange={setOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="desktop:hidden"
+                  >
+                    <Menu aria-hidden="true" />
+                    <span className="sr-only">Open navigation</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <SheetTitle className="sr-only">Navigation</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Supervisor sections
+                  </SheetDescription>
+                  <SupervisorRail onNavigate={() => setOpen(false)} />
+                </SheetContent>
+              </Sheet>
+              <Link
+                to="/supervisor"
+                aria-label="Oversight overview"
+                className="min-w-0"
+              >
                 <Brand />
               </Link>
             </div>

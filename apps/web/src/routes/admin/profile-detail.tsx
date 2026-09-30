@@ -88,7 +88,12 @@ function Confirm({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{action}</AlertDialogAction>
+          <AlertDialogAction
+            variant={variant === 'destructive' ? 'destructive' : 'default'}
+            onClick={onConfirm}
+          >
+            {action}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

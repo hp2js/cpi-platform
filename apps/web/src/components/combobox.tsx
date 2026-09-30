@@ -165,6 +165,8 @@ export function Combobox({
             aria-hidden="true"
           />
           <input
+            // Inset outline: the popover edge would clip one drawn outside the field.
+            data-focus-inset
             role="combobox"
             aria-label={searchPlaceholder}
             aria-controls={listId}

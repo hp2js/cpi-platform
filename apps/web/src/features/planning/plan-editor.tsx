@@ -666,6 +666,7 @@ export function RemovePlanItem({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            variant="destructive"
             disabled={remove.isPending}
             onClick={(event) => {
               event.preventDefault();

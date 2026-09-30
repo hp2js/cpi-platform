@@ -461,6 +461,7 @@ function DraftEditor({ form }: { form: FormVersion }) {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep the draft</AlertDialogCancel>
                     <AlertDialogAction
+                      variant="destructive"
                       disabled={
                         discardReason.trim().length < 10 || discard.isPending
                       }
