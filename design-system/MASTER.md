@@ -129,6 +129,8 @@ State colour usage (contrast against white or the `-lighter` fill):
 - Bars and borders: the base token (alert left bar, 8 px).
 - Text: only `error-dark` (error messages), `success-darker`, `info-darker`, `warning-darker`
   on white. `warning`, `success`, `info` and `error` base tokens are never used for text.
+  The overdue tag uses `error-darker` on `error-lighter` (7.7:1). Text never takes the same
+  colour as its own fill; `design-tokens.test.ts` fails on any class list that does.
 
 ### Focus
 
@@ -391,6 +393,13 @@ control (stricter than WCAG 2.2's 24 px, as requested).
 - **Quarter status** (`ObligationStatus` in `components/status.tsx`). A quarter that has not
   started and is not yet due shows one quiet "Not yet due" line, not two tags, so grids
   highlight only the cells that need action.
+- **Deadline countdown** (`components/deadline-countdown.tsx`). Measured from business time.
+  Only urgent deadlines are tags: "N days late" (`error-lighter` fill, `error-dark` border,
+  `error-darker` text), "Due today"/"Due tomorrow"/"N days left" within a week
+  (`warning-lighter`, `warning` border, `ink`). A distant deadline is a plain `base-dark` line
+  with a clock icon, so it never looks like the grey "Not started" state tag beside it. Where
+  the countdown or a "First submitted … late" line already says a quarter is late, the
+  separate "Late" flag is not repeated.
 - **Glossary** (`components/glossary.tsx`). A USWDS-style disclosure whose summary names the
   terms it defines, placed on the screens where those terms appear. Terms in our own copy
   are spelled out on first use, e.g. "Corruption Prevention Committee (CPC)".

@@ -62,6 +62,21 @@ describe('USWDS design tokens', () => {
     expect(off).toEqual([]);
   });
 
+  it('never sets text in the same colour as its own background', () => {
+    const clashes: string[] = [];
+    for (const [file, text] of Object.entries(sources))
+      for (const [, list] of text.matchAll(/['"`]([^'"`]*)['"`]/g)) {
+        const classes = list!.split(/\s+/).filter((c) => !c.includes(':'));
+        const fills = new Set(
+          classes.filter((c) => c.startsWith('bg-')).map((c) => c.slice(3)),
+        );
+        for (const c of classes)
+          if (c.startsWith('text-') && fills.has(c.slice(5)))
+            clashes.push(`${file}: ${c}`);
+      }
+    expect(clashes).toEqual([]);
+  });
+
   it('uses no token that the USWDS theme removed', () => {
     const removed =
       /^(?:(?:bg|text|border|ring|fill|stroke|outline|divide)-(?:muted|accent|card|popover|background|foreground|destructive|input|ring|border|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+)(?:\/\d+)?|rounded(?:-[trblse]{1,2})?-(?:xs|xl|2xl|3xl)|shadow-(?:xs|sm|md|lg|xl|2xl)|font-(?:thin|extralight|medium|semibold|extrabold|black)|text-(?:4xl|5xl)|max-w-(?:xs|sm|md|lg|xl|[2-7]xl|prose)|animate-(?:in|out)|(?:min-h|h|size|min-w)-11|opacity-(?:50|60|70)|border-dashed|backdrop-blur(?:-\S+)?|(?:sm|md|lg|xl|2xl|dark):.+)$/;
@@ -138,6 +153,9 @@ describe('Adili palette contrast', () => {
     ['primary', 'accent-warm-lighter'],
     // The simulation bar.
     ['ink', 'accent-warm-lighter'],
+    // Deadline tags: overdue and due soon.
+    ['error-darker', 'error-lighter'],
+    ['ink', 'warning-lighter'],
     // Disabled text and ticks on the disabled fill, and disabled buttons' text.
     ['disabled-dark', 'disabled-lighter'],
     ['white', 'secondary'],

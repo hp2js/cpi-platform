@@ -104,8 +104,11 @@ function Quarter({
             <ObligationStatus
               state={obligation.state}
               audience="institution"
+              // "Late" is already said, more precisely, by the countdown ("78 days late") while
+              // the quarter is open and by the first-submitted line once it is submitted.
               flags={obligation.flags.filter(
-                (flag) => flag !== 'late' || !obligation.firstSubmittedAt,
+                (flag) =>
+                  flag !== 'late' || (!obligation.firstSubmittedAt && !open),
               )}
             />
           </span>
