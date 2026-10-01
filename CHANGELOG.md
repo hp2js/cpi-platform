@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.0](https://github.com/hp2js/cpi-platform/compare/v0.3.0...v0.4.0) (2026-10-01)
+
+### Features
+
+* add S3-compatible file storage (MinIO) and surface in health checks ([838e0a2](https://github.com/hp2js/cpi-platform/commit/838e0a2a849e4557604db29301938f3814cb125a))
+* enhance form field alignment and improve contrast checks in design tokens ([475a881](https://github.com/hp2js/cpi-platform/commit/475a8819684c6da68519504e5ad4966d9e57bff9))
+* enhance institution layout with attention badges and improved navigation structure ([2218559](https://github.com/hp2js/cpi-platform/commit/22185590012f302fc9b31e5b882845113b631949))
+* make simulation banner live and add details popover ([5dd631c](https://github.com/hp2js/cpi-platform/commit/5dd631cc001577b4cd004d54fb02d07648d576c1))
+* **storage:** enhance file handling and migration processes ([2319b38](https://github.com/hp2js/cpi-platform/commit/2319b38f63eaf77a2f9c68dc42607c695f7e662f))
+* **storage:** implement storage maintenance script for migrating legacy files and garbage collection ([0fcafcd](https://github.com/hp2js/cpi-platform/commit/0fcafcda54509f808ab2a6070d485a4be7a7a399))
+* **storage:** integrate MinIO for file storage and update file handling in API ([496fd1a](https://github.com/hp2js/cpi-platform/commit/496fd1a09e193f4edb9c32623dbc6ffdd2131c55))
+* update button variants to improve UI consistency and enhance design system documentation ([e7d1854](https://github.com/hp2js/cpi-platform/commit/e7d185402549ffb6fb739e1e57cb61d6d627926b))
+* update design system documentation to clarify Adili palette integration and component usage ([ea91468](https://github.com/hp2js/cpi-platform/commit/ea91468726381beed253b12ff2849e23889959e9))
+* update UI components for improved accessibility and consistency across forms ([b44be55](https://github.com/hp2js/cpi-platform/commit/b44be553e2bcee69476f09774b72f250f8a25b46))
+* **web:** rebrand to Adili purple/gold theme and harden dialog overflow ([95c9d6e](https://github.com/hp2js/cpi-platform/commit/95c9d6ea5c25b94713ee5576ce01ccb364cda946))
+* **web:** surface per-service readiness and refine deadline tags ([791dacd](https://github.com/hp2js/cpi-platform/commit/791dacdf2bdb751dc080fc24583deacf86786090))
+
+### Bug fixes
+
+* **a11y:** rethink focus ring colors for WCAG 3:1 contrast ([63cad95](https://github.com/hp2js/cpi-platform/commit/63cad95e5be8c10e7ecde7248c07584f0d9ce0c5))
+* add destructive variant to AlertDialogAction and fix formatting ([bdd3031](https://github.com/hp2js/cpi-platform/commit/bdd30316603268a8c66428c26d02d368a8bce113))
+* **design-tokens:** tint disabled palette to Adili neutrals ([ccb1c16](https://github.com/hp2js/cpi-platform/commit/ccb1c1606c17e09c208ea9ad6b785f9bcc998749))
+
 ## [0.3.0](https://github.com/hp2js/cpi-platform/compare/v0.2.0...v0.3.0) (2026-09-30)
 
 ### Features
