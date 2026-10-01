@@ -21,7 +21,7 @@ describe('health endpoints', () => {
     const controller = new HealthController({
       readiness: vi.fn().mockResolvedValue({
         status: 'degraded',
-        services: { database: 'down', redis: 'up' },
+        services: { database: 'down', redis: 'up', storage: 'up' },
       }),
     } as unknown as Infrastructure);
     expect(controller.live()).toEqual({ status: 'ok' });
@@ -29,8 +29,11 @@ describe('health endpoints', () => {
       ServiceUnavailableException,
     );
   });
-  it('reports readiness only when both dependencies work', async () => {
-    const result = { status: 'ok', services: { database: 'up', redis: 'up' } };
+  it('reports readiness only when every dependency works', async () => {
+    const result = {
+      status: 'ok',
+      services: { database: 'up', redis: 'up', storage: 'up' },
+    };
     const controller = new HealthController({
       readiness: vi.fn().mockResolvedValue(result),
     } as unknown as Infrastructure);

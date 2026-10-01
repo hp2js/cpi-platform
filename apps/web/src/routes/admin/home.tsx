@@ -59,8 +59,9 @@ function ServiceRow({
 }
 
 /**
- * Live readiness of the API and the services it depends on (PostgreSQL holds records and
- * files; Redis holds sign-in sessions and lockouts), checked every 30 seconds.
+ * Live readiness of the API and the services it depends on (PostgreSQL holds records and file
+ * details; Redis holds sign-in sessions and lockouts; the S3-compatible bucket, MinIO locally,
+ * holds the files themselves), checked every 30 seconds.
  */
 function SystemStatus() {
   const health = useQuery({ ...healthQuery, retry: false });
@@ -104,13 +105,18 @@ function SystemStatus() {
         />
         <ServiceRow
           name="PostgreSQL"
-          role="Records, audit and uploaded files"
+          role="Records, audit and file details"
           state={state(services?.database)}
         />
         <ServiceRow
           name="Redis"
           role="Sign-in sessions and lockouts"
           state={state(services?.redis)}
+        />
+        <ServiceRow
+          name="File storage"
+          role="Uploaded evidence and documents (S3-compatible bucket)"
+          state={state(services?.storage)}
         />
       </ul>
       <p className="mt-2 text-xs text-base-dark">

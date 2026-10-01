@@ -12,7 +12,7 @@ const answer = (status: number, body: unknown) =>
 it('reads a degraded report from a 503, so the console shows which service is down', async () => {
   const report = {
     status: 'degraded',
-    services: { database: 'down', redis: 'up' },
+    services: { database: 'down', redis: 'up', storage: 'up' },
   };
   answer(503, report);
   await expect(fetchReadiness()).resolves.toEqual(report);
