@@ -71,6 +71,13 @@
       "when": 1790712262543,
       "tag": "0009_daily_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790760913742,
+      "tag": "0010_eager_spirit",
+      "breakpoints": true
     }
   ]
 }

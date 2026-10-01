@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { Objects } from '../storage/objects';
+import { loadConfig } from '../config';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { config } from 'dotenv';
@@ -42,6 +45,10 @@ function freePort() {
 }
 
 export async function startApi(env: Record<string, string> = {}) {
+  const objectPrefix = `evidence/tests/${randomUUID()}/`;
+  const objects = new Objects(
+    loadConfig({ ...process.env, S3_PREFIX: objectPrefix }),
+  );
   const urls = testUrls();
   const admin = new Pool({ connectionString: urls.admin });
   try {
@@ -66,6 +73,7 @@ export async function startApi(env: Record<string, string> = {}) {
       API_PORT: String(port),
       DATABASE_URL: urls.database,
       REDIS_URL: urls.redis,
+      S3_PREFIX: objectPrefix,
       ...env,
     },
     // API_LOG=1 shows the server's JSON log (for example a 500's cause).
@@ -82,6 +90,7 @@ export async function startApi(env: Record<string, string> = {}) {
 
   return {
     db,
+    objects,
     /** Restore the fixture state between tests. */
     reset: () => loadFixtures(db),
     /** Clear sessions and sign-in lockouts (Redis database 15). */
@@ -96,6 +105,13 @@ export async function startApi(env: Record<string, string> = {}) {
     client: () => new Client(url),
     async stop() {
       server.kill();
+      await new Promise<void>((resolve) => {
+        if (server.exitCode !== null || server.signalCode !== null) resolve();
+        else server.once('exit', () => resolve());
+      });
+      for await (const location of objects.list())
+        await objects.remove(location);
+      objects.onApplicationShutdown();
       await pool.end();
     },
   };

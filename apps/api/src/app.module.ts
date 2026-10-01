@@ -25,6 +25,8 @@ import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
 import { ApiExceptionFilter } from './http/errors.filter';
 import { Infrastructure } from './infrastructure';
+import { Objects } from './storage/objects';
+import { Files } from './storage/files';
 
 @Module({
   controllers: [
@@ -49,6 +51,8 @@ import { Infrastructure } from './infrastructure';
   providers: [
     { provide: CONFIG, useFactory: () => loadConfig(process.env) },
     Infrastructure,
+    Objects,
+    Files,
     Sessions,
     Events,
     { provide: APP_GUARD, useClass: AuthGuard },

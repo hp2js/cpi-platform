@@ -23,7 +23,7 @@ async function waitReady() {
   throw new Error('API failed to become ready');
 }
 await waitReady();
-for (const dependency of ['redis', 'postgres']) {
+for (const dependency of ['redis', 'postgres', 'minio']) {
   try {
     compose('stop', dependency);
     assert.equal((await probe('live')).status, 200);
@@ -31,7 +31,13 @@ for (const dependency of ['redis', 'postgres']) {
     assert.equal(response.status, 503);
     const body = await response.json();
     assert.equal(
-      body.services[dependency === 'postgres' ? 'database' : 'redis'],
+      body.services[
+        dependency === 'postgres'
+          ? 'database'
+          : dependency === 'minio'
+            ? 'storage'
+            : 'redis'
+      ],
       'down',
     );
   } finally {
