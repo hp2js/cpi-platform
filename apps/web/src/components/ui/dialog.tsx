@@ -36,7 +36,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn('fixed inset-0 z-50 bg-black/70', className)}
+      className={cn('fixed inset-0 z-50 bg-black/50', className)}
       {...props}
     />
   );
@@ -55,8 +55,9 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-columns
         className={cn(
-          'fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-white p-6 shadow-3 outline-none tablet:max-w-mobile-lg',
+          'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-mobile-lg -translate-x-1/2 -translate-y-1/2 grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-white p-6 text-ink shadow-3 outline-none',
           className,
         )}
         {...props}
@@ -80,7 +81,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex flex-col gap-2 pr-10 text-left', className)}
+      className={cn(
+        'flex min-w-0 flex-col gap-2 pr-10 text-left wrap-anywhere',
+        className,
+      )}
       {...props}
     />
   );
@@ -98,7 +102,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        'flex flex-col-reverse gap-2 tablet:flex-row tablet:justify-end',
+        'flex flex-col gap-2 tablet:flex-row tablet:flex-wrap tablet:justify-end',
         className,
       )}
       {...props}
@@ -133,7 +137,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn('text-sm text-ink', className)}
+      className={cn('text-sm text-base-dark', className)}
       {...props}
     />
   );

@@ -261,7 +261,7 @@ function TodoList({
           {todos.map((todo) => (
             <li
               key={todo.key}
-              className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-4"
+              className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-white p-4"
             >
               <div className="grid min-w-0 flex-1 gap-1">
                 <p className="font-bold">{todo.title}</p>
@@ -352,7 +352,7 @@ function QuarterAction({
       <Link
         to="/institution/receipts/$receiptId"
         params={{ receiptId: receipt.id }}
-        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        className={buttonVariants({ variant: 'plain', size: 'sm' })}
       >
         View receipt
       </Link>
@@ -511,7 +511,7 @@ export function InstitutionHomePage() {
         actions={
           <Link
             to="/institution/profile"
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            className={buttonVariants({ variant: 'plain', size: 'sm' })}
           >
             <Building2 aria-hidden="true" />
             Our institution

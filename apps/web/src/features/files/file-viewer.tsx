@@ -276,7 +276,7 @@ function Preview({
           <div>
             <Button
               size="sm"
-              variant="outline"
+              variant="plain"
               aria-pressed={actualSize}
               onClick={() => setActualSize((current) => !current)}
             >
@@ -376,7 +376,7 @@ function ViewerBody({ file: item }: { file: ViewableFile }) {
         {(kind === 'pdf' || kind === 'image') && (
           <Button
             size="sm"
-            variant="outline"
+            variant="plain"
             onClick={() => window.open(url, '_blank', 'noopener')}
           >
             <ExternalLink aria-hidden="true" />

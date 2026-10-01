@@ -91,7 +91,7 @@ function StatusChange({ user }: { user: ManagedUser }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" size="sm">
           {user.active ? 'Deactivate' : 'Reactivate'}
           <span className="sr-only"> {user.displayName}</span>
         </Button>
@@ -147,7 +147,7 @@ function StatusChange({ user }: { user: ManagedUser }) {
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
@@ -211,7 +211,7 @@ function ChangeRole({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" size="sm">
           Change role
           <span className="sr-only"> for {user.displayName}</span>
         </Button>
@@ -271,7 +271,7 @@ function ChangeRole({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
@@ -322,7 +322,7 @@ function EditUser({ user }: { user: ManagedUser }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" size="sm">
           Edit<span className="sr-only"> {user.displayName}</span>
         </Button>
       </DialogTrigger>
@@ -365,7 +365,7 @@ function EditUser({ user }: { user: ManagedUser }) {
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="plain"
               onClick={() => setOpen(false)}
             >
               Cancel
@@ -434,7 +434,7 @@ export function ResendInvitation({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="ghost"
       size="sm"
       disabled={mutation.isPending}
       onClick={() => mutation.mutate()}
@@ -542,7 +542,7 @@ function AddUser({
             mutation.mutate();
           }}
         >
-          <div className="grid gap-3 tablet:grid-cols-2">
+          <div data-columns className="grid gap-3 tablet:grid-cols-2">
             <div className="grid content-start gap-2">
               <Label htmlFor={`${id}-role`}>Role</Label>
               <SelectField
@@ -619,7 +619,7 @@ function AddUser({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="plain"
               onClick={() => setOpen(false)}
             >
               Cancel
@@ -755,7 +755,7 @@ function UsersTable({
                   <UserStatus user={user} />
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex justify-end gap-1 whitespace-nowrap">
                     {user.status === 'invited' && (
                       <ResendInvitation user={user} onSent={onNotice} />
                     )}

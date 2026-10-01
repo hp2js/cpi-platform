@@ -101,7 +101,7 @@ export function BulkMove() {
           institution keeps its own history entry and everyone involved is told.
         </p>
       </div>
-      <div className="grid gap-3 tablet:grid-cols-3">
+      <div data-columns className="grid gap-3 tablet:grid-cols-3">
         <div className="grid gap-2">
           <Label htmlFor="bulk-mode">Change the</Label>
           <SelectField
@@ -207,7 +207,7 @@ export function BulkMove() {
         </ul>
       </fieldset>
 
-      <div className="grid gap-3 tablet:grid-cols-2">
+      <div data-columns className="grid gap-3 tablet:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="bulk-target">
             New {mode === 'officer' ? 'reviewing officer' : 'supervisor'}

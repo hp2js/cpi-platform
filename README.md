@@ -2,7 +2,7 @@
 
 HP2JS's Adili V3 Track 2 workspace for corruption prevention reporting and review.
 
-The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns and [the storage guide](docs/storage.md) covers files and maintenance.
+The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns and [the storage guide](docs/storage.md) covers files and maintenance. The [design specification](design-system/MASTER.md) defines the USWDS foundation, Adili brand theme and shared component behavior.
 
 ## Start with Docker
 

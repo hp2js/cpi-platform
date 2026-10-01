@@ -191,10 +191,38 @@ export async function fetchFile(
   };
 }
 
+/**
+ * The API's readiness report. A 503 still carries the per-service report (the API keeps it out
+ * of the error envelope), so a database or Redis outage shows which service is down instead of
+ * "not reachable". Only no answer at all, or an answer that is not a report, is an error.
+ */
+export async function fetchReadiness(signal?: AbortSignal) {
+  let response: Response;
+  try {
+    response = await fetch(apiUrl('/api/health/ready'), {
+      headers: { Accept: 'application/json' },
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(5000)])
+        : AbortSignal.timeout(5000),
+    });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new NetworkError('The API did not respond.');
+  }
+  const parsed = readinessSchema.safeParse(
+    await response.json().catch(() => undefined),
+  );
+  if ((response.ok || response.status === 503) && parsed.success)
+    return parsed.data;
+  throw new ApiError(
+    response.status,
+    'The API answered, but not with a readiness report.',
+  );
+}
+
 export const healthQuery = queryOptions({
   queryKey: ['system', 'readiness'],
-  queryFn: ({ signal }) =>
-    request('/api/health/ready', readinessSchema, { signal }),
+  queryFn: ({ signal }) => fetchReadiness(signal),
   refetchInterval: 30_000,
 });
 

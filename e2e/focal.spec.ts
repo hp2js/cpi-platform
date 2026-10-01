@@ -88,18 +88,28 @@ test('the home to-do list leads to a clarification shown where it applies', asyn
   ).toBeInViewport();
 });
 
-test('four sections with full labels, attention badges and old addresses redirected', async ({
+test('the rail lists sections with attention badges and the year’s quarters, and old addresses redirect', async ({
   page,
 }) => {
   await midYear(page);
   await visit(page, 'focal-demo-002', '/institution');
   const nav = page.getByRole('navigation', { name: 'Institution' }).first();
+  // The desktop rail: the four sections, then the institution page and the inbox.
   await expect(nav.getByRole('link')).toHaveText([
     'Home',
     /^Reports1 needing attention$/,
     'Plan & documents',
     'Results',
+    'Our institution',
+    'Inbox',
   ]);
+  // The year's quarters sit below, each with its state in words and a link to its report.
+  const quarters = page.getByRole('region', { name: 'FY 2026/27 quarters' });
+  await expect(quarters.getByRole('link', { name: /^Q1/ })).toContainText(
+    'Clarification requested',
+  );
+  await quarters.getByRole('link', { name: /^Q1/ }).click();
+  await expect(page).toHaveURL(/\/institution\/reports\/FY2026-27-Q1$/);
   // Bookmarks and older notifications still work.
   await page.goto('/institution/clarifications');
   await expect(page).toHaveURL(/\/institution\/reports$/);

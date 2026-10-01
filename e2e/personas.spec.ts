@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './test';
+import { api, reset, signInAs, visit } from './support';
 
 // Journeys run against the development server's mock API; production builds have no mocks.
 test.skip(
@@ -127,4 +128,41 @@ test('institution navigation moves to the bottom bar on a phone', async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('the simulation bar follows the clock when another person advances it', async ({
+  page,
+  browser,
+}) => {
+  await reset(page);
+  await visit(page, 'focal-demo-001', '/institution');
+  const bar = page.getByRole('region', { name: 'Simulation status' });
+  const before = await bar.locator('time').getAttribute('datetime');
+
+  // The administrator advances business time in another browser.
+  const admin = await browser.newPage();
+  await admin.goto('/sign-in');
+  await signInAs(admin, 'administrator');
+  await api(admin, '/api/simulation/advance', {
+    method: 'POST',
+    json: { boundaryId: 'Q2-open' },
+  });
+  await admin.close();
+
+  // Returning to the tab re-reads the session; the bar shows the new business time.
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event('visibilitychange')),
+  );
+  await expect(bar.locator('time')).not.toHaveAttribute(
+    'datetime',
+    before ?? '',
+  );
+
+  // "About this simulation" explains the clock, the profile and the run.
+  await bar.getByRole('button', { name: 'About this simulation' }).click();
+  const about = page.getByRole('dialog');
+  await expect(
+    about.getByText('Hackathon Mock v1 · simulation profile'),
+  ).toBeVisible();
+  await expect(about.getByText('Run', { exact: true })).toBeVisible();
 });

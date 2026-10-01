@@ -1,8 +1,9 @@
 @import 'tailwindcss';
 
 /*
- * USWDS design tokens (design-system/MASTER.md). Tailwind's defaults are reset, not extended,
- * so only these colours, sizes, radii, shadows and breakpoints exist.
+ * USWDS foundation (type, spacing, radii, states, focus) with the Adili palette: purple primary,
+ * gold accent, purple-tinted neutrals and the Adili destructive red (design-system/MASTER.md).
+ * Tailwind's defaults are reset, not extended, so only these tokens exist.
  */
 @theme {
   --color-*: initial;
@@ -19,39 +20,42 @@
 
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-ink: #1b1b1b;
-  --color-base-lightest: #f0f0f0;
-  --color-base-lighter: #dfe1e2;
-  --color-base-light: #a9aeb1;
-  --color-base: #71767a;
-  --color-base-dark: #565c65;
-  --color-base-darker: #3d4551;
-  --color-base-darkest: #1b1b1b;
+  /* Adili neutrals: purple-tinted greys from the Adili portal palette, on USWDS names. */
+  --color-canvas: #faf8fb;
+  --color-ink: #271e2d;
+  --color-base-lightest: #f1edf3;
+  --color-base-lighter: #ddd5e1;
+  --color-base-light: #b7adbc;
+  --color-base: #736a79;
+  --color-base-dark: #635b69;
+  --color-base-darker: #463d4c;
+  --color-base-darkest: #271e2d;
 
-  --color-primary-lighter: #d9e8f6;
-  --color-primary-light: #73b3e7;
-  --color-primary: #005ea2;
-  --color-primary-vivid: #0050d8;
-  --color-primary-dark: #1a4480;
-  --color-primary-darker: #162e51;
+  --color-primary-lighter: #f1e8f4;
+  --color-primary-light: #c6a2d0;
+  --color-primary: #530b61;
+  --color-primary-vivid: #702082;
+  --color-primary-dark: #470952;
+  --color-primary-darker: #35063e;
 
-  --color-secondary-lighter: #f3e1e4;
-  --color-secondary-light: #f2938c;
-  --color-secondary: #d83933;
-  --color-secondary-vivid: #e41d3d;
-  --color-secondary-dark: #b50909;
-  --color-secondary-darker: #8b0a03;
+  /* Destructive actions only: the Adili portal's red, darker than USWDS red-50 for white text. */
+  --color-secondary-lighter: #fef3f2;
+  --color-secondary-light: #fda29b;
+  --color-secondary: #b42318;
+  --color-secondary-vivid: #d92d20;
+  --color-secondary-dark: #912018;
+  --color-secondary-darker: #7a1a14;
 
   --color-accent-cool-lighter: #e1f3f8;
   --color-accent-cool-light: #97d4ea;
   --color-accent-cool: #00bde3;
   --color-accent-cool-dark: #28a0cb;
   --color-accent-cool-darker: #07648d;
-  --color-accent-warm-lighter: #f2e4d4;
-  --color-accent-warm-light: #ffbc78;
-  --color-accent-warm: #fa9441;
-  --color-accent-warm-dark: #c05600;
-  --color-accent-warm-darker: #775540;
+  --color-accent-warm-lighter: #fff8e3;
+  --color-accent-warm-light: #fff0bd;
+  --color-accent-warm: #ffe79b;
+  --color-accent-warm-dark: #a67800;
+  --color-accent-warm-darker: #3a2b00;
 
   --color-info-lighter: #e7f6f8;
   --color-info-light: #99deea;
@@ -73,14 +77,21 @@
   --color-success: #00a91c;
   --color-success-dark: #008817;
   --color-success-darker: #216e1f;
-  --color-disabled-lighter: #c9c9c9;
-  --color-disabled-light: #919191;
-  --color-disabled: #757575;
-  --color-disabled-dark: #454545;
-  --color-disabled-darker: #1b1b1b;
+  /*
+   * Disabled ($theme-color-disabled-*), tinted to the Adili neutrals so disabled controls recede
+   * instead of standing out as the only cold grey: a light fill, the light border grey, and
+   * secondary-text grey for their text (5.3:1 on the fill, still readable).
+   */
+  --color-disabled-lighter: #ebe6ee;
+  --color-disabled-light: #b7adbc;
+  --color-disabled: #8a8190;
+  --color-disabled-dark: #635b69;
+  --color-disabled-darker: #463d4c;
   --color-emergency: #9c3d10;
   --color-emergency-dark: #332d29;
-  --color-focus: #2491ff;
+  /* Focus (USWDS $theme-focus-color): Adili purple on light surfaces, gold on purple ones. */
+  --color-focus: #530b61;
+  --color-focus-on-dark: #ffe79b;
 
   --font-sans:
     'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -126,6 +137,8 @@
 
   /* Minimum target size, in px so the density setting below never shrinks it. */
   --spacing-touch: 44px;
+  /* The visual height of compact buttons; their target stays --spacing-touch. */
+  --spacing-compact: 36px;
 
   --radius-sm: 0.125rem;
   --radius-md: 0.25rem;
@@ -162,6 +175,17 @@
     --banner-h: 0px;
     --header-h: 0px;
     --sticky-top: calc(var(--banner-h) + var(--header-h));
+    /* Single-line fields cap at 480 px in single-column forms (see fieldControl). */
+    --field-max: var(--container-mobile-lg);
+    /* The focus colour in use; purple surfaces (data-surface="dark") switch it to gold. */
+    --focus-color: var(--color-focus);
+  }
+  [data-surface='dark'] {
+    --focus-color: var(--color-focus-on-dark);
+  }
+  /* Dialogs, sheets and multi-column field rows: fields fill their column. */
+  [data-columns] {
+    --field-max: none;
   }
   /* Anchors, skip links and focused fields scroll clear of the fixed header. */
   /*
@@ -174,7 +198,7 @@
     scroll-padding-top: calc(var(--sticky-top) + 0.75rem);
   }
   body {
-    @apply m-0 bg-white font-sans text-sm text-ink antialiased;
+    @apply m-0 bg-canvas font-sans text-sm text-ink antialiased;
   }
   :where(a:not([class])) {
     @apply text-primary underline underline-offset-2 visited:text-primary-dark hover:text-primary-dark;
@@ -195,23 +219,52 @@
 }
 
 /*
- * USWDS focus: 4px solid blue-40v on every focusable element. Unlayered so no utility
- * (outline-none, outline-hidden) can remove it. Buttons sit it 4px off their edge, as USWDS does.
+ * Focus, on the USWDS focus settings ($theme-focus-color, -width, -offset) themed for Adili:
+ * always visible, never removable, 3:1 against every surface (design-tokens.test.ts).
+ * Unlayered so no utility (outline-none, outline-hidden) can remove it.
+ * - Controls: 3 px ring on :focus-visible; buttons and tabs sit it 4 px off their edge, as USWDS
+ *   does, so it stays clear of a filled purple button.
+ * - Fields: 2 px ring on any focus, including a click, so people see where they type; it
+ *   thickens the field's own edge rather than haloing it.
+ * - Checkboxes and radios: 2 px, 2 px off, so a checked purple box keeps a visible gap.
  */
-:focus-visible,
-/* Form controls keep the outline on any focus, as USWDS does, so people see where they type. */
-:is(input, select, textarea, [role='radio'], [role='checkbox'], [role='combobox']):focus {
-  outline: 0.25rem solid var(--color-focus);
+:focus-visible {
+  outline: 3px solid var(--focus-color);
   outline-offset: 0;
 }
 button:focus-visible,
 [role='button']:focus-visible,
 [role='tab']:focus-visible {
-  outline-offset: 0.25rem;
+  outline-offset: 4px;
+}
+:is(input, select, textarea, [role='combobox']):focus {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 0;
+}
+:is(
+  input[type='checkbox'],
+  input[type='radio'],
+  [role='radio'],
+  [role='checkbox']
+):focus {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
 }
 /* Rows inside scrolling lists draw the outline inside, where the list cannot clip it. */
-[data-focus-inset]:focus-visible {
-  outline-offset: -0.25rem;
+[data-focus-inset]:focus-visible,
+[data-focus-inset]:focus {
+  outline-offset: -3px;
+}
+/*
+ * A row that acts as one field (the combobox search: icon and input) takes the field's ring
+ * itself, inside its edge, and the input inside it does not draw a second one.
+ */
+[data-focus-within]:focus-within {
+  outline: 2px solid var(--focus-color);
+  outline-offset: -2px;
+}
+[data-focus-within] :is(input, textarea):focus {
+  outline: none;
 }
 /* Programmatic focus targets (skip link, route change) are not controls. */
 :is(main, h1, h2, section)[tabindex='-1']:focus {
@@ -224,6 +277,58 @@ button:focus-visible,
   ::after {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+}
+
+/*
+ * Scroll bars: thin and tinted to the Adili neutrals, never hidden. The page keeps the browser's
+ * width (an easier target); inner scroll areas (tables, drawers, lists, previews) are thin.
+ * Purple surfaces get a light thumb.
+ */
+@layer base {
+  /* The thumb is `base`, 3:1 or more on every light surface, so it stays findable. */
+  html {
+    scrollbar-color: var(--color-base) transparent;
+  }
+  body * {
+    scrollbar-width: thin;
+  }
+  [data-surface='dark'] {
+    scrollbar-color: rgb(255 255 255 / 0.6) transparent;
+  }
+  /*
+   * A scroll area inside a dialog or drawer keeps the scroll to itself: reaching its end does
+   * not scroll the dialog or the page behind it.
+   */
+  :where([role='dialog'], [role='alertdialog'])
+    :where(
+      .overflow-auto,
+      .overflow-y-auto,
+      .overflow-x-auto,
+      .overflow-scroll
+    ) {
+    overscroll-behavior: contain;
+  }
+}
+/* Browsers without scrollbar-color (older Safari): the same look through the WebKit pseudo-elements. */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: var(--color-base) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-base-dark);
+  }
+  [data-surface='dark'] ::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.6);
   }
 }
 

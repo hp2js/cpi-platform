@@ -97,17 +97,24 @@ const count = (value: number, one: string, many: string) =>
 const fieldErrorsOf = (error: unknown) =>
   isApiError(error) ? error.fieldErrors : {};
 
+/**
+ * A labelled control with its hint and error. `aligned` fields share their parent grid's rows
+ * (CSS subgrid), so side-by-side fields line up their controls even when only one has a hint
+ * or an error; the parent sets `gap-y-2` and the columns.
+ */
 function Field({
   id,
   label,
   hint,
   error,
+  aligned,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
   error?: string;
+  aligned?: boolean;
   children: ReactElement<Record<string, unknown>>;
 }) {
   const describedBy =
@@ -121,20 +128,32 @@ function Field({
           'aria-describedby': describedBy,
           'aria-invalid': error ? true : undefined,
         });
+  const hintNode = hint ? (
+    <p id={`${id}-hint`} className="text-xs text-base-dark">
+      {hint}
+    </p>
+  ) : aligned ? (
+    <span aria-hidden="true" />
+  ) : null;
+  const errorNode = error ? (
+    <p id={`${id}-error`} className="text-sm text-error-dark">
+      {error}
+    </p>
+  ) : aligned ? (
+    <span aria-hidden="true" />
+  ) : null;
   return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      {hint && (
-        <p id={`${id}-hint`} className="text-xs text-base-dark">
-          {hint}
-        </p>
-      )}
+    <div
+      className={
+        aligned ? 'row-span-4 mb-2 grid grid-rows-subgrid' : 'grid gap-2'
+      }
+    >
+      <Label htmlFor={id} className="self-end">
+        {label}
+      </Label>
+      {hintNode}
       {control}
-      {error && (
-        <p id={`${id}-error`} className="text-sm text-error-dark">
-          {error}
-        </p>
-      )}
+      {errorNode}
     </div>
   );
 }
@@ -175,7 +194,7 @@ function FormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className={`max-h-[90svh] overflow-y-auto ${wide ? 'tablet:max-w-measure' : 'tablet:max-w-mobile-lg'}`}
+        className={`${wide ? 'tablet:max-w-measure' : 'tablet:max-w-mobile-lg'}`}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -260,8 +279,9 @@ function RiskForm({
       <Field id={`${id}-cause`} label="Cause" error={errors.cause}>
         <Textarea id={`${id}-cause`} {...bind('cause')} />
       </Field>
-      <div className="grid grid-cols-2 gap-4">
+      <div data-columns className="grid grid-cols-2 gap-x-4 gap-y-2">
         <Field
+          aligned
           id={`${id}-probability`}
           label="Probability (1–5)"
           hint="How likely the risk is to occur."
@@ -276,6 +296,7 @@ function RiskForm({
           />
         </Field>
         <Field
+          aligned
           id={`${id}-impact`}
           label="Impact (1–5)"
           hint="How serious it would be if it occurred."
@@ -298,7 +319,7 @@ function RiskForm({
       )}
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -346,8 +367,15 @@ function ActivityForm({
     key: keyof typeof values & string,
     label: string,
     hint?: string,
+    aligned?: boolean,
   ) => (
-    <Field id={`${id}-${key}`} label={label} hint={hint} error={errors[key]}>
+    <Field
+      aligned={aligned}
+      id={`${id}-${key}`}
+      label={label}
+      hint={hint}
+      error={errors[key]}
+    >
       <Input id={`${id}-${key}`} {...bind(key)} />
     </Field>
   );
@@ -359,9 +387,17 @@ function ActivityForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
-        {text('code', 'Code', 'For example A-04.')}
-        <Field id={`${id}-risk`} label="Risk treated" error={errors.riskId}>
+      <div
+        data-columns
+        className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]"
+      >
+        {text('code', 'Code', 'For example A-04.', true)}
+        <Field
+          aligned
+          id={`${id}-risk`}
+          label="Risk treated"
+          error={errors.riskId}
+        >
           <SelectField
             id={`${id}-risk`}
             value={values.riskId}
@@ -378,11 +414,11 @@ function ActivityForm({
       <Field id={`${id}-strategy`} label="Strategy" error={errors.strategy}>
         <Textarea id={`${id}-strategy`} {...bind('strategy')} />
       </Field>
-      <div className="grid gap-4 tablet:grid-cols-2">
-        {text('output', 'Output')}
-        {text('kpi', 'Key performance indicator')}
-        {text('target', 'Target')}
-        {text('owner', 'Responsible')}
+      <div data-columns className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
+        {text('output', 'Output', undefined, true)}
+        {text('kpi', 'Key performance indicator', undefined, true)}
+        {text('target', 'Target', undefined, true)}
+        {text('owner', 'Responsible', undefined, true)}
       </div>
       {text(
         'resourceReference',
@@ -391,7 +427,7 @@ function ActivityForm({
       )}
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -445,8 +481,12 @@ function MilestoneForm({
         save.mutate(undefined);
       }}
     >
-      <div className="grid gap-4 tablet:grid-cols-[8rem_1fr]">
+      <div
+        data-columns
+        className="grid gap-x-4 gap-y-2 tablet:grid-cols-[8rem_1fr]"
+      >
         <Field
+          aligned
           id={`${id}-code`}
           label="Code"
           hint="For example M-13."
@@ -454,7 +494,12 @@ function MilestoneForm({
         >
           <Input id={`${id}-code`} {...bind('code')} />
         </Field>
-        <Field id={`${id}-quarter`} label="Quarter" error={errors.periodId}>
+        <Field
+          aligned
+          id={`${id}-quarter`}
+          label="Quarter"
+          error={errors.periodId}
+        >
           <SelectField
             id={`${id}-quarter`}
             value={values.periodId}
@@ -499,7 +544,7 @@ function MilestoneForm({
       </Field>
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -517,7 +562,11 @@ export function RiskDialog({ plan, risk }: { plan: Plan; risk?: Risk }) {
       description="Rate probability and impact on the cycle’s 1–5 scale, as in your risk assessment."
       trigger={
         risk ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${risk.code}`}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Edit ${risk.code}`}
+          >
             <Pencil aria-hidden="true" />
           </Button>
         ) : (
@@ -549,7 +598,7 @@ export function ActivityDialog({
         activity ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             aria-label={`Edit ${activity.code}`}
           >
             <Pencil aria-hidden="true" />
@@ -591,7 +640,7 @@ export function MilestoneDialog({
         milestone ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             aria-label={`Edit ${milestone.code}`}
           >
             <Pencil aria-hidden="true" />
@@ -646,7 +695,7 @@ export function RemovePlanItem({
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label={`Remove ${code}`}>
+        <Button variant="ghost" size="icon-sm" aria-label={`Remove ${code}`}>
           <Trash2 aria-hidden="true" />
         </Button>
       </AlertDialogTrigger>
@@ -666,6 +715,7 @@ export function RemovePlanItem({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            variant="destructive"
             disabled={remove.isPending}
             onClick={(event) => {
               event.preventDefault();
@@ -720,8 +770,9 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       >
         <Input id={`${id}-body`} {...bind('approvingBody')} />
       </Field>
-      <div className="grid gap-4 tablet:grid-cols-2">
+      <div data-columns className="grid gap-x-4 gap-y-2 tablet:grid-cols-2">
         <Field
+          aligned
           id={`${id}-date`}
           label="Approval date"
           error={errors.approvedOn}
@@ -729,6 +780,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
           <Input id={`${id}-date`} type="date" {...bind('approvedOn')} />
         </Field>
         <Field
+          aligned
           id={`${id}-reference`}
           label="Resolution or minutes reference"
           error={errors.reference}
@@ -765,7 +817,7 @@ function ApprovalForm({ plan, close }: { plan: Plan; close: () => void }) {
       </Field>
       <FormError error={save.error} fields={Object.keys(values)} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={save.isPending}>
@@ -807,7 +859,7 @@ export function PlanApprovalRecord({ plan }: { plan: Plan }) {
             title="Plan approval record"
             description="Record who approved your plan and when. Your officer reads baselines against it."
             trigger={
-              <Button variant="outline" size="sm">
+              <Button variant="ghost" size="sm">
                 <Pencil aria-hidden="true" />
                 {approval ? 'Edit' : 'Record approval'}
               </Button>
@@ -1006,7 +1058,7 @@ function ProposeForm({
       </Field>
       <FormError error={propose.error} fields={[]} />
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={close}>
+        <Button type="button" variant="plain" onClick={close}>
           Cancel
         </Button>
         <Button type="submit" disabled={propose.isPending}>
@@ -1077,7 +1129,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
           Import from CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
+      <DialogContent className="tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Import your plan</DialogTitle>
           <DialogDescription>
@@ -1243,7 +1295,7 @@ export function ImportPlanDialog({ plan }: { plan: Plan }) {
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="plain"
                 onClick={() => setOpen(false)}
               >
                 Cancel

@@ -60,7 +60,7 @@ test('sign in, skip navigation and complete part of a report without a mouse', a
   await page.keyboard.press('Enter');
   await expect(page.locator('#main')).toBeFocused();
 
-  // The demonstration accounts open in an overlay from the floating button.
+  // The demonstration accounts open in a drawer from the panel under the sign-in card.
   await tabTo(page, 'Explore with a demonstration account');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();

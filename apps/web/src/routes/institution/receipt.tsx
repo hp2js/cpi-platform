@@ -25,13 +25,13 @@ export function ReceiptPage() {
         description="Keep this for your records. It confirms what was received and when; it is not an evaluation."
         actions={
           <>
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="plain" onClick={() => window.print()}>
               <Printer aria-hidden="true" />
               Print
             </Button>
             <Link
               to="/institution/reports"
-              className={buttonVariants({ variant: 'outline' })}
+              className={buttonVariants({ variant: 'plain' })}
             >
               All reports
             </Link>

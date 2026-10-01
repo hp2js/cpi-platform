@@ -3,11 +3,15 @@ import { useSession } from '@/features/session/use-session';
 import { deadlineCountdown } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
+/**
+ * Only urgent deadlines get a tag (state colours: `-lighter` fill, base border, dark text); a
+ * distant one is a plain line, so it never looks like the grey workflow-state tag beside it.
+ */
 const styles = {
-  late: 'border-error-dark bg-error-dark text-error-dark',
+  late: 'border-error-dark bg-error-lighter text-error-darker',
   today: 'border-warning bg-warning-lighter text-ink',
   soon: 'border-warning bg-warning-lighter text-ink',
-  later: 'border-base-lighter bg-base-lightest text-base-dark',
+  later: 'border-transparent px-0 font-normal text-base-dark',
 } as const;
 
 /**

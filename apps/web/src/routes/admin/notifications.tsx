@@ -102,7 +102,7 @@ function DeliveryTable({
                 <TableCell>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="plain"
                     disabled={mutation.isPending}
                     onClick={() => mutation.mutate(delivery.id)}
                   >

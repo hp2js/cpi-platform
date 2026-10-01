@@ -95,7 +95,7 @@ function FileChecks({
   const idBase = `suit-${item.id}`;
 
   return (
-    <li className="grid gap-3 rounded-lg border-2 border-base-lighter bg-white p-4">
+    <li className="grid gap-3 rounded-lg border border-base-lighter bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm">
           <FileViewer file={item} />
@@ -135,7 +135,7 @@ function FileChecks({
           {bundle.canDecide && (
             <div>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setEditing(true)}
               >

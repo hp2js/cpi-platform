@@ -153,7 +153,7 @@ export function SupportView({
           <span className="sr-only"> of the {periodLabel} report</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto tablet:max-w-measure">
+      <DialogContent className="tablet:max-w-measure">
         <DialogHeader>
           <DialogTitle>Support view: {periodLabel} report</DialogTitle>
           <DialogDescription>
@@ -190,7 +190,7 @@ export function SupportView({
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="plain" onClick={() => setOpen(false)}>
             Close
           </Button>
           {!view.data && (

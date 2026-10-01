@@ -39,25 +39,78 @@ For a real write, validate at the server and use Query's mutation state. The agr
 
 ## Styling and components
 
-Tailwind v4 uses the Vite plugin and CSS-first configuration. Semantic theme tokens live only in `src/styles.css`; use `bg-primary`, `text-muted-foreground`, etc. rather than repeating hex colours in screens. Components were generated from the official shadcn/ui registry (new-york style) and are editable local code.
+Tailwind v4 uses the Vite plugin and CSS-first configuration. The canonical specification is
+[design-system/MASTER.md](../design-system/MASTER.md); runtime tokens live in `src/styles.css`.
+The theme is the USWDS 3 foundation (type scale, spacing, radii, form and alert patterns,
+state colours, focus) dressed in the Adili palette: purple primary, gold accent, purple-tinted
+neutrals, the Adili destructive red and a tinted `canvas` page background behind white
+surfaces. Token names stay USWDS's, so a palette change never touches component classes.
+Use semantic classes such as `bg-primary`, `text-ink` and `text-base-dark`. Tailwind's default
+colours, font sizes, breakpoints, radii and shadows are reset; old shadcn theme names such as
+`text-muted-foreground` have no CSS.
 
-Add primitives from the repo root:
+Local components originated from shadcn and now follow the project's USWDS adaptation. Keep
+Radix behavior for dialogs, selects, menus and focus management. Do not install USWDS JavaScript
+alongside Radix or overwrite these wrappers with generated defaults. New components should
+reuse the patterns and tokens in MASTER; declare and pin any new dependency in this workspace.
 
-```sh
-pnpm dlx shadcn@4.21.0 add <component> -c apps/web
-```
+Use `cn` from `@/lib/utils` when accepting class overrides. Its merge configuration understands
+our custom container widths and distinguishes `text-base` (colour) from font-size classes.
+Dialog and alert-dialog wrappers handle viewport limits, scrolling, wrapping and footer order.
+Use a width override for wider content; do not repeat overflow fixes in screens. Drawers and
+popovers also constrain themselves to the viewport. Preserve title/description associations,
+focus trapping, Escape and focus restoration when adapting them.
 
-Review generated changes, retain theme tokens, pin newly added dependency versions and run the checks. The pinned CLI currently installs an unrelated npm package named `cn` and imports `cn` from it: remove it with `pnpm --filter @cpi/web remove cn` and point the imports back to `@/lib/utils`. If it offers to overwrite an existing component, decline and write the new wrapper by hand (as done for `alert-dialog.tsx`). Avoid installing another form/router/table system alongside the agreed libraries.
+- **Confirmations.** An `AlertDialogAction` that deletes, discards or replaces work takes
+  `variant="destructive"` (Adili red); every other confirmation keeps the primary style, and
+  the safe choice is always the `AlertDialogCancel` beside it.
+- **Button hierarchy.** One `default` (filled) button per area, for the action that completes
+  the task. `outline` for secondary actions that change something; `plain` (grey) for actions
+  that change nothing: Cancel, Close, back links, View receipt, Print, exports, pagers;
+  `ghost` for actions repeated on each table row or card. Toolbars, rows and card headers use
+  `size="sm"` or `icon-sm` (36 px to look at, 44 px to hit); page and form actions keep the
+  default 44 px.
+- **Field width.** Put `data-columns` on any grid or form that places fields side by side;
+  inside it (and in every dialog and drawer, which set it themselves) inputs, selects and
+  comboboxes fill their column instead of capping at 480 px.
+- **Drawers on dark surfaces.** The sheet's close control uses the current text colour, so a
+  drawer that sets `bg-primary text-white` (the admin navigation) keeps it visible.
+- **Side-by-side fields.** Fields in a two-column row share their rows with CSS subgrid
+  (`Field aligned` in `features/planning/plan-editor.tsx`), so controls line up even when only
+  one field has a hint or an error. The parent grid sets the columns and `gap-y-2`.
+- **Search rows inside popovers** (the combobox search: icon and input) carry
+  `data-focus-within`: the whole row takes the field's focus ring, drawn inside the popover
+  edge so it is never clipped, and the input draws none of its own. Rows in scrolling lists
+  carry `data-focus-inset` for the same reason.
+- **Layouts.** Pages sit on `bg-canvas`; headers, navigation, cards, tables and dialogs are
+  white. The admin console keeps its Adili purple sidebar; the other roles use a white side
+  navigation. Below `desktop`, every header shows the wordmark beside the menu button.
+- **Institution layout** (`layouts/institution-layout.tsx`). From `desktop` it is a workspace
+  like the officer's: a rail with the wordmark, whom the focal person reports for, the
+  sections (`NavList` with `counts` for attention badges) and the year's quarters, and a wide
+  content area. Below `desktop` it stays one column for form entry: header tabs on tablets and
+  the bottom bar on phones, which a focal person reporting from a phone reaches with a thumb.
 
 ## Selects, long lists and fixed chrome
 
-- **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type.
+- **Choosing a control.** Use `SelectField` (`components/select-field.tsx`, built on Radix Select) for short, fixed lists such as a quarter, role, category or institution type; there are no native `<select>` elements. Use `Combobox` (`components/combobox.tsx`) for lists that grow with the number of institutions or users: institutions, officers. It is a button labelled by its `<Label htmlFor>`, with a popup that follows the WAI-ARIA combobox-with-listbox pattern and renders at most 100 matches while you type. Both look the same, down to the chevron, placeholder and popup; never restyle one without the other. Disabled and read-only states come from `fieldControl` and the checkbox/radio wrappers, never from classes in a screen (MASTER: _Disabled and read-only_).
 - **Long lists.** Anything sized by institutions (up to 500+) uses `useListControls` with `ListSearch` and `ListPager` from `components/list-controls.tsx`: filter by typed words, 20–50 rows a page. A printable list pages on screen and uses `usePrinting()` so the printed copy is complete.
+- **Simulation bar.** `SimulationBanner` renders only session data (run, business time, the cycle's profile) and keeps it live: the session is re-read every minute and on tab focus (`refetchOnWindowFocus: 'always'`), and a change of run, business time or profile invalidates every query but the session, as `refreshAfterClockChange` does for the administrator who moved the clock. Never hard-code a profile name or time in it.
 - **Fixed chrome.** Layouts pin the simulation banner, header and desktop sidebar with `sticky`. `useMeasuredHeight` writes their heights to `--banner-h` and `--header-h`; in-page sticky bars use `top-(--sticky-top)`, and `scroll-padding-top` keeps anchors and focused fields clear of the header. Mark sticky elements with `data-sticky` so print resets them.
 
 ## Adili palette source
 
-The public [Adili portal](https://adili.eacc.go.ke/) supplies the visual reference. Its [stylesheet](https://adili.eacc.go.ke/css/app.css) defines primary `#530b61` and button hover `#470952`; the portal welcome text uses `#ffe79b`. The app uses that purple for primary actions and gold as a light accent with dark text. Neutral/background/destructive colours are local supporting tokens, not claimed official brand specifications. No EACC logo or official endorsement is reproduced.
+The brand colours and their provenance are documented once in
+[MASTER's colour section](../design-system/MASTER.md#colour). They are the values of the Adili
+theme the app used before the USWDS migration (`apps/web/src/styles.css` at `09078d5^`),
+recovered onto USWDS token names: purple for primary actions, gold for restrained accents with
+dark text, purple-tinted neutrals for text, borders and surfaces, and the Adili red for
+destructive actions. Validation and status keep their USWDS state colours. Focus keeps the
+USWDS rules (solid, always visible, never removed) in Adili purple, and gold on purple surfaces:
+mark a purple surface with `data-surface="dark"` so its focus ring switches. Never set an
+outline colour in a component; use `--focus-color`. `src/design-tokens.test.ts` reads
+`styles.css` and fails if any text/surface pair drops below 4.5:1 or a focus ring below 3:1 on
+its surface. No EACC logo or official endorsement is reproduced.
 
 Keep text contrast, visible focus, labels, keyboard access, semantic headings and textual status indicators. Do not communicate validation or readiness using colour alone. Verify changes at narrow/mobile widths and with keyboard-only use.
 

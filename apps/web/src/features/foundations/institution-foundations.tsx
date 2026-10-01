@@ -105,7 +105,7 @@ function NewVersion({
         The new version supersedes the active one from its effective date. It is
         never treated as valid for an earlier period.
       </p>
-      <div className="grid gap-3 tablet:grid-cols-3">
+      <div data-columns className="grid gap-3 tablet:grid-cols-3">
         <div className="grid gap-2">
           <Label htmlFor={`${id}-file`}>Approved document</Label>
           <Input

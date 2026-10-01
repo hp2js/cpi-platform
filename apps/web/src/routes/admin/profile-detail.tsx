@@ -88,7 +88,12 @@ function Confirm({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{action}</AlertDialogAction>
+          <AlertDialogAction
+            variant={variant === 'destructive' ? 'destructive' : 'default'}
+            onClick={onConfirm}
+          >
+            {action}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -256,7 +261,10 @@ function ProfileEditor({
             Points out of 100 for each indicator (PRD §10.5). Foundations count
             once a year; implementation averages the four quarters.
           </p>
-          <div className="grid grid-cols-2 gap-3 tablet:grid-cols-4">
+          <div
+            data-columns
+            className="grid grid-cols-2 gap-3 tablet:grid-cols-4"
+          >
             {weightFields.map(([key, label]) => (
               <div key={key} className="grid gap-2">
                 <Label htmlFor={`weight-${key}`}>{label}</Label>
@@ -493,7 +501,7 @@ export function ProfileDetailPage() {
         actions={
           <Link
             to="/admin/profiles"
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'plain' })}
           >
             <ArrowLeft aria-hidden="true" />
             All profiles

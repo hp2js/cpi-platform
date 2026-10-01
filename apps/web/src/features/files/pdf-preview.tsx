@@ -141,7 +141,7 @@ export default function PdfPreview({
       >
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           disabled={pageNumber <= 1}
           onClick={() => setPageNumber((value) => value - 1)}
         >
@@ -153,7 +153,7 @@ export default function PdfPreview({
         </span>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           disabled={pageNumber >= pages}
           onClick={() => setPageNumber((value) => value + 1)}
         >
@@ -163,7 +163,7 @@ export default function PdfPreview({
         <span className="mx-1 h-5 w-px bg-base-lighter" aria-hidden="true" />
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-label="Zoom out"
           onClick={() => step(-1)}
         >
@@ -171,7 +171,7 @@ export default function PdfPreview({
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-label="Zoom in"
           onClick={() => step(1)}
         >
@@ -179,7 +179,7 @@ export default function PdfPreview({
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="plain"
           aria-pressed={zoom === null}
           onClick={() => setZoom(null)}
         >
@@ -192,7 +192,9 @@ export default function PdfPreview({
         tabIndex={0}
         role="region"
         aria-label={`${title}, page ${pageNumber}`}
-        className="min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
+        // Relative: the page text for screen readers is absolutely positioned, and must stay
+        // inside this scroller rather than stretch the dialog below the page.
+        className="relative min-h-0 overflow-auto rounded-md border bg-base-lightest p-2"
       >
         <canvas
           ref={canvas}

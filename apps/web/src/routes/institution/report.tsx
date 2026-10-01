@@ -343,7 +343,7 @@ function ReportEditor({
               {conflict && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="plain"
                   size="sm"
                   className="mt-2"
                   onClick={onReload}
@@ -390,7 +390,7 @@ function ReportEditor({
       )}
 
       <div className="grid gap-8 desktop:grid-cols-[minmax(0,1fr)_16rem] desktop:items-start">
-        <aside className="rounded-lg border-2 border-base-lighter bg-white p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+5rem)] desktop:order-last">
+        <aside className="rounded-lg border border-base-lighter bg-white p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+5rem)] desktop:order-last">
           <ReportContents bundle={bundle} values={values} />
         </aside>
         <div className="grid gap-8">
@@ -429,7 +429,7 @@ function ReportEditor({
                 ) : (
                   <div
                     key={question.id}
-                    className="rounded-lg border-2 border-base-lighter bg-white p-4 tablet:p-6"
+                    className="rounded-lg border border-base-lighter bg-white p-4 tablet:p-6"
                   >
                     <QuestionField
                       form={reportForm}
@@ -479,7 +479,7 @@ function Unavailable({ bundle }: { bundle: ReportBundle }) {
             to="/institution/receipts/$receiptId"
             params={{ receiptId: receipt.id }}
             className={buttonVariants({
-              variant: 'outline',
+              variant: 'plain',
               size: 'sm',
               className: 'mt-2',
             })}

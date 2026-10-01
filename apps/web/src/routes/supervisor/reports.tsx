@@ -134,12 +134,12 @@ export function ReportsPage() {
         description="Released results with their explanation, and every unreleased institution with its reason. Exports follow the versioned cpi-export-1 schema."
         actions={
           <>
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="plain" onClick={() => window.print()}>
               <Printer aria-hidden="true" />
               Print
             </Button>
             <Button
-              variant="outline"
+              variant="plain"
               onClick={() => csv.mutate()}
               disabled={csv.isPending}
             >
@@ -147,7 +147,7 @@ export function ReportsPage() {
               CSV
             </Button>
             <Button
-              variant="outline"
+              variant="plain"
               onClick={downloadJson}
               disabled={!report.data}
             >

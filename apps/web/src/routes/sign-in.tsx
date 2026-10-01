@@ -234,7 +234,7 @@ function DemoAccountButton({
       disabled={disabled}
       onClick={onSelect}
       data-focus-inset
-      className="group flex min-h-touch w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-primary-lighter focus-visible:relative disabled:cursor-not-allowed disabled:text-disabled-dark"
+      className="group flex min-h-touch w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-primary-lighter focus-visible:relative disabled:cursor-not-allowed disabled:text-disabled disabled:hover:bg-transparent"
     >
       <span className="min-w-0 flex-1">
         <span className="block font-bold">{account.displayName}</span>
@@ -262,7 +262,7 @@ function DemoAccountButton({
           {pending ? 'Signing in…' : 'Sign in'}
         </span>
         <ChevronRight
-          className="size-4 text-base-dark transition-colors group-hover:translate-x-0.5 group-hover:text-primary"
+          className="size-4 text-base-dark transition-colors group-hover:text-primary"
           aria-hidden="true"
         />
       </span>
@@ -301,7 +301,7 @@ function RoleGroup({
       className="grid scroll-mt-4 gap-2"
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-dark text-primary">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-warm text-primary">
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
@@ -366,7 +366,7 @@ function CopyPassword({ password }: { password: string }) {
       </code>
       <Button
         type="button"
-        variant="outline"
+        variant="plain"
         size="sm"
         onClick={() => {
           void navigator.clipboard
@@ -387,8 +387,10 @@ function CopyPassword({ password }: { password: string }) {
 }
 
 /**
- * Demonstration accounts live behind a floating button so the page reads as a real sign-in.
- * The open state is in the URL (`?demo=open`), so a demo can be linked to directly.
+ * Demonstration accounts: a quiet panel under the sign-in card, in the gold the simulation
+ * banner uses for "demonstration", so the page still reads as a real sign-in and the form stays
+ * the primary action. The drawer's open state is in the URL (`?demo=open`), so a demo can be
+ * linked to directly.
  */
 function DemoAccounts({ config }: { config: AuthConfig }) {
   const { demo } = route.useSearch();
@@ -411,19 +413,31 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
     });
   return (
     <Sheet open={demo === 'open'} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          type="button"
-          size="lg"
-          className="fixed bottom-4 left-4 z-40 h-touch rounded-md px-5 shadow-3 tablet:bottom-6 tablet:left-6"
-        >
-          <FlaskConical aria-hidden="true" />
-          <span className="tablet:hidden">Demo accounts</span>
-          <span className="hidden tablet:inline">
-            Explore with a demonstration account
+      <section
+        aria-labelledby="demo-heading"
+        className="grid gap-3 rounded-lg border border-accent-warm bg-accent-warm-lighter p-4"
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-warm text-primary">
+            <FlaskConical className="size-5" aria-hidden="true" />
           </span>
-        </Button>
-      </SheetTrigger>
+          <div className="min-w-0">
+            <h2 id="demo-heading" className="text-sm font-bold">
+              Trying out the platform?
+            </h2>
+            <p className="text-sm text-base-dark">
+              Sign in as a fictional institution, prevention officer, supervisor
+              or administrator. No password needed.
+            </p>
+          </div>
+        </div>
+        <SheetTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="w-full">
+            Explore with a demonstration account
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </SheetTrigger>
+      </section>
       <SheetContent
         side="right"
         className="w-full gap-0 outline-none tablet:max-w-mobile-lg"
@@ -520,7 +534,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
 export function SignInPage() {
   const config = useQuery(authConfigQuery);
   return (
-    <div className="flex min-h-svh flex-col bg-white">
+    <div className="flex min-h-svh flex-col bg-canvas">
       <SkipLink />
       <header className="border-b bg-white px-6 py-4">
         <Brand />
@@ -528,7 +542,7 @@ export function SignInPage() {
       <main
         id="main"
         tabIndex={-1}
-        className="outline-none mx-auto flex w-full max-w-mobile-lg flex-1 flex-col justify-center px-4 pt-10 pb-20 tablet:px-6"
+        className="outline-none mx-auto flex w-full max-w-mobile-lg flex-1 flex-col justify-center gap-4 px-4 py-10 tablet:px-6"
       >
         <section
           aria-labelledby="sign-in-heading"
@@ -569,8 +583,8 @@ export function SignInPage() {
             email to set your password.
           </p>
         </section>
+        {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
       </main>
-      {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
     </div>
   );
 }

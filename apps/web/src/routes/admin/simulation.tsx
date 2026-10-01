@@ -32,12 +32,15 @@ function Confirm({
   description,
   action,
   onConfirm,
+  destructive,
 }: {
   trigger: React.ReactNode;
   title: string;
   description: string;
   action: string;
   onConfirm: () => void;
+  /** The action replaces the current run's work. */
+  destructive?: boolean;
 }) {
   return (
     <AlertDialog>
@@ -49,7 +52,12 @@ function Confirm({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{action}</AlertDialogAction>
+          <AlertDialogAction
+            variant={destructive ? 'destructive' : 'default'}
+            onClick={onConfirm}
+          >
+            {action}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -157,6 +165,7 @@ export function SimulationPage() {
                     title="Start a new simulation run?"
                     description="This restores the fictional starting fixtures in a new run. The current run's data is discarded."
                     action="Start new run"
+                    destructive
                     onConfirm={() => reset.mutate()}
                   />
                 </div>

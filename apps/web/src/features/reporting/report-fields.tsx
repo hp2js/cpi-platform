@@ -110,7 +110,7 @@ function RowsField({
           <li
             key={index}
             aria-label={`Row ${index + 1}`}
-            className="grid gap-3 rounded-lg border-2 border-base-lighter bg-white p-4"
+            className="grid gap-3 rounded-lg border border-base-lighter bg-white p-4"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-bold">Row {index + 1}</span>
@@ -126,7 +126,7 @@ function RowsField({
                 Remove row {index + 1}
               </Button>
             </div>
-            <div className="grid gap-3 tablet:grid-cols-2">
+            <div data-columns className="grid gap-3 tablet:grid-cols-2">
               {columns.map((column) => {
                 const cellId = `${id}-r${index}-${column.id}`;
                 const cell = row[column.id] ?? null;
@@ -291,7 +291,7 @@ function RadioTile({
   return (
     <Label
       htmlFor={id}
-      className="min-h-touch cursor-pointer gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed"
+      className="min-h-touch cursor-pointer gap-3 rounded-md border border-base-lighter bg-white px-4 py-2 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-lighter has-disabled:cursor-not-allowed has-disabled:border-disabled-light has-disabled:bg-disabled-lighter has-disabled:text-disabled-dark has-disabled:has-data-[state=checked]:border-disabled-light has-disabled:has-data-[state=checked]:bg-disabled-lighter"
     >
       <RadioGroupItem value={value} id={id} disabled={disabled} />
       {label}
@@ -443,8 +443,8 @@ function UploadButton({
           htmlFor={inputId}
           className={
             replaces
-              ? 'min-h-touch cursor-pointer gap-2 rounded-md px-3 font-bold text-primary underline underline-offset-2 peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:text-disabled hover:text-primary-dark'
-              : 'min-h-touch cursor-pointer gap-2 rounded-md bg-white px-4 font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] peer-focus:outline-4 peer-focus:outline-focus peer-disabled:cursor-not-allowed peer-disabled:bg-disabled-lighter peer-disabled:text-disabled-dark peer-disabled:shadow-none hover:text-primary-dark'
+              ? 'min-h-touch cursor-pointer gap-2 rounded-md px-3 font-bold text-primary underline underline-offset-2 peer-focus:outline-3 peer-focus:outline-offset-4 peer-focus:outline-(--focus-color) peer-disabled:cursor-not-allowed peer-disabled:text-disabled hover:text-primary-dark'
+              : 'min-h-touch cursor-pointer gap-2 rounded-md bg-white px-4 font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] peer-focus:outline-3 peer-focus:outline-offset-4 peer-focus:outline-(--focus-color) peer-disabled:cursor-not-allowed peer-disabled:bg-disabled-lighter peer-disabled:text-disabled-dark peer-disabled:shadow-none hover:text-primary-dark'
           }
         >
           <Upload className="size-5" aria-hidden="true" />
@@ -692,7 +692,7 @@ export function QuestionField({
                     {files.map((item) => (
                       <li
                         key={item.id}
-                        className="flex flex-wrap items-center gap-3 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
+                        className="flex flex-wrap items-center gap-3 rounded-md border border-base-lighter bg-white px-4 py-2"
                       >
                         <Checkbox
                           id={`${id}-${item.id}`}
@@ -852,7 +852,7 @@ function EvidenceReferences({
                   return (
                     <li
                       key={item.id}
-                      className="grid gap-2 rounded-md border-2 border-base-lighter bg-white px-4 py-2"
+                      className="grid gap-2 rounded-md border border-base-lighter bg-white px-4 py-2"
                     >
                       <div className="flex items-center gap-3">
                         <Checkbox
@@ -928,7 +928,7 @@ export function MilestoneCard({
       id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
       className={cn(
-        'grid scroll-mt-28 gap-4 rounded-lg border-2 border-base-lighter bg-white p-4 tablet:p-6',
+        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 tablet:p-6',
         questions.length > 0 && 'border-l-8 border-l-warning',
       )}
     >

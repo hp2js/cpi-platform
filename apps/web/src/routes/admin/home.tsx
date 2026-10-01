@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowRight, CircleCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  CircleCheck,
+  CircleHelp,
+  CircleX,
+  RefreshCw,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import type { Cycle } from '@cpi/contracts';
@@ -11,36 +19,115 @@ import { adminAttentionQuery } from '@/features/settings/queries';
 import { healthQuery, mockApi } from '@/lib/api';
 import { formatDateRange, formatDateTime } from '@/lib/dates';
 
+type ServiceState = 'up' | 'down' | 'unknown';
+
+/** What each dependency does, so an outage explains its own impact. */
+function ServiceRow({
+  name,
+  role,
+  state,
+}: {
+  name: string;
+  role: string;
+  state: ServiceState;
+}) {
+  const Icon =
+    state === 'up' ? CircleCheck : state === 'down' ? CircleX : CircleHelp;
+  return (
+    <li className="flex items-start justify-between gap-3 py-2">
+      <span className="grid">
+        <span className="font-bold">{name}</span>
+        <span className="text-xs text-base-dark">{role}</span>
+      </span>
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center gap-1 text-sm font-bold',
+          state === 'up' && 'text-success-darker',
+          state === 'down' && 'text-error-dark',
+          state === 'unknown' && 'text-base-dark',
+        )}
+      >
+        <Icon className="size-4" aria-hidden="true" />
+        {state === 'up'
+          ? 'Connected'
+          : state === 'down'
+            ? 'Unavailable'
+            : 'Unknown'}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * Live readiness of the API and the services it depends on (PostgreSQL holds records and file
+ * details; Redis holds sign-in sessions and lockouts; the S3-compatible bucket, MinIO locally,
+ * holds the files themselves), checked every 30 seconds.
+ */
 function SystemStatus() {
   const health = useQuery({ ...healthQuery, retry: false });
-  const label = (status: 'up' | 'down') =>
-    status === 'up' ? 'Connected' : 'Unavailable';
+  const reachable = health.data !== undefined;
+  const services = health.data?.services;
+  const state = (service?: 'up' | 'down'): ServiceState => service ?? 'unknown';
+  const summary = health.isPending
+    ? 'Checking…'
+    : !reachable
+      ? 'The API is not reachable, so its services cannot be checked.'
+      : health.data.status === 'ok'
+        ? 'All services are ready.'
+        : 'Degraded: some screens and sign-in may fail until the unavailable service recovers.';
   return (
     <section
       aria-labelledby="system-heading"
       className="rounded-lg border bg-white p-5"
     >
-      <h2 id="system-heading" className="font-bold">
-        Backend services
-      </h2>
-      <p className="mt-1 text-sm text-base-dark">
-        Live readiness of the API's database and cache.{' '}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h2 id="system-heading" className="font-bold">
+          Backend services
+        </h2>
+        <Button
+          variant="plain"
+          size="sm"
+          disabled={health.isFetching}
+          onClick={() => void health.refetch()}
+        >
+          <RefreshCw aria-hidden="true" />
+          {health.isFetching ? 'Checking…' : 'Check now'}
+        </Button>
+      </div>
+      <p role="status" className="mt-1 text-sm">
+        {summary}
+      </p>
+      <ul className="mt-2 divide-y text-sm">
+        <ServiceRow
+          name="API"
+          role="Every screen and rule"
+          state={health.isPending ? 'unknown' : reachable ? 'up' : 'down'}
+        />
+        <ServiceRow
+          name="PostgreSQL"
+          role="Records, audit and file details"
+          state={state(services?.database)}
+        />
+        <ServiceRow
+          name="Redis"
+          role="Sign-in sessions and lockouts"
+          state={state(services?.redis)}
+        />
+        <ServiceRow
+          name="File storage"
+          role="Uploaded evidence and documents (S3-compatible bucket)"
+          state={state(services?.storage)}
+        />
+      </ul>
+      <p className="mt-2 text-xs text-base-dark">
+        {health.dataUpdatedAt || health.errorUpdatedAt
+          ? `Checked ${formatDateTime(new Date(Math.max(health.dataUpdatedAt, health.errorUpdatedAt)).toISOString())} (actual time), every 30 seconds. `
+          : ''}
         {mockApi
           ? 'Screens in this development build use the in-browser mock API.'
-          : 'Screens use this API.'}
+          : 'Screens use this API.'}{' '}
+        Emails go to the simulated outbox, not a mail server.
       </p>
-      {health.data ? (
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <dt className="text-base-dark">PostgreSQL</dt>
-          <dd>{label(health.data.services.database)}</dd>
-          <dt className="text-base-dark">Redis</dt>
-          <dd>{label(health.data.services.redis)}</dd>
-        </dl>
-      ) : (
-        <p className="mt-3 text-sm">
-          {health.isPending ? 'Checking…' : 'The API is not reachable.'}
-        </p>
-      )}
     </section>
   );
 }
@@ -124,7 +211,7 @@ function ComingUp({ cycle, now }: { cycle: Cycle; now: string }) {
       {events.map((event) => (
         <li
           key={event.title}
-          className="grid gap-1 rounded-lg border-2 border-base-lighter bg-white p-4"
+          className="grid gap-1 rounded-lg border border-base-lighter bg-white p-4"
         >
           <p className="font-bold">{event.title}</p>
           <p className="text-sm">

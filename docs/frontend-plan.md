@@ -19,7 +19,7 @@ These shape every screen and are checked at each review point.
 
 ## 2. Personas, accounts and layouts
 
-The mock seeds the fixture cast from PRD §17.1. Sign-in is by email and password, with invitations and resets by emailed link; a floating "Explore with a demonstration account" button opens an overlay with one-click accounts per role (and the published demo password); it does not ship (HP2-13/HP2-14).
+The mock seeds the fixture cast from PRD §17.1. Sign-in is by email and password, with invitations and resets by emailed link; a "Explore with a demonstration account" button in a demonstration panel under the sign-in card opens a drawer with one-click accounts per role (and the published demo password); it does not ship (HP2-13/HP2-14).
 
 | Persona                  | Demo accounts                                                              | Layout                                                                                                                                                                                                 | Lands on                                                                        |
 | ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |

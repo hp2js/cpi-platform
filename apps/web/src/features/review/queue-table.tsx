@@ -41,7 +41,7 @@ export function ReviewQueueTable({
       }
     >
       {(list) => (
-        <div className="overflow-x-auto rounded-lg border-2 border-base-lighter bg-white">
+        <div className="overflow-x-auto rounded-lg border border-base-lighter bg-white">
           <Table className="min-w-[48rem]">
             <TableCaption className="sr-only">
               {status === 'open'

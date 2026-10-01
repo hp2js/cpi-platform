@@ -63,7 +63,7 @@ export function QueryView<T>({
         )}
         {!unavailable && (
           <Button
-            variant="outline"
+            variant="plain"
             size="sm"
             className="mt-2"
             onClick={() => void query.refetch()}
