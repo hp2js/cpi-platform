@@ -74,6 +74,15 @@ pnpm db:seed         # load synthetic fixtures
 - Do not use schema push against shared environments.
 - To run a database command inside the development API container: `docker compose exec api pnpm --filter @cpi/api db:migrate`.
 
+**If a migration fails.** The API does not start. It logs `database.migration_failed` with the PostgreSQL error code and message (`docker compose logs api`), and `pnpm db:migrate` prints the same. All pending migrations run in one transaction, so none was applied and existing data is untouched. To recover:
+
+1. Read the error. `42P07`/`42701` (relation or column already exists) usually means the local database was migrated from another branch; a constraint or `NOT NULL` failure means the migration does not fit existing rows.
+2. If the failing migration is not merged yet, fix the schema, delete that migration's SQL, snapshot and `_journal.json` entry, and run `pnpm db:generate` again. Never edit a merged migration; add a new one instead.
+3. If the local data is disposable, reset it instead (below).
+4. Run `pnpm db:migrate` until it prints `Migrations are up to date.`, then start the API.
+
+CI builds a fresh stack on every push (`docker compose up`), so the API migrates and seeds an empty database before the smoke, integration and end-to-end tests run against it.
+
 **Destructive local reset.** This deletes this project's PostgreSQL, Redis and MinIO volumes, including uploaded files:
 
 ```sh

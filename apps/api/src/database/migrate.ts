@@ -1,22 +1,28 @@
-import { existsSync } from 'node:fs';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { loadConfig } from '../config';
+import { errorCode } from '../http/diagnostics';
+import * as schema from './schema';
+import { applyMigrations, MigrationError } from './setup';
 
 async function main() {
   const config = loadConfig(process.env);
-  if (!existsSync('drizzle/meta/_journal.json')) {
-    console.log(
-      'No migrations yet. Add the domain schema, then run pnpm db:generate.',
-    );
-    return;
-  }
   const pool = new Pool({ connectionString: config.DATABASE_URL });
   try {
-    await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
+    await applyMigrations(
+      drizzle(pool, { schema, casing: 'snake_case' }),
+      'drizzle',
+    );
+    console.log('Migrations are up to date.');
   } finally {
     await pool.end();
   }
 }
-void main();
+main().catch((error: unknown) => {
+  console.error(
+    error instanceof MigrationError
+      ? error.message
+      : `Could not run migrations (${errorCode(error)}).`,
+  );
+  process.exitCode = 1;
+});
