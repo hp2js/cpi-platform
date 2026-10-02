@@ -77,12 +77,15 @@ const schema = z
     message: 'Required when DEMO_MODE=false',
   });
 export type AppConfig = z.infer<typeof schema>;
+
+/** Names the invalid variables, never their values, so its message is safe to print. */
+export class ConfigError extends Error {}
 export const CONFIG = Symbol('CONFIG');
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const result = schema.safeParse(env);
   if (!result.success) {
     // Do not log connection strings or credentials.
-    throw new Error(
+    throw new ConfigError(
       `Invalid environment: ${[...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ')}`,
     );
   }

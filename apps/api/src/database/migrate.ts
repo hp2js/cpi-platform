@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { loadConfig } from '../config';
+import { ConfigError, loadConfig } from '../config';
 import { errorCode } from '../http/diagnostics';
 import * as schema from './schema';
 import { applyMigrations, MigrationError } from './setup';
@@ -20,7 +20,7 @@ async function main() {
 }
 main().catch((error: unknown) => {
   console.error(
-    error instanceof MigrationError
+    error instanceof MigrationError || error instanceof ConfigError
       ? error.message
       : `Could not run migrations (${errorCode(error)}).`,
   );
