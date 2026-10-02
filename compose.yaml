@@ -130,6 +130,7 @@ services:
       S3_FORCE_PATH_STYLE: 'true'
       S3_PREFIX: ${S3_PREFIX:-evidence/}
       DEMO_MODE: ${DEMO_MODE:-true}
+      REAL_DOCUMENT_UPLOADS: ${REAL_DOCUMENT_UPLOADS:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_NAME: ${ADMIN_NAME:-Platform administrator}
       RESEND_API_KEY: ${RESEND_API_KEY:-}

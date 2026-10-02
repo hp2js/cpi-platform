@@ -25,7 +25,10 @@ import {
   emailedCode,
   emailedPassword,
   emailedToken,
+  obligationPath,
   passwordSignIn,
+  pdf,
+  publishSeedForm,
 } from '../test/journeys';
 import { DEMO_PASSWORD, hashPassword } from './passwords';
 
@@ -406,6 +409,57 @@ describe.skipIf(!integration)('outside demo mode', () => {
       await api.stop();
     }
   }, 60_000);
+
+  it('refuses uploads until real documents are approved (PRD §9.2)', async () => {
+    for (const [approved, status] of [
+      ['false', 403],
+      ['true', 201],
+    ] as const) {
+      const api = await startApi({
+        DEMO_MODE: 'false',
+        ADMIN_EMAIL: 'operator@example.invalid',
+        REAL_DOCUMENT_UPLOADS: approved,
+      });
+      try {
+        await api.flushRedis();
+        // Seeded accounts only accept the demo password, which is refused outside demo mode.
+        const signIn = async (id: string) => {
+          const [user] = await api.db
+            .update(users)
+            .set({ passwordHash: await hashPassword(STRONG_PASSWORD) })
+            .where(eq(users.id, id))
+            .returning();
+          const client = api.client();
+          const first = await client.post('/session', {
+            email: user!.email,
+            password: STRONG_PASSWORD,
+          });
+          const [mail] = await api.db
+            .select({ body: emailSink.body })
+            .from(emailSink)
+            .orderBy(desc(emailSink.seq))
+            .limit(1);
+          await client.post('/session/code', {
+            challengeId: (first.body as SignInChallenge).challengeId,
+            code: /Your sign-in code is (\d{6})/.exec(mail!.body)![1],
+          });
+          return client;
+        };
+        await publishSeedForm(await signIn('administrator'));
+        const focal = await signIn('focal-demo-001');
+        const upload = await focal.upload(
+          `${obligationPath('DEMO-001')}/evidence`,
+          { name: 'minutes.pdf', bytes: pdf('real document') },
+          { category: 'cpc_minutes' },
+        );
+        expect(upload.status).toBe(status);
+        if (status === 403)
+          expect(upload.body).toMatchObject({ code: 'uploads_not_approved' });
+      } finally {
+        await api.stop();
+      }
+    }
+  }, 120_000);
 });
 
 describe.skipIf(!integration)('sign-in addresses', () => {

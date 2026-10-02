@@ -93,6 +93,7 @@ export class FoundationsController {
     @UploadedFile() file: Upload,
     @Body() body: Record<string, unknown> | undefined,
   ): Promise<Foundations> {
+    this.files.assertUploadsApproved();
     return this.files.withUpload((persist) =>
       write(this.db, async (tx, businessTime) => {
         if (user.institutionId !== institutionId) throw notFound();

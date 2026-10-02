@@ -54,6 +54,11 @@ const schema = z
       .regex(/^([^@\s]+@[^@\s]+\.[^@\s]+)?$/)
       .default(''),
     ADMIN_NAME: z.string().trim().default('Platform administrator'),
+    /**
+     * Outside demo mode, file uploads stay off until this is true: the recorded decision that
+     * malware scanning, quarantine and a production review are in place for real documents.
+     */
+    REAL_DOCUMENT_UPLOADS: z.stringbool().default(false),
     /** Waits before the 2nd and 3rd attempts of a notification email (real time, milliseconds). */
     DELIVERY_RETRY_DELAYS_MS: z
       .string()

@@ -70,7 +70,7 @@ async function uploadPdf(
               0x44,
               0x46,
               0x2d,
-              ...new TextEncoder().encode(fileName),
+              ...new TextEncoder().encode(`${fileName}\n%%EOF\n`),
             ]),
           ],
           fileName,

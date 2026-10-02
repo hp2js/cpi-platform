@@ -47,7 +47,7 @@ Redis is not a queue, cache or lock: the write lock and the notification outbox 
 Described in [`storage.md`](storage.md). The contract the rest of the system relies on:
 
 - Bytes live in a private S3-compatible bucket under random keys; PostgreSQL keeps the metadata, SHA-256 and object location. The browser never receives storage credentials or object URLs.
-- Uploads (`POST /api/obligations/:id/evidence`, `POST /api/institutions/:id/foundations`) pass file-type, signature and size checks; a record is saved only after its object is stored.
+- Uploads (`POST /api/obligations/:id/evidence`, `POST /api/institutions/:id/foundations`) pass file-type, size and content checks (renamed, damaged, password-protected and macro- or script-carrying files are refused); a record is saved only after its object is stored. Outside demo mode they answer `403 uploads_not_approved` until `REAL_DOCUMENT_UPLOADS=true` records that scanning and a production review are approved.
 - `GET /api/evidence/:id/file` is the only way to read a file. It checks scope on every request (the institution: its own files; officers, supervisors and administrators in scope: submitted evidence and foundation documents; administrators: a draft's files only after an audited support view), answers `404` otherwise, audits administrator access, verifies size and hash, and sends `Cache-Control: private, no-store`.
 
 ## Notification delivery
@@ -69,15 +69,16 @@ Several API replicas would each run a worker; the recheck under the write lock k
 
 Secrets are environment variables read by the API; none are bundled into browser assets. `.env.example` lists local defaults, which are for local use only.
 
-| Variable                                                                      | Secret | Purpose                                                    |
-| ----------------------------------------------------------------------------- | ------ | ---------------------------------------------------------- |
-| `DATABASE_URL`, `POSTGRES_PASSWORD`                                           | Yes    | PostgreSQL                                                 |
-| `REDIS_URL`                                                                   | Yes    | Redis (include credentials if the host requires them)      |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`                                    | Yes    | Scoped bucket credentials; never administrator credentials |
-| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`                                      | Yes    | Local MinIO provisioning only                              |
-| `RESEND_API_KEY`                                                              | Yes    | Account emails; empty keeps them in the sink               |
-| `DEMO_MODE`, `ADMIN_EMAIL`, `ADMIN_NAME`                                      | No     | Seeding and demo sign-in (see `api-handover.md`)           |
-| `PORTAL_URL`, `EMAIL_FROM`, `SESSION_TTL_SECONDS`, `DELIVERY_RETRY_DELAYS_MS` | No     | Links, sender, session lifetime, delivery backoff          |
+| Variable                                                                      | Secret | Purpose                                                                   |
+| ----------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------- |
+| `DATABASE_URL`, `POSTGRES_PASSWORD`                                           | Yes    | PostgreSQL                                                                |
+| `REDIS_URL`                                                                   | Yes    | Redis (include credentials if the host requires them)                     |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`                                    | Yes    | Scoped bucket credentials; never administrator credentials                |
+| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`                                      | Yes    | Local MinIO provisioning only                                             |
+| `RESEND_API_KEY`                                                              | Yes    | Account emails; empty keeps them in the sink                              |
+| `DEMO_MODE`, `ADMIN_EMAIL`, `ADMIN_NAME`                                      | No     | Seeding and demo sign-in (see `api-handover.md`)                          |
+| `REAL_DOCUMENT_UPLOADS`                                                       | No     | Uploads outside demo mode; true only after scanning and production review |
+| `PORTAL_URL`, `EMAIL_FROM`, `SESSION_TTL_SECONDS`, `DELIVERY_RETRY_DELAYS_MS` | No     | Links, sender, session lifetime, delivery backoff                         |
 
 Logs are JSON with a request ID. They record error codes, never request bodies, passwords, codes, email content or file contents.
 

@@ -9,7 +9,7 @@ test.skip(
 const pdf = (name: string) => ({
   name,
   mimeType: 'application/pdf',
-  buffer: Buffer.from('%PDF-1.7\nfictional minutes\n'),
+  buffer: Buffer.from('%PDF-1.7\nfictional minutes\n%%EOF\n'),
 });
 
 async function signIn(page: Page, role: string, account: RegExp) {
