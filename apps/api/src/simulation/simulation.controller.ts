@@ -6,7 +6,7 @@ import {
   type SimulationState,
 } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
-import { CONFIG, type AppConfig } from '../config';
+import { CONFIG, type AppConfig, disposableDatabase } from '../config';
 import { write, type Db } from '../database/db';
 import { loadFixtures, seedOptions } from '../database/fixtures';
 import { Mailer } from '../email/mailer';
@@ -47,13 +47,22 @@ export class SimulationController {
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
-  /** A new run and the scripted year replace or need the fictional data: demo mode only. */
+  /**
+   * A new run and the scripted year replace or need the fictional data: demo mode, on the
+   * dedicated disposable demo database only (HP2-42).
+   */
   private requireDemo() {
     if (!this.config.DEMO_MODE)
       throw new ApiError(
         409,
         'This deployment holds real records, so the simulation cannot reset or script the year.',
         'demo_only',
+      );
+    if (!disposableDatabase(this.config))
+      throw new ApiError(
+        409,
+        'The simulation can only reset or script the year on the dedicated demo database (its name ends in _demo).',
+        'not_demo_database',
       );
   }
 

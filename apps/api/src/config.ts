@@ -78,6 +78,16 @@ const schema = z
   });
 export type AppConfig = z.infer<typeof schema>;
 
+/**
+ * The reset boundary (HP2-42). Restoring fixtures replaces every record, so it only runs against
+ * a database whose name marks it as disposable: `…_demo` (the demo database) or `…_test`
+ * (integration tests). Turning on demo mode against any other database cannot wipe it.
+ */
+export const disposableDatabase = (config: AppConfig) =>
+  /_(demo|test)$/.test(
+    decodeURIComponent(new URL(config.DATABASE_URL).pathname.slice(1)),
+  );
+
 /** Names the invalid variables, never their values, so its message is safe to print. */
 export class ConfigError extends Error {}
 export const CONFIG = Symbol('CONFIG');

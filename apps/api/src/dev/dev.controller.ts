@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Public, Sessions } from '../auth/sessions';
-import { CONFIG, type AppConfig } from '../config';
+import { CONFIG, disposableDatabase, type AppConfig } from '../config';
 import { loadFixtures, seedOptions } from '../database/fixtures';
 import { Mailer } from '../email/mailer';
 import { systemState } from '../database/schema';
@@ -33,9 +33,13 @@ export class DevController {
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
-  /** The database, or 404 outside development demo deployments. */
+  /** The database, or 404 outside development demo deployments on the demo database. */
   private devDatabase() {
-    if (this.config.NODE_ENV === 'production' || !this.config.DEMO_MODE)
+    if (
+      this.config.NODE_ENV === 'production' ||
+      !this.config.DEMO_MODE ||
+      !disposableDatabase(this.config)
+    )
       throw notFound();
     return this.infrastructure.database;
   }
