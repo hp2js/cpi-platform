@@ -109,23 +109,31 @@ describe.skipIf(!integration)('officer review', () => {
     });
     const file = initial.evidence[0]!.id;
     const pass = { outcome: 'pass', reason: '' };
-    await officer.put(`${path}/evidence/${file}/suitability`, {
-      revision: 1,
-      checks: {
-        institution: pass,
-        period: pass,
-        relevance: pass,
-        approval: pass,
-        readability: {
-          outcome: 'deficient',
-          reason: 'Pages 2 and 3 are an unreadable scan.',
-        },
-      },
-    });
-    expect(await accept()).toMatchObject({
-      status: 422,
-      body: { code: 'evidence_deficient' },
-    });
+    for (const [check, reason] of [
+      ['institution', 'The minutes name another institution.'],
+      ['period', 'The minutes cover a different quarter.'],
+      ['readability', 'Pages 2 and 3 are an unreadable scan.'],
+    ]) {
+      expect(
+        (
+          await officer.put(`${path}/evidence/${file}/suitability`, {
+            revision: 1,
+            checks: {
+              institution: pass,
+              period: pass,
+              relevance: pass,
+              approval: pass,
+              readability: pass,
+              [check!]: { outcome: 'deficient', reason },
+            },
+          })
+        ).status,
+      ).toBe(200);
+      expect(await accept()).toMatchObject({
+        status: 422,
+        body: { code: 'evidence_deficient' },
+      });
+    }
     await passSuitability(officer, item.submissionId);
     await decideAll(officer, item.submissionId, 1, ['M-02', 'M-03', 'M-04']);
     expect(

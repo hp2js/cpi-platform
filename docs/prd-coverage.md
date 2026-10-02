@@ -1,5 +1,7 @@
 # PRD coverage: frontend and mock API
 
+For executed results and remaining gaps, see the [AT01–AT32 acceptance record](acceptance/README.md). The mappings below identify coverage locations; they are not a complete acceptance sign-off.
+
 Scope: `apps/web` against the mock API · Source: PRD v1.1 (`docs/HP2JS — Adili-V3-Track-2-PRD.md`) · Checked: 27 September 2026
 
 How each functional requirement and mandatory scenario is met in the frontend and the mock API that stands in for the backend, and what verifies it. Tests: `apps/web/src/mocks/*.test.ts` (API rules) and `e2e/*.spec.ts` (browser journeys). "Mock" means the rule is enforced by the mock and must be re-implemented by the real API (see `docs/api-handover.md`).

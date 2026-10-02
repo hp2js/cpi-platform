@@ -1,0 +1,83 @@
+{
+  "profile": "Hackathon Mock v1",
+  "source": "PRD sections 3.3, 10.6 and 17.1; independently calculated inputs, not generated from scoring code",
+  "foundationWeights": [10, 15, 15],
+  "implementationWeight": 60,
+  "checksPerFoundation": 4,
+  "milestonesPerQuarter": 4,
+  "quartersPerYear": 4,
+  "cases": [
+    {
+      "institutionId": "DEMO-001",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [2, 3, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "48.75",
+      "expectedTotal": "88.75"
+    },
+    {
+      "institutionId": "DEMO-002",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [4, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "60.00",
+      "expectedTotal": "100.00"
+    },
+    {
+      "institutionId": "DEMO-003",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [4, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "60.00",
+      "expectedTotal": "100.00"
+    },
+    {
+      "institutionId": "DEMO-004",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [3, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "56.25",
+      "expectedTotal": "96.25"
+    },
+    {
+      "institutionId": "DEMO-005",
+      "foundationAcceptedChecks": [4, 3, 4],
+      "quarterAcceptedMilestones": [2, 3, 0, 4],
+      "closedQuarters": [3],
+      "expectedFoundationPoints": "36.25",
+      "expectedImplementationPoints": "33.75",
+      "expectedTotal": "70.00"
+    },
+    {
+      "institutionId": "DEMO-006",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [4, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "60.00",
+      "expectedTotal": "100.00"
+    },
+    {
+      "institutionId": "DEMO-007",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [4, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "60.00",
+      "expectedTotal": "100.00"
+    },
+    {
+      "institutionId": "DEMO-008",
+      "foundationAcceptedChecks": [4, 4, 4],
+      "quarterAcceptedMilestones": [4, 4, 4, 4],
+      "closedQuarters": [],
+      "expectedFoundationPoints": "40.00",
+      "expectedImplementationPoints": "60.00",
+      "expectedTotal": "100.00"
+    }
+  ]
+}

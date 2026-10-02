@@ -14,6 +14,7 @@ import type {
   SimulationState,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import annualFixtures from '../../../../docs/acceptance/annual-fixtures.json';
 import {
   notifications,
   processedEvents,
@@ -66,6 +67,87 @@ describe.skipIf(!integration)(
         expect(result.businessTime).toBe('2027-08-01T08:00:00+03:00');
         const overview = await admin.json<AnnualOverview>('/annual');
         expect(overview.cutoffPassed).toBe(true);
+        expect(overview.profileName).toBe(annualFixtures.profile);
+        // HP2-36: reconcile components as well as totals against the independent
+        // PRD worksheet, checked by scripts/reconcile-annual.mjs.
+        expect(overview.institutions).toHaveLength(8);
+        for (const fixture of annualFixtures.cases) {
+          const actual = byId(overview, fixture.institutionId);
+          expect(actual.weights).toEqual({
+            procedures: 10,
+            riskAssessment: 15,
+            mitigationPlan: 15,
+            implementation: 60,
+          });
+          for (const [i, kind] of [
+            'procedures',
+            'risk_assessment',
+            'mitigation_plan',
+          ].entries()) {
+            const score = actual.foundations.find(
+              (item) => item.kind === kind,
+            )!.score;
+            expect(score.status).toBe('calculated');
+            if (score.status !== 'calculated')
+              throw new Error(`${kind} is pending`);
+            expect(score.fraction.numerator * 4).toBe(
+              fixture.foundationAcceptedChecks[i]! * score.fraction.denominator,
+            );
+          }
+          expect(actual.quarters.map((q) => q.periodLabel)).toEqual([
+            'Q1',
+            'Q2',
+            'Q3',
+            'Q4',
+          ]);
+          for (const [i, quarter] of actual.quarters.entries()) {
+            expect(quarter.status).toBe(
+              fixture.closedQuarters.includes(i + 1)
+                ? 'closed_without_submission'
+                : 'finalized',
+            );
+            expect(quarter.implementation).not.toBeNull();
+            const fraction = quarter.implementation!;
+            expect(fraction.numerator * 4).toBe(
+              fixture.quarterAcceptedMilestones[i]! * fraction.denominator,
+            );
+          }
+          expect(actual.total).toMatchObject({
+            status: 'calculated',
+            foundationPoints: fixture.expectedFoundationPoints,
+            implementationPoints: fixture.expectedImplementationPoints,
+            points: fixture.expectedTotal,
+          });
+        }
+        // Every institution has four unique obligations. Replay every boundary,
+        // including Q3/Q4 and cutoff, without resetting into a different run.
+        const obligations = overview.institutions.flatMap((institution) =>
+          institution.quarters.map(
+            (quarter) => `${institution.institutionId}:${quarter.periodId}`,
+          ),
+        );
+        expect(new Set(obligations).size).toBe(32);
+        const eventCounts = async () => [
+          (await api.db.select({ n: count() }).from(notifications))[0]!.n,
+          (await api.db.select({ n: count() }).from(processedEvents))[0]!.n,
+        ];
+        const beforeReplay = await eventCounts();
+        const clock = await admin.json<SimulationState>('/simulation');
+        for (let replay = 0; replay < 2; replay += 1) {
+          for (const boundary of clock.boundaries.filter(
+            (item) => item.passed,
+          )) {
+            expect(
+              (
+                await admin.post('/simulation/advance', {
+                  boundaryId: boundary.id,
+                })
+              ).status,
+            ).toBe(200);
+          }
+          expect(await eventCounts()).toEqual(beforeReplay);
+          expect(await admin.json<AnnualOverview>('/annual')).toEqual(overview);
+        }
         expect(
           Object.fromEntries(
             overview.institutions.map((evaluation) => [

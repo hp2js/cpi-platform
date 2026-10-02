@@ -125,6 +125,25 @@ describe.skipIf(!integration)('institution reporting', () => {
     });
     const bundle = await focal.json<ReportBundle>(`${path}/report`);
     expect(bundle.draft?.version).toBe(draft.version);
+    const approval = {
+      kind: 'not_available',
+      explanation: 'Institutional approval minutes have not yet been supplied.',
+    };
+    const submitted = await focal.post(
+      `${path}/submit`,
+      {
+        draftVersion: draft.version,
+        attestation: { ...attestation, approval },
+      },
+      { 'Idempotency-Key': 'authorized-approval-unavailable' },
+    );
+    expect(submitted.status).toBe(201);
+    expect(submitted.body).toMatchObject({ approval });
+    const receipt = submitted.body as Receipt;
+    const officer = await api.client().signIn('officer-a');
+    expect(await officer.json(`/receipts/${receipt.id}`)).toMatchObject({
+      approval,
+    });
   });
 
   it('reports what is still missing', async () => {

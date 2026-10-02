@@ -1,0 +1,565 @@
+{
+  "executedOn": "2026-10-02",
+  "timeZone": "Africa/Nairobi",
+  "baseCommit": "4be795f",
+  "scope": "Local synthetic development stack; new acceptance assertions included; not full P0 acceptance",
+  "unitAndBuild": {
+    "command": "pnpm check",
+    "contractsPassed": 12,
+    "apiUnitPassed": 10,
+    "webPassed": 160,
+    "integrationSkippedInUnitCommand": 102
+  },
+  "persistedApi": {
+    "command": "pnpm test:integration",
+    "filesPassed": 20,
+    "testsPassed": 112,
+    "failed": 0
+  },
+  "enhancedReconciliation": {
+    "command": "INTEGRATION=1 vitest run src/simulation/simulation.int.test.ts --no-file-parallelism --test-timeout=30000",
+    "passed": 8,
+    "failed": 0,
+    "cases": [
+      {
+        "title": "simulation, events and the scripted year reproduces every expected annual result and stays pending until publication (PRD \u00a717, AT18, AT19)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year corrects a published result through a case, preserving the superseded release (AT20)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year reports oversight metrics with explicit denominators (PRD \u00a74.3)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year replays of clock boundaries create nothing new (AT13)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year routes events to authorized recipients and surfaces failed email for retry (FR11, AT12)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year tries a different profile in a new run and keeps the profile library (PRD \u00a77.1, AT24)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year adds a reminder for future deadlines without sending past ones late (FR02)",
+        "status": "passed"
+      },
+      {
+        "title": "simulation, events and the scripted year moves access at once and keeps the earlier reviewer in the history (AT22)",
+        "status": "passed"
+      }
+    ]
+  },
+  "browser": {
+    "command": "pnpm exec playwright test --reporter=json",
+    "passed": 68,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 2,
+    "cases": [
+      {
+        "file": "accessibility.spec.ts",
+        "title": "public pages",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "mid-year screens for every role",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "year-end screens for every role",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "configuration dialogs and searchable selects",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "plan editing dialogs",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "admin.spec.ts",
+        "title": "support view is justified, read only, told to the institution and found in the audit log",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "admin.spec.ts",
+        "title": "an administrator moves several institutions at once",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "admin.spec.ts",
+        "title": "demo data saved by an older version is replaced, not served to new screens",
+        "status": "skipped",
+        "results": ["skipped"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "an administrator imports institutions from a CSV after a row-by-row preview",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "searchable selects filter long lists from the keyboard",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "the administrator can enforce working days",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "the header and sidebar stay in place while the page scrolls",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "an institution page edits details and the Accounting Officer in place",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "administration.spec.ts",
+        "title": "people keep their own profile up to date under My account",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "annual.spec.ts",
+        "title": "scripted year, withheld results, batch publication and oversight (AT13\u2013AT19)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "annual.spec.ts",
+        "title": "a published result is corrected only through a case and keeps its history (AT20)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "auth.spec.ts",
+        "title": "email and password sign-in, with one message for any mistake",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "auth.spec.ts",
+        "title": "eCitizen is presented as planned, not connected",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "auth.spec.ts",
+        "title": "an invited user sets their own password from the emailed link",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "auth.spec.ts",
+        "title": "forgot password sends a one-hour link that sets a new password",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "auth.spec.ts",
+        "title": "people change their own password on My account",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "dialogs.spec.ts",
+        "title": "dialog fits 1280x800 and retains keyboard behavior",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "dialogs.spec.ts",
+        "title": "dialog fits 390x340 and retains keyboard behavior",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "dialogs.spec.ts",
+        "title": "dialog fits 844x390 and retains keyboard behavior",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "dialogs.spec.ts",
+        "title": "dialog reflows at enlarged text size and keeps accessible contrast",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "dialogs.spec.ts",
+        "title": "demonstration drawer fits a short phone viewport and returns focus",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "files.spec.ts",
+        "title": "an institution previews and downloads its own Word, Excel and image files, also after a reload",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "files.spec.ts",
+        "title": "an officer opens the foundation documents they review",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "focal.spec.ts",
+        "title": "a focal person keeps the Accounting Officer contact current from Our institution",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "focal.spec.ts",
+        "title": "deactivating an institution\u2019s last focal person is confirmed and then flagged",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "focal.spec.ts",
+        "title": "the home to-do list leads to a clarification shown where it applies",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "focal.spec.ts",
+        "title": "the rail lists sections with attention badges and the year\u2019s quarters, and old addresses redirect",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "forms.spec.ts",
+        "title": "an administrator adds repeated rows and limits, sees the changes, publishes, and institutions answer within the limits (FR03)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "forms.spec.ts",
+        "title": "an unwanted draft version is discarded with a reason",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "keyboard.spec.ts",
+        "title": "sign in, skip navigation and complete part of a report without a mouse",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "keyboard.spec.ts",
+        "title": "an officer records a decision with the keyboard",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "keyboard.spec.ts",
+        "title": "dialogs trap focus and return it on Escape; the account menu works from the keyboard",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "keyboard.spec.ts",
+        "title": "evidence checks start unanswered and cannot be saved half done",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "keyboard.spec.ts",
+        "title": "an unsaved decision is flagged and not lost on leaving",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "officers.spec.ts",
+        "title": "an officer reads its portfolio trend and the rules in use",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "officers.spec.ts",
+        "title": "an officer declares a conflict of interest and the administrator reassigns",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "officers.spec.ts",
+        "title": "temporary cover shows the covering officer who they cover for and the handover note",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "Institution focal person signs in to their own layout",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "Prevention officer signs in to their own layout",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "Supervisor signs in to their own layout",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "Administrator signs in to their own layout",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "officer sees only the assigned portfolio, and the API refuses the rest",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "a wrong-role address is refused",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "an expired session leads to a clear sign-in path",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "institution navigation moves to the bottom bar on a phone",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "personas.spec.ts",
+        "title": "the simulation bar follows the clock when another person advances it",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "plan.spec.ts",
+        "title": "the institution plans a quarter, proposes it, and sees which checks failed on return (FR04)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "plan.spec.ts",
+        "title": "the institution imports its plan from a CSV after a row-by-row check (FR04)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "plan.spec.ts",
+        "title": "the administrator sets when baseline proposals are due and labels the risk scale (FR04)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "recovery.spec.ts",
+        "title": "a lost connection keeps entries and a retry saves them",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "recovery.spec.ts",
+        "title": "an expired session keeps entries; saving works again after signing in",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "recovery.spec.ts",
+        "title": "a failed upload is explained and retried without duplicating the file",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "recovery.spec.ts",
+        "title": "a submit whose response is lost is retried safely: one receipt, one revision (AT06)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "recovery.spec.ts",
+        "title": "a draft changed in another tab is not overwritten",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "responsive.spec.ts",
+        "title": "sign-in pages fit a phone",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "responsive.spec.ts",
+        "title": "mid-year screens fit a phone",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "responsive.spec.ts",
+        "title": "year-end screens fit a phone",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "safeguards.spec.ts",
+        "title": "clarification, revised submission, re-review and carry-forward (AT09, AT27)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "safeguards.spec.ts",
+        "title": "an inflated baseline cannot be approved without the checks and can be returned (AT31)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "safeguards.spec.ts",
+        "title": "failed email is visible to the administrator and succeeds on retry (AT12)",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "supervision.spec.ts",
+        "title": "a supervisor drills into an institution and suggests a reassignment the administrator applies",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "supervision.spec.ts",
+        "title": "a supervisor comment is answered and marked addressed by the officer",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "supervision.spec.ts",
+        "title": "supervisors read the rules officers apply",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "thin-path.spec.ts",
+        "title": "publish, report, submit, review and finalize one quarter",
+        "status": "expected",
+        "results": ["passed"]
+      },
+      {
+        "file": "web-server.spec.ts",
+        "title": "Caddy serves deep links and keeps API/assets separate from SPA fallback",
+        "status": "skipped",
+        "results": ["skipped"]
+      }
+    ]
+  },
+  "additionalScenarioChecks": {
+    "passed": 18,
+    "failed": 0,
+    "cases": [
+      {
+        "title": "officer review records decisions and finalizes the latest revision",
+        "status": "passed"
+      },
+      {
+        "title": "officer review refuses reviewers outside the assignment (AT02)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review keeps the earlier receipt, re-reviews changed milestones and carries forward only by confirmation (AT09, AT27)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review reopens a finalized review with a reason and keeps decision history (PRD \u00a77.4)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review lets the supervisor read and comment without deciding (PRD \u00a75.2, \u00a77.3)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review closes an unanswered clarification only after the window and the cutoff (AT29)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review lists only files in the caller\u2019s scope, with filters (FR15)",
+        "status": "passed"
+      },
+      {
+        "title": "officer review lets an administrator act only with a justification, recording every use (FR10)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting keeps the report closed until a form is published",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting keeps drafts private to the institution",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting rejects a disguised executable (AT21)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting stores uploads privately, deduplicates retries and versions replacements",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting refuses a stale draft save (version conflict)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting requires attestation but keeps the draft (AT26)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting reports what is still missing",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting submits once per idempotency key and hides scores from the receipt (AT06, AT07)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting audits administrator file access (PRD \u00a75.2)",
+        "status": "passed"
+      },
+      {
+        "title": "institution reporting treats the last second as on time and the next as one day late (AT11)",
+        "status": "passed"
+      }
+    ]
+  }
+}

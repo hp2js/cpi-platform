@@ -61,6 +61,8 @@ pnpm docker:down      # stop/remove containers; keep data
 
 Run a script in one workspace with `pnpm --filter <package> <script>`, for example `pnpm --filter @cpi/api test`.
 
+The [AT01–AT32 acceptance record](docs/acceptance/README.md) contains execution results, independent annual reconciliation and remaining coverage gaps.
+
 ## Database workflow
 
 ```sh
