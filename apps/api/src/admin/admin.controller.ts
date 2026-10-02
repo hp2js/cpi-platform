@@ -20,7 +20,7 @@ import {
   type ReportBundle,
 } from '@cpi/contracts';
 import { evaluate, loadAnnualData } from '../annual/data';
-import { accountStatus } from '../auth/passwords';
+import { accountStatus, invitationExpiresAt } from '../auth/passwords';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { nextId, write, type Db } from '../database/db';
 import {
@@ -221,6 +221,16 @@ export class AdminController {
       '/admin/assignments',
     );
     add(
+      'no-officer',
+      institutionRows.filter(
+        (institution) =>
+          !assignmentRows.some((row) => row.institutionId === institution.id),
+      ).length,
+      'Institutions without a reviewing officer',
+      'Nobody reviews their reports. Assign an officer under Assignments.',
+      '/admin/assignments',
+    );
+    add(
       'idle-officers',
       userRows.filter(
         (user) =>
@@ -234,12 +244,10 @@ export class AdminController {
     );
     add(
       'expired-invitations',
-      userRows.filter(
-        (user) =>
-          accountStatus(user) === 'invited' &&
-          user.authLink !== null &&
-          Date.parse(user.authLink.expiresAt) < Date.now(),
-      ).length,
+      userRows.filter((user) => {
+        const expires = invitationExpiresAt(user);
+        return expires !== null && Date.parse(expires) < Date.now();
+      }).length,
       'Invitations that expired unused',
       'Send a new invitation from the Users page.',
       '/admin/users',

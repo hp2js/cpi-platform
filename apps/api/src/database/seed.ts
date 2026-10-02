@@ -1,18 +1,30 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { loadConfig } from '../config';
-import { loadFixtures } from './fixtures';
-import * as schema from './schema';
+import { Mailer } from '../email/mailer';
+import { Infrastructure } from '../infrastructure';
+import { Objects } from '../storage/objects';
+import { loadFixtures, seedOptions } from './fixtures';
 
-/** Replace all data with the fictional PRD §17.1 fixtures. Local and test databases only. */
+/**
+ * Replace all data with the starting state: the fictional PRD §17.1 fixtures in demo mode,
+ * otherwise a clean cycle with only the configured administrator. Local and test databases only.
+ */
 async function main() {
   const config = loadConfig(process.env);
-  const pool = new Pool({ connectionString: config.DATABASE_URL });
+  const objects = new Objects(config);
+  const infrastructure = new Infrastructure(config, objects);
   try {
-    await loadFixtures(drizzle(pool, { schema, casing: 'snake_case' }));
-    console.log('Loaded the fictional FY2026/27 fixtures.');
+    await loadFixtures(
+      infrastructure.database,
+      seedOptions(config, new Mailer(infrastructure, config)),
+    );
+    console.log(
+      config.DEMO_MODE
+        ? 'Loaded the fictional FY2026/27 fixtures.'
+        : 'Loaded a clean FY2026/27 cycle with no institutions or demo accounts.',
+    );
   } finally {
-    await pool.end();
+    await infrastructure.onApplicationShutdown();
+    objects.onApplicationShutdown();
   }
 }
 void main();

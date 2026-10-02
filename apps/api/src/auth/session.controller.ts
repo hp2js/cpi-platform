@@ -10,6 +10,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { createElement } from 'react';
 import { asc, eq, sql } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import {
@@ -18,27 +19,40 @@ import {
   passwordResetRequestSchema,
   passwordSignInSchema,
   setPasswordSchema,
+  signInCodeSchema,
   type AuthConfig,
   type AuthToken,
   type DemoAccount,
   type Session,
+  type SignInChallenge,
 } from '@cpi/contracts';
 import { CONFIG, type AppConfig } from '../config';
 import { write, type Db } from '../database/db';
-import { institutions, users } from '../database/schema';
+import { institutions, toNairobi, users } from '../database/schema';
 import { currentState } from '../database/state';
-import { Events, sendEmail } from '../events/events';
+import { Mailer } from '../email/mailer';
+import { PasswordResetEmail, SignInCodeEmail } from '../email/templates';
+import { Events } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import {
   DEMO_PASSWORD,
   accountStatus,
+  canSignIn,
   hashPassword,
   hashToken,
   newLink,
   passwordMatches,
+  signInCode,
 } from './passwords';
-import { CurrentUser, Public, Sessions, type User } from './sessions';
+import {
+  CODE_TTL_MS,
+  CurrentUser,
+  Public,
+  Sessions,
+  TemporaryPasswordAllowed,
+  type User,
+} from './sessions';
 
 /** One message for every failure, so the form never reveals which emails have accounts. */
 const WRONG = 'The email or password is not right. Check both and try again.';
@@ -64,13 +78,14 @@ async function accountForToken(db: Db, token: string) {
   return { ...user, authLink: user.authLink };
 }
 
-/** Sign-in, sessions, password resets and invitation links (PRD §13.1, HP2-13). */
+/** Sign-in (password, then an emailed code), sessions, password resets and links (PRD §13.1, HP2-13). */
 @Controller()
 export class SessionController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly sessions: Sessions,
     private readonly events: Events,
+    private readonly mailer: Mailer,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -120,6 +135,7 @@ export class SessionController {
   }
 
   @Get('session')
+  @TemporaryPasswordAllowed()
   session(@CurrentUser() user: User) {
     return this.toSession(user);
   }
@@ -186,12 +202,74 @@ export class SessionController {
         this.config.DEMO_MODE,
       )) &&
       user &&
-      accountStatus(user) === 'active';
+      canSignIn(user);
     if (!ok) {
       await this.sessions.recordFailure(email);
       throw new ApiError(401, WRONG, 'invalid_credentials');
     }
-    await this.sessions.clearFailures(email);
+    // The password is right; the session starts only once the emailed code is entered too.
+    const code = signInCode();
+    const challengeId = await this.sessions.startChallenge(user, code);
+    await this.mailer.send(
+      {
+        to: user.email,
+        subject: `${code} is your CPI Platform sign-in code`,
+        idempotencyKey: `signin:${challengeId}`,
+        email: createElement(SignInCodeEmail, {
+          displayName: user.displayName,
+          code,
+          minutes: CODE_TTL_MS / 60_000,
+        }),
+      },
+      'We could not email your sign-in code. Try again in a few minutes.',
+    );
+    response.status(202);
+    return {
+      challengeId,
+      expiresAt: toNairobi(new Date(Date.now() + CODE_TTL_MS)),
+    } satisfies SignInChallenge;
+  }
+
+  /** The second step of password sign-in: the code emailed for the challenge. */
+  @Public()
+  @Post('session/code')
+  @HttpCode(200)
+  async verifyCode(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const parsed = signInCodeSchema.safeParse(body);
+    if (!parsed.success)
+      throw new ApiError(
+        422,
+        'Enter the 6-digit code from the email.',
+        'invalid_request',
+        { code: 'Enter the 6-digit code from the email.' },
+      );
+    const outcome = await this.sessions.completeChallenge(
+      parsed.data.challengeId,
+      parsed.data.code,
+    );
+    if (outcome.result === 'wrong') {
+      await this.sessions.recordFailure(outcome.email);
+      throw new ApiError(
+        401,
+        'That code is not right. Check the latest email and try again.',
+        'invalid_code',
+        { code: 'That code is not right.' },
+      );
+    }
+    const [user] =
+      outcome.result === 'ok'
+        ? await this.db.select().from(users).where(eq(users.id, outcome.userId))
+        : [];
+    if (!user || !canSignIn(user))
+      throw new ApiError(
+        410,
+        'This code has expired. Sign in again to get a new one.',
+        'code_expired',
+      );
+    await this.sessions.clearFailures(user.email.toLowerCase());
     await write(this.db, (tx, businessTime) =>
       this.events.audit(
         tx,
@@ -199,7 +277,7 @@ export class SessionController {
         user,
         'session.sign_in',
         { type: 'user', id: user.id },
-        'Password sign-in',
+        'Password and emailed code sign-in',
       ),
     );
     await this.sessions.start(response, user.id);
@@ -227,7 +305,7 @@ export class SessionController {
         email: 'Enter your email.',
       });
     const email = parsed.data.email.toLowerCase();
-    await write(this.db, async (tx, businessTime) => {
+    await write(this.db, async (tx, _businessTime, afterCommit) => {
       const [user] = await tx
         .select()
         .from(users)
@@ -238,18 +316,21 @@ export class SessionController {
         .update(users)
         .set({ authLink: link.stored })
         .where(eq(users.id, user.id));
-      await sendEmail(
-        tx,
-        businessTime,
-        this.config.PORTAL_URL,
-        `reset:${user.id}:${link.stored.tokenHash.slice(0, 12)}`,
-        'account.password_reset',
-        user,
-        {
-          subject: 'Reset your CPI Platform password',
-          body: 'Someone asked to reset the password for this account. If it was you, choose a new password with this link; it works once and expires in 1 hour. Otherwise you can ignore this email.',
-          link: `/set-password?token=${link.token}`,
-        },
+      afterCommit(() =>
+        this.mailer
+          .send(
+            {
+              to: user.email,
+              subject: 'Reset your CPI Platform password',
+              idempotencyKey: `reset:${link.stored.tokenHash}`,
+              email: createElement(PasswordResetEmail, {
+                resetUrl: this.mailer.link(`/set-password?token=${link.token}`),
+              }),
+            },
+            '',
+          )
+          // The answer must not differ by account, so a failure is only logged (by the mailer).
+          .catch(() => undefined),
       );
     });
     return {
@@ -294,6 +375,7 @@ export class SessionController {
         .update(users)
         .set({
           passwordHash: await hashPassword(parsed.data.password),
+          passwordExpiresAt: null,
           authLink: null,
         })
         .where(eq(users.id, account.id))
@@ -325,6 +407,9 @@ export class SessionController {
         role: user.role,
         ...(user.institutionId ? { institutionId: user.institutionId } : {}),
         ...(user.jobTitle ? { jobTitle: user.jobTitle } : {}),
+        ...(user.passwordExpiresAt
+          ? { mustChangePassword: true as const }
+          : {}),
       },
       clock: {
         runId: state.runId,

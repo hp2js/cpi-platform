@@ -20,6 +20,13 @@ export const integration = process.env.INTEGRATION === '1';
 
 // The example's values are the local Docker services, for checkouts without a .env (and CI).
 config({ path: ['../../.env', '../../.env.example'], quiet: true });
+// Tests run the demo deployment and read account emails from the sink, whatever .env says:
+// they must never send real email. A test opts out per server through startApi(env).
+Object.assign(process.env, {
+  DEMO_MODE: 'true',
+  ADMIN_EMAIL: '',
+  RESEND_API_KEY: '',
+});
 
 function testUrls() {
   const database = new URL(process.env.DATABASE_URL ?? '');

@@ -12,6 +12,8 @@ export interface MockUser {
   phone?: string;
   /** Salted hash; `demo-password` marks seeded accounts that accept the published demo password; null until an invited person sets one. */
   passwordHash?: string | null;
+  /** Set while the account uses its emailed temporary password, which stops working then. */
+  passwordExpiresAt?: string | null;
   /** The current single-use invitation or reset link (its token hash only). */
   authLink?: {
     purpose: 'invitation' | 'reset';

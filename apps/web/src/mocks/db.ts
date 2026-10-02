@@ -212,6 +212,11 @@ export interface MockDb {
     string,
     { failures: number[]; lockedUntil: number | null }
   >;
+  /** Emailed sign-in codes by challenge ID (hash only; actual time). */
+  signInChallenges: Record<
+    string,
+    { userId: string; codeHash: string; attempts: number; expiresAt: number }
+  >;
 }
 
 export interface MockPublication {
@@ -269,10 +274,11 @@ export interface MockDelivery {
  * 16: the cycle's declared risk scale labels.
  * 17: the risk scale's change log.
  * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
+ * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
  */
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '18:939f14ad';
+export const SCHEMA_SHAPE = '19:d6784c09';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -360,6 +366,7 @@ function seed(): MockDb {
     riskScaleChanges: [],
     institutionTypes: structuredClone(initialInstitutionTypes),
     loginAttempts: {},
+    signInChallenges: {},
   };
 }
 

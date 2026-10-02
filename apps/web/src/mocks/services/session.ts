@@ -10,10 +10,21 @@ export function currentUser(): MockUser | undefined {
   return users.find((user) => user.id === session.userId && user.active);
 }
 
-/** Resolve the caller or throw a 401 response, as the server's auth guard would. */
-export function requireUser(): MockUser {
+/**
+ * Resolve the caller or throw a 401 response, as the server's auth guard would. A session that
+ * still uses a temporary password gets 403 `password_change_required` unless the route allows it.
+ */
+export function requireUser(
+  options: { temporaryPasswordAllowed?: boolean } = {},
+): MockUser {
   const { session } = getDb();
   const user = currentUser();
+  if (user?.passwordExpiresAt && !options.temporaryPasswordAllowed)
+    throw apiError(
+      403,
+      'Choose your own password to continue.',
+      'password_change_required',
+    );
   if (user) return user;
   throw session?.expired
     ? apiError(
@@ -34,6 +45,7 @@ export function toSession(user: MockUser): Session {
       role: user.role,
       ...(user.institutionId ? { institutionId: user.institutionId } : {}),
       ...(user.jobTitle ? { jobTitle: user.jobTitle } : {}),
+      ...(user.passwordExpiresAt ? { mustChangePassword: true as const } : {}),
     },
     clock: {
       runId: db.runId,

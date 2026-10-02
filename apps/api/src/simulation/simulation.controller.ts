@@ -8,7 +8,8 @@ import {
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { CONFIG, type AppConfig } from '../config';
 import { write, type Db } from '../database/db';
-import { loadFixtures } from '../database/fixtures';
+import { loadFixtures, seedOptions } from '../database/fixtures';
+import { Mailer } from '../email/mailer';
 import {
   cycles,
   formVersions,
@@ -42,8 +43,19 @@ export class SimulationController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
+    private readonly mailer: Mailer,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /** A new run and the scripted year replace or need the fictional data: demo mode only. */
+  private requireDemo() {
+    if (!this.config.DEMO_MODE)
+      throw new ApiError(
+        409,
+        'This deployment holds real records, so the simulation cannot reset or script the year.',
+        'demo_only',
+      );
+  }
 
   private get db() {
     return this.infrastructure.database;
@@ -89,6 +101,7 @@ export class SimulationController {
     @CurrentUser() user: User,
     @Body() body: { profileId?: unknown } | undefined,
   ) {
+    this.requireDemo();
     const profileId =
       typeof body?.profileId === 'string' ? body.profileId : undefined;
     const [chosen] = profileId
@@ -106,7 +119,11 @@ export class SimulationController {
     const previous = (await currentState(this.db)).state.runId;
     const next = `run-${String(Number(previous.replace(/\D/g, '')) + 1).padStart(3, '0')}`;
     // Settings carry over: the profile library is kept, and a chosen profile applies (§7.1).
-    await loadFixtures(this.db, { keepProfiles: true, runId: next });
+    await loadFixtures(this.db, {
+      ...seedOptions(this.config, this.mailer),
+      keepProfiles: true,
+      runId: next,
+    });
     return write(this.db, async (tx, businessTime) => {
       if (chosen) {
         await tx.update(cycles).set({ profileId: chosen.id });
@@ -128,6 +145,7 @@ export class SimulationController {
   @HttpCode(200)
   @Roles('administrator')
   async scenario(): Promise<ScenarioResult> {
+    this.requireDemo();
     try {
       return await runScenario(
         this.db,

@@ -12,6 +12,8 @@ import {
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 import {
+  FICTIONAL_EMAIL,
+  FICTIONAL_EMAIL_MESSAGE,
   calendarUpdateSchema,
   riskScaleUpdateSchema,
   type RiskScaleSettings,
@@ -51,13 +53,14 @@ import {
   loadForms,
   loadProfiles,
 } from '../database/state';
-import { sendInvitation } from '../auth/invitations';
-import { accountStatus } from '../auth/passwords';
+import { inviter } from '../auth/invitations';
+import { CONFIG, type AppConfig } from '../config';
+import { Mailer } from '../email/mailer';
+import { accountStatus, invitationExpiresAt } from '../auth/passwords';
 import {
   assignedInstitutionIds,
   supervisedInstitutionIds,
 } from '../auth/scope';
-import { CONFIG, type AppConfig } from '../config';
 import {
   Events,
   assignedOfficers,
@@ -204,10 +207,6 @@ async function people(db: Db): Promise<People> {
         .from(institutionTypes)
         .orderBy(asc(institutionTypes.position)),
     ]);
-  const invitationExpiresAt = (user: (typeof userRows)[number]) =>
-    accountStatus(user) === 'invited' && user.authLink?.purpose === 'invitation'
-      ? user.authLink.expiresAt
-      : null;
   return {
     users: userRows.map((user) => ({
       id: user.id,
@@ -336,6 +335,7 @@ export class SettingsController {
     private readonly infrastructure: Infrastructure,
     private readonly events: Events,
     private readonly sessions: Sessions,
+    private readonly mailer: Mailer,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -777,8 +777,16 @@ export class SettingsController {
   @Post('users')
   @Roles('administrator')
   createUser(@CurrentUser() admin: User, @Body() body: unknown) {
-    return write(this.db, async (tx, businessTime) => {
+    return write(this.db, async (tx, businessTime, afterCommit) => {
       const input = parse(userCreateSchema, body);
+      // Demonstration deployments hold synthetic data only.
+      if (this.config.DEMO_MODE && !FICTIONAL_EMAIL.test(input.email))
+        throw new ApiError(
+          422,
+          'Some values need attention.',
+          'invalid_settings',
+          { email: FICTIONAL_EMAIL_MESSAGE },
+        );
       const [taken] = await tx
         .select({ id: users.id })
         .from(users)
@@ -809,17 +817,10 @@ export class SettingsController {
           jobTitle: input.jobTitle,
           institutionId: input.institutionId,
           active: true,
-          // The person sets their own password from the invitation email.
-          passwordHash: null,
         })
         .returning();
-      await sendInvitation(
-        tx,
-        businessTime,
-        this.config.PORTAL_URL,
-        user!,
-        admin,
-      );
+      // A random temporary password is emailed; the person replaces it at first sign-in.
+      await inviter(this.mailer, admin, afterCommit)(tx, user!);
       await this.events.audit(
         tx,
         businessTime,
@@ -832,12 +833,12 @@ export class SettingsController {
     });
   }
 
-  /** A new invitation link replaces the earlier one (e.g. it expired or the email was lost). */
+  /** A new temporary password replaces the earlier one (e.g. it expired or the email was lost). */
   @Post('users/:userId/invitation')
   @HttpCode(200)
   @Roles('administrator')
   resendInvitation(@CurrentUser() admin: User, @Param('userId') id: string) {
-    return write(this.db, async (tx, businessTime) => {
+    return write(this.db, async (tx, businessTime, afterCommit) => {
       const [user] = await tx.select().from(users).where(eq(users.id, id));
       if (!user) throw notFound();
       if (accountStatus(user) !== 'invited')
@@ -848,13 +849,7 @@ export class SettingsController {
             : 'Reactivate the account before inviting again.',
           'not_invited',
         );
-      await sendInvitation(
-        tx,
-        businessTime,
-        this.config.PORTAL_URL,
-        user,
-        admin,
-      );
+      await inviter(this.mailer, admin, afterCommit)(tx, user);
       await this.events.audit(
         tx,
         businessTime,
@@ -1259,9 +1254,9 @@ export class SettingsController {
   @Post('institutions')
   @Roles('administrator')
   createInstitution(@CurrentUser() admin: User, @Body() body: unknown) {
-    return write(this.db, async (tx, businessTime) => {
+    return write(this.db, async (tx, businessTime, afterCommit) => {
       const input = parse(institutionCreateSchema, body);
-      const snapshot = await directorySnapshot(tx);
+      const snapshot = await directorySnapshot(tx, this.config.DEMO_MODE);
       const candidate = fromCreateRequest(snapshot, input);
       const problems = institutionProblems(snapshot, candidate);
       if (problems.length)
@@ -1269,10 +1264,10 @@ export class SettingsController {
       await createInstitution(
         tx,
         businessTime,
-        this.config.PORTAL_URL,
+        inviter(this.mailer, admin, afterCommit),
         admin,
         snapshot,
-        { ...candidate, officer: candidate.officer! },
+        { ...candidate, officer: candidate.officer ?? null },
         input.seedOpenedQuarters,
       );
       await this.events.audit(
@@ -1281,7 +1276,7 @@ export class SettingsController {
         admin,
         'institution.create',
         { type: 'institution', id: candidate.id },
-        `${candidate.name}, reviewed by ${candidate.officer!.displayName}; Accounting Officer ${candidate.accountingOfficer.name}`,
+        `${candidate.name}, ${candidate.officer ? `reviewed by ${candidate.officer.displayName}` : 'no reviewing officer yet'}; Accounting Officer ${candidate.accountingOfficer.name}`,
       );
       await this.notifyOfficers(tx, businessTime, [candidate]);
       return people(tx);
@@ -1293,7 +1288,10 @@ export class SettingsController {
   @Roles('administrator')
   async previewImport(@Body() body: unknown) {
     const input = parse(institutionImportRequestSchema, body);
-    return previewImport(await directorySnapshot(this.db), input.csv).preview;
+    return previewImport(
+      await directorySnapshot(this.db, this.config.DEMO_MODE),
+      input.csv,
+    ).preview;
   }
 
   /** All or nothing: one invalid row means nothing is created, so a file can be fixed and re-run. */
@@ -1301,9 +1299,9 @@ export class SettingsController {
   @HttpCode(200)
   @Roles('administrator')
   importInstitutions(@CurrentUser() admin: User, @Body() body: unknown) {
-    return write(this.db, async (tx, businessTime) => {
+    return write(this.db, async (tx, businessTime, afterCommit) => {
       const input = parse(institutionImportRequestSchema, body);
-      const snapshot = await directorySnapshot(tx);
+      const snapshot = await directorySnapshot(tx, this.config.DEMO_MODE);
       const { preview, rows } = previewImport(snapshot, input.csv);
       if (preview.fileErrors.length || preview.invalid)
         throw new ApiError(
@@ -1316,10 +1314,10 @@ export class SettingsController {
         await createInstitution(
           tx,
           businessTime,
-          this.config.PORTAL_URL,
+          inviter(this.mailer, admin, afterCommit),
           admin,
           snapshot,
-          { ...row, officer: row.officer! },
+          { ...row, officer: row.officer ?? null },
           input.seedOpenedQuarters,
         );
       await this.events.audit(
@@ -1346,10 +1344,11 @@ export class SettingsController {
   ) {
     const byOfficer = new Map<string, NewInstitution[]>();
     for (const row of rows)
-      byOfficer.set(row.officer!.id, [
-        ...(byOfficer.get(row.officer!.id) ?? []),
-        row,
-      ]);
+      if (row.officer)
+        byOfficer.set(row.officer.id, [
+          ...(byOfficer.get(row.officer.id) ?? []),
+          row,
+        ]);
     for (const assigned of byOfficer.values())
       await this.events.notify(
         tx,

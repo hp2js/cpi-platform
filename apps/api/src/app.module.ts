@@ -12,6 +12,7 @@ import { FormsController } from './cycle/forms.controller';
 import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
 import { EventsController } from './events/events.controller';
+import { Mailer } from './email/mailer';
 import { Events } from './events/events';
 import { FoundationsController } from './planning/foundations.controller';
 import { PlanEditorController } from './planning/plan-editor.controller';
@@ -55,6 +56,7 @@ import { Files } from './storage/files';
     Files,
     Sessions,
     Events,
+    Mailer,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

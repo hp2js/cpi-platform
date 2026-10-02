@@ -10,6 +10,11 @@ export const sessionUserSchema = z.object({
   institutionId: institutionIdSchema.optional(),
   /** Self-maintained; prefills the submission's role or delegation reference. */
   jobTitle: z.string().optional(),
+  /**
+   * Present (true) while the account still uses its emailed temporary password: the person
+   * must choose their own before anything else answers (403 `password_change_required`).
+   */
+  mustChangePassword: z.literal(true).optional(),
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 
@@ -65,6 +70,25 @@ export const signInRequestSchema = z.union([
 ]);
 export type SignInRequest = z.infer<typeof signInRequestSchema>;
 
+/**
+ * A right email and password answers 202 with a challenge: a six-digit code is emailed, and
+ * `POST /session/code` with the code starts the session. Demo sign-in answers with a session.
+ */
+export const signInChallengeSchema = z.object({
+  challengeId: z.string(),
+  /** When the emailed code stops working (10 minutes; five wrong codes also end it). */
+  expiresAt: instantSchema,
+});
+export type SignInChallenge = z.infer<typeof signInChallengeSchema>;
+export const signInCodeSchema = z.object({
+  challengeId: z.string().min(1).max(64),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/),
+});
+export type SignInCode = z.infer<typeof signInCodeSchema>;
+
 /** How people can sign in on this deployment. */
 export const authConfigSchema = z.object({
   passwordSignIn: z.boolean(),
@@ -101,7 +125,8 @@ export const setPasswordSchema = z.object({
   password: z.string().max(128),
 });
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1).max(256),
+  /** Not asked while the account uses its temporary password (the session just proved it). */
+  currentPassword: z.string().min(1).max(256).optional(),
   newPassword: z.string().max(128),
 });
 export type ChangePassword = z.infer<typeof changePasswordSchema>;

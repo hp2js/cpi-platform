@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  adminAttentionSchema,
   calendarSettingsSchema,
   institutionImportPreviewSchema,
   institutionImportResultSchema,
@@ -10,6 +11,7 @@ import {
   simulationStateSchema,
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { request } from '@/lib/api';
 import { acceptInvitation, publishSeedForm } from '@/test/api-helpers';
 import { signInAs } from '@/test/render-app';
@@ -168,6 +170,43 @@ describe('onboarding institutions (FR01)', () => {
     expect(q1.baseline.milestones).toHaveLength(2);
   });
 
+  it('creates an institution without an officer or supervisor, to assign later', async () => {
+    await signInAs('administrator');
+    const people = await create({
+      ...newInstitution,
+      officerId: null,
+      supervisorId: null,
+      focalUser: null,
+    });
+    expect(
+      people.institutions.find((item) => item.id === 'MDA-101'),
+    ).toMatchObject({ officer: null, supervisor: null });
+    expect(
+      (await request('/api/admin/attention', adminAttentionSchema)).find(
+        (item) => item.id === 'no-officer',
+      ),
+    ).toMatchObject({ count: 1 });
+    const assign = (extra = {}) =>
+      request('/api/assignments', z.unknown(), {
+        method: 'POST',
+        json: {
+          institutionId: 'MDA-101',
+          officerId: 'officer-b',
+          reason: 'First reviewing officer for MDA-101.',
+          ...extra,
+        },
+      });
+    await expect(assign({ coverUntil: '2027-01-31' })).rejects.toMatchObject({
+      status: 422,
+    });
+    await assign();
+    expect(
+      (await request('/api/settings/people', peopleSchema)).institutions.find(
+        (item) => item.id === 'MDA-101',
+      )?.officer,
+    ).toMatchObject({ id: 'officer-b' });
+  });
+
   it('previews a CSV import row by row and imports all or nothing', async () => {
     await signInAs('administrator');
     const header =
@@ -197,7 +236,7 @@ describe('onboarding institutions (FR01)', () => {
     );
     expect(checked.rows[4]!.errors[0]).toMatch(/already in use/);
     expect((await preview('name,type\nX,Y')).fileErrors[0]).toMatch(
-      /Missing columns: institution_id, officer_email, ao_name, ao_designation/,
+      /Missing columns: institution_id, ao_name, ao_designation/,
     );
 
     const importCsv = (csv: string) =>

@@ -1,6 +1,6 @@
 import type { MockDb } from '../db';
 import type { MockUser } from '@cpi/contracts/fixtures';
-import { sendEmail } from './events';
+import { portalUrl, sendAccountEmail } from './events';
 
 /**
  * Mock authentication. The real API must use a slow password hash (Argon2id or bcrypt),
@@ -47,13 +47,39 @@ export async function passwordMatches(user: MockUser, password: string) {
   if (!user.passwordHash) return false;
   if (user.passwordHash === DEMO_PASSWORD_MARKER)
     return password === DEMO_PASSWORD;
+  // Temporary passwords are hashed before the account (and its ID) exists.
+  const [scheme, salt] = user.passwordHash.split('$');
+  if (scheme === 'salted')
+    return (
+      user.passwordHash ===
+      `salted$${salt}$${await sha256(`${salt}:${password}`)}`
+    );
   return user.passwordHash === (await hashPassword(user, password));
 }
 
 export type AccountStatus = 'active' | 'invited' | 'deactivated';
+/** Invited accounts have not yet chosen their own password (they may hold a temporary one). */
 export function accountStatus(user: MockUser): AccountStatus {
   if (!user.active) return 'deactivated';
-  return user.passwordHash ? 'active' : 'invited';
+  return user.passwordHash && !user.passwordExpiresAt ? 'active' : 'invited';
+}
+
+/** Whether the account may sign in with a password: active, or within its temporary password. */
+export function canSignIn(user: MockUser) {
+  return (
+    user.active &&
+    !!user.passwordHash &&
+    (!user.passwordExpiresAt || Date.parse(user.passwordExpiresAt) > now())
+  );
+}
+
+/** When an invited account's temporary password or invitation link stops working. */
+export function invitationExpiresAt(user: MockUser) {
+  if (accountStatus(user) !== 'invited') return null;
+  return (
+    user.passwordExpiresAt ??
+    (user.authLink?.purpose === 'invitation' ? user.authLink.expiresAt : null)
+  );
 }
 
 /* ---------- Throttling (per email, whether or not an account exists) ---------- */
@@ -82,7 +108,88 @@ export function clearFailures(db: MockDb, email: string) {
   delete db.loginAttempts[email];
 }
 
-/* ---------- Invitations and resets ---------- */
+/* ---------- Invitations (temporary passwords) ---------- */
+
+const READABLE = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const randomIndex = (size: number) =>
+  crypto.getRandomValues(new Uint32Array(1))[0]! % size;
+
+export interface PreparedInvitation {
+  password: string;
+  passwordHash: string;
+  expiresAt: string;
+}
+
+/** A random temporary password and its hash; only the hash is stored. */
+export async function prepareInvitation(): Promise<PreparedInvitation> {
+  const password = Array.from({ length: 4 }, () =>
+    Array.from(
+      { length: 4 },
+      () => READABLE[randomIndex(READABLE.length)],
+    ).join(''),
+  ).join('-');
+  const salt = newToken().slice(0, 16);
+  return {
+    password,
+    passwordHash: `salted$${salt}$${await sha256(`${salt}:${password}`)}`,
+    expiresAt: new Date(now() + INVITATION_TTL_MS).toISOString(),
+  };
+}
+
+/**
+ * Gives the account the temporary password (replacing any earlier one) and emails it. Call
+ * inside `commit`, with an invitation from `prepareInvitation`.
+ */
+export function sendInvitation(
+  db: MockDb,
+  user: MockUser,
+  prepared: PreparedInvitation,
+  invitedBy?: MockUser,
+) {
+  user.passwordHash = prepared.passwordHash;
+  user.passwordExpiresAt = prepared.expiresAt;
+  user.authLink = null;
+  sendAccountEmail(db, user.email, {
+    subject: 'You are invited to the CPI Platform',
+    body: `Welcome, ${user.displayName}\n\n${invitedBy?.displayName ?? 'An administrator'} created a CPI Platform account for you. Sign in with your email address (${user.email}) and this temporary password:\n\nTemporary password: ${prepared.password}\n\nEach time you sign in we email you a code, and the first time you choose your own password.\n\n${portalUrl('/sign-in')}`,
+  });
+}
+
+/* ---------- Emailed sign-in codes ---------- */
+
+export const CODE_TTL_MS = 10 * 60_000;
+export const CODE_ATTEMPTS = 5;
+
+export const codeHash = (challengeId: string, code: string) =>
+  sha256(`${challengeId}:${code}`);
+
+export async function prepareChallenge() {
+  const code = String(randomIndex(1_000_000)).padStart(6, '0');
+  const id = newToken();
+  return { id, code, codeHash: await codeHash(id, code) };
+}
+
+/** Stores the challenge and emails its code. Call inside `commit`. */
+export function sendChallenge(
+  db: MockDb,
+  user: MockUser,
+  challenge: Awaited<ReturnType<typeof prepareChallenge>>,
+) {
+  const expiresAt = now() + CODE_TTL_MS;
+  db.signInChallenges[challenge.id] = {
+    userId: user.id,
+    codeHash: challenge.codeHash,
+    attempts: 0,
+    expiresAt,
+  };
+  sendAccountEmail(db, user.email, {
+    subject: `${challenge.code} is your CPI Platform sign-in code`,
+    body: `Your sign-in code\n\nHello ${user.displayName},\n\nYour sign-in code is ${challenge.code}\n\nEnter it on the sign-in page within 10 minutes.`,
+  });
+  return new Date(expiresAt).toISOString();
+}
+
+/* ---------- Password resets ---------- */
 
 export interface PreparedLink {
   purpose: 'invitation' | 'reset';
@@ -91,47 +198,25 @@ export interface PreparedLink {
   expiresAt: string;
 }
 
-/** Creates a single-use token; only its hash is ever stored. */
-export async function prepareLink(
-  purpose: 'invitation' | 'reset',
-): Promise<PreparedLink> {
+/** Creates a single-use reset token; only its hash is ever stored. */
+export async function prepareLink(): Promise<PreparedLink> {
   const token = newToken();
   return {
-    purpose,
+    purpose: 'reset',
     token,
     tokenHash: await hashToken(token),
-    expiresAt: new Date(
-      now() + (purpose === 'invitation' ? INVITATION_TTL_MS : RESET_TTL_MS),
-    ).toISOString(),
+    expiresAt: new Date(now() + RESET_TTL_MS).toISOString(),
   };
 }
 
-/**
- * Stores the link on the account (replacing any earlier one) and emails it. Call inside
- * `commit`, with a link from `prepareLink`.
- */
-export function sendLink(
-  db: MockDb,
-  user: MockUser,
-  prepared: PreparedLink,
-  invitedBy?: MockUser,
-) {
+/** Stores the reset link on the account and emails it. Call inside `commit`. */
+export function sendLink(db: MockDb, user: MockUser, prepared: PreparedLink) {
   const { purpose, token, tokenHash, expiresAt } = prepared;
   user.authLink = { purpose, tokenHash, expiresAt };
-  const link = `/set-password?token=${token}`;
-  const key = `${purpose}:${user.id}:${tokenHash.slice(0, 12)}`;
-  if (purpose === 'invitation')
-    sendEmail(db, key, 'account.invitation', user, {
-      subject: 'You are invited to the CPI Platform',
-      body: `${invitedBy?.displayName ?? 'An administrator'} created an account for you (${user.email}). Set your password to sign in. The link works once and expires in 7 days.`,
-      link,
-    });
-  else
-    sendEmail(db, key, 'account.password_reset', user, {
-      subject: 'Reset your CPI Platform password',
-      body: 'Someone asked to reset the password for this account. If it was you, choose a new password with this link; it works once and expires in 1 hour. Otherwise you can ignore this email.',
-      link,
-    });
+  sendAccountEmail(db, user.email, {
+    subject: 'Reset your CPI Platform password',
+    body: `Reset your password\n\nSomeone asked to reset the password for this account. If it was you, choose a new password with this link; it works once and expires in 1 hour. Otherwise you can ignore this email.\n\n${portalUrl(`/set-password?token=${token}`)}`,
+  });
 }
 
 /** The account a link belongs to, if the link is current. */

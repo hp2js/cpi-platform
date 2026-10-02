@@ -158,7 +158,7 @@ export function NotificationsPage() {
       <PageHeader
         eyebrow="Operations"
         title="Notification delivery"
-        description="In-app notifications are always recorded. Email goes to a demo sink, never to real recipients; each message retries three times before appearing in the failure queue. Opening an invitation or reset link from the sink continues as that person, as they would from their inbox."
+        description="In-app notifications are always recorded. Email goes to a demo sink, never to real recipients; each message retries three times before appearing in the failure queue. Account emails (temporary passwords, sign-in codes, reset links) are sent through Resend when the API has a key, and otherwise land in this sink."
       />
       <Tabs
         value={tab}

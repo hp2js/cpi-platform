@@ -317,9 +317,21 @@ export class SupervisionController {
         parsed.data;
       const reason = parsed.data.reason.trim();
       const officer = await activeUser(tx, parsed.data.officerId, 'officer');
+      const [institution] = await tx
+        .select({ id: institutions.id })
+        .from(institutions)
+        .where(eq(institutions.id, institutionId));
+      if (!officer || !institution) throw notFound();
+      // No current assignment: the institution was created without a reviewing officer.
       const current = await currentAssignment(tx, institutionId);
-      if (!officer || !current) throw notFound();
-      if (current.officerId === officer.id)
+      if (!current && coverUntil)
+        throw new ApiError(
+          422,
+          'Cover needs a current officer to return to. Assign the officer without cover.',
+          'invalid_request',
+          { coverUntil: 'Leave cover empty for a first assignment.' },
+        );
+      if (current?.officerId === officer.id)
         throw new ApiError(
           409,
           'This officer is already assigned.',

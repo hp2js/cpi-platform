@@ -142,7 +142,10 @@ describe.skipIf(!integration)('sign-in configuration', () => {
       await demo.stop();
     }
 
-    const real = await startApi({ DEMO_MODE: 'false' });
+    const real = await startApi({
+      DEMO_MODE: 'false',
+      ADMIN_EMAIL: 'operator@example.invalid',
+    });
     try {
       const client = real.client();
       expect(await client.json<AuthConfig>('/auth/config')).toMatchObject({

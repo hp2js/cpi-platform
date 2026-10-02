@@ -13,11 +13,36 @@ async function signOut(page: Page) {
   await api(page, '/api/session', { method: 'DELETE' });
 }
 
-async function signInWithPassword(page: Page, email: string, password: string) {
+/** The newest match of `pattern` in the email sink for an address (read as the administrator). */
+async function emailed(page: Page, email: string, pattern: RegExp) {
+  await signInAs(page, 'administrator');
+  const mails = await api<{ to: string; body: string }[]>(
+    page,
+    '/api/admin/email-sink',
+  );
+  const found = mails
+    .filter((mail) => mail.to === email)
+    .map((mail) => pattern.exec(mail.body)?.[1])
+    .find(Boolean);
+  if (!found)
+    throw new Error(`Nothing matching ${pattern} emailed to ${email}`);
+  return found;
+}
+
+async function submitPassword(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+}
+
+/** Both steps: the password, then the code from the email. */
+async function signInWithPassword(page: Page, email: string, password: string) {
+  await submitPassword(page, email, password);
+  await expect(page.getByLabel('Sign-in code')).toBeVisible();
+  const code = await emailed(page, email, /Your sign-in code is (\d{6})/);
+  await page.getByLabel('Sign-in code').fill(code);
+  await page.getByRole('button', { name: 'Verify and sign in' }).click();
 }
 
 /** Opens the newest emailed link for an address from the admin's demo email sink. */
@@ -46,11 +71,11 @@ test.beforeEach(async ({ page }) => {
 test('email and password sign-in, with one message for any mistake', async ({
   page,
 }) => {
-  await signInWithPassword(page, 'officer.a@example.invalid', 'not-it');
+  await submitPassword(page, 'officer.a@example.invalid', 'not-it');
   await expect(
     page.getByText('The email or password is not right.'),
   ).toBeVisible();
-  await signInWithPassword(page, 'nobody@example.invalid', DEMO_PASSWORD);
+  await submitPassword(page, 'nobody@example.invalid', DEMO_PASSWORD);
   await expect(
     page.getByText('The email or password is not right.'),
   ).toBeVisible();
@@ -66,6 +91,32 @@ test('email and password sign-in, with one message for any mistake', async ({
   await expect(page).toHaveURL(/\/officer$/);
 });
 
+test('a right password still needs the emailed code', async ({ page }) => {
+  await submitPassword(page, 'officer.b@example.invalid', DEMO_PASSWORD);
+  await expect(
+    page.getByText('We emailed a 6-digit code to officer.b@example.invalid'),
+  ).toBeVisible();
+  await expect(page.getByLabel('Sign-in code')).toBeFocused();
+  const accessibility = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  const code = await emailed(
+    page,
+    'officer.b@example.invalid',
+    /Your sign-in code is (\d{6})/,
+  );
+  await signOut(page);
+  await page
+    .getByLabel('Sign-in code')
+    .fill(code === '000000' ? '111111' : '000000');
+  await page.getByRole('button', { name: 'Verify and sign in' }).click();
+  await expect(page.getByText('That code is not right.')).toBeVisible();
+  await page.getByLabel('Sign-in code').fill(code);
+  await page.getByRole('button', { name: 'Verify and sign in' }).click();
+  await expect(page).toHaveURL(/\/officer$/);
+});
+
 test('eCitizen is presented as planned, not connected', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: /Sign in with eCitizen/ }).click();
@@ -78,7 +129,7 @@ test('eCitizen is presented as planned, not connected', async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
-test('an invited user sets their own password from the emailed link', async ({
+test('an invited user signs in with the emailed temporary password and replaces it', async ({
   page,
 }) => {
   await signInAs(page, 'administrator');
@@ -109,13 +160,16 @@ test('an invited user sets their own password from the emailed link', async ({
   ).toBeVisible();
   await expect(page.getByText('Wanjiru Demo')).toBeHidden();
 
-  await openEmailedLink(
+  const temporary = await emailed(
     page,
     'wanjiru.demo@example.invalid',
-    'You are invited to the CPI Platform',
+    /Temporary password: (\S+)/,
   );
+  await signOut(page);
+  await signInWithPassword(page, 'wanjiru.demo@example.invalid', temporary);
+  await expect(page).toHaveURL(/\/choose-password$/);
   await expect(
-    page.getByRole('heading', { name: 'Set up your account' }),
+    page.getByRole('heading', { name: 'Choose your password' }),
   ).toBeVisible();
   await expect(page.getByText('Welcome, Wanjiru Demo.')).toBeVisible();
   const accessibility = await new AxeBuilder({ page })
@@ -123,32 +177,28 @@ test('an invited user sets their own password from the emailed link', async ({
     .analyze();
   expect(accessibility.violations).toEqual([]);
 
+  // Other pages wait until the password is replaced.
+  await page.goto('/officer');
+  await expect(page).toHaveURL(/\/choose-password$/);
+
   // The rules update as the person types, and the button waits for a good password.
-  await page.getByLabel('Password', { exact: true }).fill('password1234');
+  await page.getByLabel('New password', { exact: true }).fill('password1234');
   await expect(
-    page.getByRole('button', { name: 'Set password and sign in' }),
+    page.getByRole('button', { name: 'Save password and continue' }),
   ).toBeDisabled();
   await choosePassword(
     page,
     'tea garden morning walk',
-    'Set password and sign in',
+    'Save password and continue',
   );
   await expect(page).toHaveURL(/\/officer$/);
 
-  // The link works once.
-  await signInAs(page, 'administrator');
-  await page.goto('/admin/notifications?tab=sink');
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'To wanjiru.demo@example.invalid' })
-    .first()
-    .getByRole('link')
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'This link cannot be used' }),
-  ).toBeVisible();
-
+  // The temporary password no longer works; the chosen one does.
   await signOut(page);
+  await submitPassword(page, 'wanjiru.demo@example.invalid', temporary);
+  await expect(
+    page.getByText('The email or password is not right.'),
+  ).toBeVisible();
   await signInWithPassword(
     page,
     'wanjiru.demo@example.invalid',
@@ -190,11 +240,7 @@ test('forgot password sends a one-hour link that sets a new password', async ({
   await expect(page).toHaveURL(/\/institution$/);
 
   await signOut(page);
-  await signInWithPassword(
-    page,
-    'focal.demo-002@example.invalid',
-    DEMO_PASSWORD,
-  );
+  await submitPassword(page, 'focal.demo-002@example.invalid', DEMO_PASSWORD);
   await expect(
     page.getByText('The email or password is not right.'),
   ).toBeVisible();
