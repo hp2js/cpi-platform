@@ -329,6 +329,7 @@ describe.skipIf(!integration)(
         ]),
       );
       expect((await officer.request('/audit')).status).toBe(403);
+      expect((await officer.request('/audit.csv')).status).toBe(403);
     });
 
     it('delivers outside the business transaction and resumes rows an interrupted worker left (HP2-43)', async () => {
@@ -423,6 +424,9 @@ describe.skipIf(!integration)(
           reason: 'Already assigned to Officer B.',
         }),
       ).toMatchObject({ status: 409, body: { code: 'no_change' } });
+      // A session opened before the reassignment loses access on its next request.
+      const before = await api.client().signIn('officer-b');
+      expect((await before.request('/institutions/DEMO-005')).status).toBe(200);
       await admin.post('/assignments', {
         institutionId: 'DEMO-005',
         officerId: 'officer-a',
@@ -436,8 +440,17 @@ describe.skipIf(!integration)(
           .filter((row) => row.institutionId === 'DEMO-005')
           .map((row) => row.officerId),
       ).toEqual(['officer-b', 'officer-a']);
-      const before = await api.client().signIn('officer-b');
       expect((await before.request('/institutions/DEMO-005')).status).toBe(404);
+      expect(
+        (await before.request('/obligations?institutionId=DEMO-005')).status,
+      ).toBe(404);
+      expect(
+        (
+          await before.json<{ institutionId: string }[]>(
+            '/evidence?institutionId=DEMO-005',
+          )
+        ).length,
+      ).toBe(0);
       const after = await api.client().signIn('officer-a');
       expect((await after.request('/institutions/DEMO-005')).status).toBe(200);
     });
