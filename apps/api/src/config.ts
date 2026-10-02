@@ -54,6 +54,12 @@ const schema = z
       .regex(/^([^@\s]+@[^@\s]+\.[^@\s]+)?$/)
       .default(''),
     ADMIN_NAME: z.string().trim().default('Platform administrator'),
+    /** Waits before the 2nd and 3rd attempts of a notification email (real time, milliseconds). */
+    DELIVERY_RETRY_DELAYS_MS: z
+      .string()
+      .default('30000,120000')
+      .transform((value) => value.split(',').map(Number))
+      .pipe(z.array(z.number().int().min(0)).length(2)),
     /** Idle session lifetime; each authenticated request extends it. */
     SESSION_TTL_SECONDS: z.coerce
       .number()

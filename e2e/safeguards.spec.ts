@@ -324,6 +324,8 @@ test('failed email is visible to the administrator and succeeds on retry (AT12)'
     json: { accountId: 'administrator' },
   });
   await api(page, '/api/forms/form-v1/publish', { method: 'POST' });
+  // Spend the retries now instead of waiting for the worker's backoff.
+  await api(page, '/api/__mock/deliveries/run', { method: 'POST' });
   await signIn(page, 'administrator', '/admin/notifications');
   // Eight focal persons, two officers and the supervisor are told of the publication.
   await expect(

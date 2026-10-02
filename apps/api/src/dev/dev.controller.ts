@@ -15,6 +15,7 @@ import { loadFixtures, seedOptions } from '../database/fixtures';
 import { Mailer } from '../email/mailer';
 import { systemState } from '../database/schema';
 import { notFound } from '../http/api-error';
+import { DeliveryWorker } from '../events/delivery-worker';
 import { Infrastructure } from '../infrastructure';
 
 /**
@@ -28,6 +29,7 @@ export class DevController {
     private readonly infrastructure: Infrastructure,
     private readonly sessions: Sessions,
     private readonly mailer: Mailer,
+    private readonly worker: DeliveryWorker,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -74,6 +76,14 @@ export class DevController {
       .update(systemState)
       .set({ emailFailureMode: enabled });
     return { enabled };
+  }
+
+  /** Attempts every queued or retrying email now, without waiting for its backoff. */
+  @Post('deliveries/run')
+  @HttpCode(204)
+  async runDeliveries() {
+    this.devDatabase();
+    await this.worker.run(true);
   }
 
   /** The caller's next request gets 401 `session_expired`. */
