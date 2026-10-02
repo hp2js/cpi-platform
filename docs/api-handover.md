@@ -6,6 +6,7 @@ The frontend is complete against a mock API. This document lists every endpoint 
 
 ## How to use this
 
+- **Entities and state transitions** are explained in [`data-model.md`](data-model.md).
 - **Schemas** live in `packages/contracts/src/draft/` (zod, exported from `@cpi/contracts`). The frontend validates every response against them, so a shape mismatch shows as "The server returned an invalid response". Adopt them in Nest with the existing `SchemaValidationPipe`, or revise them and update the frontend in the same change.
 - **Errors** use the existing envelope `{ message, fieldErrors?, requestId?, code? }`. The frontend branches on `status` and `code` (listed below), shows `message` to users, and maps `fieldErrors` keys to fields. Messages must never contain submitted content.
 - **The mock and the real API:** the web app uses the real API by default and `pnpm test:e2e` runs against it. The mock remains a second implementation for Vitest and `VITE_API_MODE=mock` development, so a behaviour change is made in both, with pure rules shared through `@cpi/contracts` (`src/domain/`), an integration test in `apps/api` (`pnpm test:integration`) and a unit test in `apps/web/src/mocks`.
