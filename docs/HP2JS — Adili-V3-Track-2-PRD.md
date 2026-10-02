@@ -723,33 +723,9 @@ Simplification order: first omit all P1 features, AI, bulk import, separate advi
 
 # **19 Decision register and organizer questions**
 
-Each item has a usable proposed default where safe. Henry owns collecting organizer answers; the named technical owner assesses implementation impact. None of the unanswered items should be silently converted into an official rule.
+The [domain decision register](domain-decisions.md) is the maintained record for O01–O17. It contains each organizer question, explicit confirmation status, working prototype default, source boundary, affected requirements and Linear issues. Update answers there so mutable policy is not copied across tickets and this document.
 
-| ID | Decision or question | Proposed default and owner |
-| :---: | :---- | :---- |
-| O01 | Which weight profile will judges expect? | Hackathon Mock v1 for demo; published conflict disclosed. Henry leads; Jason contributes |
-| O02 | What earns full and partial credit? | Section 10 checklist and milestone rubric, explicitly proposed. Patrick leads; Jason contributes |
-| O03 | What annual formula and carry-forward apply? | Final foundations once, equal quarterly implementation average. Henry accountable; Patrick technical review; Jason prepares examples |
-| O04 | What late penalties and grace rules apply? | Show lateness; no invented deduction; calendar days and end-of-day cutoff. Henry |
-| O05 | What is the required treatment of incomplete prerequisites? | Visible deficiency; no additional automatic sanction beyond supported criterion outcomes. Henry leads; Jason contributes |
-| O06 | Can institutions see provisional or reviewed scores before year end? | Status and feedback only; scores withheld until release. Henry accountable; Jamal leads UX with Samuel contributing |
-| O07 | Who releases results and how are corrections authorized? | Administrator release; officer evaluation; versioned correction. Henry and Patrick |
-| O08 | Is a clarification/advisory workflow expected in the MVP? | Basic clarification included; no separate supervisory score gate. Henry |
-| O09 | How should activity importance, not-applicable claims and late completion be scored? | Locked milestone baseline, equal demo weights, no retrospective denominator reduction. Patrick accountable; Henry approves policy; Jason prepares fixtures |
-| O10 | What deadline and final disposition rules apply to nonresponse? | Configurable simulated cutoff; officer must record zero disposition. Henry |
-| O11 | May quarterly evidence include more than signed CPC and IAO minutes? | Default to published evidence policy; supplementary requests require explicit purpose and clarification. Henry |
-| O12 | What do individual judging and AI criteria mean? | Show member contributions; optional AI; no assumed weights. Henry |
-| O13 | What are submission deadlines, demo duration, deliverable format, repository access and IP rules? | Confirm before committing schedule or licensing; no invented event terms. Henry |
-| O14 | What hosting, connectivity, pre-existing code and external-service constraints apply? | Reproducible local demo, synthetic data, no required live external integrations. Patrick and Henry |
-| O15 | Is there an approved integration contract or current institution roster? | Documented mock export and eight fictional entities. Patrick accountable; Jason prepares sample data |
-| O16 | What official severity bands and source version should be used? | Store 1-5 inputs and product only; no invented color-band thresholds. Patrick accountable; Henry confirms source interpretation; Jason prepares examples |
-| O17 | How is administrator full privilege expected to operate? | All capability retained through explicit audited override paths. Patrick and Henry |
-
-O01-O11 affects domain behavior and must be acknowledged before the demo rubric is presented as accepted. O12-O14 affects event strategy and delivery. O15-O17 can proceed with the stated prototype defaults but remain production or organizer clarification items. Any answer changing score behavior requires fixture updates and regression checks.
-
-Review additions mapped to existing decisions: O09 also covers pre-activation baseline approval, historical-seed limits and denominator gaming (Henry accountable; Jason contributes); O05 covers submitter authority, missing institutional approval and foundation validity (Henry/Patrick); O07–O08 cover dependent decision invalidation, carry-forward confirmation and evidence suitability (Patrick accountable; Jason contributes); O04 and O10 cover the proposed seven-day clarification window, extension authority and protection from officer delay (Henry). These are proposed defaults awaiting team review and organizer confirmation where applicable, not new official rules.
-
-O13–O14 must be resolved against the preliminary capacity estimate and simplification order in Section 18.2. Henry owns execution and acceptance of the Section 4.2 validation plan, with Jamal reviewing UX and Samuel preparing materials and observations. Jason prepares the worked-case fixture and expected 96.25 calculation; Henry approves the expected result independently of Patrick's implementation. Team agreement records the accepted defaults and any remaining constraints before the PRD is baselined.
+Sections 6 and 10 retain the detailed product scope and proposed scoring specification. The register records how unresolved organizer constraints affect them, the simplification order and the verification required when an answer changes a default. A prototype default is not an organizer-confirmed rule. Linear holds assignments, schedules and implementation status.
 
 # **20 Risks and review checklist**
 
