@@ -136,3 +136,7 @@ docs                     Contributor guides
 - **Readiness fails (503):** readiness requires PostgreSQL, Redis and the configured S3 bucket; liveness only checks that the API process responds. Inspect `docker compose logs api postgres redis minio minio-init`. The API logs `dependency.failure` events with a sanitized error code. Every API response carries an `X-Request-ID` that matches its log entry.
 - **Changes not reflected in Docker:** rerun `pnpm docker:up`.
 - **Local app cannot connect:** compare the `.env` URLs with the host ports above. Inside Docker, services use container names and internal ports instead.
+
+## Workflow validation
+
+The [walkthrough kit](docs/usability/README.md) provides task cards, a team rehearsal, and observation/retest templates for HP2-33. Team role-play is the hackathon validation approach; external practitioner recruitment is outside this delivery scope.
