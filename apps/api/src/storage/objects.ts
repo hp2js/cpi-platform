@@ -65,6 +65,8 @@ export class Objects implements OnApplicationShutdown {
     );
   }
   async put(location: ObjectLocation, bytes: Buffer, mimeType: string) {
+    // One SHA-256 serves as the server-verified transport checksum (it also stops the SDK adding CRC32) and the metadata digest.
+    const sha256 = createHash('sha256').update(bytes).digest();
     try {
       await this.client.send(
         new PutObjectCommand({
@@ -73,10 +75,8 @@ export class Objects implements OnApplicationShutdown {
           Body: bytes,
           ContentLength: bytes.length,
           ContentType: mimeType,
-          ContentMD5: createHash('md5').update(bytes).digest('base64'),
-          Metadata: {
-            sha256: createHash('sha256').update(bytes).digest('hex'),
-          },
+          ChecksumSHA256: sha256.toString('base64'),
+          Metadata: { sha256: sha256.toString('hex') },
         }),
         { abortSignal: AbortSignal.timeout(15_000) },
       );

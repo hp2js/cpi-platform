@@ -50,6 +50,7 @@ import {
   setUserActive,
   updateUser,
 } from '@/features/settings/queries';
+import { authConfigQuery } from '@/features/session/queries';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
@@ -385,7 +386,7 @@ function EditUser({ user }: { user: ManagedUser }) {
   );
 }
 
-/** Account state as people see it: invited accounts have not set a password yet. */
+/** Account state as people see it: invited accounts have not chosen their own password yet. */
 export function UserStatus({
   user,
 }: {
@@ -402,7 +403,8 @@ export function UserStatus({
         </Badge>
         {user.invitationExpiresAt && !expired && (
           <span className="text-xs whitespace-normal text-base-dark">
-            Link expires {formatDateTime(user.invitationExpiresAt)}
+            Temporary password expires{' '}
+            {formatDateTime(user.invitationExpiresAt)}
           </span>
         )}
       </span>
@@ -494,12 +496,14 @@ function AddUser({
     institutionId: null,
   };
   const [values, setValues] = useState<UserCreate>(blank);
+  // Demonstration deployments accept only fictional sign-in addresses.
+  const demo = useQuery(authConfigQuery).data?.demoAccounts ?? true;
   const mutation = useMutation({
     mutationFn: () => createUser(values),
     onSuccess: async () => {
       setOpen(false);
       onInvited(
-        `${values.displayName.trim()} was added and invited by email to set a password (the link lasts 7 days).`,
+        `${values.displayName.trim()} was added and invited by email with a temporary password (it lasts 7 days).`,
       );
       await queryClient.invalidateQueries();
     },
@@ -526,9 +530,11 @@ function AddUser({
         <DialogHeader>
           <DialogTitle>Add a user</DialogTitle>
           <DialogDescription>
-            They receive an email invitation to set their own password; no one
-            else ever sees it. Demo accounts only: use a fictional
-            @example.invalid address. New officers get institutions through{' '}
+            They receive an email with a temporary password, which only they
+            see; at first sign-in they replace it with their own.{' '}
+            {demo &&
+              'This is a demonstration: use a fictional @example.invalid address. '}
+            New officers get institutions through{' '}
             <Link to="/admin/assignments" className="text-primary underline">
               Assignments
             </Link>
@@ -598,7 +604,7 @@ function AddUser({
               id={`${id}-email`}
               label="Email (sign-in)"
               type="email"
-              placeholder="name@example.invalid"
+              placeholder={demo ? 'name@example.invalid' : 'name@agency.go.ke'}
               value={values.email}
               onChange={(email) => setValues({ ...values, email })}
               error={errors.email}

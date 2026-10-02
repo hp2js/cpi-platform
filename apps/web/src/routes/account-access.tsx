@@ -11,8 +11,10 @@ import { Label } from '@/components/ui/label';
 import {
   adoptSession,
   authTokenQuery,
+  changePassword,
   requestPasswordReset,
   roleHome,
+  sessionQuery,
   setPasswordWithToken,
 } from '@/features/session/queries';
 import { isApiError } from '@/lib/api';
@@ -335,6 +337,125 @@ export function SetPasswordPage() {
             : invitation
               ? 'Set password and sign in'
               : 'Save password and sign in'}
+        </Button>
+      </form>
+    </Shell>
+  );
+}
+
+/**
+ * After signing in with the emailed temporary password: the person chooses their own before
+ * anything else (the API refuses other requests until then).
+ */
+export function ChoosePasswordPage() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const session = useQuery(sessionQuery);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const mutation = useMutation({
+    mutationFn: () => changePassword(undefined, password),
+    onSuccess: async () => {
+      const next = await queryClient.fetchQuery({
+        ...sessionQuery,
+        staleTime: 0,
+      });
+      await navigate({ to: roleHome[next.user.role] });
+    },
+  });
+  const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
+
+  if (!session.data)
+    return (
+      <Shell title="Choose your password">
+        {session.isError ? (
+          <Link to="/sign-in" search={{ redirect: undefined }}>
+            Sign in first
+          </Link>
+        ) : (
+          <p role="status" className="text-base-dark">
+            One moment…
+          </p>
+        )}
+      </Shell>
+    );
+  const { user } = session.data;
+  if (!user.mustChangePassword)
+    return (
+      <Shell title="Your password is set">
+        <Link
+          to={roleHome[user.role]}
+          className={buttonVariants({ variant: 'default' })}
+        >
+          Continue
+        </Link>
+      </Shell>
+    );
+  const mismatch = confirm.length > 0 && confirm !== password;
+  return (
+    <Shell title="Choose your password">
+      <p className="flex items-start gap-2 text-sm">
+        <KeyRound
+          className="mt-1 size-4 shrink-0 text-primary"
+          aria-hidden="true"
+        />
+        <span>
+          Welcome, {user.displayName}. You signed in with a temporary password.
+          Choose your own to continue; the emailed one then stops working.
+        </span>
+      </p>
+      <form
+        className="grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!mismatch) mutation.mutate();
+        }}
+      >
+        <input
+          type="email"
+          autoComplete="username"
+          value={user.email}
+          readOnly
+          hidden
+        />
+        <NewPasswordField
+          id="new-password"
+          label="New password"
+          value={password}
+          onChange={setPassword}
+          email={user.email}
+          error={errors.newPassword}
+        />
+        <div className="grid gap-2">
+          <Label htmlFor="confirm-password">Confirm the password</Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            aria-invalid={mismatch || undefined}
+          />
+          {mismatch && (
+            <p className="text-sm text-error-dark">
+              The passwords do not match.
+            </p>
+          )}
+        </div>
+        {mutation.isError && Object.keys(errors).length === 0 && (
+          <p role="alert" className="text-sm text-error-dark">
+            {mutation.error.message}
+          </p>
+        )}
+        <Button
+          type="submit"
+          disabled={
+            passwordProblems(password, user.email).length > 0 ||
+            confirm !== password ||
+            mutation.isPending
+          }
+        >
+          {mutation.isPending ? 'Saving…' : 'Save password and continue'}
         </Button>
       </form>
     </Shell>

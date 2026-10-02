@@ -12,6 +12,7 @@ import { Download, Plus, Upload } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Combobox } from '@/components/combobox';
 import { SelectField } from '@/components/select-field';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -86,7 +87,7 @@ function SeedOption({
 }
 
 const blank = (
-  officerId: string,
+  officerId: string | null,
   supervisorId: string | null,
 ): InstitutionCreate => ({
   id: '',
@@ -99,6 +100,38 @@ const blank = (
   seedOpenedQuarters: true,
 });
 
+const UNTICK = 'or untick “Create a focal person account now”';
+
+/**
+ * What still stops the Add institution form, in the person's words. The form lists these on
+ * submit rather than disabling the button without saying why. `focal` is null when no focal
+ * person is being created. The API checks the same rules.
+ */
+export function institutionFormProblems(
+  values: InstitutionCreate,
+  focal: { displayName: string; email: string } | null,
+) {
+  const problems: string[] = [];
+  if (!/^[A-Z]+-\d{3}$/.test(values.id.trim().toUpperCase()))
+    problems.push(
+      'Institution ID: use capital letters, a hyphen and three digits, e.g. MDA-123.',
+    );
+  if (values.name.trim().length < 3)
+    problems.push('Name: give at least 3 characters.');
+  if (!values.typeId) problems.push('Type: choose one.');
+  if (values.accountingOfficer.name.trim().length < 3)
+    problems.push('Accounting Officer name: give at least 3 characters.');
+  if (values.accountingOfficer.designation.trim().length < 2)
+    problems.push(
+      'Accounting Officer designation: give at least 2 characters.',
+    );
+  if (focal && focal.displayName.trim().length < 3)
+    problems.push(`Focal person name: give at least 3 characters, ${UNTICK}.`);
+  if (focal && !focal.email.trim())
+    problems.push(`Focal person email: enter it, ${UNTICK}.`);
+  return problems;
+}
+
 export function AddInstitution({
   officers,
   supervisors,
@@ -108,7 +141,9 @@ export function AddInstitution({
   supervisors: ManagedUser[];
   types: InstitutionType[];
 }) {
-  // With one supervisor, new institutions go to them unless the administrator says otherwise.
+  // With one officer or supervisor, new institutions go to them unless the administrator says
+  // otherwise. Both are optional and can be assigned later.
+  const defaultOfficer = officers.length === 1 ? officers[0]!.id : null;
   const defaultSupervisor =
     supervisors.length === 1 ? supervisors[0]!.id : null;
   const queryClient = useQueryClient();
@@ -116,7 +151,7 @@ export function AddInstitution({
   const id = useId();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(() =>
-    blank(officers[0]?.id ?? '', defaultSupervisor),
+    blank(defaultOfficer, defaultSupervisor),
   );
   const [withFocal, setWithFocal] = useState(true);
   const [focal, setFocal] = useState({
@@ -141,22 +176,17 @@ export function AddInstitution({
     },
   });
   const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
-  const ready =
-    /^[A-Z]+-\d{3}$/.test(values.id.trim().toUpperCase()) &&
-    values.name.trim().length >= 3 &&
-    values.typeId &&
-    values.officerId &&
-    values.accountingOfficer.name.trim().length >= 3 &&
-    values.accountingOfficer.designation.trim().length >= 2 &&
-    (!withFocal ||
-      (focal.displayName.trim().length >= 3 && focal.email.trim()));
+  const problems = institutionFormProblems(values, withFocal ? focal : null);
+  // Problems are listed only after a first attempt, then update as fields are fixed.
+  const [tried, setTried] = useState(false);
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setValues(blank(officers[0]?.id ?? '', defaultSupervisor));
+          setTried(false);
+          setValues(blank(defaultOfficer, defaultSupervisor));
           setFocal({
             displayName: '',
             email: '',
@@ -176,16 +206,17 @@ export function AddInstitution({
         <DialogHeader>
           <DialogTitle>Add an institution</DialogTitle>
           <DialogDescription>
-            It gets four reporting obligations, a reviewing officer and an empty
-            plan, which its focal persons fill in and propose to the officer
-            quarter by quarter.
+            It gets four reporting obligations and an empty plan, which its
+            focal persons fill in and propose to the reviewing officer quarter
+            by quarter.
           </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
-            mutation.mutate();
+            setTried(true);
+            if (problems.length === 0) mutation.mutate();
           }}
         >
           <fieldset className="grid gap-3">
@@ -221,14 +252,22 @@ export function AddInstitution({
               <Combobox
                 id={`${id}-officer`}
                 searchPlaceholder="Search officers"
-                value={values.officerId}
-                onChange={(officerId) => setValues({ ...values, officerId })}
+                value={values.officerId ?? ''}
+                onChange={(officerId) =>
+                  setValues({ ...values, officerId: officerId || null })
+                }
+                allOption="No reviewing officer yet"
+                describedBy={`${id}-officer-hint`}
                 options={officers.map((officer) => ({
                   value: officer.id,
                   label: officer.displayName,
                   description: `${officer.assignedInstitutionIds.length} institutions`,
                 }))}
               />
+              <p id={`${id}-officer-hint`} className="text-xs text-base-dark">
+                Optional. Assign one later under Assignments; until then nobody
+                reviews its reports.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor={`${id}-supervisor`}>Supervisor</Label>
@@ -251,7 +290,8 @@ export function AddInstitution({
                 id={`${id}-supervisor-hint`}
                 className="text-xs text-base-dark"
               >
-                Supervisors see only the institutions assigned to them.
+                Optional. Supervisors see only the institutions assigned to
+                them.
               </p>
             </div>
           </fieldset>
@@ -317,6 +357,18 @@ export function AddInstitution({
               setValues({ ...values, seedOpenedQuarters })
             }
           />
+          {tried && problems.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTitle>Before adding the institution</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-5">
+                  {problems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
           {mutation.isError && (
             <p role="alert" className="text-sm text-error-dark">
               {mutation.error.message}
@@ -330,7 +382,7 @@ export function AddInstitution({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!ready || mutation.isPending}>
+            <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Adding…' : 'Add institution'}
             </Button>
           </DialogFooter>
@@ -502,10 +554,11 @@ export function ImportInstitutions({ types }: { types: InstitutionType[] }) {
                 </code>
                 . Required:{' '}
                 <code className="text-xs">
-                  institution_id, name, type, officer_email, ao_name,
-                  ao_designation
+                  institution_id, name, type, ao_name, ao_designation
                 </code>
-                . Officers are matched by email and types by name (
+                . Officers are matched by email (leave{' '}
+                <code className="text-xs">officer_email</code> blank to assign
+                one later) and types by name (
                 {types
                   .filter((type) => type.active)
                   .map((type) => type.label)

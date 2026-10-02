@@ -15,7 +15,7 @@ import {
   currentAssignment,
   reassignInstitution,
 } from '../services/assignments';
-import { accountStatus } from '../services/auth';
+import { accountStatus, invitationExpiresAt } from '../services/auth';
 import { toCsv } from '@cpi/contracts';
 import { audit, institutionUsers, notify } from '../services/events';
 import { apiError, notFound } from '../services/http';
@@ -173,6 +173,20 @@ export const adminHandlers = [
       '/admin/assignments',
     );
     add(
+      'no-officer',
+      active.filter(
+        (institution) =>
+          !db.assignments.some(
+            (assignment) =>
+              assignment.institutionId === institution.id &&
+              assignment.validTo === null,
+          ),
+      ).length,
+      'Institutions without a reviewing officer',
+      'Nobody reviews their reports. Assign an officer under Assignments.',
+      '/admin/assignments',
+    );
+    add(
       'idle-officers',
       db.users.filter(
         (user) =>
@@ -186,14 +200,10 @@ export const adminHandlers = [
     );
     add(
       'expired-invitations',
-      db.users.filter(
-        (user) =>
-          user.active &&
-          accountStatus(user) === 'invited' &&
-          user.authLink !== null &&
-          user.authLink !== undefined &&
-          Date.parse(user.authLink.expiresAt) < Date.now(),
-      ).length,
+      db.users.filter((user) => {
+        const expires = invitationExpiresAt(user);
+        return expires !== null && Date.parse(expires) < Date.now();
+      }).length,
       'Invitations that expired unused',
       'Send a new invitation from the Users page.',
       '/admin/users',

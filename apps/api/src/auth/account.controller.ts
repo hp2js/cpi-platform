@@ -22,7 +22,7 @@ import { ApiError } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
 import { hashPassword, passwordMatches } from './passwords';
 import { assignedInstitutionIds } from './scope';
-import { CurrentUser, type User } from './sessions';
+import { CurrentUser, TemporaryPasswordAllowed, type User } from './sessions';
 
 /**
  * My account: every signed-in user maintains their own name, job title and phone. Email and
@@ -77,6 +77,7 @@ export class AccountController {
   }
 
   @Get()
+  @TemporaryPasswordAllowed()
   get(@CurrentUser() user: User) {
     return account(this.db, user);
   }
@@ -117,17 +118,21 @@ export class AccountController {
     });
   }
 
+  /** Also how a person replaces their emailed temporary password, which ends that state. */
   @Post('password')
   @HttpCode(204)
+  @TemporaryPasswordAllowed()
   async changePassword(@CurrentUser() user: User, @Body() body: unknown) {
     const parsed = changePasswordSchema.safeParse(body);
+    const temporary = user.passwordExpiresAt !== null;
     if (
       !parsed.success ||
-      !(await passwordMatches(
-        user,
-        parsed.data.currentPassword,
-        this.config.DEMO_MODE,
-      ))
+      (!temporary &&
+        !(await passwordMatches(
+          user,
+          parsed.data.currentPassword ?? '',
+          this.config.DEMO_MODE,
+        )))
     )
       throw new ApiError(
         422,
@@ -136,6 +141,11 @@ export class AccountController {
         { currentPassword: 'Your current password is not right.' },
       );
     const problems = passwordProblems(parsed.data.newPassword, user.email);
+    if (
+      temporary &&
+      (await passwordMatches(user, parsed.data.newPassword, false))
+    )
+      problems.push('Choose a password different from the emailed one.');
     if (problems.length)
       throw new ApiError(422, problems.join(' '), 'weak_password', {
         newPassword: problems.join(' '),
@@ -144,15 +154,17 @@ export class AccountController {
     await write(this.db, async (tx, businessTime) => {
       await tx
         .update(users)
-        .set({ passwordHash, authLink: null })
+        .set({ passwordHash, passwordExpiresAt: null, authLink: null })
         .where(eq(users.id, user.id));
       await this.events.audit(
         tx,
         businessTime,
         user,
-        'account.password_change',
+        temporary ? 'account.activate' : 'account.password_change',
         { type: 'user', id: user.id },
-        'Password changed',
+        temporary
+          ? 'Temporary password replaced at first sign-in'
+          : 'Password changed',
       );
     });
   }

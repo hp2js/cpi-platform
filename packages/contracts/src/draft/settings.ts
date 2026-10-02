@@ -215,18 +215,24 @@ export const institutionTypeUpdateSchema = z.object({
 });
 export type InstitutionTypeUpdate = z.infer<typeof institutionTypeUpdateSchema>;
 
-const fictional = z
+/**
+ * Demonstration deployments (DEMO_MODE, and the mock) hold synthetic data only: their sign-in
+ * accounts must use this fictional domain. The API checks it; the schemas accept any address.
+ */
+export const FICTIONAL_EMAIL = /^[^@\s]+@example\.invalid$/;
+export const FICTIONAL_EMAIL_MESSAGE =
+  'Use a fictional @example.invalid address.';
+
+const accountEmail = z
   .string()
   .trim()
-  .regex(
-    /^[^@\s]+@example\.invalid$/,
-    'Use a fictional @example.invalid address.',
-  );
+  .max(254)
+  .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, 'Enter a valid email address.');
 
 export const userCreateSchema = z
   .object({
     displayName: z.string().trim().min(3).max(80),
-    email: fictional,
+    email: accountEmail,
     jobTitle: z.string().trim().max(80),
     role: roleSchema,
     institutionId: institutionIdSchema.nullable(),
@@ -293,7 +299,7 @@ export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 
 const focalUserSchema = z.object({
   displayName: z.string().trim().min(3).max(80),
-  email: fictional,
+  email: accountEmail,
   jobTitle: z.string().trim().max(80),
 });
 
@@ -306,7 +312,8 @@ export const institutionCreateSchema = institutionUpdateSchema.extend({
       /^[A-Z]+-\d{3}$/,
       'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
     ),
-  officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  /** Null leaves the institution without a reviewing officer until one is assigned. */
+  officerId: z.string().min(1).nullable(),
   /** Null leaves the institution without a supervisor until one is assigned. */
   supervisorId: z.string().nullable(),
   focalUser: focalUserSchema.nullable(),
@@ -336,8 +343,9 @@ export const institutionImportColumns = [
   'focal_email',
 ] as const;
 /**
- * Optional: when the column is absent or blank and exactly one supervisor is active, that
- * supervisor is assigned.
+ * `officer_email` and `supervisor_email` may be blank: no reviewing officer until one is
+ * assigned; for the supervisor, when the column is absent or blank and exactly one supervisor is
+ * active, that supervisor is assigned.
  */
 export const institutionImportOptionalColumns = ['supervisor_email'] as const;
 export const institutionImportPreviewSchema = z.object({

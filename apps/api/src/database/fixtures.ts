@@ -1,4 +1,4 @@
-import { getTableName, is, sql } from 'drizzle-orm';
+import { and, eq, getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import {
   cycle,
@@ -17,25 +17,61 @@ import {
   seedFoundations,
   users,
 } from '@cpi/contracts/fixtures';
+import { inviter } from '../auth/invitations';
+import type { AppConfig } from '../config';
+import type { Mailer } from '../email/mailer';
 import type { Database } from './db';
 import * as schema from './schema';
 
 const tables = Object.values(schema).filter((value) => is(value, PgTable));
 
+/** What this deployment seeds: demo data or not, and the configured administrator. */
+export const seedOptions = (config: AppConfig, mailer: Mailer) => ({
+  demo: config.DEMO_MODE,
+  administrator: config.ADMIN_EMAIL
+    ? { email: config.ADMIN_EMAIL, displayName: config.ADMIN_NAME, mailer }
+    : undefined,
+});
+
+/** The configured administrator's fixed ID, so resets can keep the account. */
+export const PLATFORM_ADMIN_ID = 'platform-admin';
+
 /**
- * Restore the fictional PRD §17.1 starting state (the mock's `seed()`). A new simulation run
- * passes `keepProfiles` so the administrator's profile library carries over.
+ * Restore the starting state. `demo` (the default) loads the fictional PRD §17.1 year (the
+ * mock's `seed()`); otherwise only the cycle, form, profiles and institution types, with no
+ * institutions or people. `administrator` adds the configured administrator: an existing account
+ * is kept as it is, a new one gets a temporary password emailed through `mailer` after commit.
+ * A new simulation run passes `keepProfiles` so the administrator's profile library carries over.
  */
 export async function loadFixtures(
   db: Database,
-  options: { keepProfiles?: boolean; runId?: string } = {},
+  options: {
+    keepProfiles?: boolean;
+    runId?: string;
+    demo?: boolean;
+    administrator?: { email: string; displayName: string; mailer: Mailer };
+  } = {},
 ) {
+  const { demo = true, administrator } = options;
+  const afterCommit: (() => Promise<void>)[] = [];
   await db.transaction(async (tx) => {
     const keptProfiles = options.keepProfiles
       ? await tx
           .select()
           .from(schema.scoringProfiles)
           .orderBy(schema.scoringProfiles.position)
+      : [];
+    // Kept only while ADMIN_EMAIL still names it; a different address is a new administrator.
+    const [keptAdministrator] = administrator
+      ? await tx
+          .select()
+          .from(schema.users)
+          .where(
+            and(
+              eq(schema.users.id, PLATFORM_ADMIN_ID),
+              sql`lower(${schema.users.email}) = ${administrator.email.toLowerCase()}`,
+            ),
+          )
       : [];
     await tx.execute(
       sql.raw(
@@ -45,19 +81,6 @@ export async function loadFixtures(
     await tx.execute(sql`ALTER SEQUENCE record_ids RESTART WITH 1`);
 
     await tx.insert(schema.institutionTypes).values(initialInstitutionTypes);
-    await tx.insert(schema.institutions).values(institutions);
-    await tx.insert(schema.users).values(
-      users.map((user) => ({
-        ...user,
-        institutionId: user.institutionId ?? null,
-        jobTitle: user.jobTitle ?? '',
-        phone: user.phone ?? '',
-        passwordHash: user.passwordHash ?? null,
-        authLink: null,
-      })),
-    );
-    await tx.insert(schema.assignments).values(initialAssignments);
-    await tx.insert(schema.supervisions).values(initialSupervisions);
 
     await tx
       .insert(schema.scoringProfiles)
@@ -89,6 +112,40 @@ export async function loadFixtures(
       businessTime: initialBusinessTime,
     });
 
+    if (administrator) {
+      const email = administrator.email.toLowerCase();
+      const user = keptAdministrator ?? {
+        id: PLATFORM_ADMIN_ID,
+        displayName: administrator.displayName,
+        email,
+        role: 'administrator' as const,
+        active: true,
+      };
+      const [stored] = await tx.insert(schema.users).values(user).returning();
+      if (!keptAdministrator)
+        await inviter(
+          administrator.mailer,
+          { ...stored!, displayName: 'The platform operator' },
+          (task) => afterCommit.push(task),
+        )(tx, stored!);
+    }
+    if (!demo) return;
+
+    await tx.insert(schema.institutions).values(institutions);
+    await tx.insert(schema.users).values(
+      users
+        .filter((user) => user.email !== administrator?.email.toLowerCase())
+        .map((user) => ({
+          ...user,
+          institutionId: user.institutionId ?? null,
+          jobTitle: user.jobTitle ?? '',
+          phone: user.phone ?? '',
+          passwordHash: user.passwordHash ?? null,
+          authLink: null,
+        })),
+    );
+    await tx.insert(schema.assignments).values(initialAssignments);
+    await tx.insert(schema.supervisions).values(initialSupervisions);
     await tx.insert(schema.obligations).values(
       institutions.flatMap((institution) =>
         cycle.periods.map((period) => ({
@@ -115,4 +172,5 @@ export async function loadFixtures(
     );
     await tx.insert(schema.foundationVersions).values(foundations.versions);
   });
+  for (const task of afterCommit) await task();
 }

@@ -3,9 +3,11 @@ import {
   authTokenSchema,
   demoAccountsSchema,
   sessionSchema,
+  signInChallengeSchema,
   type PasswordSignIn,
   type Role,
   type Session,
+  type SignInChallenge,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -39,24 +41,44 @@ export const authConfigQuery = queryOptions({
 /** A demonstration account ID, or an email and password. */
 export type Credentials = { accountId: string } | PasswordSignIn;
 
+/**
+ * Demo sign-in answers with a session. A right email and password answers with a challenge:
+ * the session starts once the emailed code is confirmed with `confirmSignInCode`.
+ */
 export async function signIn(
   queryClient: QueryClient,
   credentials: Credentials | string,
-): Promise<Session> {
-  const session = await request('/api/session', sessionSchema, {
+): Promise<Session | SignInChallenge> {
+  const result = await request(
+    '/api/session',
+    z.union([sessionSchema, signInChallengeSchema]),
+    {
+      method: 'POST',
+      json:
+        typeof credentials === 'string'
+          ? { accountId: credentials }
+          : credentials,
+    },
+  );
+  if ('challengeId' in result) return result;
+  adoptSession(queryClient, result);
+  return result;
+}
+
+export async function confirmSignInCode(
+  queryClient: QueryClient,
+  challengeId: string,
+  code: string,
+) {
+  const session = await request('/api/session/code', sessionSchema, {
     method: 'POST',
-    json:
-      typeof credentials === 'string'
-        ? { accountId: credentials }
-        : credentials,
+    json: { challengeId, code },
   });
-  // Drop everything cached for the previous identity before storing the new session.
-  queryClient.clear();
-  queryClient.setQueryData(sessionKeys.session, session);
+  adoptSession(queryClient, session);
   return session;
 }
 
-/** Stores a session obtained another way (e.g. setting a password from an emailed link). */
+/** Stores a new session, dropping everything cached for the previous identity first. */
 export function adoptSession(queryClient: QueryClient, session: Session) {
   queryClient.clear();
   queryClient.setQueryData(sessionKeys.session, session);
@@ -88,7 +110,11 @@ export const setPasswordWithToken = (token: string, password: string) =>
     json: { password },
   });
 
-export const changePassword = (currentPassword: string, newPassword: string) =>
+/** `currentPassword` is left out when replacing the emailed temporary password. */
+export const changePassword = (
+  currentPassword: string | undefined,
+  newPassword: string,
+) =>
   request('/api/account/password', z.undefined(), {
     method: 'POST',
     json: { currentPassword, newPassword },

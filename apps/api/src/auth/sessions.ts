@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   Inject,
   Injectable,
@@ -25,6 +25,11 @@ export type User = typeof users.$inferSelect;
 const COOKIE = 'cpi_session';
 const LOCKOUT_MS = 15 * 60_000;
 const key = (id: string) => `session:${id}`;
+export const CODE_TTL_MS = 10 * 60_000;
+const CODE_ATTEMPTS = 5;
+const challengeKey = (id: string) => `signin-code:${id}`;
+const codeHash = (challengeId: string, code: string) =>
+  createHash('sha256').update(`${challengeId}:${code}`).digest();
 
 function sessionIdFrom(request: Request) {
   const prefix = `${COOKIE}=`;
@@ -107,6 +112,56 @@ export class Sessions {
     );
   }
 
+  /* Emailed sign-in codes (second factor), held in Redis for 10 minutes; only a hash is kept. */
+
+  async startChallenge(user: User, code: string) {
+    const id = randomBytes(24).toString('base64url');
+    await this.infrastructure.redis
+      .multi()
+      .hset(challengeKey(id), {
+        userId: user.id,
+        email: user.email.toLowerCase(),
+        codeHash: codeHash(id, code).toString('base64'),
+        attempts: 0,
+      })
+      .pexpire(challengeKey(id), CODE_TTL_MS)
+      .exec();
+    return id;
+  }
+
+  /**
+   * The user ID when the code is right (the challenge is then used up); `expired` when the
+   * challenge is unknown, used, timed out or out of attempts; `wrong` (with the email, for
+   * throttling) otherwise. Five wrong codes end the challenge.
+   */
+  async completeChallenge(
+    id: string,
+    code: string,
+  ): Promise<
+    | { result: 'ok'; userId: string; email: string }
+    | { result: 'wrong'; email: string }
+    | { result: 'expired' }
+  > {
+    const redis = this.infrastructure.redis;
+    const stored = await redis.hgetall(challengeKey(id));
+    if (!stored.userId || !stored.email || !stored.codeHash)
+      return { result: 'expired' };
+    const expected = Buffer.from(stored.codeHash, 'base64');
+    const actual = codeHash(id, code);
+    if (
+      actual.length === expected.length &&
+      timingSafeEqual(actual, expected)
+    ) {
+      // Deleting is the claim: of two simultaneous right answers, only one signs in.
+      if ((await redis.del(challengeKey(id))) !== 1)
+        return { result: 'expired' };
+      return { result: 'ok', userId: stored.userId, email: stored.email };
+    }
+    if ((await redis.hincrby(challengeKey(id), 'attempts', 1)) >= CODE_ATTEMPTS)
+      await redis.del(challengeKey(id));
+    return { result: 'wrong', email: stored.email };
+  }
+
   /** The signed-in, active user; 401 `session_expired` when a cookie outlived its session. */
   async resolve(request: Request): Promise<User> {
     const id = sessionIdFrom(request);
@@ -136,8 +191,11 @@ export class Sessions {
 
 const PUBLIC = 'public';
 const ROLES = 'roles';
+const TEMPORARY = 'temporary-password';
 /** No session needed (health checks, sign-in). */
 export const Public = () => SetMetadata(PUBLIC, true);
+/** Open to a session that still uses a temporary password (everything else answers 403). */
+export const TemporaryPasswordAllowed = () => SetMetadata(TEMPORARY, true);
 /** Restrict a route or controller to these roles; others get 403. */
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES, roles);
 
@@ -156,6 +214,15 @@ export class AuthGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(PUBLIC, targets)) return true;
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = await this.sessions.resolve(request);
+    if (
+      user.passwordExpiresAt &&
+      !this.reflector.getAllAndOverride<boolean>(TEMPORARY, targets)
+    )
+      throw new ApiError(
+        403,
+        'Choose your own password to continue.',
+        'password_change_required',
+      );
     const roles = this.reflector.getAllAndOverride<Role[]>(ROLES, targets);
     if (roles && !roles.includes(user.role)) throw forbidden();
     request.user = user;

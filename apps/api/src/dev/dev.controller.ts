@@ -11,7 +11,8 @@ import {
 import type { Request, Response } from 'express';
 import { Public, Sessions } from '../auth/sessions';
 import { CONFIG, type AppConfig } from '../config';
-import { loadFixtures } from '../database/fixtures';
+import { loadFixtures, seedOptions } from '../database/fixtures';
+import { Mailer } from '../email/mailer';
 import { systemState } from '../database/schema';
 import { notFound } from '../http/api-error';
 import { Infrastructure } from '../infrastructure';
@@ -26,6 +27,7 @@ export class DevController {
   constructor(
     private readonly infrastructure: Infrastructure,
     private readonly sessions: Sessions,
+    private readonly mailer: Mailer,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -43,7 +45,10 @@ export class DevController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await loadFixtures(this.devDatabase());
+    await loadFixtures(
+      this.devDatabase(),
+      seedOptions(this.config, this.mailer),
+    );
     await this.sessions.end(request, response);
     // Sign-in lockouts belong to the data being reset.
     const redis = this.infrastructure.redis;

@@ -8,9 +8,11 @@ import {
   reviewBundleSchema,
   reviewQueueSchema,
   sessionSchema,
+  signInChallengeSchema,
   suitabilityCheckKeys,
   type ReportAnswers,
 } from '@cpi/contracts';
+import { z } from 'zod';
 import { request } from '@/lib/api';
 import { getDb } from '@/mocks/db';
 import { pdfBytes, uploadForm } from './fixtures';
@@ -131,29 +133,48 @@ export async function passSuitability(submissionId: string) {
     );
 }
 
-/** The single-use link most recently emailed to an address (from the demo email sink). */
-export function emailedLink(email: string) {
-  const pattern = /set-password\?token=([\w-]+)/;
-  // Other notices may arrive after the link, so look for the latest email that carries one.
-  const body =
-    getDb()
-      .deliveries.filter(
-        (delivery) =>
-          delivery.recipientEmail === email && pattern.test(delivery.body),
-      )
-      .at(-1)?.body ?? '';
-  const token = pattern.exec(body)?.[1];
-  if (!token) throw new Error(`No link was emailed to ${email}`);
-  return token;
+/** The newest match of `pattern` in the emails sent to an address (the demo email sink). */
+function emailed(email: string, pattern: RegExp, what: string) {
+  const found = getDb()
+    .emailSink.filter((mail) => mail.to === email.toLowerCase())
+    .map((mail) => pattern.exec(mail.body)?.[1])
+    .filter(Boolean)
+    .at(-1);
+  if (!found) throw new Error(`No ${what} was emailed to ${email}`);
+  return found;
 }
 
-/** Accepts an emailed invitation by choosing a password, which also signs the person in. */
+/** The single-use reset link most recently emailed to an address. */
+export const emailedLink = (email: string) =>
+  emailed(email, /set-password\?token=([\w-]+)/, 'link');
+export const emailedPassword = (email: string) =>
+  emailed(email, /Temporary password: (\S+)/, 'temporary password');
+export const emailedCode = (email: string) =>
+  emailed(email, /Your sign-in code is (\d{6})/, 'sign-in code');
+
+/** Password sign-in, confirming the emailed code. */
+export async function passwordSignIn(email: string, password: string) {
+  const { challengeId } = await request('/api/session', signInChallengeSchema, {
+    method: 'POST',
+    json: { email, password },
+  });
+  return request('/api/session/code', sessionSchema, {
+    method: 'POST',
+    json: { challengeId, code: emailedCode(email) },
+  });
+}
+
+/**
+ * Accepts an emailed invitation: signs in with the temporary password and chooses the
+ * person's own, leaving them signed in.
+ */
 export async function acceptInvitation(
   email: string,
   password = 'a-long-demo-passphrase',
 ) {
-  await request(`/api/auth/tokens/${emailedLink(email)}`, sessionSchema, {
+  await passwordSignIn(email, emailedPassword(email));
+  await request('/api/account/password', z.undefined(), {
     method: 'POST',
-    json: { password },
+    json: { newPassword: password },
   });
 }

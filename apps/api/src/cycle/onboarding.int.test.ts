@@ -1,5 +1,6 @@
 import { and, count, eq } from 'drizzle-orm';
 import type {
+  AdminAttention,
   InstitutionImportPreview,
   InstitutionProfile,
   People,
@@ -15,8 +16,7 @@ import {
 } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import {
-  STRONG_PASSWORD,
-  emailedToken,
+  activateInvited,
   obligationPath,
   publishSeedForm,
 } from '../test/journeys';
@@ -115,14 +115,80 @@ describe.skipIf(!integration)('onboarding institutions', () => {
       ).map((row) => row.title),
     ).toEqual(['MDA-101 assigned to you']);
 
-    const focal = api.client();
-    const token = await emailedToken(admin, 'focal.mda-101@example.invalid');
-    await focal.post(`/auth/tokens/${token}`, { password: STRONG_PASSWORD });
+    const focal = await activateInvited(
+      admin,
+      api.client(),
+      'focal.mda-101@example.invalid',
+    );
     const q1 = await focal.json<ReportBundle>(
       `${obligationPath('MDA-101')}/report`,
     );
     expect(q1.editable).toBe(true);
     expect(q1.baseline.milestones).toHaveLength(2);
+  });
+
+  it('creates an institution without an officer or supervisor, to assign later', async () => {
+    const created = await admin.post('/settings/institutions', {
+      ...newInstitution,
+      officerId: null,
+      supervisorId: null,
+      focalUser: null,
+    });
+    expect(created.status).toBe(201);
+    expect(
+      (created.body as People).institutions.find(
+        (item) => item.id === 'MDA-101',
+      ),
+    ).toMatchObject({ officer: null, supervisor: null });
+    expect(await counted(obligations)).toBe(36);
+    expect(
+      (await admin.json<AdminAttention>('/admin/attention')).find(
+        (item) => item.id === 'no-officer',
+      ),
+    ).toMatchObject({ count: 1, link: '/admin/assignments' });
+    // An officer that was named must exist.
+    expect(
+      await admin.post('/settings/institutions', {
+        ...newInstitution,
+        id: 'MDA-102',
+        name: 'Another Authority',
+        officerId: 'nobody',
+        focalUser: null,
+      }),
+    ).toMatchObject({ status: 422 });
+
+    // Assigned later; cover needs someone to return to.
+    const assign = (extra = {}) =>
+      admin.post('/assignments', {
+        institutionId: 'MDA-101',
+        officerId: 'officer-b',
+        reason: 'First reviewing officer for MDA-101.',
+        ...extra,
+      });
+    expect(await assign({ coverUntil: '2027-01-31' })).toMatchObject({
+      status: 422,
+    });
+    expect((await assign()).status).toBe(200);
+    expect(
+      (await admin.json<People>('/settings/people')).institutions.find(
+        (item) => item.id === 'MDA-101',
+      )?.officer,
+    ).toMatchObject({ id: 'officer-b' });
+    expect(
+      (await admin.json<AdminAttention>('/admin/attention')).some(
+        (item) => item.id === 'no-officer',
+      ),
+    ).toBe(false);
+
+    // The import accepts a blank officer_email too.
+    const preview = (
+      await admin.post('/settings/institutions/import/preview', {
+        csv: 'institution_id,name,type,ao_name,ao_designation\nMDA-301,Demo Water Board,State agency,AO MDA-301,Director',
+        seedOpenedQuarters: true,
+      })
+    ).body as InstitutionImportPreview;
+    expect(preview).toMatchObject({ valid: 1, invalid: 0 });
+    expect(preview.rows[0]!.officerName).toBeNull();
   });
 
   it('previews a CSV import row by row and imports all or nothing', async () => {
@@ -155,7 +221,7 @@ describe.skipIf(!integration)('onboarding institutions', () => {
     );
     expect(checked.rows[4]!.errors[0]).toMatch(/already in use/);
     expect((await preview('name,type\nX,Y')).fileErrors[0]).toMatch(
-      /Missing columns: institution_id, officer_email, ao_name, ao_designation/,
+      /Missing columns: institution_id, ao_name, ao_designation/,
     );
 
     const importCsv = (csv: string) =>

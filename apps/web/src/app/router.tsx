@@ -80,6 +80,14 @@ const setPasswordRoute = createRoute({
     'SetPasswordPage',
   ),
 });
+const choosePasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'choose-password',
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'ChoosePasswordPage',
+  ),
+});
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'forbidden',
@@ -115,6 +123,8 @@ const authedRoute = createRoute({
     const session = await loadSession(context.queryClient);
     if (!session)
       throw redirect({ to: '/sign-in', search: { redirect: location.href } });
+    if (session.user.mustChangePassword)
+      throw redirect({ to: '/choose-password' });
     return { session };
   },
   component: Outlet,
@@ -521,6 +531,7 @@ export const routeTree = rootRoute.addChildren([
   signInRoute,
   forgotPasswordRoute,
   setPasswordRoute,
+  choosePasswordRoute,
   forbiddenRoute,
   sessionExpiredRoute,
   authedRoute.addChildren([

@@ -33,7 +33,8 @@
     "release": "release-it",
     "release:dry": "release-it --dry-run --ci",
     "storage:migrate": "pnpm --filter @cpi/api storage:migrate",
-    "storage:gc": "pnpm --filter @cpi/api storage:gc"
+    "storage:gc": "pnpm --filter @cpi/api storage:gc",
+    "user:invite-admin": "pnpm --filter @cpi/api user:invite-admin"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

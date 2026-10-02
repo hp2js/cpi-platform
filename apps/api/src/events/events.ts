@@ -113,36 +113,6 @@ export class Events {
   }
 }
 
-/** Email only, for account links (invitations, resets): nothing goes to the in-app inbox. */
-export async function sendEmail(
-  tx: Tx,
-  businessTime: string,
-  portalUrl: string,
-  key: string,
-  eventType: string,
-  recipient: User,
-  message: { subject: string; body: string; link: string },
-) {
-  const [delivery] = await tx
-    .insert(deliveries)
-    .values({
-      id: await nextId(tx, 'dlv'),
-      key,
-      eventType,
-      recipientId: recipient.id,
-      recipientName: recipient.displayName,
-      recipientEmail: recipient.email,
-      recipientRole: recipient.role,
-      subject: message.subject,
-      body: `${message.body}\n\n${new URL(message.link, portalUrl).href}`,
-      status: 'queued',
-    })
-    .returning();
-  let current = delivery!;
-  while (current.status !== 'delivered' && current.attempts < MAX_ATTEMPTS)
-    current = await attemptDelivery(tx, businessTime, current);
-}
-
 /** One simulated attempt to the demo email sink. Never contacts a real address. */
 export async function attemptDelivery(
   tx: Tx,

@@ -14,7 +14,8 @@
     "db:migrate": "tsx --env-file-if-exists=../../.env src/database/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts",
     "storage:migrate": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts migrate",
-    "storage:gc": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts gc"
+    "storage:gc": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts gc",
+    "user:invite-admin": "tsx --env-file-if-exists=../../.env src/auth/invite-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1143.0",
@@ -22,13 +23,18 @@
     "@nestjs/common": "12.1.0",
     "@nestjs/core": "12.1.0",
     "@nestjs/platform-express": "12.1.0",
+    "@react-email/render": "2.1.0",
     "@smithy/node-http-handler": "4.12.1",
     "drizzle-orm": "0.45.3",
     "express": "5.2.1",
     "helmet": "8.3.0",
     "ioredis": "6.0.0",
     "pg": "8.23.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-email": "6.11.0",
     "reflect-metadata": "0.2.2",
+    "resend": "6.32.0",
     "rxjs": "7.8.2",
     "zod": "4.6.5"
   },
@@ -37,6 +43,7 @@
     "@types/express": "5.0.6",
     "@types/node": "24.13.6",
     "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
     "concurrently": "10.0.5",
     "dotenv": "18.0.3",
     "drizzle-kit": "0.31.11",
