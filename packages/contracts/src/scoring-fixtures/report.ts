@@ -1,9 +1,12 @@
 import {
   defects,
   inputVersions,
+  inputReviews,
   openQuestions,
-  reviews,
+  reviewedFixtures,
   scoringFixtures,
+  scriptedYear,
+  scriptedYearCases,
   worksheetVersion,
   type AnnualExpected,
   type ExpectedScore,
@@ -47,12 +50,18 @@ const cell = (text: string) => text.replaceAll('|', '\\|');
 export function renderWorksheet() {
   const rows = scoringFixtures.map(runFixture);
   const passed = rows.filter((row) => row.outcome === 'pass').length;
-  const reviewStatus = reviews.every((review) => review.status === 'approved')
-    ? 'Approved'
-    : `Pending (${reviews
-        .filter((review) => review.status !== 'approved')
-        .map((review) => review.reviewer)
-        .join(', ')})`;
+  const agreed = reviewedFixtures();
+  const reviewCell = (id: string) => {
+    const review = [...inputReviews]
+      .reverse()
+      .find((candidate) => candidate.fixtures.includes(id));
+    if (!review) return 'Not yet reviewed';
+    return `${agreed.has(id) ? 'Inputs agreed' : 'Changes requested'} (${review.reviewers.join(', ')}, ${review.date})`;
+  };
+  const reviewSummary =
+    agreed.size === 0
+      ? 'not yet recorded'
+      : `${agreed.size} of ${rows.length} fixtures agreed`;
   const profile = profileConformance();
   const lines = [
     '# HP2-11 scoring worksheet',
@@ -61,7 +70,7 @@ export function renderWorksheet() {
     '',
     `Independent scoring reference for PRD §10, worksheet version ${worksheetVersion}. ${inputVersions.label}`,
     '',
-    `Engine run: **${passed} of ${rows.length} fixtures pass**. Human review: **${reviewStatus}**. Passing executable checks is not approval of the expected results.`,
+    `Engine run: **${passed} of ${rows.length} fixtures pass**. Team review of inputs: **${reviewSummary}**. Executable checks do not replace the team review of the inputs that HP2-11 asks for.`,
     '',
     '## Inputs and method',
     '',
@@ -89,7 +98,7 @@ export function renderWorksheet() {
         resultText(fixture.expected),
         resultText(actual),
         outcome === 'pass' ? 'Pass' : '**Fail**',
-        reviewStatus,
+        reviewCell(fixture.id),
       ]
         .map(cell)
         .join(' | ')
@@ -112,6 +121,21 @@ export function renderWorksheet() {
         } |`,
     ),
     '',
+    '## Scripted demonstration year',
+    '',
+    "The eight fictional institutions of PRD §17.1 and the fixture holding each one’s annual inputs. HP2-36 reconciles the persisted API against these cases: `import { scriptedYearCases } from '@cpi/contracts/scoring-fixtures'`.",
+    '',
+    '| Institution | Scenario | Fixture | Foundation checks (P/R/M) | Quarter milestones (Q1–Q4) | Foundation | Implementation | Total |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...scriptedYearCases().map((row) => {
+      const quarters = row.quarterAcceptedMilestones.map((accepted, index) =>
+        row.closedQuarters.includes(index + 1)
+          ? 'closed 0'
+          : `${accepted}/${row.quarterLockedMilestones[index]}`,
+      );
+      return `| ${row.institutionId} | ${cell(scriptedYear.find((item) => item.institutionId === row.institutionId)!.scenario)} | ${row.fixtureId} | ${row.foundationAcceptedChecks.map((checks) => `${checks}/4`).join(', ')} | ${quarters.join(', ')} | ${row.expectedFoundationPoints} | ${row.expectedImplementationPoints} | ${row.expectedTotal} |`;
+    }),
+    '',
     '## Defects and retests',
     '',
     ...(defects.length
@@ -131,16 +155,22 @@ export function renderWorksheet() {
     '',
     ...openQuestions.map((question, index) => `${index + 1}. ${question}`),
     '',
-    '## Review and sign-off',
+    '## Team review of inputs',
     '',
-    '| Review | Reviewer | Status | Date | Notes |',
-    '| --- | --- | --- | --- | --- |',
-    ...reviews.map(
-      (review) =>
-        `| ${review.role} | ${review.reviewer} | ${review.status.replaceAll('_', ' ')} | ${review.date ?? '—'} | ${cell(review.notes) || '—'} |`,
-    ),
+    'HP2-11 asks for a team review of the fixture inputs and hand calculations; no external sign-off or formal approval is required.',
     '',
-    'Record each review in `reviews` in `packages/contracts/src/scoring-fixtures/catalogue.ts` and regenerate this file, so the evidence stays beside the worksheet.',
+    ...(inputReviews.length
+      ? [
+          '| Date | Reviewers | Fixtures | Outcome | Notes |',
+          '| --- | --- | --- | --- | --- |',
+          ...inputReviews.map(
+            (review) =>
+              `| ${review.date} | ${review.reviewers.join(', ')} | ${review.fixtures.join(', ')} | ${review.outcome === 'inputs_agreed' ? 'Inputs agreed' : 'Changes requested'} | ${cell(review.notes) || '—'} |`,
+          ),
+        ]
+      : ['No review recorded yet.']),
+    '',
+    'Record each review in `inputReviews` in `packages/contracts/src/scoring-fixtures/catalogue.ts` and run `pnpm worksheet`, so the evidence stays beside the worksheet.',
     '',
   ];
   return lines.join('\n');

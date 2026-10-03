@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { inputVersions, scoringFixtures } from './catalogue.js';
+import {
+  inputVersions,
+  reviewedFixtures,
+  scoringFixtures,
+  scriptedYearCases,
+} from './catalogue.js';
 import {
   annualScore,
   calendarDaysLate,
@@ -9,6 +14,7 @@ import {
   quarterFraction,
   ratio,
   worksheetResult,
+  type Ratio,
 } from './worksheet.js';
 
 describe('HP2-11 independent worksheet', () => {
@@ -112,5 +118,73 @@ describe('worksheet arithmetic', () => {
     expect(calendarDaysLate(deadline, deadline)).toBe(0);
     expect(calendarDaysLate('2026-10-16T00:00:00+03:00', deadline)).toBe(1);
     expect(calendarDaysLate('2026-10-18T09:00:00+03:00', deadline)).toBe(3);
+  });
+});
+
+describe('scripted demonstration year (PRD §17.1, consumed by HP2-36)', () => {
+  // The totals HP2-36 reconciles against (docs/acceptance/annual-fixtures.json on that branch).
+  const totals = {
+    'DEMO-001': '88.75',
+    'DEMO-002': '100.00',
+    'DEMO-003': '100.00',
+    'DEMO-004': '96.25',
+    'DEMO-005': '70.00',
+    'DEMO-006': '100.00',
+    'DEMO-007': '100.00',
+    'DEMO-008': '100.00',
+  };
+
+  it('covers the eight institutions once, with the expected totals', () => {
+    const cases = scriptedYearCases();
+    expect(cases.map((row) => row.institutionId)).toEqual(Object.keys(totals));
+    expect(
+      Object.fromEntries(
+        cases.map((row) => [row.institutionId, row.expectedTotal]),
+      ),
+    ).toEqual(totals);
+    expect(
+      cases.find((row) => row.institutionId === 'DEMO-005')!.closedQuarters,
+    ).toEqual([3]);
+  });
+
+  it.each(scriptedYearCases().map((row) => [row.institutionId, row] as const))(
+    '%s: recomputes from its own checks and milestone counts',
+    (_, row) => {
+      const [p, r, m] = row.foundationAcceptedChecks.map(foundationFraction);
+      const quarters = row.quarterAcceptedMilestones.map((accepted, index) =>
+        row.closedQuarters.includes(index + 1)
+          ? ratio(0)
+          : quarterFraction(accepted, row.quarterLockedMilestones[index]!)!,
+      ) as [Ratio, Ratio, Ratio, Ratio];
+      const score = annualScore(
+        inputVersions.weights,
+        { procedures: p!, riskAssessment: r!, mitigationPlan: m! },
+        quarters,
+      );
+      expect(display2(score.foundationPoints)).toBe(
+        row.expectedFoundationPoints,
+      );
+      expect(display2(score.implementationPoints)).toBe(
+        row.expectedImplementationPoints,
+      );
+      expect(display2(score.total)).toBe(row.expectedTotal);
+    },
+  );
+});
+
+describe('team review of inputs', () => {
+  it('tracks which fixtures a later review agreed or reopened', () => {
+    const review = (
+      date: string,
+      fixtures: string[],
+      outcome: 'inputs_agreed' | 'changes_requested',
+    ) => ({ reviewers: ['Reviewer'], date, fixtures, outcome, notes: '' });
+    expect(reviewedFixtures([])).toEqual(new Set());
+    expect(
+      reviewedFixtures([
+        review('2026-10-06', ['SF-02'], 'changes_requested'),
+        review('2026-10-05', ['SF-01', 'SF-02'], 'inputs_agreed'),
+      ]),
+    ).toEqual(new Set(['SF-01']));
   });
 });

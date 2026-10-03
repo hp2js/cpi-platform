@@ -525,7 +525,12 @@ export const scoringFixtures: ScoringFixture[] = [
     id: 'SF-10',
     title: 'Full achievement',
     references: {
-      prd: ['§10.3', '§10.5', '§16.1 calculation tests'],
+      prd: [
+        '§10.3',
+        '§10.5',
+        '§16.1 calculation tests',
+        '§17.1 DEMO-002, 003, 006–008',
+      ],
       at: [],
       decisions: ['O02', 'O03'],
     },
@@ -1174,35 +1179,136 @@ export const scoringFixtures: ScoringFixture[] = [
   },
 ];
 
-export interface ReviewRecord {
-  role: string;
-  reviewer: string;
-  status: 'pending' | 'approved' | 'changes_requested';
-  /** ISO date of the review, once given. */
-  date: string | null;
+export interface InputReview {
+  /** Team members who checked the inputs and hand calculations. */
+  reviewers: string[];
+  /** ISO date of the review. */
+  date: string;
+  /** Fixture IDs whose inputs were checked. */
+  fixtures: string[];
+  outcome: 'inputs_agreed' | 'changes_requested';
   notes: string;
 }
 
 /**
- * Human review of this worksheet (HP2-11 handoff). Executable tests passing is not approval:
- * record each review here, with its date, when it happens.
+ * Team review of the fixture inputs (HP2-11 acceptance criteria). No external sign-off or
+ * formal approval is required; record each review here when it happens, and regenerate the
+ * worksheet. Passing executable checks does not stand in for it.
  */
-export const reviews: ReviewRecord[] = [
+export const inputReviews: InputReview[] = [];
+
+/** Fixtures whose inputs a review has agreed, unless a later review requested changes. */
+export function reviewedFixtures(reviews: InputReview[] = inputReviews) {
+  const agreed = new Set<string>();
+  for (const review of [...reviews].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  ))
+    for (const id of review.fixtures)
+      if (review.outcome === 'inputs_agreed') agreed.add(id);
+      else agreed.delete(id);
+  return agreed;
+}
+
+/**
+ * The scripted demonstration year (PRD §17.1): each of the eight fictional institutions and
+ * the fixture holding its annual inputs and expected result. HP2-36 reconciles the persisted
+ * API's annual results against these cases (`scriptedYearCases`).
+ */
+export const scriptedYear = [
   {
-    role: 'Fixture structure and technical correctness',
-    reviewer: 'Patrick',
-    status: 'pending',
-    date: null,
-    notes: '',
+    institutionId: 'DEMO-001',
+    fixtureId: 'SF-01',
+    scenario: 'Full foundations and the implementation trajectory of Example A',
   },
   {
-    role: 'Approval of the independently derived expected results',
-    reviewer: 'Henry',
-    status: 'pending',
-    date: null,
-    notes: '',
+    institutionId: 'DEMO-002',
+    fixtureId: 'SF-10',
+    scenario: 'Missing evidence followed by clarification and correction',
   },
-];
+  {
+    institutionId: 'DEMO-003',
+    fixtureId: 'SF-10',
+    scenario: 'Late Q2 submission: timeliness flag only, no deduction (SF-08)',
+  },
+  {
+    institutionId: 'DEMO-004',
+    fixtureId: 'SF-05',
+    scenario: 'Unsupported Q1 claim reduced by officer review (worked case)',
+  },
+  {
+    institutionId: 'DEMO-005',
+    fixtureId: 'SF-03',
+    scenario:
+      'Missing Q3 closed by the officer and partial risk assessment (Example B)',
+  },
+  {
+    institutionId: 'DEMO-006',
+    fixtureId: 'SF-10',
+    scenario: 'Future plan amendment that preserves the prior denominator',
+  },
+  {
+    institutionId: 'DEMO-007',
+    fixtureId: 'SF-10',
+    scenario: 'Evidence for the wrong period, corrected by a new version',
+  },
+  {
+    institutionId: 'DEMO-008',
+    fixtureId: 'SF-10',
+    scenario: 'Assignment change and controlled post-publication correction',
+  },
+] as const;
+
+export interface ScriptedYearCase {
+  institutionId: string;
+  fixtureId: string;
+  /** Accepted checks of four: procedures, risk assessment, mitigation plan. */
+  foundationAcceptedChecks: [number, number, number];
+  /** Accepted milestones per quarter, against `quarterLockedMilestones`. */
+  quarterAcceptedMilestones: [number, number, number, number];
+  quarterLockedMilestones: [number, number, number, number];
+  /** Quarters (1–4) the officer closed without submission. */
+  closedQuarters: number[];
+  expectedFoundationPoints: string;
+  expectedImplementationPoints: string;
+  expectedTotal: string;
+}
+
+/** The scripted year in the shape HP2-36's persisted reconciliation reads. */
+export function scriptedYearCases(): ScriptedYearCase[] {
+  return scriptedYear.map(({ institutionId, fixtureId }) => {
+    const fixture = scoringFixtures.find(
+      (candidate) => candidate.id === fixtureId,
+    )!;
+    if (fixture.inputs.kind !== 'annual' || !('total' in fixture.expected))
+      throw new Error(`${fixtureId} is not a calculated annual fixture`);
+    const { foundations, quarters } = fixture.inputs;
+    const checks = (input: FoundationInput) => {
+      if ('acceptedChecks' in input) return input.acceptedChecks;
+      throw new Error(`${fixtureId} uses foundation versions`);
+    };
+    return {
+      institutionId,
+      fixtureId,
+      foundationAcceptedChecks: [
+        checks(foundations.procedures),
+        checks(foundations.riskAssessment),
+        checks(foundations.mitigationPlan),
+      ],
+      quarterAcceptedMilestones: quarters.map((row) =>
+        row.status === 'finalized' ? row.accepted : 0,
+      ) as ScriptedYearCase['quarterAcceptedMilestones'],
+      quarterLockedMilestones: quarters.map(
+        (row) => row.locked,
+      ) as ScriptedYearCase['quarterLockedMilestones'],
+      closedQuarters: quarters.flatMap((row, index) =>
+        row.status === 'closed_without_submission' ? [index + 1] : [],
+      ),
+      expectedFoundationPoints: fixture.expected.foundationPoints,
+      expectedImplementationPoints: fixture.expected.implementationPoints,
+      expectedTotal: fixture.expected.total,
+    };
+  });
+}
 
 export interface DefectRecord {
   fixtureId: string;
