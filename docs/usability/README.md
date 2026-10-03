@@ -22,7 +22,7 @@ Use role/session labels in the records. Team familiarity with the app limits wha
 
 ## Before the session
 
-1. Use an isolated local demo instance with synthetic data. Confirm no other session uses it before resetting. Reset isolation remains HP2-42; do not use a shared or production database.
+1. Use an isolated local demo instance with synthetic data. Confirm no other session uses it before resetting. Resets only run on the dedicated demo database (its name ends in `_demo`, HP2-42); do not use a shared or production database.
 2. Record commit/build, browser, viewport, run ID, business time, institution, quarter and fixture state. Have an accessible input method available; do not assume every participant uses a mouse.
 3. Prepare one clean reporting fixture and a separate annual-results fixture. Use the app's existing simulation tools and runbook; do not reset between linked reporting/clarification tasks. Never run the scripted year in the middle of a participant's unfinished report.
 4. In the reporting fixture, publish the reporting form, open Q1, confirm the labelled historical baseline with the assigned officer and verify the participant's account opens only its own institution. Prepare a draft that can honestly declare missing signed IAO minutes and missing institutional approval. Verify the workflow with a facilitator account before inviting participants to begin.

@@ -49,16 +49,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return;
     }
     const parsed = apiErrorSchema.safeParse(raw);
-    const storageError =
+    const dependencyError =
       exception instanceof ApiError &&
       status === 503 &&
       parsed.success &&
-      ['storage_unavailable', 'file_unavailable'].includes(
-        parsed.data.code ?? '',
-      );
+      [
+        'storage_unavailable',
+        'file_unavailable',
+        'session_store_unavailable',
+      ].includes(parsed.data.code ?? '');
     const body: ApiErrorBody = {
       message:
-        status >= 500 && !storageError
+        status >= 500 && !dependencyError
           ? 'An unexpected server error occurred.'
           : !parsed.success
             ? 'The request could not be completed.'
@@ -71,7 +73,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
       body.fieldErrors = parsed.data.fieldErrors;
     }
     // The client branches on status and code (e.g. `session_expired`, `version_conflict`).
-    if ((status < 500 || storageError) && parsed.success && parsed.data.code) {
+    if (
+      (status < 500 || dependencyError) &&
+      parsed.success &&
+      parsed.data.code
+    ) {
       body.code = parsed.data.code;
     }
     if (status >= 500) {

@@ -77,7 +77,7 @@ test('a failed upload is explained and retried without duplicating the file', as
   await cpc.locator('input[type=file]').setInputFiles({
     name: 'minutes.pdf',
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.7 minutes'),
+    buffer: Buffer.from('%PDF-1.7 minutes\n%%EOF\n'),
   });
   await expect(cpc.getByRole('alert')).toContainText(
     'The upload was interrupted',
@@ -91,7 +91,7 @@ test('a failed upload is explained and retried without duplicating the file', as
     .setInputFiles({
       name: 'minutes.pdf',
       mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.7 minutes'),
+      buffer: Buffer.from('%PDF-1.7 minutes\n%%EOF\n'),
     });
   await expect(cpc.getByText('minutes.pdf')).toHaveCount(1);
 });

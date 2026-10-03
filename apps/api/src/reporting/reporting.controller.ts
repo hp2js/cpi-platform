@@ -175,6 +175,7 @@ export class ReportingController {
     @Body() body: { category?: unknown; replaces?: unknown } | undefined,
     @Res({ passthrough: true }) response: Response,
   ): Promise<EvidenceItem> {
+    this.files.assertUploadsApproved();
     return this.files.withUpload((persist) =>
       write(this.db, async (tx, businessTime) => {
         const obligation = await ownObligation(tx, user, id);

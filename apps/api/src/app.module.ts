@@ -11,6 +11,7 @@ import { CONFIG, loadConfig } from './config';
 import { FormsController } from './cycle/forms.controller';
 import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
+import { DeliveryWorker } from './events/delivery-worker';
 import { EventsController } from './events/events.controller';
 import { Mailer } from './email/mailer';
 import { Events } from './events/events';
@@ -56,6 +57,7 @@ import { Files } from './storage/files';
     Files,
     Sessions,
     Events,
+    DeliveryWorker,
     Mailer,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

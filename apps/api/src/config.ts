@@ -54,6 +54,17 @@ const schema = z
       .regex(/^([^@\s]+@[^@\s]+\.[^@\s]+)?$/)
       .default(''),
     ADMIN_NAME: z.string().trim().default('Platform administrator'),
+    /**
+     * Outside demo mode, file uploads stay off until this is true: the recorded decision that
+     * malware scanning, quarantine and a production review are in place for real documents.
+     */
+    REAL_DOCUMENT_UPLOADS: z.stringbool().default(false),
+    /** Waits before the 2nd and 3rd attempts of a notification email (real time, milliseconds). */
+    DELIVERY_RETRY_DELAYS_MS: z
+      .string()
+      .default('30000,120000')
+      .transform((value) => value.split(',').map(Number))
+      .pipe(z.array(z.number().int().min(0)).length(2)),
     /** Idle session lifetime; each authenticated request extends it. */
     SESSION_TTL_SECONDS: z.coerce
       .number()
@@ -66,12 +77,25 @@ const schema = z
     message: 'Required when DEMO_MODE=false',
   });
 export type AppConfig = z.infer<typeof schema>;
+
+/**
+ * The reset boundary (HP2-42). Restoring fixtures replaces every record, so it only runs against
+ * a database whose name marks it as disposable: `…_demo` (the demo database) or `…_test`
+ * (integration tests). Turning on demo mode against any other database cannot wipe it.
+ */
+export const disposableDatabase = (config: AppConfig) =>
+  /_(demo|test)$/.test(
+    decodeURIComponent(new URL(config.DATABASE_URL).pathname.slice(1)),
+  );
+
+/** Names the invalid variables, never their values, so its message is safe to print. */
+export class ConfigError extends Error {}
 export const CONFIG = Symbol('CONFIG');
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const result = schema.safeParse(env);
   if (!result.success) {
     // Do not log connection strings or credentials.
-    throw new Error(
+    throw new ConfigError(
       `Invalid environment: ${[...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ')}`,
     );
   }

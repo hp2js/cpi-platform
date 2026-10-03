@@ -777,6 +777,8 @@ export const deliveries = pgTable('deliveries', {
   attempts: integer().notNull().default(0),
   lastAttemptAt: instant(),
   lastError: text(),
+  /** Real time the delivery worker may next try it; null once delivered or failed. */
+  nextAttemptAt: instant(),
 });
 
 /** Local stand-in for email (no real recipients). */

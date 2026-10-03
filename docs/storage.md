@@ -25,9 +25,21 @@ For hosted S3-compatible storage, provision a private bucket and scoped applicat
 
 ## Upload and recovery behavior
 
-Files pass through the API's existing authorization, file-type/signature checks and size limits: 20 MiB per file and 100 MiB per report. PDF, PNG, JPEG, DOCX and XLSX are supported. These checks are not antivirus scanning or full Office archive inspection.
+Files pass through the API's authorization, size limits (20 MiB per file, 100 MiB per report) and content checks (`checkUpload` in `packages/contracts/src/domain/uploads.ts`, shared with the development mock). PDF, PNG, JPEG, DOCX and XLSX are accepted, and each must be what its name says and inspectable:
+
+| Type       | Refused when                                                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF        | No `%%EOF` (incomplete); `/Encrypt` (password-protected); `/JavaScript`, `/JS`, `/Launch` or `/EmbeddedFile` in an object dictionary (active content)                     |
+| DOCX, XLSX | Not a readable ZIP with `[Content_Types].xml` and `word/document.xml` or `xl/workbook.xml`; encrypted entries; macros (`vbaProject.bin`), OLE objects or ActiveX controls |
+| PNG, JPEG  | Missing header or end marker (incomplete)                                                                                                                                 |
+
+These are structural checks, not antivirus scanning. Names inside compressed PDF object streams are not inspected.
+
+**Real documents are gated.** Outside demo mode, uploads answer `403 uploads_not_approved` until `REAL_DOCUMENT_UPLOADS=true`. Set it only after malware scanning, quarantine of unscanned files, retention and a production review are in place; it records that decision and does not add a scanner. Demo mode accepts uploads because it holds synthetic files only.
 
 Each object has a random key. Uploads send a transport checksum; metadata records SHA-256 and size, which are checked again on download. Database writes publish the reference only after the object upload succeeds. On transaction failure, the service removes the staged object after checking that it was not committed. Uncertain outcomes are retained for later cleanup rather than risking deletion of referenced files.
+
+**Interrupted transfers.** An upload is one request of at most 20 MiB. If it is interrupted, nothing is attached (a staged object is removed or left for `storage:gc`), and the UI shows a retryable failure. Retrying is safe: the same file again returns the record already stored instead of a second version. There is no resumable upload protocol.
 
 The UI distinguishes uploading from saving and displays retryable failures. Existing report deduplication and foundation retry deduplication prevent identical retries from creating another version. Historical versions retain their objects. A missing real object produces an explicit error; only designated synthetic demonstration records can use placeholder content.
 

@@ -67,7 +67,7 @@ async function submitQ1(page: Page) {
     body.append(
       'file',
       new File(
-        [new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31])],
+        [new TextEncoder().encode('%PDF-1\n%%EOF\n')],
         'cpc-minutes-q1.pdf',
       ),
     );
@@ -180,7 +180,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
     .setInputFiles({
       name: 'exception-review.pdf',
       mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.7 exception review'),
+      buffer: Buffer.from('%PDF-1.7 exception review\n%%EOF\n'),
     });
   await expect(cpc.getByText('exception-review.pdf')).toBeVisible();
   const m01 = page.getByRole('article').filter({ hasText: 'M-01' });
@@ -324,6 +324,8 @@ test('failed email is visible to the administrator and succeeds on retry (AT12)'
     json: { accountId: 'administrator' },
   });
   await api(page, '/api/forms/form-v1/publish', { method: 'POST' });
+  // Spend the retries now instead of waiting for the worker's backoff.
+  await api(page, '/api/__mock/deliveries/run', { method: 'POST' });
   await signIn(page, 'administrator', '/admin/notifications');
   // Eight focal persons, two officers and the supervisor are told of the publication.
   await expect(

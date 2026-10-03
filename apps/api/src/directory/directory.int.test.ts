@@ -91,6 +91,8 @@ describe.skipIf(!integration)('session and directory', () => {
       accountId: 'administrator',
     });
     expect(signIn.headers.get('set-cookie')).toMatch(/HttpOnly/i);
+    expect(signIn.headers.get('set-cookie')).toMatch(/SameSite=Lax/i);
+    expect(signIn.headers.get('set-cookie')).toMatch(/Path=\/api(;|$)/);
     const session = signIn.body as Session;
     expect(session).toMatchObject({
       user: { id: 'administrator', role: 'administrator' },

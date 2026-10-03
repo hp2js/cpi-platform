@@ -10,11 +10,12 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Public, Sessions } from '../auth/sessions';
-import { CONFIG, type AppConfig } from '../config';
+import { CONFIG, disposableDatabase, type AppConfig } from '../config';
 import { loadFixtures, seedOptions } from '../database/fixtures';
 import { Mailer } from '../email/mailer';
 import { systemState } from '../database/schema';
 import { notFound } from '../http/api-error';
+import { DeliveryWorker } from '../events/delivery-worker';
 import { Infrastructure } from '../infrastructure';
 
 /**
@@ -28,12 +29,17 @@ export class DevController {
     private readonly infrastructure: Infrastructure,
     private readonly sessions: Sessions,
     private readonly mailer: Mailer,
+    private readonly worker: DeliveryWorker,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
-  /** The database, or 404 outside development demo deployments. */
+  /** The database, or 404 outside development demo deployments on the demo database. */
   private devDatabase() {
-    if (this.config.NODE_ENV === 'production' || !this.config.DEMO_MODE)
+    if (
+      this.config.NODE_ENV === 'production' ||
+      !this.config.DEMO_MODE ||
+      !disposableDatabase(this.config)
+    )
       throw notFound();
     return this.infrastructure.database;
   }
@@ -74,6 +80,14 @@ export class DevController {
       .update(systemState)
       .set({ emailFailureMode: enabled });
     return { enabled };
+  }
+
+  /** Attempts every queued or retrying email now, without waiting for its backoff. */
+  @Post('deliveries/run')
+  @HttpCode(204)
+  async runDeliveries() {
+    this.devDatabase();
+    await this.worker.run(true);
   }
 
   /** The caller's next request gets 401 `session_expired`. */
