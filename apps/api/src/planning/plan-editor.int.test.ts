@@ -112,6 +112,13 @@ describe.skipIf(!integration)('the institution plan', () => {
     expect(
       (await other.post('/institutions/DEMO-004/risks', risk)).status,
     ).toBe(404);
+    // Another institution's plan is missing, not merely mis-addressed: 404 before validation.
+    expect(
+      (await other.post('/institutions/DEMO-004/risks', { code: '' })).status,
+    ).toBe(404);
+    expect(
+      (await officer.post('/institutions/DEMO-004/risks', { code: '' })).status,
+    ).toBe(403);
   });
 
   it('records the plan approval, checking the date and the plan document', async () => {

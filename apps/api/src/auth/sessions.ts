@@ -226,7 +226,7 @@ export const TemporaryPasswordAllowed = () => SetMetadata(TEMPORARY, true);
 /** Restrict a route or controller to these roles; others get 403. */
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES, roles);
 
-type AuthenticatedRequest = Request & { user?: User };
+export type AuthenticatedRequest = Request & { user?: User };
 
 /** Global guard: every route needs a session unless marked @Public(). */
 @Injectable()
