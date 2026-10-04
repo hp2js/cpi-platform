@@ -1,8 +1,10 @@
 # API handover: contracts the frontend depends on
 
-Status: draft for HP2-9 · Owner of the real API: backend (Patrick) · Frontend reference implementation: `apps/web/src/mocks/`
+Status: current contract (HP2-9) · Implemented by the persisted API in `apps/api` (default) · Mirrored by the mock in `apps/web/src/mocks/` for unit tests and offline development
 
-The frontend is complete against a mock API. This document lists every endpoint it calls, who may call it, and the rules the mock enforces. Those rules are what the screens rely on, so treat them as acceptance criteria for the real API. Where the PRD leaves a choice open, the mock takes the PRD's proposed default; change it here and in the schemas together.
+This document lists every endpoint the web app calls, who may call it, and the rules the screens rely on. The persisted API (`apps/api`: PostgreSQL, Redis and S3-compatible storage) implements them and is what the web app, `pnpm test:e2e` and CI use; its integration tests (`apps/api/src/**/*.int.test.ts`) check each rule, and [prd-coverage.md](prd-coverage.md) maps requirements to them. The mock implements the same contract for Vitest and `VITE_API_MODE=mock`. Where the PRD leaves a choice open, the API takes the PRD's proposed default; change it here, in the schemas and in both implementations together.
+
+This page is the endpoint contract only. Architecture and services: [HP2-40](https://linear.app/hp2js/issue/HP2-40) and [platform-contracts.md](platform-contracts.md) (HP2-10: sessions, Redis, notification delivery, secrets, outages); files: [storage.md](storage.md) (HP2-19); entities and state transitions: [data-model.md](data-model.md); clock and resets: [simulation.md](simulation.md); latest results: [verification-results.md](verification-results.md).
 
 ## How to use this
 
@@ -235,7 +237,7 @@ Review actions belong to the assigned officer. An administrator may take one onl
 | `GET /api/admin/email-sink`                                               | A      | Demo sink; never real recipients.                                                                                                                                                                                                                                                                         |
 | `GET /api/audit?q&objectType&action&actor&from&to&elevated&page&pageSize` | A      | Read-only, filtered and paged on the server: `{ events, total, page, pageSize, actions, actors }`, newest first. `elevated=true` keeps only the actions in `elevatedAuditActions`. `GET /api/audit.csv` exports the same filters with formula-safe cells.                                                 |
 | `GET /api/simulation`, `POST /advance`, `/reset`                          | any; A | Named boundaries processed once per run (AT13, AT24). `controls` is true only in the demo environment (`DEMO_MODE` and a `…_demo` database); advance and reset answer `409 demo_only` or `not_demo_database` elsewhere, where business time follows the real clock. See [`simulation.md`](simulation.md). |
-| `POST /api/simulation/scenario`                                           | A      | Demo driver (HP2-28). The mock's `scenario.ts` shows the expected steps and results.                                                                                                                                                                                                                      |
+| `POST /api/simulation/scenario`                                           | A      | Demo driver (HP2-28), demo environment only. `apps/api/src/simulation/scenario.ts` plays the steps; the expected results are asserted in `simulation.int.test.ts`.                                                                                                                                        |
 
 ## Export column dictionary (`cpi-export-1`, FR16)
 
