@@ -75,14 +75,14 @@ test('publish, report, submit, review and finalize one quarter', async ({
   ).toBeVisible();
 
   const cpc = page.locator('#field-questions-cpc-minutes');
-  await cpc.locator('input[type=file]').setInputFiles({
+  await cpc.getByLabel('Upload a file', { exact: true }).setInputFiles({
     name: 'minutes.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from('MZ\x90\x00'),
   });
   await expect(cpc.getByRole('alert')).toContainText('do not match');
   await cpc
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .setInputFiles(pdf('cpc-minutes-q1.pdf'));
   await expect(cpc.getByText('cpc-minutes-q1.pdf')).toBeVisible();
 

@@ -10,14 +10,7 @@ import { daysLate } from './obligations';
 import { baselineOf, periodOf } from './reporting';
 import { scoreSummary } from '@cpi/contracts';
 import { points as formatPoints } from '@cpi/contracts';
-import {
-  add,
-  format2,
-  mul,
-  rational,
-  sum,
-  type Rational,
-} from '@cpi/contracts';
+import { annualTotal, rational, type Rational } from '@cpi/contracts';
 import { activeProfile, activeWeights, profileLabel } from './profiles';
 
 const checklistKey = {
@@ -258,31 +251,18 @@ export function evaluate(institutionId: string): AnnualEvaluation {
       ),
   ];
   let total: AnnualEvaluation['total'];
-  if (reasons.length === 0) {
-    const foundationPoints = sum(
-      foundations.map((foundation) =>
-        mul(
-          rational(foundationMax[foundation.outcome.kind]),
+  if (reasons.length === 0)
+    total = annualTotal(
+      w,
+      Object.fromEntries(
+        foundations.map((foundation) => [
+          foundation.outcome.kind,
           foundation.fraction!,
-        ),
-      ),
+        ]),
+      ) as Record<FoundationKind, Rational>,
+      quarters.map((quarter) => quarter.fraction!),
     );
-    const average = mul(
-      sum(quarters.map((quarter) => quarter.fraction!)),
-      rational(1, 4),
-    );
-    const implementationPoints = mul(rational(w.implementation), average);
-    total = {
-      status: 'calculated',
-      points: format2(add(foundationPoints, implementationPoints)),
-      implementationAverage: {
-        numerator: Number(average.n),
-        denominator: Number(average.d),
-      },
-      foundationPoints: format2(foundationPoints),
-      implementationPoints: format2(implementationPoints),
-    };
-  } else total = { status: 'pending', reasons };
+  else total = { status: 'pending', reasons };
 
   const publication = db.publications.find(
     (candidate) =>

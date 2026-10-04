@@ -38,17 +38,23 @@ test('an institution previews and downloads its own Word, Excel and image files,
   const cpc = page.locator('#field-questions-cpc-minutes');
   const iao = page.locator('#field-questions-iao-minutes');
   await cpc
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .setInputFiles(fixture('cpc-minutes.docx'));
-  await expect(cpc.getByText('cpc-minutes.docx')).toBeVisible();
+  await expect(
+    cpc.getByRole('list').getByText('cpc-minutes.docx'),
+  ).toBeVisible();
   await iao
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .setInputFiles(fixture('allocation-register.xlsx'));
-  await expect(iao.getByText('allocation-register.xlsx')).toBeVisible();
+  await expect(
+    iao.getByRole('list').getByText('allocation-register.xlsx'),
+  ).toBeVisible();
   await iao
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .setInputFiles(fixture('notice-board.png'));
-  await expect(iao.getByText('notice-board.png')).toBeVisible();
+  await expect(
+    iao.getByRole('list').getByText('notice-board.png'),
+  ).toBeVisible();
 
   let dialog = await openFile(page, 'cpc-minutes.docx');
   await expect(dialog).toContainText('Word document');

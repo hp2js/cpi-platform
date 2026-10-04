@@ -29,12 +29,20 @@
       "types": "./dist/fixtures/index.d.ts",
       "import": "./dist/fixtures/index.js",
       "default": "./dist/fixtures/index.js"
+    },
+    "./scoring-fixtures": {
+      "types": "./dist/scoring-fixtures/index.d.ts",
+      "import": "./dist/scoring-fixtures/index.js",
+      "default": "./dist/scoring-fixtures/index.js"
     }
   },
   "typesVersions": {
     "*": {
       "fixtures": [
         "dist/fixtures/index.d.ts"
+      ],
+      "scoring-fixtures": [
+        "dist/scoring-fixtures/index.d.ts"
       ]
     }
   }

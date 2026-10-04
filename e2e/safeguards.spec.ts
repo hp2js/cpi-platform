@@ -175,7 +175,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
   ).toBeVisible();
   const cpc = page.locator('#field-questions-cpc-minutes');
   await cpc
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .last()
     .setInputFiles({
       name: 'exception-review.pdf',
