@@ -1,7 +1,7 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
+  annualTotal,
   isEvidenceAnswer,
-  add,
   format2,
   mul,
   points as formatPoints,
@@ -316,31 +316,18 @@ export function evaluate(
       ),
   ];
   let total: AnnualEvaluation['total'];
-  if (reasons.length === 0) {
-    const foundationPoints = sum(
-      foundations.map((foundation) =>
-        mul(
-          rational(foundationMax[foundation.outcome.kind]),
+  if (reasons.length === 0)
+    total = annualTotal(
+      w,
+      Object.fromEntries(
+        foundations.map((foundation) => [
+          foundation.outcome.kind,
           foundation.fraction!,
-        ),
-      ),
+        ]),
+      ) as Record<FoundationKind, Rational>,
+      quarters.map((quarter) => quarter.fraction!),
     );
-    const average = mul(
-      sum(quarters.map((quarter) => quarter.fraction!)),
-      rational(1, 4),
-    );
-    const implementationPoints = mul(rational(w.implementation), average);
-    total = {
-      status: 'calculated',
-      points: format2(add(foundationPoints, implementationPoints)),
-      implementationAverage: {
-        numerator: Number(average.n),
-        denominator: Number(average.d),
-      },
-      foundationPoints: format2(foundationPoints),
-      implementationPoints: format2(implementationPoints),
-    };
-  } else total = { status: 'pending', reasons };
+  else total = { status: 'pending', reasons };
 
   const publication = data.publications.find(
     (candidate) =>
