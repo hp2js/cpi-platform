@@ -14,6 +14,7 @@ import { Events } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { advanceTo, boundaryState } from './clock';
 import { runScenario } from './scenario';
+import { SettingsRepository } from '../cycle/settings.repository';
 import { SimulationRepository } from './simulation.repository';
 
 /** The demo clock, simulation runs and the scripted year (FR14). */
@@ -23,6 +24,7 @@ export class SimulationService {
     @Inject(DB) private readonly db: Database,
     @Inject(CONFIG) private readonly config: AppConfig,
     private readonly repository: SimulationRepository,
+    private readonly settings: SettingsRepository,
     private readonly events: Events,
     private readonly mailer: Mailer,
   ) {}
@@ -63,7 +65,7 @@ export class SimulationService {
   async reset(user: User, requested: unknown): Promise<SimulationState> {
     const profileId = typeof requested === 'string' ? requested : undefined;
     const chosen = profileId
-      ? await this.repository.profile(profileId)
+      ? await this.settings.profile(profileId)
       : undefined;
     if (profileId && chosen?.status !== 'approved')
       throw new ApiError(

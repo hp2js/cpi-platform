@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt, sql } from 'drizzle-orm';
-import type { Draft, Receipt } from '@cpi/contracts';
+import type { Receipt } from '@cpi/contracts';
 import { DB, type Database, type Db } from '../database/db';
 import {
   auditEvents,
@@ -17,6 +17,7 @@ import {
 
 export type EvidenceRow = typeof evidence.$inferSelect;
 type NewEvidence = typeof evidence.$inferInsert;
+type NewDraft = typeof drafts.$inferInsert;
 type NewSubmission = typeof submissions.$inferInsert;
 type ObligationUpdate = Partial<typeof obligations.$inferInsert>;
 
@@ -24,7 +25,7 @@ type ObligationUpdate = Partial<typeof obligations.$inferInsert>;
 export class ReportingRepository {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  async saveDraft(draft: Draft, db: Db = this.db): Promise<void> {
+  async saveDraft(draft: NewDraft, db: Db = this.db): Promise<void> {
     await db
       .insert(drafts)
       .values(draft)

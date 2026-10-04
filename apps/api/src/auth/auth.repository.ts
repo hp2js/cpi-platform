@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { DB, type Database, type Db } from '../database/db';
-import { assignments, institutions, users } from '../database/schema';
+import { institutions, users } from '../database/schema';
 
 type UserRow = typeof users.$inferSelect;
 type UserUpdate = Partial<typeof users.$inferInsert>;
@@ -67,20 +67,5 @@ export class AuthRepository {
       .from(institutions)
       .where(eq(institutions.id, id));
     return institution;
-  }
-
-  /** The institution's current reviewing officer's name. */
-  async reviewerName(institutionId: string, db: Db = this.db) {
-    const [reviewer] = await db
-      .select({ name: users.displayName })
-      .from(assignments)
-      .innerJoin(users, eq(users.id, assignments.officerId))
-      .where(
-        and(
-          eq(assignments.institutionId, institutionId),
-          isNull(assignments.validTo),
-        ),
-      );
-    return reviewer?.name;
   }
 }

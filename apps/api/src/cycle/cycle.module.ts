@@ -20,5 +20,6 @@ import { SettingsService } from './settings.service';
     PeopleService,
     PeopleRepository,
   ],
+  exports: [SettingsRepository],
 })
 export class CycleModule {}

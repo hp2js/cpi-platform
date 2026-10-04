@@ -93,14 +93,6 @@ export class AnnualRepository {
     await db.insert(corrections).values(values);
   }
 
-  async obligation(id: string, db: Db = this.db) {
-    const [obligation] = await db
-      .select()
-      .from(obligations)
-      .where(eq(obligations.id, id));
-    return obligation;
-  }
-
   async closeWithoutSubmission(
     closure: NewClosure,
     db: Db = this.db,

@@ -17,11 +17,8 @@ import type {
   ReviewQueueItem,
 } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
-import {
-  ReviewService,
-  type EvidenceFilters,
-  type ReviewOverride,
-} from './review.service';
+import type { QueryFilters } from '../http/validation.pipe';
+import { ReviewService, type ReviewOverride } from './review.service';
 
 /** An administrator's justified override: `X-Override-Reason` and the action path after the ID. */
 const Override = createParamDecorator(
@@ -47,7 +44,7 @@ export class ReviewController {
   @Get('evidence')
   evidence(
     @CurrentUser() user: User,
-    @Query() query: EvidenceFilters,
+    @Query() query: QueryFilters,
   ): Promise<EvidenceLookupItem[]> {
     return this.review.evidence(user, query);
   }

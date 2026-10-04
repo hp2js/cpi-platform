@@ -14,6 +14,7 @@ import {
   type ReviewBundle,
   type ReviewQueueItem,
 } from '@cpi/contracts';
+import type { QueryFilters } from '../http/validation.pipe';
 import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import {
@@ -49,11 +50,11 @@ import {
   type ReviewData,
   type SubmissionRow,
 } from './data';
+import { ReportingRepository } from '../reporting/reporting.repository';
 import { ReviewRepository } from './review.repository';
 
 /** An administrator's `X-Override-Reason` and the action it is for (`decisions/M1`, `finalize`). */
 export type ReviewOverride = { reason: string | undefined; action: string };
-export type EvidenceFilters = Record<string, string | undefined>;
 
 /** Decisions must assess the latest revision; older work is refused, never overwritten (AT10). */
 function requireCurrent(
@@ -95,6 +96,7 @@ export class ReviewService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly repository: ReviewRepository,
+    private readonly reporting: ReportingRepository,
     private readonly events: Events,
   ) {}
 
@@ -235,7 +237,7 @@ export class ReviewService {
   // FR15: scoped lookup only; out-of-scope files never appear in results or counts.
   async evidence(
     user: User,
-    query: EvidenceFilters,
+    query: QueryFilters,
   ): Promise<EvidenceLookupItem[]> {
     const data = await loadReviewData(
       this.db,
@@ -765,7 +767,7 @@ export class ReviewService {
         savedAt: null,
         savedBy: null,
       };
-      await this.repository.saveDraft(draft, tx);
+      await this.reporting.saveDraft(draft, tx);
       await this.events.audit(
         tx,
         businessTime,

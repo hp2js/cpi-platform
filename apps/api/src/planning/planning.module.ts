@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ReportingModule } from '../reporting/reporting.module';
 import { FoundationsController } from './foundations.controller';
 import { FoundationsRepository } from './foundations.repository';
 import { FoundationsService } from './foundations.service';
@@ -10,6 +11,7 @@ import { PlanningRepository } from './planning.repository';
 import { PlanningService } from './planning.service';
 
 @Module({
+  imports: [ReportingModule],
   controllers: [
     PlanningController,
     PlanEditorController,

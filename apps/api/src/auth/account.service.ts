@@ -12,7 +12,7 @@ import { Events } from '../events/events';
 import { ApiError } from '../http/api-error';
 import { AuthRepository } from './auth.repository';
 import { hashPassword, passwordMatches } from './passwords';
-import { assignedInstitutionIds } from './scope';
+import { assignedInstitutionIds, reviewerName } from './scope';
 import type { User } from './sessions';
 
 /**
@@ -101,7 +101,7 @@ export class AccountService {
       ? await this.repository.institution(user.institutionId, db)
       : undefined;
     const reviewer = institution
-      ? await this.repository.reviewerName(institution.id, db)
+      ? await reviewerName(db, institution.id)
       : undefined;
     return {
       id: user.id,

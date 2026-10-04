@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { DB, type Database, type Db } from '../database/db';
 import {
   assignments,
@@ -38,14 +38,6 @@ export class PeopleRepository {
     return user;
   }
 
-  async emailTaken(email: string, db: Db = this.db): Promise<boolean> {
-    const [taken] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(sql`lower(${users.email}) = ${email.toLowerCase()}`);
-    return Boolean(taken);
-  }
-
   async insertUser(values: NewUser, db: Db = this.db): Promise<UserRow> {
     const [user] = await db.insert(users).values(values).returning();
     return user!;
@@ -66,17 +58,6 @@ export class PeopleRepository {
           eq(users.institutionId, institutionId),
         ),
       );
-  }
-
-  /** Institutions the officer currently reviews, in no particular order. */
-  async currentAssignments(officerId: string, db: Db = this.db) {
-    const rows = await db
-      .select({ institutionId: assignments.institutionId })
-      .from(assignments)
-      .where(
-        and(eq(assignments.officerId, officerId), isNull(assignments.validTo)),
-      );
-    return rows.map((row) => row.institutionId);
   }
 
   async institution(id: string, db: Db = this.db) {

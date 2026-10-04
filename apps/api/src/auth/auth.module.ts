@@ -16,6 +16,6 @@ import { AuthGuard, Sessions } from './sessions';
     AuthRepository,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [Sessions],
+  exports: [Sessions, AuthRepository],
 })
 export class AuthModule {}

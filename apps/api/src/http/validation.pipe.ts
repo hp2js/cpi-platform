@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import type { z } from 'zod';
 
+/** Query parameters an endpoint reads as optional strings (not validated; see REFACTOR_REPORT.md). */
+export type QueryFilters = Record<string, string | undefined>;
+
 /**
  * Validates a body or query against a contract schema. `invalid` replaces the generic 422 for
  * endpoints whose contract promises a specific message or code.

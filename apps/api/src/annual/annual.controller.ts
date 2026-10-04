@@ -22,8 +22,11 @@ import {
 import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { ApiError, invalidBody } from '../http/api-error';
-import { SchemaValidationPipe } from '../http/validation.pipe';
-import { AnnualService, type OversightFilters } from './annual.service';
+import {
+  SchemaValidationPipe,
+  type QueryFilters,
+} from '../http/validation.pipe';
+import { AnnualService } from './annual.service';
 
 /** Marks the response as a CSV download named `name`. */
 const csvDownload = (response: Response, name: string) =>
@@ -158,7 +161,7 @@ export class AnnualController {
   @Roles('officer', 'supervisor', 'administrator')
   oversight(
     @CurrentUser() user: User,
-    @Query() query: OversightFilters,
+    @Query() query: QueryFilters,
   ): Promise<Oversight> {
     return this.annual.oversight(user, query);
   }

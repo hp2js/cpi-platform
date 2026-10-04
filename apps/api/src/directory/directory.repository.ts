@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { AccountingOfficer, Institution } from '@cpi/contracts';
 import { DB, type Database, type Db } from '../database/db';
 import {
@@ -66,21 +66,6 @@ export class DirectoryRepository {
         ),
       )
       .orderBy(asc(assignments.id));
-  }
-
-  /** The current reviewing officer's name. */
-  async reviewerName(institutionId: string): Promise<string | undefined> {
-    const [reviewer] = await this.db
-      .select({ name: users.displayName })
-      .from(assignments)
-      .innerJoin(users, eq(users.id, assignments.officerId))
-      .where(
-        and(
-          eq(assignments.institutionId, institutionId),
-          isNull(assignments.validTo),
-        ),
-      );
-    return reviewer?.name;
   }
 
   /** Full user rows (internal: they include credentials); map before returning. */

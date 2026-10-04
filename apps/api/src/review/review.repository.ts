@@ -1,11 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
-import type { Draft } from '@cpi/contracts';
 import { DB, type Database, type Db } from '../database/db';
 import {
   clarifications,
   decisions,
-  drafts,
   obligations,
   oversightComments,
   reopenings,
@@ -21,12 +19,6 @@ type CommentUpdate = Partial<NewComment>;
 type NewClarification = typeof clarifications.$inferInsert;
 type SubmissionUpdate = Partial<typeof submissions.$inferInsert>;
 type NewReopening = typeof reopenings.$inferInsert;
-/** A draft re-created from a submission has no saver yet. */
-type RevisionDraft = Omit<Draft, 'savedAt' | 'savedBy'> & {
-  savedAt: string | null;
-  savedBy: string | null;
-};
-
 @Injectable()
 export class ReviewRepository {
   constructor(@Inject(DB) private readonly db: Database) {}
@@ -96,13 +88,6 @@ export class ReviewRepository {
       .update(clarifications)
       .set({ status: 'closed_unanswered', closure })
       .where(eq(clarifications.id, id));
-  }
-
-  async saveDraft(draft: RevisionDraft, db: Db = this.db): Promise<void> {
-    await db
-      .insert(drafts)
-      .values(draft)
-      .onConflictDoUpdate({ target: drafts.obligationId, set: draft });
   }
 
   async insertComment(values: NewComment, db: Db = this.db): Promise<void> {

@@ -9,22 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { z } from 'zod';
 import { Public, Sessions } from '../auth/sessions';
-import { SchemaValidationPipe } from '../http/validation.pipe';
 import { DevEnvironmentGuard } from './dev-environment.guard';
 import { DevService } from './dev.service';
-
-/** Anything but `{ enabled: true }` turns the failure mode off. */
-const emailFailureSchema = z
-  .unknown()
-  .transform(
-    (body) =>
-      typeof body === 'object' &&
-      body !== null &&
-      'enabled' in body &&
-      body.enabled === true,
-  );
 
 /**
  * Development controls for rehearsing recovery paths, on the same paths as the mock API's so
@@ -60,9 +47,10 @@ export class DevController {
   @Post('email-failure')
   @HttpCode(200)
   setEmailFailure(
-    @Body(new SchemaValidationPipe(emailFailureSchema)) enabled: boolean,
+    @Body() body: { enabled?: unknown } | undefined,
   ): Promise<{ enabled: boolean }> {
-    return this.dev.setEmailFailure(enabled);
+    // Anything but `{ enabled: true }` turns the failure mode off.
+    return this.dev.setEmailFailure(body?.enabled === true);
   }
 
   /** Attempts every queued or retrying email now, without waiting for its backoff. */

@@ -29,8 +29,7 @@ import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { invalidBody } from '../http/api-error';
 import { SchemaValidationPipe } from '../http/validation.pipe';
 import { PeopleService } from './people.service';
-import { invalidSettings } from './settings-body';
-import { SettingsService } from './settings.service';
+import { SettingsService, invalidSettings } from './settings.service';
 
 /** A settings body, failing with the settings screens' 422. */
 const settings = <T>(schema: z.ZodType<T>) =>
@@ -100,7 +99,7 @@ export class SettingsController {
   @Get('calendar')
   @Roles('administrator')
   calendar(): Promise<CalendarSettings> {
-    return this.settings.getCalendar();
+    return this.settings.calendar();
   }
 
   @Put('calendar')

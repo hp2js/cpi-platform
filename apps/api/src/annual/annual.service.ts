@@ -11,6 +11,7 @@ import {
   type InstitutionResults,
   type Oversight,
 } from '@cpi/contracts';
+import type { QueryFilters } from '../http/validation.pipe';
 import type { z } from 'zod';
 import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
@@ -18,6 +19,7 @@ import { DB, nextId, write, type Database, type Db } from '../database/db';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { effectiveCutoff } from '../review/clarifications';
+import { obligationById } from '../reporting/report';
 import { periodOf } from '../review/data';
 import { AnnualRepository } from './annual.repository';
 import {
@@ -31,8 +33,6 @@ import {
   oversight,
   toPublished,
 } from './data';
-
-export type OversightFilters = Record<string, string | undefined>;
 
 /** Annual evaluation, publication and corrections (PRD §7.4, §7.6, FR12–FR13, FR16). */
 @Injectable()
@@ -353,7 +353,7 @@ export class AnnualService {
     body: unknown,
   ): Promise<AnnualEvaluation> {
     return write(this.db, async (tx, businessTime) => {
-      const obligation = await this.repository.obligation(id, tx);
+      const obligation = await obligationById(tx, id);
       if (
         !obligation ||
         !(await readableInstitutionIds(tx, user)).includes(
@@ -427,7 +427,7 @@ export class AnnualService {
   }
 
   /** Dashboard metrics as defined in PRD §4.3, filtered to the caller's authorized scope. */
-  async oversight(user: User, query: OversightFilters): Promise<Oversight> {
+  async oversight(user: User, query: QueryFilters): Promise<Oversight> {
     const readable = await readableInstitutionIds(this.db, user);
     return oversight(
       await loadAnnualData(this.db, readable),

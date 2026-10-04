@@ -36,8 +36,18 @@ import {
   ruleDeadline,
   type Profile,
 } from './rules';
-import { settingsBody } from './settings-body';
 import { SettingsRepository, type ProfileRow } from './settings.repository';
+
+/** The settings screens' 422: one message, the validator's message per field. */
+export const invalidSettings = (error: z.ZodError) =>
+  new ApiError(
+    422,
+    'Some values need attention.',
+    'invalid_settings',
+    Object.fromEntries(
+      error.issues.map((issue) => [issue.path.join('.'), issue.message]),
+    ),
+  );
 
 function toProfile(
   { position, ...profile }: ProfileRow,
@@ -117,7 +127,9 @@ export class SettingsService {
           'Only a draft profile can be edited. Copy it to make changes.',
           'profile_immutable',
         );
-      const update = settingsBody(profileUpdateSchema, body);
+      const parsed = profileUpdateSchema.safeParse(body);
+      if (!parsed.success) throw invalidSettings(parsed.error);
+      const update = parsed.data;
       const updated = await this.repository.updateProfile(id, update, tx);
       await this.events.audit(
         tx,
@@ -216,10 +228,6 @@ export class SettingsService {
       );
       return this.profilesState(tx);
     });
-  }
-
-  getCalendar(): Promise<CalendarSettings> {
-    return this.calendar(this.db);
   }
 
   riskScale(): Promise<RiskScaleSettings> {
@@ -485,7 +493,7 @@ export class SettingsService {
     };
   }
 
-  private async calendar(db: Db): Promise<CalendarSettings> {
+  async calendar(db: Db = this.db): Promise<CalendarSettings> {
     const [{ state, cycle: row }, cycle, changes] = await Promise.all([
       currentState(db),
       loadCycle(db),

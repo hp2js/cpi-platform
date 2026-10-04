@@ -22,14 +22,6 @@ export class SimulationRepository {
     return processed?.count ?? 0;
   }
 
-  async profile(id: string): Promise<ProfileRow | undefined> {
-    const [profile] = await this.db
-      .select()
-      .from(scoringProfiles)
-      .where(eq(scoringProfiles.id, id));
-    return profile;
-  }
-
   /** The run's single cycle and every form version take the chosen profile's weights. */
   async applyProfile(profile: ProfileRow, db: Db = this.db): Promise<void> {
     await db.update(cycles).set({ profileId: profile.id });

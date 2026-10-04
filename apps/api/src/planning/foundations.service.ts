@@ -15,6 +15,7 @@ import { Files } from '../storage/files';
 import { checkUpload } from '../reporting/rules';
 import { foundationLabels, foundationsFor } from './foundations';
 import { FoundationsRepository } from './foundations.repository';
+import { ReportingRepository } from '../reporting/reporting.repository';
 
 const uploadFieldsSchema = z.object({
   kind: foundationKindSchema,
@@ -43,6 +44,7 @@ export class FoundationsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly repository: FoundationsRepository,
+    private readonly reporting: ReportingRepository,
     private readonly events: Events,
     private readonly files: Files,
   ) {}
@@ -115,7 +117,7 @@ export class FoundationsService {
             return foundationsFor(tx, institutionId, false);
         }
         const evidenceId = await nextId(tx, 'ev');
-        await this.repository.insertEvidence(
+        await this.reporting.insertEvidence(
           {
             id: evidenceId,
             institutionId,

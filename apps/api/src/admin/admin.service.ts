@@ -7,6 +7,7 @@ import {
   type AuditPage,
   type ReportBundle,
 } from '@cpi/contracts';
+import type { QueryFilters } from '../http/validation.pipe';
 import { evaluate, loadAnnualData } from '../annual/data';
 import { accountStatus, invitationExpiresAt } from '../auth/passwords';
 import type { User } from '../auth/sessions';
@@ -14,10 +15,8 @@ import { DB, nextId, write, type Database } from '../database/db';
 import { currentState } from '../database/state';
 import { Events, institutionUsers } from '../events/events';
 import { notFound } from '../http/api-error';
-import { loadReport } from '../reporting/report';
+import { loadReport, obligationById } from '../reporting/report';
 import { AdminRepository } from './admin.repository';
-
-export type AuditFilters = Record<string, string | undefined>;
 
 @Injectable()
 export class AdminService {
@@ -27,7 +26,7 @@ export class AdminService {
     private readonly events: Events,
   ) {}
 
-  async audit(query: AuditFilters): Promise<AuditPage> {
+  async audit(query: QueryFilters): Promise<AuditPage> {
     const { all, events } = await this.filteredAudit(query);
     const pageSize = Math.min(200, Math.max(1, Number(query.pageSize) || 50));
     const pages = Math.max(1, Math.ceil(events.length / pageSize));
@@ -42,7 +41,7 @@ export class AdminService {
     };
   }
 
-  async auditCsv(query: AuditFilters): Promise<string> {
+  async auditCsv(query: QueryFilters): Promise<string> {
     const { events } = await this.filteredAudit(query);
     return toCsv(
       [
@@ -196,7 +195,7 @@ export class AdminService {
   /** Read-only, audited support view; the institution is told (PRD §5.2). */
   support(admin: User, id: string, reason: string): Promise<ReportBundle> {
     return write(this.db, async (tx, businessTime) => {
-      const obligation = await this.repository.obligation(id, tx);
+      const obligation = await obligationById(tx, id);
       if (!obligation) throw notFound();
       const { bundle } = await loadReport(tx, obligation);
       await this.events.audit(
@@ -232,7 +231,7 @@ export class AdminService {
    * ponytail: filters in memory over the whole log; move to SQL WHERE/LIMIT when the log
    * reaches hundreds of thousands of rows.
    */
-  private async filteredAudit(query: AuditFilters) {
+  private async filteredAudit(query: QueryFilters) {
     const { objectType, action, actor, from, to } = query;
     const elevated = query.elevated === 'true';
     const needle = query.q?.trim().toLowerCase();

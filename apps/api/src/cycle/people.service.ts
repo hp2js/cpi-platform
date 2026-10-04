@@ -13,6 +13,7 @@ import {
   type userUpdateSchema,
   type People,
 } from '@cpi/contracts';
+import { AuthRepository } from '../auth/auth.repository';
 import { inviter } from '../auth/invitations';
 import { accountStatus, invitationExpiresAt } from '../auth/passwords';
 import {
@@ -65,6 +66,7 @@ export class PeopleService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly repository: PeopleRepository,
+    private readonly auth: AuthRepository,
     private readonly events: Events,
     private readonly sessions: Sessions,
     private readonly mailer: Mailer,
@@ -86,7 +88,7 @@ export class PeopleService {
           'invalid_settings',
           { email: FICTIONAL_EMAIL_MESSAGE },
         );
-      if (await this.repository.emailTaken(input.email, tx))
+      if (await this.auth.userByEmail(input.email.toLowerCase(), tx))
         throw new ApiError(
           422,
           'Some values need attention.',
@@ -274,7 +276,7 @@ export class PeopleService {
           'self_deactivation',
         );
       if (!input.active) {
-        const assigned = await this.repository.currentAssignments(user.id, tx);
+        const assigned = await assignedInstitutionIds(tx, user.id);
         if (assigned.length)
           throw new ApiError(
             409,

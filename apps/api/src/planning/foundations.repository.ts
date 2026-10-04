@@ -10,7 +10,6 @@ import {
 
 type FoundationVersionRow = typeof foundationVersions.$inferSelect;
 type NewFoundationVersion = typeof foundationVersions.$inferInsert;
-type NewEvidence = typeof evidence.$inferInsert;
 type NewFoundationReview = typeof foundationReviews.$inferInsert;
 
 @Injectable()
@@ -72,10 +71,6 @@ export class FoundationsRepository {
       .from(evidence)
       .where(eq(evidence.id, id));
     return existing?.sha256;
-  }
-
-  async insertEvidence(values: NewEvidence, db: Db = this.db): Promise<void> {
-    await db.insert(evidence).values(values);
   }
 
   /** Supersession keeps the earlier version and its decisions; it never deletes history. */

@@ -8,7 +8,11 @@ import type {
   Obligation,
 } from '@cpi/contracts';
 import { accountStatus } from '../auth/passwords';
-import { canReadInstitution, readableInstitutionIds } from '../auth/scope';
+import {
+  canReadInstitution,
+  readableInstitutionIds,
+  reviewerName,
+} from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database } from '../database/db';
 import { loadCycle } from '../database/state';
@@ -71,7 +75,7 @@ export class DirectoryService {
       user.institutionId ?? '',
     );
     if (!institution) throw notFound();
-    const reviewer = await this.repository.reviewerName(institution.id);
+    const reviewer = await reviewerName(this.db, institution.id);
     const focal = await this.repository.focalPersons(institution.id);
     return {
       institution,

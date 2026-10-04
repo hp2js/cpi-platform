@@ -1,14 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq, isNull, sql } from 'drizzle-orm';
 import type { AuditEvent } from '@cpi/contracts';
-import { DB, type Database, type Db } from '../database/db';
+import { DB, type Database } from '../database/db';
 import {
   assignments,
   auditEvents,
   deliveries,
   formVersions,
   institutions,
-  obligations,
   publications,
   suggestions,
   supervisions,
@@ -51,13 +50,5 @@ export class AdminRepository {
       .select({ institutionId: publications.institutionId })
       .from(publications)
       .where(isNull(publications.supersededBy));
-  }
-
-  async obligation(id: string, db: Db = this.db) {
-    const [obligation] = await db
-      .select()
-      .from(obligations)
-      .where(eq(obligations.id, id));
-    return obligation;
   }
 }

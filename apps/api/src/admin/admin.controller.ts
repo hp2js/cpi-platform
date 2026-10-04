@@ -17,8 +17,11 @@ import {
 import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { invalidBody } from '../http/api-error';
-import { SchemaValidationPipe } from '../http/validation.pipe';
-import { AdminService, type AuditFilters } from './admin.service';
+import {
+  SchemaValidationPipe,
+  type QueryFilters,
+} from '../http/validation.pipe';
+import { AdminService } from './admin.service';
 
 /** Administrator console: audit log, attention list and support access (FR10, PRD §5.2, §9). */
 @Controller()
@@ -28,7 +31,7 @@ export class AdminController {
 
   /** The audit log, filtered and paged on the server (FR10). */
   @Get('audit')
-  audit(@Query() query: AuditFilters): Promise<AuditPage> {
+  audit(@Query() query: QueryFilters): Promise<AuditPage> {
     return this.admin.audit(query);
   }
 
@@ -36,7 +39,7 @@ export class AdminController {
   @Get('audit.csv')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="cpi-audit-log.csv"')
-  auditCsv(@Query() query: AuditFilters): Promise<string> {
+  auditCsv(@Query() query: QueryFilters): Promise<string> {
     return this.admin.auditCsv(query);
   }
 
