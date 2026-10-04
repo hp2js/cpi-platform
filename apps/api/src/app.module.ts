@@ -7,15 +7,12 @@ import { DevController } from './dev/dev.controller';
 import { AccountController } from './auth/account.controller';
 import { SessionController } from './auth/session.controller';
 import { AuthGuard, Sessions } from './auth/sessions';
-import { CONFIG, loadConfig } from './config';
 import { FormsController } from './cycle/forms.controller';
 import { SettingsController } from './cycle/settings.controller';
 import { DirectoryController } from './directory/directory.controller';
 import { DeliveryWorker } from './events/delivery-worker';
 import { RealTimeClock } from './simulation/real-time-clock';
 import { EventsController } from './events/events.controller';
-import { Mailer } from './email/mailer';
-import { Events } from './events/events';
 import { FoundationsController } from './planning/foundations.controller';
 import { PlanEditorController } from './planning/plan-editor.controller';
 import { PlanningController } from './planning/planning.controller';
@@ -27,11 +24,10 @@ import { HealthController } from './health.controller';
 import { bodyParsers } from './http/body-parsers';
 import { requestContext } from './http/diagnostics';
 import { ApiExceptionFilter } from './http/errors.filter';
-import { Infrastructure } from './infrastructure';
-import { Objects } from './storage/objects';
-import { Files } from './storage/files';
+import { InfrastructureModule } from './infrastructure.module';
 
 @Module({
+  imports: [InfrastructureModule],
   controllers: [
     HealthController,
     SessionController,
@@ -52,15 +48,9 @@ import { Files } from './storage/files';
     DevController,
   ],
   providers: [
-    { provide: CONFIG, useFactory: () => loadConfig(process.env) },
-    Infrastructure,
-    Objects,
-    Files,
     Sessions,
-    Events,
     DeliveryWorker,
     RealTimeClock,
-    Mailer,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })

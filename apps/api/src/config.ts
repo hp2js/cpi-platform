@@ -95,6 +95,11 @@ export const demoEnvironment = (config: AppConfig) =>
 /** Names the invalid variables, never their values, so its message is safe to print. */
 export class ConfigError extends Error {}
 export const CONFIG = Symbol('CONFIG');
+/** The only place the running server reads the environment. */
+export const configProvider = {
+  provide: CONFIG,
+  useFactory: () => loadConfig(process.env),
+};
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const result = schema.safeParse(env);
   if (!result.success) {
