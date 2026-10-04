@@ -133,7 +133,10 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       evaluation: { total: { points: '40.00' } },
     });
     const csv = await focal.request('/results/export.csv');
-    expect(csv.headers.get('content-type')).toContain('text/csv');
+    expect(csv.headers.get('content-type')).toBe('text/csv; charset=utf-8');
+    expect(csv.headers.get('content-disposition')).toBe(
+      'attachment; filename="cpi-result-DEMO-008.csv"',
+    );
     expect(String(csv.body).split('\r\n')[0]).toMatch(/^schema_version,/);
     expect(String(csv.body)).toContain('DEMO-008');
     // Exports never carry another institution's rows, and are not for officers.
