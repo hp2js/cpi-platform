@@ -16,7 +16,7 @@ import {
 } from '@cpi/contracts';
 import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
-import { ApiError } from '../http/api-error';
+import { invalidBody } from '../http/api-error';
 import { SchemaValidationPipe } from '../http/validation.pipe';
 import { AdminService, type AuditFilters } from './admin.service';
 
@@ -59,13 +59,9 @@ export class AdminController {
     @Body(
       new SchemaValidationPipe(
         supportAccessRequestSchema,
-        () =>
-          new ApiError(
-            422,
-            'Give the support reason in at least 20 characters.',
-            'invalid_request',
-            { reason: 'Give the support reason in at least 20 characters.' },
-          ),
+        invalidBody('Give the support reason in at least 20 characters.', {
+          reason: 'Give the support reason in at least 20 characters.',
+        }),
       ),
     )
     body: z.infer<typeof supportAccessRequestSchema>,
