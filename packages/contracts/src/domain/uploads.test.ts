@@ -1,113 +1,122 @@
 import { readFileSync } from 'node:fs';
+import { deflateRawSync } from 'node:zlib';
 import { expect, it } from 'vitest';
 import { checkUpload } from './uploads.js';
 
+const fixtures = new URL('../../../../e2e/fixtures/', import.meta.url);
 const fixture = (name: string) =>
-  new Uint8Array(
-    readFileSync(new URL(`../../../../e2e/fixtures/${name}`, import.meta.url)),
-  );
+  new Uint8Array(readFileSync(new URL(name, fixtures)));
+const expected = JSON.parse(
+  readFileSync(new URL('rejected/expected.json', fixtures), 'utf8'),
+) as Record<string, keyof typeof messages>;
+const messages = {
+  damaged: 'This file appears to be damaged or incomplete',
+  protected: 'This file is password-protected',
+  active: 'This file contains macros',
+  mismatch: "The file's contents do not match",
+};
 const text = (value: string) => new TextEncoder().encode(value);
-const reason = (name: string, bytes: Uint8Array) => {
-  const check = checkUpload(name, bytes);
-  return check.ok ? 'ok' : check.message.split(',')[0];
+/** 'ok', or which kind of refusal the message is. */
+const reason = async (name: string, bytes: Uint8Array) => {
+  const check = await checkUpload(name, bytes);
+  if (check.ok) return 'ok';
+  const kinds = Object.keys(messages) as (keyof typeof messages)[];
+  return (
+    kinds.find((kind) => check.message.startsWith(messages[kind])) ??
+    check.message
+  );
 };
 
-/** A ZIP with only the parts the check reads: a local header signature and the central directory. */
-function zip(names: string[], { encrypted = false } = {}) {
-  const parts: number[] = [0x50, 0x4b, 0x03, 0x04, 0, 0];
-  const directoryStart = parts.length;
-  for (const name of names) {
-    const header = new Uint8Array(46);
-    const view = new DataView(header.buffer);
-    view.setUint32(0, 0x02014b50, true);
-    view.setUint16(8, encrypted ? 1 : 0, true);
-    view.setUint16(28, name.length, true);
-    parts.push(...header, ...text(name));
+/** A ZIP with deflated entries: local headers, central directory and end record. */
+function zip(entries: [string, string | Uint8Array][]) {
+  const local: number[] = [];
+  const directory: number[] = [];
+  for (const [name, content] of entries) {
+    const data = deflateRawSync(
+      typeof content === 'string' ? text(content) : content,
+    );
+    const size =
+      typeof content === 'string' ? text(content).length : content.length;
+    const header = new DataView(new ArrayBuffer(30));
+    header.setUint32(0, 0x04034b50, true);
+    header.setUint16(8, 8, true);
+    header.setUint32(18, data.length, true);
+    header.setUint32(22, size, true);
+    header.setUint16(26, name.length, true);
+    const entry = new DataView(new ArrayBuffer(46));
+    entry.setUint32(0, 0x02014b50, true);
+    entry.setUint16(10, 8, true);
+    entry.setUint32(20, data.length, true);
+    entry.setUint32(24, size, true);
+    entry.setUint16(28, name.length, true);
+    entry.setUint32(42, local.length, true);
+    local.push(...new Uint8Array(header.buffer), ...text(name), ...data);
+    directory.push(...new Uint8Array(entry.buffer), ...text(name));
   }
-  const end = new Uint8Array(22);
-  const view = new DataView(end.buffer);
-  view.setUint32(0, 0x06054b50, true);
-  view.setUint16(10, names.length, true);
-  view.setUint32(16, directoryStart, true);
-  return new Uint8Array([...parts, ...end]);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(16, local.length, true);
+  return new Uint8Array([
+    ...local,
+    ...directory,
+    ...new Uint8Array(end.buffer),
+  ]);
 }
-const docx = ['[Content_Types].xml', '_rels/.rels', 'word/document.xml'];
+const types = `<Types><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+const docx = (...extra: [string, string | Uint8Array][]) =>
+  zip([
+    ['[Content_Types].xml', types],
+    ['word/document.xml', '<w:document/>'],
+    ...extra,
+  ]);
 
-it('accepts real Office, PNG and PDF files', () => {
-  expect(reason('minutes.docx', fixture('cpc-minutes.docx'))).toBe('ok');
-  expect(reason('register.xlsx', fixture('allocation-register.xlsx'))).toBe(
-    'ok',
-  );
-  expect(reason('board.png', fixture('notice-board.png'))).toBe('ok');
-  expect(reason('minutes.docx', zip(docx))).toBe('ok');
-  expect(reason('minutes.pdf', text('%PDF-1.7\n1 0 obj\n<<>>\n%%EOF\n'))).toBe(
-    'ok',
-  );
-});
-
-it('refuses renamed, damaged and incomplete files (AT21)', () => {
-  expect(reason('minutes.pdf', new Uint8Array([0x4d, 0x5a, 0x90, 0]))).toBe(
-    "The file's contents do not match a .pdf file",
-  );
-  const damaged = 'This file appears to be damaged or incomplete';
-  // Any ZIP renamed .docx, or a workbook renamed .docx.
-  expect(reason('minutes.docx', zip(['notes.txt']))).toBe(damaged);
-  expect(reason('minutes.docx', fixture('allocation-register.xlsx'))).toBe(
-    damaged,
-  );
-  const office = fixture('cpc-minutes.docx');
-  expect(reason('minutes.docx', office.subarray(0, office.length - 30))).toBe(
-    damaged,
-  );
-  const png = fixture('notice-board.png');
-  expect(reason('board.png', png.subarray(0, png.length - 12))).toBe(damaged);
-  expect(reason('minutes.pdf', text('%PDF-1.7\n1 0 obj\n<<>>\n'))).toBe(
-    damaged,
-  );
-  expect(reason('photo.jpg', new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe(
-    damaged,
-  );
-});
-
-it('refuses files that cannot be inspected or carry active content', () => {
-  const locked = 'This file is password-protected';
-  const active = 'This file contains macros';
-  expect(reason('minutes.docx', zip(docx, { encrypted: true }))).toBe(locked);
-  expect(
-    reason('minutes.pdf', text('%PDF-1.7\ntrailer <</Encrypt 5 0 R>>\n%%EOF')),
-  ).toBe(locked);
-  expect(reason('minutes.docx', zip([...docx, 'word/vbaProject.bin']))).toBe(
-    active,
-  );
-  expect(
-    reason('minutes.docx', zip([...docx, 'word/embeddings/oleObject1.bin'])),
-  ).toBe(active);
-  // Escaped names are decoded before matching.
-  expect(
-    reason('minutes.pdf', text('%PDF-1.7\n<</S /J#61vaScript>>\n%%EOF')),
-  ).toBe(active);
-  expect(
-    reason(
-      'minutes.pdf',
-      text('%PDF-1.7\n<</OpenAction <</S /Launch>>>>\n%%EOF'),
-    ),
-  ).toBe(active);
+it('accepts real PDF, Word, Excel, PNG and JPEG files', async () => {
+  for (const name of [
+    'minutes.pdf',
+    'cpc-minutes.docx',
+    'allocation-register.xlsx',
+    'notice-board.png',
+    'photo.jpg',
+  ])
+    expect([name, await reason(name, fixture(name))]).toEqual([name, 'ok']);
   // Embedded charts and printer settings are ordinary Office content.
   expect(
-    reason(
+    await reason(
       'minutes.docx',
-      zip([
-        ...docx,
-        'word/embeddings/chart1.xlsx',
-        'word/printerSettings1.bin',
-      ]),
+      docx(
+        ['word/embeddings/chart1.xlsx', 'x'],
+        ['word/printerSettings1.bin', 'x'],
+      ),
     ),
   ).toBe('ok');
   // Binary stream data that happens to contain a name is not a dictionary entry.
   expect(
-    reason(
+    await reason(
       'minutes.pdf',
       text('%PDF-1.7\n<</Length 9>>stream\nx/JS(\x01)\nendstream\n%%EOF'),
     ),
   ).toBe('ok');
+});
+
+it('refuses every rejected fixture for its reason (AT21)', async () => {
+  for (const [name, why] of Object.entries(expected))
+    expect([name, await reason(name, fixture(`rejected/${name}`))]).toEqual([
+      name,
+      why,
+    ]);
+});
+
+it('decodes escaped PDF names and bounds what it inflates', async () => {
+  expect(
+    await reason('minutes.pdf', text('%PDF-1.7\n<</S /J#61vaScript>>\n%%EOF')),
+  ).toBe('active');
+  // A content-types part that inflates past 1 MiB is not expanded: the file is uninspectable.
+  const small = docx();
+  const inflated = zip([
+    ['[Content_Types].xml', types + ' '.repeat(2 * 1024 * 1024)],
+    ['word/document.xml', '<w:document/>'],
+  ]);
+  expect(await reason('minutes.docx', small)).toBe('ok');
+  expect(await reason('minutes.docx', inflated)).toBe('damaged');
 });
