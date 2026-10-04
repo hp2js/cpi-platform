@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FoundationsController } from './foundations.controller';
+import { FoundationsRepository } from './foundations.repository';
+import { FoundationsService } from './foundations.service';
 import { PlanEditorController } from './plan-editor.controller';
 import { PlanEditorRepository } from './plan-editor.repository';
 import { PlanEditorService } from './plan-editor.service';
@@ -18,6 +20,8 @@ import { PlanningService } from './planning.service';
     PlanningRepository,
     PlanEditorService,
     PlanEditorRepository,
+    FoundationsService,
+    FoundationsRepository,
   ],
 })
 export class PlanningModule {}
