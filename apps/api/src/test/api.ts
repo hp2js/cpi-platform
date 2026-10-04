@@ -73,27 +73,41 @@ export async function startApi(env: Record<string, string> = {}) {
   await loadFixtures(db);
 
   const port = await freePort();
-  const server: ChildProcess = spawn(process.execPath, ['dist/main.js'], {
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      API_PORT: String(port),
-      DATABASE_URL: urls.database,
-      REDIS_URL: urls.redis,
-      S3_PREFIX: objectPrefix,
-      ...env,
-    },
-    // API_LOG=1 shows the server's JSON log (for example a 500's cause).
-    stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],
-  });
   const url = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; ; attempt += 1) {
-    const ready = await fetch(`${url}/api/health/ready`).catch(() => undefined);
-    if (ready?.ok) break;
-    if (attempt > 100 || server.exitCode !== null)
-      throw new Error('The API did not become ready.');
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  const spawnServer = async () => {
+    const started: ChildProcess = spawn(process.execPath, ['dist/main.js'], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        API_PORT: String(port),
+        DATABASE_URL: urls.database,
+        REDIS_URL: urls.redis,
+        S3_PREFIX: objectPrefix,
+        ...env,
+      },
+      // API_LOG=1 shows the server's JSON log (for example a 500's cause).
+      stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],
+    });
+    for (let attempt = 0; ; attempt += 1) {
+      const ready = await fetch(`${url}/api/health/ready`).catch(
+        () => undefined,
+      );
+      if (ready?.ok) break;
+      if (attempt > 100 || started.exitCode !== null)
+        throw new Error('The API did not become ready.');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return started;
+  };
+  const stopServer = (signal: NodeJS.Signals = 'SIGTERM') =>
+    new Promise<void>((resolve) => {
+      if (server.exitCode !== null || server.signalCode !== null) resolve();
+      else {
+        server.once('exit', () => resolve());
+        server.kill(signal);
+      }
+    });
+  let server = await spawnServer();
 
   return {
     db,
@@ -110,12 +124,14 @@ export async function startApi(env: Record<string, string> = {}) {
       }
     },
     client: () => new Client(url),
+    /** Stops the API abruptly by default, like a crash; the database and bucket stay. */
+    kill: (signal: NodeJS.Signals = 'SIGKILL') => stopServer(signal),
+    /** Starts the API again on the same port, database and bucket. */
+    async start() {
+      server = await spawnServer();
+    },
     async stop() {
-      server.kill();
-      await new Promise<void>((resolve) => {
-        if (server.exitCode !== null || server.signalCode !== null) resolve();
-        else server.once('exit', () => resolve());
-      });
+      await stopServer();
       for await (const location of objects.list())
         await objects.remove(location);
       objects.onApplicationShutdown();

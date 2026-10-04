@@ -1,4 +1,4 @@
-import { count, eq } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import type {
   AnnualOverview,
   AuditPage,
@@ -16,11 +16,15 @@ import type {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   deliveries,
+  emailSink,
   notifications,
   processedEvents,
   systemState,
+  users,
 } from '../database/schema';
-import { lockWrites } from '../database/db';
+import { loadConfig } from '../config';
+import { lockWrites, write } from '../database/db';
+import { Events } from '../events/events';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -358,6 +362,52 @@ describe.skipIf(!integration)(
         ),
       ).toMatchObject({ status: 'delivered', attempts: 2 });
       expect(await admin.json<unknown[]>('/admin/email-sink')).toHaveLength(1);
+    });
+
+    it('delivers committed work after a crash and replays an event without a second message (HP2-43)', async () => {
+      const events = new Events(loadConfig(process.env));
+      const recipients = await api.db
+        .select()
+        .from(users)
+        .where(inArray(users.id, ['officer-a', 'focal-demo-001']));
+      const notify = () =>
+        write(api.db, (tx, businessTime) =>
+          events.notify(
+            tx,
+            businessTime,
+            'test.restart',
+            'test.restart',
+            recipients,
+            {
+              title: 'Restart check',
+              body: 'Queued while the API was down.',
+              link: null,
+            },
+          ),
+        );
+      const sink = async () =>
+        (await api.db.select().from(emailSink)).filter(
+          (mail) => mail.subject === 'Restart check',
+        );
+
+      // The API crashes; meanwhile a committed change queues two deliveries, and is replayed.
+      await api.kill();
+      await notify();
+      await notify(); // the replay queues nothing more
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const queued = await api.db
+        .select()
+        .from(deliveries)
+        .where(eq(deliveries.eventType, 'test.restart'));
+      expect(queued.map((row) => row.status)).toEqual(['queued', 'queued']);
+
+      // The restarted worker finds the committed rows and delivers each once.
+      await api.start();
+      await deliveriesSettled();
+      expect(await sink()).toHaveLength(2);
+      await notify();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      expect(await sink()).toHaveLength(2);
     });
 
     it('refuses simulation controls to everyone but administrators, changing nothing', async () => {
