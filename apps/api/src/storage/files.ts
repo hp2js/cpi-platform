@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import type { Tx } from '../database/db';
+import { ApiError } from '../http/api-error';
 import { evidenceFiles } from '../database/schema';
 import { Infrastructure } from '../infrastructure';
 import { Objects, storageMissing, type ObjectLocation } from './objects';
@@ -20,6 +21,21 @@ export class Files {
     private readonly infrastructure: Infrastructure,
     private readonly objects: Objects,
   ) {}
+
+  /**
+   * Real documents need scanning, quarantine and a production review first (PRD §9.2): outside
+   * demo mode, new uploads answer 403 until REAL_DOCUMENT_UPLOADS records that approval.
+   * Maintenance (storage:migrate) moves existing files and is not affected.
+   */
+  assertUploadsApproved() {
+    const { DEMO_MODE, REAL_DOCUMENT_UPLOADS } = this.objects.config;
+    if (!DEMO_MODE && !REAL_DOCUMENT_UPLOADS)
+      throw new ApiError(
+        403,
+        'File uploads are turned off until malware scanning and a production review are approved for real documents.',
+        'uploads_not_approved',
+      );
+  }
 
   /** Object writes are not SQL transactions. Compensate only after confirming no committed reference. */
   async withUpload<T>(

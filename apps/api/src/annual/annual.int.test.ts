@@ -136,6 +136,11 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
     expect(csv.headers.get('content-type')).toContain('text/csv');
     expect(String(csv.body).split('\r\n')[0]).toMatch(/^schema_version,/);
     expect(String(csv.body)).toContain('DEMO-008');
+    // Exports never carry another institution's rows, and are not for officers.
+    expect(String(csv.body)).not.toMatch(/DEMO-00[1-7]/);
+    const officer = await api.client().signIn('officer-b');
+    expect((await officer.request('/annual/report.csv')).status).toBe(403);
+    expect((await officer.request('/results/export.csv')).status).toBe(403);
 
     // A correction case lets the administrator publish a new version; v1 stays as superseded (AT20).
     expect(

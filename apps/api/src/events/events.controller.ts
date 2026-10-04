@@ -114,13 +114,9 @@ export class EventsController {
           'This message was already delivered.',
           'already_delivered',
         );
-      const attempted = await attemptDelivery(tx, businessTime, delivery);
+      // A manual retry is one attempt; if it fails, the delivery returns to the failure queue.
+      const attempted = await attemptDelivery(tx, businessTime, delivery, null);
       const delivered = attempted.status === 'delivered';
-      if (!delivered)
-        await tx
-          .update(deliveries)
-          .set({ status: 'failed' })
-          .where(eq(deliveries.id, id));
       await this.events.audit(
         tx,
         businessTime,
