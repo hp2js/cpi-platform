@@ -20,6 +20,7 @@ import {
   processedEvents,
   systemState,
 } from '../database/schema';
+import { lockWrites } from '../database/db';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -357,6 +358,46 @@ describe.skipIf(!integration)(
         ),
       ).toMatchObject({ status: 'delivered', attempts: 2 });
       expect(await admin.json<unknown[]>('/admin/email-sink')).toHaveLength(1);
+    });
+
+    it('refuses simulation controls to everyone but administrators, changing nothing', async () => {
+      const records = async () => ({
+        state: (await api.db.select().from(systemState))[0],
+        events: (await api.db.select({ n: count() }).from(processedEvents))[0],
+      });
+      const before = await records();
+      for (const account of ['officer-a', 'supervisor', 'focal-demo-001']) {
+        const client = await api.client().signIn(account);
+        for (const [path, body] of [
+          ['/simulation/advance', { boundaryId: 'Q1-open' }],
+          ['/simulation/reset', undefined],
+          ['/simulation/scenario', undefined],
+        ] as const)
+          expect((await client.post(path, body)).status).toBe(403);
+      }
+      expect(await records()).toEqual(before);
+      expect((await admin.json<SimulationState>('/simulation')).controls).toBe(
+        true,
+      );
+    });
+
+    it('starts a new run only after a write in progress commits, and records it (HP2-42)', async () => {
+      let reset: Awaited<ReturnType<Client['post']>> | undefined;
+      await api.db.transaction(async (tx) => {
+        await lockWrites(tx); // A write in progress holds the write lock.
+        const pending = admin.post('/simulation/reset').then((result) => {
+          reset = result;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        expect(reset).toBeUndefined();
+        void pending;
+      });
+      await expect.poll(() => reset?.status, { timeout: 10_000 }).toBe(200);
+      const { events } = await admin.json<AuditPage>(
+        '/audit?action=simulation.reset',
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0]!.summary).toMatch(/^Started run-002, replacing run-001/);
     });
 
     it('tries a different profile in a new run and keeps the profile library (PRD §7.1, AT24)', async () => {

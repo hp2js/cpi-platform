@@ -6,7 +6,12 @@ import {
   type SimulationState,
 } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
-import { CONFIG, type AppConfig, disposableDatabase } from '../config';
+import {
+  CONFIG,
+  type AppConfig,
+  demoEnvironment,
+  disposableDatabase,
+} from '../config';
 import { write, type Db } from '../database/db';
 import { loadFixtures, seedOptions } from '../database/fixtures';
 import { Mailer } from '../email/mailer';
@@ -23,7 +28,7 @@ import { Infrastructure } from '../infrastructure';
 import { advanceTo, boundaryState } from './clock';
 import { runScenario } from './scenario';
 
-async function state(db: Db): Promise<SimulationState> {
+async function state(db: Db, controls: boolean): Promise<SimulationState> {
   const { state: current } = await currentState(db);
   const [processed] = await db
     .select({ count: count() })
@@ -34,6 +39,7 @@ async function state(db: Db): Promise<SimulationState> {
     businessTime: current.businessTime,
     boundaries: await boundaryState(db),
     processedEvents: processed?.count ?? 0,
+    controls,
   };
 }
 
@@ -47,9 +53,14 @@ export class SimulationController {
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
+  private state(db: Db) {
+    return state(db, demoEnvironment(this.config));
+  }
+
   /**
-   * A new run and the scripted year replace or need the fictional data: demo mode, on the
-   * dedicated disposable demo database only (HP2-42).
+   * Advancing the clock, a new run and the scripted year are demonstration controls: demo mode,
+   * on the dedicated disposable demo database only (HP2-42), even for administrators. Outside
+   * demo mode business time follows the real clock (`RealTimeClock`).
    */
   private requireDemo() {
     if (!this.config.DEMO_MODE)
@@ -72,13 +83,14 @@ export class SimulationController {
 
   @Get('simulation')
   simulation() {
-    return state(this.db);
+    return this.state(this.db);
   }
 
   @Post('simulation/advance')
   @HttpCode(200)
   @Roles('administrator')
   advance(@CurrentUser() user: User, @Body() body: unknown) {
+    this.requireDemo();
     return write(this.db, async (tx) => {
       const parsed = advanceRequestSchema.safeParse(body);
       const boundary = parsed.success
@@ -87,7 +99,7 @@ export class SimulationController {
           )
         : undefined;
       if (!boundary) throw notFound();
-      if (boundary.passed) return state(tx);
+      if (boundary.passed) return this.state(tx);
       await advanceTo(tx, this.events, boundary.at);
       const { state: current } = await currentState(tx);
       await this.events.audit(
@@ -98,11 +110,14 @@ export class SimulationController {
         { type: 'simulation', id: current.runId },
         `Advanced to ${boundary.label}`,
       );
-      return state(tx);
+      return this.state(tx);
     });
   }
 
-  /** A new run with fresh fixtures; it never touches another run or a real environment (AT24). */
+  /**
+   * A new run with fresh fixtures, replacing the current one on the demo database (AT24). Only
+   * one run exists at a time; earlier runs are not kept.
+   */
   @Post('simulation/reset')
   @HttpCode(200)
   @Roles('administrator')
@@ -125,29 +140,34 @@ export class SimulationController {
         'A new run can only start with an approved profile.',
         'profile_not_approved',
       );
-    const previous = (await currentState(this.db)).state.runId;
-    const next = `run-${String(Number(previous.replace(/\D/g, '')) + 1).padStart(3, '0')}`;
-    // Settings carry over: the profile library is kept, and a chosen profile applies (§7.1).
+    // Kept: the profile library, a chosen profile (§7.1) and the configured administrator.
+    // Everything else, the calendar and forms included, returns to the fixture the scripted
+    // year depends on. The reset holds the write lock and records itself in one transaction.
+    let replaced = 'run-000';
     await loadFixtures(this.db, {
       ...seedOptions(this.config, this.mailer),
       keepProfiles: true,
-      runId: next,
+      runId: (previous = replaced) => {
+        replaced = previous;
+        return `run-${String(Number(previous.replace(/\D/g, '')) + 1).padStart(3, '0')}`;
+      },
+      then: async (tx, businessTime) => {
+        if (chosen) {
+          await tx.update(cycles).set({ profileId: chosen.id });
+          await tx.update(formVersions).set({ weights: { ...chosen.weights } });
+        }
+        const { state: started } = await currentState(tx);
+        await this.events.audit(
+          tx,
+          businessTime,
+          user,
+          'simulation.reset',
+          { type: 'simulation', id: started.runId },
+          `Started ${started.runId}, replacing ${replaced}${chosen ? `, with ${chosen.name}` : ''}`,
+        );
+      },
     });
-    return write(this.db, async (tx, businessTime) => {
-      if (chosen) {
-        await tx.update(cycles).set({ profileId: chosen.id });
-        await tx.update(formVersions).set({ weights: { ...chosen.weights } });
-      }
-      await this.events.audit(
-        tx,
-        businessTime,
-        user,
-        'simulation.reset',
-        { type: 'simulation', id: next },
-        `Started ${next}, replacing ${previous}${chosen ? `, with ${chosen.name}` : ''}`,
-      );
-      return state(tx);
-    });
+    return this.state(this.db);
   }
 
   @Post('simulation/scenario')

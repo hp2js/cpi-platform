@@ -11,7 +11,16 @@ export type AfterCommit = (task: () => Promise<void>) => void;
 export type Db = Database | Tx;
 
 /**
- * Run a change in a transaction that holds the single write lock (the system_state row), so
+ * The single write lock: a transaction-scoped advisory lock rather than a row lock, so a reset
+ * can hold it while it truncates `system_state` itself (a waiting row lock would deadlock with
+ * the truncate). Released when the transaction ends.
+ */
+const WRITE_LOCK = 0x43_50_49; // "CPI"
+export const lockWrites = (tx: Tx) =>
+  tx.execute(sql`SELECT pg_advisory_xact_lock(${WRITE_LOCK})`);
+
+/**
+ * Run a change in a transaction that holds the single write lock (`lockWrites`), so
  * workflow transitions never interleave and every write sees the business time it records.
  * Tasks registered with `afterCommit` run once the transaction commits, outside the lock.
  * ponytail: one global writer is plenty for 8 institutions; move to per-obligation row locks
@@ -27,10 +36,10 @@ export async function write<T>(
 ): Promise<T> {
   const after: (() => Promise<void>)[] = [];
   const result = await db.transaction(async (tx) => {
+    await lockWrites(tx);
     const [state] = await tx
       .select({ businessTime: systemState.businessTime })
-      .from(systemState)
-      .for('update');
+      .from(systemState);
     if (!state) throw new Error('The database has no run. Run pnpm db:seed.');
     return change(tx, state.businessTime, (task) => after.push(task));
   });

@@ -23,6 +23,8 @@ function state(): SimulationState {
     businessTime: db.businessTime,
     boundaries: boundaryState(),
     processedEvents: db.processedEvents.length,
+    // The mock is always a demonstration.
+    controls: true,
   };
 }
 

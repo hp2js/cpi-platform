@@ -27,6 +27,11 @@ export const simulationStateSchema = z.object({
   boundaries: z.array(clockBoundarySchema),
   /** Boundary events already processed in this run; replays are no-ops. */
   processedEvents: z.number().int().nonnegative(),
+  /**
+   * Whether advancing, a new run and the scripted year are available: only in the isolated demo
+   * environment. Otherwise business time follows the real clock.
+   */
+  controls: z.boolean(),
 });
 export type SimulationState = z.infer<typeof simulationStateSchema>;
 
