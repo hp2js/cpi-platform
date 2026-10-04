@@ -229,4 +229,4 @@ Work proceeds in phases that follow the Linear gates. **At the end of each phase
 
 ## 12. Out of scope for this plan
 
-Backend implementation, real authentication, file storage and malware scanning, email delivery, and performance measurement. The UI surfaces their outcomes; the mock simulates them.
+History: when this plan was written the backend did not exist, so the backend, real authentication, file storage and malware scanning, email delivery and performance measurement were out of scope and the mock simulated them. The persisted API now provides all of these except malware scanning and performance measurement; see [platform-contracts.md](platform-contracts.md), [storage.md](storage.md) and [prd-coverage.md](prd-coverage.md#not-verified-by-automated-checks).

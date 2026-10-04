@@ -57,9 +57,13 @@ Workflow notifications (FR11) are an in-app inbox plus an email summary written 
 1. **Outbox.** In the transaction of the business change, `Events.notify` inserts one `notifications` row per recipient (unique per event and recipient) and one `deliveries` row (unique `key` = event, recipient and channel) with status `queued`. Replaying an event inserts nothing new.
 2. **Worker.** One `DeliveryWorker` runs inside the API process (`events/delivery-worker.ts`). Every second it selects due `queued` or `retrying` rows and attempts each in its own write transaction, rechecking the row first. A delivery failure or a crashed worker therefore cannot undo the business change.
 3. **Retry.** Three attempts: immediately, then after 30 s and 2 min of real time (`DELIVERY_RETRY_DELAYS_MS`, default `30000,120000`). After the third failure the row is `failed` and appears in the failure queue (`GET /api/admin/deliveries?status=failed`), where an administrator can retry it once at a time (audited).
-4. **Restart.** Rows are the queue: anything `queued` or `retrying` when the API stops is attempted after it starts again.
+4. **Restart.** Rows are the queue: anything `queued` or `retrying` when the API stops is attempted after it starts again. Redis plays no part in delivery, so a Redis outage neither loses nor repeats a delivery.
 
 States: `queued → delivered`, or `queued → retrying → … → delivered | failed`; a manual retry takes `failed → delivered | failed`.
+
+**Send and acknowledgement.** With the demo sink, writing the message and marking the delivery `delivered` happen in one transaction, so a crash leaves both or neither: each delivery reaches the sink exactly once. A real email provider would sit outside that transaction. A crash after the provider accepted a message but before `delivered` committed would send it again on restart (at-least-once). Passing the delivery `key` to the provider as an idempotency key would close that gap; it is not needed while delivery is restricted to the sink.
+
+Tested in `simulation.int.test.ts`: deliveries queued while the API is down are delivered once after it starts again, and replaying the event adds nothing; a failed sink delivery retries, reaches the failure queue and succeeds on a manual retry; a row left mid-retry is finished once. Contention between several workers and an exhaustive crash-point matrix are deferred.
 
 Several API replicas would each run a worker; the recheck under the write lock keeps a row from being attempted twice. In development, `POST /api/__mock/deliveries/run` attempts waiting retries immediately, and `POST /api/__mock/email-failure` makes the sink reject messages (both unavailable in production and outside demo mode).
 

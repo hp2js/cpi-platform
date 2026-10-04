@@ -1,0 +1,19 @@
+{
+  "attachment.pdf": "active",
+  "encrypted-entry.docx": "protected",
+  "encrypted.pdf": "protected",
+  "executable.pdf": "mismatch",
+  "launch.pdf": "active",
+  "macro-content-type.docx": "active",
+  "macro.docx": "active",
+  "macro.xlsx": "active",
+  "ole-object.docx": "active",
+  "renamed-archive.docx": "damaged",
+  "script.pdf": "active",
+  "template.docx": "mismatch",
+  "truncated.docx": "damaged",
+  "truncated.jpg": "damaged",
+  "truncated.pdf": "damaged",
+  "truncated.png": "damaged",
+  "workbook-renamed.docx": "damaged"
+}

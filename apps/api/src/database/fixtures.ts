@@ -20,7 +20,7 @@ import {
 import { inviter } from '../auth/invitations';
 import type { AppConfig } from '../config';
 import type { Mailer } from '../email/mailer';
-import type { Database } from './db';
+import { lockWrites, type Database, type Tx } from './db';
 import * as schema from './schema';
 
 const tables = Object.values(schema).filter((value) => is(value, PgTable));
@@ -42,19 +42,34 @@ export const PLATFORM_ADMIN_ID = 'platform-admin';
  * institutions or people. `administrator` adds the configured administrator: an existing account
  * is kept as it is, a new one gets a temporary password emailed through `mailer` after commit.
  * A new simulation run passes `keepProfiles` so the administrator's profile library carries over.
+ * It holds the write lock throughout, so it waits for writes in progress and later writes wait
+ * for it; `then` records the outcome in the same transaction.
  */
 export async function loadFixtures(
   db: Database,
   options: {
     keepProfiles?: boolean;
-    runId?: string;
+    /** The new run's ID, or how to derive it from the run being replaced. */
+    runId?: string | ((previous: string | undefined) => string);
     demo?: boolean;
     administrator?: { email: string; displayName: string; mailer: Mailer };
+    then?: (tx: Tx, businessTime: string) => Promise<void>;
   } = {},
 ) {
   const { demo = true, administrator } = options;
   const afterCommit: (() => Promise<void>)[] = [];
   await db.transaction(async (tx) => {
+    await lockWrites(tx);
+    const [replaced] =
+      typeof options.runId === 'function'
+        ? await tx
+            .select({ runId: schema.systemState.runId })
+            .from(schema.systemState)
+        : [];
+    const runId =
+      typeof options.runId === 'function'
+        ? options.runId(replaced?.runId)
+        : (options.runId ?? 'run-001');
     const keptProfiles = options.keepProfiles
       ? await tx
           .select()
@@ -108,7 +123,7 @@ export async function loadFixtures(
       );
     await tx.insert(schema.formVersions).values(initialForm);
     await tx.insert(schema.systemState).values({
-      runId: options.runId ?? 'run-001',
+      runId,
       businessTime: initialBusinessTime,
     });
 
@@ -129,7 +144,7 @@ export async function loadFixtures(
           (task) => afterCommit.push(task),
         )(tx, stored!);
     }
-    if (!demo) return;
+    if (!demo) return options.then?.(tx, initialBusinessTime);
 
     await tx.insert(schema.institutions).values(institutions);
     await tx.insert(schema.users).values(
@@ -171,6 +186,7 @@ export async function loadFixtures(
       })),
     );
     await tx.insert(schema.foundationVersions).values(foundations.versions);
+    await options.then?.(tx, initialBusinessTime);
   });
   for (const task of afterCommit) await task();
 }

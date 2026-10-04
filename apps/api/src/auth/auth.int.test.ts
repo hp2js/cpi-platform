@@ -7,6 +7,7 @@ import type {
   People,
   Session,
   SignInChallenge,
+  SimulationState,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ReactElement } from 'react';
@@ -16,6 +17,7 @@ import {
   emailSink,
   institutions,
   obligations,
+  systemState,
   users,
 } from '../database/schema';
 import type { Mailer } from '../email/mailer';
@@ -31,6 +33,42 @@ import {
   publishSeedForm,
 } from '../test/journeys';
 import { DEMO_PASSWORD, hashPassword } from './passwords';
+
+/**
+ * Outside demo mode seeded accounts accept no published password: give one a real password and
+ * sign it in through the emailed code. Reads the newest code sent to that address, since clock
+ * notifications reach the sink too.
+ */
+async function passwordSession(
+  api: Awaited<ReturnType<typeof startApi>>,
+  id: string,
+) {
+  const [user] = await api.db
+    .update(users)
+    .set({ passwordHash: await hashPassword(STRONG_PASSWORD) })
+    .where(eq(users.id, id))
+    .returning();
+  const client = api.client();
+  const first = await client.post('/session', {
+    email: user!.email,
+    password: STRONG_PASSWORD,
+  });
+  const mails = await api.db
+    .select({ body: emailSink.body })
+    .from(emailSink)
+    .where(eq(emailSink.to, user!.email.toLowerCase()))
+    .orderBy(desc(emailSink.seq));
+  const code = mails
+    .map((mail) => /Your sign-in code is (\d{6})/.exec(mail.body)?.[1])
+    .find(Boolean);
+  const signedIn = await client.post('/session/code', {
+    challengeId: (first.body as SignInChallenge).challengeId,
+    code,
+  });
+  if (signedIn.status !== 200)
+    throw new Error(`Sign-in failed: ${signedIn.status}`);
+  return client;
+}
 
 const WRONG = 'The email or password is not right. Check both and try again.';
 
@@ -422,31 +460,8 @@ describe.skipIf(!integration)('outside demo mode', () => {
       });
       try {
         await api.flushRedis();
-        // Seeded accounts only accept the demo password, which is refused outside demo mode.
-        const signIn = async (id: string) => {
-          const [user] = await api.db
-            .update(users)
-            .set({ passwordHash: await hashPassword(STRONG_PASSWORD) })
-            .where(eq(users.id, id))
-            .returning();
-          const client = api.client();
-          const first = await client.post('/session', {
-            email: user!.email,
-            password: STRONG_PASSWORD,
-          });
-          const [mail] = await api.db
-            .select({ body: emailSink.body })
-            .from(emailSink)
-            .orderBy(desc(emailSink.seq))
-            .limit(1);
-          await client.post('/session/code', {
-            challengeId: (first.body as SignInChallenge).challengeId,
-            code: /Your sign-in code is (\d{6})/.exec(mail!.body)![1],
-          });
-          return client;
-        };
-        await publishSeedForm(await signIn('administrator'));
-        const focal = await signIn('focal-demo-001');
+        await publishSeedForm(await passwordSession(api, 'administrator'));
+        const focal = await passwordSession(api, 'focal-demo-001');
         const upload = await focal.upload(
           `${obligationPath('DEMO-001')}/evidence`,
           { name: 'minutes.pdf', bytes: pdf('real document') },
@@ -500,32 +515,7 @@ describe.skipIf(!integration)('sign-in addresses', () => {
       await api.reset();
       await api.flushRedis();
       // Demo sign-in is off, so the administrator signs in with a password and code.
-      const [row] = await api.db
-        .select()
-        .from(users)
-        .where(eq(users.id, 'administrator'));
-      await api.db
-        .update(users)
-        .set({ passwordHash: await hashPassword(STRONG_PASSWORD) })
-        .where(eq(users.id, row!.id));
-      const admin = api.client();
-      const first = await admin.post('/session', {
-        email: row!.email,
-        password: STRONG_PASSWORD,
-      });
-      const [code] = await api.db
-        .select({ body: emailSink.body })
-        .from(emailSink)
-        .orderBy(desc(emailSink.seq))
-        .limit(1);
-      expect(
-        (
-          await admin.post('/session/code', {
-            challengeId: (first.body as SignInChallenge).challengeId,
-            code: /Your sign-in code is (\d{6})/.exec(code!.body)![1],
-          })
-        ).status,
-      ).toBe(200);
+      const admin = await passwordSession(api, 'administrator');
       const created = await create(admin, 'Person@Example.com');
       expect(created.status).toBe(201);
       expect(
@@ -594,40 +584,44 @@ describe.skipIf(!integration)('seeding', () => {
     }
   }, 60_000);
 
-  it('refuses to replace real records with a simulation run', async () => {
+  it('refuses simulation controls and follows the real clock outside demo mode', async () => {
     const api = await startApi({
       DEMO_MODE: 'false',
       ADMIN_EMAIL: 'operator@example.invalid',
     });
     try {
       await api.flushRedis();
-      const [row] = await api.db
-        .select()
-        .from(users)
-        .where(eq(users.id, 'administrator'));
-      await api.db
-        .update(users)
-        .set({ passwordHash: await hashPassword(STRONG_PASSWORD) })
-        .where(eq(users.id, row!.id));
-      const admin = api.client();
-      const first = await admin.post('/session', {
-        email: row!.email,
-        password: STRONG_PASSWORD,
+      const admin = await passwordSession(api, 'administrator');
+      const records = async () => ({
+        run: (await api.db.select().from(systemState))[0]!.runId,
+        institutions: (await api.db.select().from(institutions)).length,
+        obligations: (await api.db.select().from(obligations)).length,
+        users: (await api.db.select().from(users)).length,
       });
-      const [mail] = await api.db
-        .select({ body: emailSink.body })
-        .from(emailSink)
-        .orderBy(desc(emailSink.seq))
-        .limit(1);
-      await admin.post('/session/code', {
-        challengeId: (first.body as SignInChallenge).challengeId,
-        code: /Your sign-in code is (\d{6})/.exec(mail!.body)![1],
-      });
-      for (const path of ['/simulation/reset', '/simulation/scenario'])
-        expect(await admin.post(path)).toMatchObject({
+      const before = await records();
+      for (const [path, body] of [
+        ['/simulation/advance', { boundaryId: 'Q1-open' }],
+        ['/simulation/reset', undefined],
+        ['/simulation/scenario', undefined],
+      ] as const)
+        expect(await admin.post(path, body)).toMatchObject({
           status: 409,
           body: { code: 'demo_only' },
         });
+      expect(await records()).toEqual(before);
+      // Nobody moves the clock here: business time catches up with real time by itself.
+      await expect
+        .poll(
+          async () => {
+            const state = await admin.json<SimulationState>('/simulation');
+            return (
+              !state.controls &&
+              Math.abs(Date.parse(state.businessTime) - Date.now()) < 5000
+            );
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(true);
     } finally {
       await api.stop();
     }

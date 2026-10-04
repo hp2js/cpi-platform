@@ -63,7 +63,7 @@ Not drawn: settings history (`calendar_changes`, `risk_scale_changes`), assignme
 
 - **One obligation per institution and period:** `unique(institution_id, period_id)`. Also unique: submission `(obligation, revision)`, baseline `(institution, period, version)`, form `(cycle, version)`, delivery `key`, notification `(event, recipient)`, idempotency key `(user, key)`.
 - **History is append-only.** Nothing is deleted. A change adds a row and marks the old one: evidence `supersededBy`, decisions `supersededAt`, foundations `status: superseded | withdrawn`, publications `supersededBy`, baselines by `version`.
-- **Every write** goes through `write(db, (tx, businessTime) => …)` (`database/db.ts`): one transaction holding the single write lock (the `system_state` row), which also supplies business time. Audit events and notification outbox rows are inserted in the same transaction as the change they describe, so they exist exactly when the change does.
+- **Every write** goes through `write(db, (tx, businessTime) => …)` (`database/db.ts`): one transaction holding the single write lock (a PostgreSQL advisory lock, also taken by resets), which also supplies business time. Audit events and notification outbox rows are inserted in the same transaction as the change they describe, so they exist exactly when the change does.
 
 ## Fields that are not obvious
 

@@ -204,7 +204,7 @@ export class ReportingController {
               file: 'Choose a file to upload.',
             },
           );
-        const check = checkUpload(file.originalname, file.buffer);
+        const check = await checkUpload(file.originalname, file.buffer);
         if (!check.ok)
           throw new ApiError(422, check.message, 'upload_rejected', {
             file: check.message,

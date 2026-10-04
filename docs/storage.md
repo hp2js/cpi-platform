@@ -27,13 +27,13 @@ For hosted S3-compatible storage, provision a private bucket and scoped applicat
 
 Files pass through the API's authorization, size limits (20 MiB per file, 100 MiB per report) and content checks (`checkUpload` in `packages/contracts/src/domain/uploads.ts`, shared with the development mock). PDF, PNG, JPEG, DOCX and XLSX are accepted, and each must be what its name says and inspectable:
 
-| Type       | Refused when                                                                                                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PDF        | No `%%EOF` (incomplete); `/Encrypt` (password-protected); `/JavaScript`, `/JS`, `/Launch` or `/EmbeddedFile` in an object dictionary (active content)                     |
-| DOCX, XLSX | Not a readable ZIP with `[Content_Types].xml` and `word/document.xml` or `xl/workbook.xml`; encrypted entries; macros (`vbaProject.bin`), OLE objects or ActiveX controls |
-| PNG, JPEG  | Missing header or end marker (incomplete)                                                                                                                                 |
+| Type       | Refused when                                                                                                                                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF        | No `%%EOF` (incomplete); `/Encrypt` (password-protected); `/JavaScript`, `/JS`, `/Launch` or `/EmbeddedFile` in an object dictionary (active content)                                                                                                                                  |
+| DOCX, XLSX | Not a readable ZIP with `[Content_Types].xml` and `word/document.xml` or `xl/workbook.xml`; content types that declare another kind (a template, a workbook renamed `.docx`) or a macro-enabled variant; encrypted entries; macros (`vbaProject.bin`), OLE objects or ActiveX controls |
+| PNG, JPEG  | Missing header or end marker (incomplete)                                                                                                                                                                                                                                              |
 
-These are structural checks, not antivirus scanning. Names inside compressed PDF object streams are not inspected.
+These are structural checks, not antivirus scanning. Names inside compressed PDF object streams are not inspected. Work is bounded: files are at most 20 MiB and read in linear passes, the ZIP directory is read without decompressing, and only `[Content_Types].xml` is inflated, refused when it would exceed 1 MiB. Refusals happen before anything is stored, so a refused file leaves no evidence record and no object. `e2e/fixtures/rejected/` holds one synthetic file per refusal with its expected reason; the contracts unit tests and the API tests (report evidence and foundation uploads) check each.
 
 **Real documents are gated.** Outside demo mode, uploads answer `403 uploads_not_approved` until `REAL_DOCUMENT_UPLOADS=true`. Set it only after malware scanning, quarantine of unscanned files, retention and a production review are in place; it records that decision and does not add a scanner. Demo mode accepts uploads because it holds synthetic files only.
 

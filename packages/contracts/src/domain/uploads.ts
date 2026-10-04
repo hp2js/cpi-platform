@@ -2,6 +2,10 @@
  * Upload checks (PRD §9.2, FR06, AT21), shared by the API and the development mock. They inspect
  * structure only: a file that cannot be inspected (password-protected, damaged) or that carries
  * active content is refused. This is not antivirus scanning; real documents stay gated on it.
+ *
+ * Bounds: files are at most 20 MiB and are read in linear passes; the ZIP directory is read
+ * without decompressing; the only part decompressed is `[Content_Types].xml`, refused when it
+ * declares or inflates beyond 1 MiB, so an archive bomb cannot expand.
  */
 
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -56,10 +60,15 @@ const DAMAGED =
   'This file appears to be damaged or incomplete, so it could not be checked. Save it again and upload the new copy.';
 const PROTECTED =
   'This file is password-protected, so it could not be checked. Remove the password and upload it again.';
+const mismatch = (extension: string) =>
+  `The file's contents do not match a .${extension} file, so it was not accepted.`;
 const ACTIVE =
   'This file contains macros, scripts or embedded programs, which are not accepted. Save a copy without them (for example as a PDF) and upload that.';
 
-export function checkUpload(fileName: string, bytes: Uint8Array): UploadCheck {
+export async function checkUpload(
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<UploadCheck> {
   const extension = fileName.toLowerCase().split('.').pop() ?? '';
   const rule = rules.find((candidate) =>
     candidate.extensions.includes(extension),
@@ -75,18 +84,15 @@ export function checkUpload(fileName: string, bytes: Uint8Array): UploadCheck {
   if (bytes.byteLength > MAX_FILE_BYTES)
     return { ok: false, message: 'Files must be 20 MB or smaller.' };
   if (!rule.magic.every((byte, index) => bytes[index] === byte))
-    return {
-      ok: false,
-      message: `The file's contents do not match a .${extension} file, so it was not accepted.`,
-    };
-  const problem = inspect(rule.kind, bytes);
+    return { ok: false, message: mismatch(extension) };
+  const problem = await inspect(rule.kind, bytes);
   return problem
     ? { ok: false, message: problem }
     : { ok: true, mimeType: rule.mimeType };
 }
 
 /** The reason a well-labelled file is still refused, or null. */
-function inspect(kind: Kind, bytes: Uint8Array): string | null {
+async function inspect(kind: Kind, bytes: Uint8Array): Promise<string | null> {
   switch (kind) {
     case 'pdf':
       return inspectPdf(bytes);
@@ -129,32 +135,55 @@ function inspectPdf(bytes: Uint8Array) {
   return null;
 }
 
+const MAIN_PART = {
+  docx: {
+    name: 'word/document.xml',
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+  },
+  xlsx: {
+    name: 'xl/workbook.xml',
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml',
+  },
+};
+
 /**
- * A real Office Open XML package: a readable ZIP central directory with the content-types part
- * and the main document part, no encrypted entries, and no macros, OLE objects or ActiveX.
+ * A real Office Open XML package of the claimed kind: a readable ZIP central directory, no
+ * encrypted entries, a content-types part declaring the claimed main document (not a template
+ * or a macro-enabled variant), and no macros, OLE objects or ActiveX.
  */
-function inspectOffice(kind: 'docx' | 'xlsx', bytes: Uint8Array) {
-  const names = zipEntries(bytes);
-  if (names === 'encrypted') return PROTECTED;
-  if (
-    !names ||
-    !names.includes('[Content_Types].xml') ||
-    !names.includes(kind === 'docx' ? 'word/document.xml' : 'xl/workbook.xml')
-  )
+async function inspectOffice(kind: 'docx' | 'xlsx', bytes: Uint8Array) {
+  const entries = zipEntries(bytes);
+  if (!entries) return DAMAGED;
+  if (entries.some((entry) => entry.encrypted)) return PROTECTED;
+  const types = entries.find((entry) => entry.name === '[Content_Types].xml');
+  if (!types || !entries.some((entry) => entry.name === MAIN_PART[kind].name))
     return DAMAGED;
   if (
-    names.some((name) =>
+    entries.some((entry) =>
       /(^|\/)vbaProject\.bin$|\/embeddings\/oleObject[^/]*\.bin$|\/activeX\//i.test(
-        name,
+        entry.name,
       ),
     )
   )
     return ACTIVE;
+  const declared = await entryText(bytes, types);
+  if (declared === null) return DAMAGED;
+  if (/macroEnabled|vbaProject/i.test(declared)) return ACTIVE;
+  if (!declared.includes(`"${MAIN_PART[kind].type}"`)) return mismatch(kind);
   return null;
 }
 
-/** Entry names from the ZIP central directory; null when it cannot be read. */
-function zipEntries(bytes: Uint8Array): string[] | 'encrypted' | null {
+type ZipEntry = {
+  name: string;
+  encrypted: boolean;
+  method: number;
+  compressedSize: number;
+  size: number;
+  headerOffset: number;
+};
+
+/** Entries from the ZIP central directory; null when it cannot be read. */
+function zipEntries(bytes: Uint8Array): ZipEntry[] | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   // The end-of-central-directory record is within the last 22 + 65,535 (comment) bytes.
   let end = -1;
@@ -172,16 +201,65 @@ function zipEntries(bytes: Uint8Array): string[] | 'encrypted' | null {
   let offset = view.getUint32(end + 16, true);
   // 0xffff/0xffffffff mean ZIP64, which a 20 MB Office file never needs.
   if (count === 0xffff || offset === 0xffffffff) return null;
-  const names: string[] = [];
+  const entries: ZipEntry[] = [];
   for (let index = 0; index < count; index++) {
     if (offset + 46 > end || view.getUint32(offset, true) !== 0x02014b50)
       return null;
-    if (view.getUint16(offset + 8, true) & 1) return 'encrypted';
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
-    names.push(ascii(bytes, offset + 46, offset + 46 + nameLength));
+    entries.push({
+      name: ascii(bytes, offset + 46, offset + 46 + nameLength),
+      encrypted: (view.getUint16(offset + 8, true) & 1) === 1,
+      method: view.getUint16(offset + 10, true),
+      compressedSize: view.getUint32(offset + 20, true),
+      size: view.getUint32(offset + 24, true),
+      headerOffset: view.getUint32(offset + 42, true),
+    });
     offset += 46 + nameLength + extraLength + commentLength;
   }
-  return names;
+  return entries;
+}
+
+const MAX_PART_BYTES = 1024 * 1024;
+
+/** A small stored or deflated entry as text; null when missing, too large or unreadable. */
+async function entryText(bytes: Uint8Array, entry: ZipEntry) {
+  if (entry.size > MAX_PART_BYTES || entry.compressedSize > MAX_PART_BYTES)
+    return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const header = entry.headerOffset;
+  if (header + 30 > bytes.length || view.getUint32(header, true) !== 0x04034b50)
+    return null;
+  const start =
+    header +
+    30 +
+    view.getUint16(header + 26, true) +
+    view.getUint16(header + 28, true);
+  const data = bytes.subarray(start, start + entry.compressedSize);
+  if (data.length !== entry.compressedSize) return null;
+  if (entry.method === 0) return new TextDecoder().decode(data);
+  if (entry.method !== 8) return null;
+  try {
+    // Inflate with a running cap, whatever the directory claims.
+    const reader = new Blob([data as Uint8Array<ArrayBuffer>])
+      .stream()
+      .pipeThrough(new DecompressionStream('deflate-raw'))
+      .getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > MAX_PART_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    return await new Blob(chunks as Uint8Array<ArrayBuffer>[]).text();
+  } catch {
+    return null;
+  }
 }

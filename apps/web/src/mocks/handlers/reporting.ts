@@ -170,7 +170,7 @@ export const reportingHandlers = [
         });
       }
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const check = checkUpload(file.name, bytes);
+      const check = await checkUpload(file.name, bytes);
       if (!check.ok)
         return apiError(422, check.message, 'upload_rejected', {
           file: check.message,
