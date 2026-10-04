@@ -18,8 +18,10 @@ import {
   type ConsolidatedReport,
   type InstitutionResults,
   type Oversight,
+  type CorrectionRequest,
+  type ExtensionRequest,
+  type PublishRequest,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { ApiError, invalidBody } from '../http/api-error';
 import {
@@ -56,7 +58,7 @@ export class AnnualController {
         invalidBody('Choose at least one institution to publish.'),
       ),
     )
-    input: z.infer<typeof publishRequestSchema>,
+    input: PublishRequest,
   ): Promise<AnnualOverview> {
     return this.annual.publish(user, input);
   }
@@ -83,7 +85,7 @@ export class AnnualController {
           ),
       ),
     )
-    input: z.infer<typeof extensionRequestSchema>,
+    input: ExtensionRequest,
   ): Promise<AnnualEvaluation> {
     return this.annual.extend(user, input);
   }
@@ -101,7 +103,7 @@ export class AnnualController {
         ),
       ),
     )
-    input: z.infer<typeof correctionRequestSchema>,
+    input: CorrectionRequest,
   ): Promise<AnnualOverview> {
     return this.annual.openCorrection(user, input);
   }

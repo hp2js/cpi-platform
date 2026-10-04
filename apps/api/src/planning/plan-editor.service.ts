@@ -2,15 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   previewPlanImport,
   sameMilestones,
-  type activityRequestSchema,
-  type planApprovalRequestSchema,
-  type planImportRequestSchema,
-  type plannedMilestoneRequestSchema,
-  type proposeBaselineRequestSchema,
-  type riskRequestSchema,
   type PlanImportResult,
+  type ActivityRequest,
+  type PlanApprovalRequest,
+  type PlanImportRequest,
+  type PlannedMilestoneRequest,
+  type ProposeBaselineRequest,
+  type RiskRequest,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import type { User } from '../auth/sessions';
 import {
   DB,
@@ -42,7 +41,7 @@ import {
  * proposals. Ported from the mock API's handlers/plan-editor.ts.
  */
 
-const riskFields = (input: z.infer<typeof riskRequestSchema>) => ({
+const riskFields = (input: RiskRequest) => ({
   code: input.code,
   description: input.description,
   cause: input.cause,
@@ -132,11 +131,7 @@ export class PlanEditorService {
     );
   }
 
-  approval(
-    user: User,
-    institutionId: string,
-    input: z.infer<typeof planApprovalRequestSchema>,
-  ) {
+  approval(user: User, institutionId: string, input: PlanApprovalRequest) {
     return write(this.db, async (tx, businessTime) => {
       if (input.approvedOn > businessTime.slice(0, 10))
         throw new ApiError(422, 'Some values need attention.', 'invalid_plan', {
@@ -171,11 +166,7 @@ export class PlanEditorService {
     });
   }
 
-  addRisk(
-    user: User,
-    institutionId: string,
-    input: z.infer<typeof riskRequestSchema>,
-  ) {
+  addRisk(user: User, institutionId: string, input: RiskRequest) {
     return write(this.db, async (tx, businessTime) => {
       await this.duplicateCode(tx, 'risk', institutionId, input.code);
       await this.repository.insertRisk(
@@ -202,7 +193,7 @@ export class PlanEditorService {
     user: User,
     institutionId: string,
     riskId: string,
-    input: z.infer<typeof riskRequestSchema>,
+    input: RiskRequest,
   ) {
     return write(this.db, async (tx, businessTime) => {
       const risk = await this.repository.risk(institutionId, riskId, tx);
@@ -244,11 +235,7 @@ export class PlanEditorService {
     });
   }
 
-  addActivity(
-    user: User,
-    institutionId: string,
-    input: z.infer<typeof activityRequestSchema>,
-  ) {
+  addActivity(user: User, institutionId: string, input: ActivityRequest) {
     return write(this.db, async (tx, businessTime) => {
       if (!(await this.repository.risk(institutionId, input.riskId, tx)))
         throw new ApiError(422, 'Some values need attention.', 'invalid_plan', {
@@ -275,7 +262,7 @@ export class PlanEditorService {
     user: User,
     institutionId: string,
     activityId: string,
-    input: z.infer<typeof activityRequestSchema>,
+    input: ActivityRequest,
   ) {
     return write(this.db, async (tx, businessTime) => {
       const activity = await this.repository.activity(
@@ -347,7 +334,7 @@ export class PlanEditorService {
   addMilestone(
     user: User,
     institutionId: string,
-    input: z.infer<typeof plannedMilestoneRequestSchema>,
+    input: PlannedMilestoneRequest,
   ) {
     return write(this.db, async (tx, businessTime) => {
       if (
@@ -383,7 +370,7 @@ export class PlanEditorService {
     user: User,
     institutionId: string,
     milestoneId: string,
-    input: z.infer<typeof plannedMilestoneRequestSchema>,
+    input: PlannedMilestoneRequest,
   ) {
     return write(this.db, async (tx, businessTime) => {
       const milestone = await this.repository.milestone(
@@ -462,7 +449,7 @@ export class PlanEditorService {
     user: User,
     institutionId: string,
     periodId: string,
-    input: z.infer<typeof proposeBaselineRequestSchema>,
+    input: ProposeBaselineRequest,
   ) {
     return write(this.db, async (tx, businessTime) => {
       const period = await this.requireOpenQuarter(
@@ -533,10 +520,7 @@ export class PlanEditorService {
     });
   }
 
-  async importPreview(
-    institutionId: string,
-    input: z.infer<typeof planImportRequestSchema>,
-  ) {
+  async importPreview(institutionId: string, input: PlanImportRequest) {
     return previewPlanImport(
       await this.importContext(this.db, institutionId),
       input.csv,
@@ -547,7 +531,7 @@ export class PlanEditorService {
   import(
     user: User,
     institutionId: string,
-    input: z.infer<typeof planImportRequestSchema>,
+    input: PlanImportRequest,
   ): Promise<PlanImportResult> {
     return write(this.db, async (tx, businessTime) => {
       const { preview, rows } = previewPlanImport(

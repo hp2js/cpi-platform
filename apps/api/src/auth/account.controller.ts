@@ -3,8 +3,9 @@ import {
   accountUpdateSchema,
   changePasswordSchema,
   type Account,
+  type AccountUpdate,
+  type ChangePassword,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { ApiError } from '../http/api-error';
 import { SchemaValidationPipe } from '../http/validation.pipe';
 import { AccountService, wrongCurrentPassword } from './account.service';
@@ -41,7 +42,7 @@ export class AccountController {
           ),
       ),
     )
-    input: z.infer<typeof accountUpdateSchema>,
+    input: AccountUpdate,
   ): Promise<Account> {
     return this.account.update(user, input);
   }
@@ -53,7 +54,7 @@ export class AccountController {
   changePassword(
     @CurrentUser() user: User,
     @Body(new SchemaValidationPipe(changePasswordSchema, wrongCurrentPassword))
-    input: z.infer<typeof changePasswordSchema>,
+    input: ChangePassword,
   ): Promise<void> {
     return this.account.changePassword(user, input);
   }

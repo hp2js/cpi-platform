@@ -165,11 +165,13 @@ export type AnnualOverview = z.infer<typeof annualOverviewSchema>;
 export const publishRequestSchema = z.object({
   institutionIds: z.array(institutionIdSchema).min(1),
 });
+export type PublishRequest = z.infer<typeof publishRequestSchema>;
 export const correctionRequestSchema = z.object({
   institutionId: institutionIdSchema,
   periodId: z.string(),
   reason: z.string().min(10).max(2000),
 });
+export type CorrectionRequest = z.infer<typeof correctionRequestSchema>;
 export const closeNonresponseRequestSchema = z.object({
   reason: z.string().min(10).max(2000),
 });

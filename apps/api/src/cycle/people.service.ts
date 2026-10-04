@@ -1,17 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { z } from 'zod';
 import {
   FICTIONAL_EMAIL,
   FICTIONAL_EMAIL_MESSAGE,
-  type institutionCreateSchema,
-  type institutionImportRequestSchema,
-  type institutionTypeUpdateSchema,
-  type institutionUpdateSchema,
-  type userCreateSchema,
-  type userRoleChangeSchema,
-  type userStatusSchema,
-  type userUpdateSchema,
   type People,
+  type InstitutionCreate,
+  type InstitutionImportRequest,
+  type InstitutionTypeUpdate,
+  type InstitutionUpdate,
+  type UserCreate,
+  type UserRoleChange,
+  type UserStatus,
+  type UserUpdate,
 } from '@cpi/contracts';
 import { AuthRepository } from '../auth/auth.repository';
 import { inviter } from '../auth/invitations';
@@ -78,7 +77,7 @@ export class PeopleService {
     return this.people(this.db);
   }
 
-  createUser(admin: User, input: z.infer<typeof userCreateSchema>) {
+  createUser(admin: User, input: UserCreate) {
     return write(this.db, async (tx, businessTime, afterCommit) => {
       // Demonstration deployments hold synthetic data only.
       if (this.config.DEMO_MODE && !FICTIONAL_EMAIL.test(input.email))
@@ -154,7 +153,7 @@ export class PeopleService {
     });
   }
 
-  updateUser(admin: User, id: string, input: z.infer<typeof userUpdateSchema>) {
+  updateUser(admin: User, id: string, input: UserUpdate) {
     return write(this.db, async (tx, businessTime) => {
       const user = await this.repository.user(id, tx);
       if (!user) throw notFound();
@@ -181,11 +180,7 @@ export class PeopleService {
    * Changes an account's role, keeping one identity and its history. Scope must be handed over
    * first; the person's sessions end so the new permissions apply at the next sign-in.
    */
-  async changeRole(
-    admin: User,
-    id: string,
-    input: z.infer<typeof userRoleChangeSchema>,
-  ) {
+  async changeRole(admin: User, id: string, input: UserRoleChange) {
     await write(this.db, async (tx, businessTime) => {
       const user = await this.repository.user(id, tx);
       if (!user) throw notFound();
@@ -265,7 +260,7 @@ export class PeopleService {
     return { ok: true };
   }
 
-  userStatus(admin: User, id: string, input: z.infer<typeof userStatusSchema>) {
+  userStatus(admin: User, id: string, input: UserStatus) {
     return write(this.db, async (tx, businessTime) => {
       const user = await this.repository.user(id, tx);
       if (!user) throw notFound();
@@ -334,11 +329,7 @@ export class PeopleService {
     });
   }
 
-  updateInstitution(
-    admin: User,
-    id: string,
-    input: z.infer<typeof institutionUpdateSchema>,
-  ) {
+  updateInstitution(admin: User, id: string, input: InstitutionUpdate) {
     return write(this.db, async (tx, businessTime) => {
       const institution = await this.repository.institution(id, tx);
       if (!institution) throw notFound();
@@ -406,7 +397,7 @@ export class PeopleService {
     });
   }
 
-  createType(admin: User, input: z.infer<typeof institutionTypeUpdateSchema>) {
+  createType(admin: User, input: InstitutionTypeUpdate) {
     return write(this.db, async (tx, businessTime) => {
       const types = await this.repository.institutionTypes(tx);
       if (typeLabelTaken(types, input.label))
@@ -439,11 +430,7 @@ export class PeopleService {
     });
   }
 
-  updateType(
-    admin: User,
-    id: string,
-    input: z.infer<typeof institutionTypeUpdateSchema>,
-  ) {
+  updateType(admin: User, id: string, input: InstitutionTypeUpdate) {
     return write(this.db, async (tx, businessTime) => {
       const types = await this.repository.institutionTypes(tx);
       const type = types.find((item) => item.id === id);
@@ -486,10 +473,7 @@ export class PeopleService {
     });
   }
 
-  createInstitution(
-    admin: User,
-    input: z.infer<typeof institutionCreateSchema>,
-  ) {
+  createInstitution(admin: User, input: InstitutionCreate) {
     return write(this.db, async (tx, businessTime, afterCommit) => {
       const snapshot = await directorySnapshot(tx, this.config.DEMO_MODE);
       const candidate = fromCreateRequest(snapshot, input);
@@ -518,7 +502,7 @@ export class PeopleService {
     });
   }
 
-  async previewImport(input: z.infer<typeof institutionImportRequestSchema>) {
+  async previewImport(input: InstitutionImportRequest) {
     return previewImport(
       await directorySnapshot(this.db, this.config.DEMO_MODE),
       input.csv,
@@ -526,10 +510,7 @@ export class PeopleService {
   }
 
   /** All or nothing: one invalid row means nothing is created, so a file can be fixed and re-run. */
-  importInstitutions(
-    admin: User,
-    input: z.infer<typeof institutionImportRequestSchema>,
-  ) {
+  importInstitutions(admin: User, input: InstitutionImportRequest) {
     return write(this.db, async (tx, businessTime, afterCommit) => {
       const snapshot = await directorySnapshot(tx, this.config.DEMO_MODE);
       const { preview, rows } = previewImport(snapshot, input.csv);

@@ -232,6 +232,9 @@ export type PlanApprovalRequest = z.infer<typeof planApprovalRequestSchema>;
 export const proposeBaselineRequestSchema = z.object({
   note: z.string().trim().max(1000),
 });
+export type ProposeBaselineRequest = z.infer<
+  typeof proposeBaselineRequestSchema
+>;
 
 /** One CSV holds risks, activities and milestones, told apart by the `record` column. */
 export const planImportColumns = [
@@ -255,6 +258,7 @@ export const planImportColumns = [
 export const planImportRequestSchema = z.object({
   csv: z.string().min(1).max(1_000_000),
 });
+export type PlanImportRequest = z.infer<typeof planImportRequestSchema>;
 export const planImportPreviewSchema = z.object({
   fileErrors: z.array(z.string()),
   rows: z.array(

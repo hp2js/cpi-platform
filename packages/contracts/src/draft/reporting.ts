@@ -147,8 +147,6 @@ export const saveDraftRequestSchema = z.object({
   baseVersion: z.number().int().nonnegative(),
   answers: reportAnswersSchema,
 });
-export type SaveDraftRequest = z.infer<typeof saveDraftRequestSchema>;
-
 export const attestationSchema = z.object({
   /** The submitter confirms they are authorized to submit for the institution (PRD §7.2). */
   authorized: z.literal(true),
@@ -170,8 +168,6 @@ export const submitRequestSchema = z.object({
   draftVersion: z.number().int().nonnegative(),
   attestation: attestationSchema,
 });
-export type SubmitRequest = z.infer<typeof submitRequestSchema>;
-
 export const completenessItemSchema = z.object({
   field: z.string(),
   label: z.string(),

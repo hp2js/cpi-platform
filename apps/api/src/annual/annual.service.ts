@@ -2,17 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   closeNonresponseRequestSchema,
   toCsv,
-  type correctionRequestSchema,
-  type extensionRequestSchema,
-  type publishRequestSchema,
   type AnnualEvaluation,
   type AnnualOverview,
   type ConsolidatedReport,
   type InstitutionResults,
   type Oversight,
+  type CorrectionRequest,
+  type ExtensionRequest,
+  type PublishRequest,
 } from '@cpi/contracts';
 import type { QueryFilters } from '../http/validation.pipe';
-import type { z } from 'zod';
 import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database, type Db } from '../database/db';
@@ -52,7 +51,7 @@ export class AnnualService {
     return this.overviewFor(this.db, user);
   }
 
-  publish(user: User, input: z.infer<typeof publishRequestSchema>) {
+  publish(user: User, input: PublishRequest) {
     return write(this.db, async (tx, businessTime) => {
       const data = await loadAnnualData(tx, input.institutionIds);
       if (!cutoffPassed(data))
@@ -170,7 +169,7 @@ export class AnnualService {
     });
   }
 
-  extend(user: User, input: z.infer<typeof extensionRequestSchema>) {
+  extend(user: User, input: ExtensionRequest) {
     return write(this.db, async (tx, businessTime) => {
       const { institutionId, untilDate, reason, authorizedBy } = input;
       const data = await loadAnnualData(tx, [institutionId]);
@@ -244,7 +243,7 @@ export class AnnualService {
     });
   }
 
-  openCorrection(user: User, input: z.infer<typeof correctionRequestSchema>) {
+  openCorrection(user: User, input: CorrectionRequest) {
     return write(this.db, async (tx, businessTime) => {
       const { institutionId, periodId } = input;
       if (!(await this.repository.hasCurrentPublication(institutionId, tx)))

@@ -80,8 +80,6 @@ export const reminderScheduleSchema = z.object({
     .refine((days) => new Set(days).size === days.length, 'Days must differ.'),
   overdueNotice: z.boolean(),
 });
-export type ReminderSchedule = z.infer<typeof reminderScheduleSchema>;
-
 const lockSchema = z.object({
   editable: z.boolean(),
   /** Why the value can no longer change, in plain words. */
@@ -255,6 +253,7 @@ export const userStatusSchema = z.object({
    */
   confirmNoFocalPerson: z.boolean().optional(),
 });
+export type UserStatus = z.infer<typeof userStatusSchema>;
 
 /** What an administrator may change on someone else's account; email is the sign-in identity. */
 export const userUpdateSchema = z.object({
@@ -330,6 +329,9 @@ export const institutionImportRequestSchema = z.object({
   csv: z.string().min(1).max(2_000_000),
   seedOpenedQuarters: z.boolean(),
 });
+export type InstitutionImportRequest = z.infer<
+  typeof institutionImportRequestSchema
+>;
 export const institutionImportColumns = [
   'institution_id',
   'name',
@@ -373,10 +375,6 @@ export const institutionImportResultSchema = z.object({
   created: z.array(institutionIdSchema),
   focalUsers: z.number().int().nonnegative(),
 });
-export type InstitutionImportResult = z.infer<
-  typeof institutionImportResultSchema
->;
-
 /** What needs the administrator now; each item links to where it is handled (PRD §9). */
 export const adminAttentionSchema = z.array(
   z.object({
@@ -404,3 +402,4 @@ export type UserRoleChange = z.infer<typeof userRoleChangeSchema>;
 export const supportAccessRequestSchema = z.object({
   reason: z.string().trim().min(20).max(500),
 });
+export type SupportAccessRequest = z.infer<typeof supportAccessRequestSchema>;

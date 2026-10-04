@@ -13,8 +13,8 @@ import {
   type AdminAttention,
   type AuditPage,
   type ReportBundle,
+  type SupportAccessRequest,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { invalidBody } from '../http/api-error';
 import {
@@ -67,7 +67,7 @@ export class AdminController {
         }),
       ),
     )
-    body: z.infer<typeof supportAccessRequestSchema>,
+    body: SupportAccessRequest,
   ): Promise<ReportBundle> {
     return this.admin.support(admin, id, body.reason);
   }

@@ -18,8 +18,9 @@ import {
   type DemoAccount,
   type Session,
   type SignInChallenge,
+  type PasswordResetRequest,
+  type SignInCode,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { invalidBody } from '../http/api-error';
 import { SchemaValidationPipe } from '../http/validation.pipe';
 import { SessionService } from './session.service';
@@ -91,7 +92,7 @@ export class SessionController {
         }),
       ),
     )
-    input: z.infer<typeof signInCodeSchema>,
+    input: SignInCode,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Session> {
     return this.startSession(response, await this.auth.verifyCode(input));
@@ -118,7 +119,7 @@ export class SessionController {
         invalidBody('Enter your email.', { email: 'Enter your email.' }),
       ),
     )
-    input: z.infer<typeof passwordResetRequestSchema>,
+    input: PasswordResetRequest,
   ): Promise<{ message: string }> {
     return this.auth.requestReset(input);
   }

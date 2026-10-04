@@ -1,16 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   localDate,
-  type assignmentChangeRequestSchema,
-  type bulkAssignmentRequestSchema,
-  type bulkSupervisionRequestSchema,
-  type reassignmentSuggestionRequestSchema,
-  type supervisionChangeRequestSchema,
   type Assignment,
   type ReassignmentSuggestion,
   type Supervision,
+  type AssignmentChangeRequest,
+  type BulkAssignmentRequest,
+  type BulkSupervisionRequest,
+  type ReassignmentSuggestionRequest,
+  type SupervisionChangeRequest,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import {
   assignedInstitutionIds,
   readableInstitutionIds,
@@ -42,13 +41,6 @@ import {
  * handlers/supervision.ts and handlers/admin.ts.
  */
 
-type SupervisionChangeRequest = z.infer<typeof supervisionChangeRequestSchema>;
-type AssignmentChangeRequest = z.infer<typeof assignmentChangeRequestSchema>;
-type ReassignmentSuggestionRequest = z.infer<
-  typeof reassignmentSuggestionRequestSchema
->;
-type BulkAssignmentRequest = z.infer<typeof bulkAssignmentRequestSchema>;
-type BulkSupervisionRequest = z.infer<typeof bulkSupervisionRequestSchema>;
 type BulkResult = { changed: string[]; unchanged: string[] };
 
 const plural = (count: number, one: string, many: string) =>

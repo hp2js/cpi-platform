@@ -10,10 +10,9 @@ import {
   type DemoAccount,
   type Session,
   type SignInChallenge,
-  type passwordResetRequestSchema,
-  type signInCodeSchema,
+  type PasswordResetRequest,
+  type SignInCode,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { CONFIG, type AppConfig } from '../config';
 import { DB, write, type Database, type Db } from '../database/db';
 import { toNairobi } from '../database/schema';
@@ -168,7 +167,7 @@ export class SessionService {
   }
 
   /** The second step of password sign-in: the code emailed for the challenge. */
-  async verifyCode(input: z.infer<typeof signInCodeSchema>): Promise<User> {
+  async verifyCode(input: SignInCode): Promise<User> {
     const outcome = await this.sessions.completeChallenge(
       input.challengeId,
       input.code,
@@ -208,7 +207,7 @@ export class SessionService {
 
   /** Always the same answer, so the form cannot be used to find accounts. */
   async requestReset(
-    input: z.infer<typeof passwordResetRequestSchema>,
+    input: PasswordResetRequest,
   ): Promise<{ message: string }> {
     const email = input.email.toLowerCase();
     await write(this.db, async (tx, _businessTime, afterCommit) => {

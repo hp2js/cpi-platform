@@ -17,6 +17,12 @@ import {
   proposeBaselineRequestSchema,
   riskRequestSchema,
   type PlanImportResult,
+  type ActivityRequest,
+  type PlanApprovalRequest,
+  type PlanImportRequest,
+  type PlannedMilestoneRequest,
+  type ProposeBaselineRequest,
+  type RiskRequest,
 } from '@cpi/contracts';
 import type { z } from 'zod';
 import { OwnInstitutionGuard } from '../auth/own-institution.guard';
@@ -53,7 +59,7 @@ export class PlanEditorController {
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
     @Body(plan(planApprovalRequestSchema))
-    input: z.infer<typeof planApprovalRequestSchema>,
+    input: PlanApprovalRequest,
   ) {
     return this.editor.approval(user, institutionId, input);
   }
@@ -62,7 +68,7 @@ export class PlanEditorController {
   addRisk(
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
-    @Body(plan(riskRequestSchema)) input: z.infer<typeof riskRequestSchema>,
+    @Body(plan(riskRequestSchema)) input: RiskRequest,
   ) {
     return this.editor.addRisk(user, institutionId, input);
   }
@@ -72,7 +78,7 @@ export class PlanEditorController {
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
     @Param('riskId') riskId: string,
-    @Body(plan(riskRequestSchema)) input: z.infer<typeof riskRequestSchema>,
+    @Body(plan(riskRequestSchema)) input: RiskRequest,
   ) {
     return this.editor.updateRisk(user, institutionId, riskId, input);
   }
@@ -91,7 +97,7 @@ export class PlanEditorController {
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
     @Body(plan(activityRequestSchema))
-    input: z.infer<typeof activityRequestSchema>,
+    input: ActivityRequest,
   ) {
     return this.editor.addActivity(user, institutionId, input);
   }
@@ -102,7 +108,7 @@ export class PlanEditorController {
     @Param('institutionId') institutionId: string,
     @Param('activityId') activityId: string,
     @Body(plan(activityRequestSchema))
-    input: z.infer<typeof activityRequestSchema>,
+    input: ActivityRequest,
   ) {
     return this.editor.updateActivity(user, institutionId, activityId, input);
   }
@@ -121,7 +127,7 @@ export class PlanEditorController {
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
     @Body(plan(plannedMilestoneRequestSchema))
-    input: z.infer<typeof plannedMilestoneRequestSchema>,
+    input: PlannedMilestoneRequest,
   ) {
     return this.editor.addMilestone(user, institutionId, input);
   }
@@ -132,7 +138,7 @@ export class PlanEditorController {
     @Param('institutionId') institutionId: string,
     @Param('milestoneId') milestoneId: string,
     @Body(plan(plannedMilestoneRequestSchema))
-    input: z.infer<typeof plannedMilestoneRequestSchema>,
+    input: PlannedMilestoneRequest,
   ) {
     return this.editor.updateMilestone(user, institutionId, milestoneId, input);
   }
@@ -153,7 +159,7 @@ export class PlanEditorController {
     @Param('institutionId') institutionId: string,
     @Param('periodId') periodId: string,
     @Body(plan(proposeBaselineRequestSchema))
-    input: z.infer<typeof proposeBaselineRequestSchema>,
+    input: ProposeBaselineRequest,
   ) {
     return this.editor.propose(user, institutionId, periodId, input);
   }
@@ -163,7 +169,7 @@ export class PlanEditorController {
   importPreview(
     @Param('institutionId') institutionId: string,
     @Body(plan(planImportRequestSchema))
-    input: z.infer<typeof planImportRequestSchema>,
+    input: PlanImportRequest,
   ) {
     return this.editor.importPreview(institutionId, input);
   }
@@ -175,7 +181,7 @@ export class PlanEditorController {
     @CurrentUser() user: User,
     @Param('institutionId') institutionId: string,
     @Body(plan(planImportRequestSchema))
-    input: z.infer<typeof planImportRequestSchema>,
+    input: PlanImportRequest,
   ): Promise<PlanImportResult> {
     return this.editor.import(user, institutionId, input);
   }

@@ -9,8 +9,13 @@ import {
   type Assignment,
   type ReassignmentSuggestion,
   type Supervision,
+  type AssignmentChangeRequest,
+  type BulkAssignmentRequest,
+  type BulkSupervisionRequest,
+  type ReassignmentSuggestionRequest,
+  type SuggestionDismissRequest,
+  type SupervisionChangeRequest,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { invalidBody } from '../http/api-error';
 import { SchemaValidationPipe } from '../http/validation.pipe';
@@ -46,7 +51,7 @@ export class SupervisionController {
         ),
       ),
     )
-    body: z.infer<typeof supervisionChangeRequestSchema>,
+    body: SupervisionChangeRequest,
   ): Promise<{ ok: true }> {
     return this.supervision.changeSupervisor(admin, body);
   }
@@ -73,7 +78,7 @@ export class SupervisionController {
         ),
       ),
     )
-    body: z.infer<typeof assignmentChangeRequestSchema>,
+    body: AssignmentChangeRequest,
   ): Promise<{ ok: true }> {
     return this.supervision.reassign(admin, body);
   }
@@ -100,7 +105,7 @@ export class SupervisionController {
         }),
       ),
     )
-    body: z.infer<typeof reassignmentSuggestionRequestSchema>,
+    body: ReassignmentSuggestionRequest,
   ): Promise<ReassignmentSuggestion> {
     return this.supervision.suggest(user, body);
   }
@@ -119,7 +124,7 @@ export class SupervisionController {
         }),
       ),
     )
-    body: z.infer<typeof suggestionDismissRequestSchema>,
+    body: SuggestionDismissRequest,
   ): Promise<ReassignmentSuggestion> {
     return this.supervision.dismiss(admin, id, body.note);
   }
@@ -138,7 +143,7 @@ export class SupervisionController {
         ),
       ),
     )
-    body: z.infer<typeof bulkAssignmentRequestSchema>,
+    body: BulkAssignmentRequest,
   ) {
     return this.supervision.bulkAssign(admin, body);
   }
@@ -156,7 +161,7 @@ export class SupervisionController {
         ),
       ),
     )
-    body: z.infer<typeof bulkSupervisionRequestSchema>,
+    body: BulkSupervisionRequest,
   ) {
     return this.supervision.bulkSupervise(admin, body);
   }

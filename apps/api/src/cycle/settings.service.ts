@@ -2,12 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { z } from 'zod';
 import {
   profileUpdateSchema,
-  type calendarUpdateSchema,
-  type riskScaleUpdateSchema,
   type CalendarSettings,
   type ProfilesState,
   type RiskScaleSettings,
   type ScoringProfile,
+  type CalendarUpdate,
+  type RiskScaleUpdate,
 } from '@cpi/contracts';
 import type { User } from '../auth/sessions';
 import {
@@ -236,7 +236,7 @@ export class SettingsService {
 
   updateRiskScale(
     user: User,
-    update: z.infer<typeof riskScaleUpdateSchema>,
+    update: RiskScaleUpdate,
   ): Promise<RiskScaleSettings> {
     return write(this.db, async (tx, businessTime) => {
       const { cycle } = await currentState(tx);
@@ -296,7 +296,7 @@ export class SettingsService {
 
   updateCalendar(
     user: User,
-    update: z.infer<typeof calendarUpdateSchema>,
+    update: CalendarUpdate,
   ): Promise<CalendarSettings> {
     return write(this.db, async (tx, businessTime) => {
       const current = await this.calendar(tx);

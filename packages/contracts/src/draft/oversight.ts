@@ -104,6 +104,9 @@ export const assignmentChangeRequestSchema = z.object({
   /** Shown to the new officer on the institution's page and in their notification. */
   handoverNote: z.string().trim().max(2000).optional(),
 });
+export type AssignmentChangeRequest = z.infer<
+  typeof assignmentChangeRequestSchema
+>;
 export const assignmentHistorySchema = z.array(
   z.object({
     institutionId: institutionIdSchema,
@@ -154,9 +157,15 @@ export const reassignmentSuggestionRequestSchema = z.object({
   suggestedOfficerId: z.string().nullable(),
   reason: z.string().trim().min(10).max(1000),
 });
+export type ReassignmentSuggestionRequest = z.infer<
+  typeof reassignmentSuggestionRequestSchema
+>;
 export const suggestionDismissRequestSchema = z.object({
   note: z.string().trim().min(10).max(1000),
 });
+export type SuggestionDismissRequest = z.infer<
+  typeof suggestionDismissRequestSchema
+>;
 
 /** Many institutions to one officer, each with its own history entry (500+ institutions). */
 export const bulkAssignmentRequestSchema = z.object({
@@ -165,11 +174,15 @@ export const bulkAssignmentRequestSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
   handoverNote: z.string().trim().max(2000).optional(),
 });
+export type BulkAssignmentRequest = z.infer<typeof bulkAssignmentRequestSchema>;
 export const bulkSupervisionRequestSchema = z.object({
   institutionIds: z.array(institutionIdSchema).min(1).max(1000),
   supervisorId: z.string(),
   reason: z.string().trim().min(10).max(1000),
 });
+export type BulkSupervisionRequest = z.infer<
+  typeof bulkSupervisionRequestSchema
+>;
 export const bulkChangeResultSchema = z.object({
   changed: z.array(institutionIdSchema),
   /** Already with that officer or supervisor: nothing to change. */

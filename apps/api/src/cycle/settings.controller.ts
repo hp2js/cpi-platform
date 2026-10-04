@@ -24,6 +24,16 @@ import {
   type People,
   type ProfilesState,
   type RiskScaleSettings,
+  type CalendarUpdate,
+  type InstitutionCreate,
+  type InstitutionImportRequest,
+  type InstitutionTypeUpdate,
+  type InstitutionUpdate,
+  type RiskScaleUpdate,
+  type UserCreate,
+  type UserRoleChange,
+  type UserStatus,
+  type UserUpdate,
 } from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { invalidBody } from '../http/api-error';
@@ -107,7 +117,7 @@ export class SettingsController {
   updateCalendar(
     @CurrentUser() user: User,
     @Body(settings(calendarUpdateSchema))
-    input: z.infer<typeof calendarUpdateSchema>,
+    input: CalendarUpdate,
   ): Promise<CalendarSettings> {
     return this.settings.updateCalendar(user, input);
   }
@@ -125,7 +135,7 @@ export class SettingsController {
   updateRiskScale(
     @CurrentUser() user: User,
     @Body(settings(riskScaleUpdateSchema))
-    input: z.infer<typeof riskScaleUpdateSchema>,
+    input: RiskScaleUpdate,
   ): Promise<RiskScaleSettings> {
     return this.settings.updateRiskScale(user, input);
   }
@@ -142,7 +152,7 @@ export class SettingsController {
   @Roles('administrator')
   createUser(
     @CurrentUser() admin: User,
-    @Body(settings(userCreateSchema)) input: z.infer<typeof userCreateSchema>,
+    @Body(settings(userCreateSchema)) input: UserCreate,
   ): Promise<People> {
     return this.people.createUser(admin, input);
   }
@@ -163,7 +173,7 @@ export class SettingsController {
   updateUser(
     @CurrentUser() admin: User,
     @Param('userId') id: string,
-    @Body(settings(userUpdateSchema)) input: z.infer<typeof userUpdateSchema>,
+    @Body(settings(userUpdateSchema)) input: UserUpdate,
   ): Promise<People> {
     return this.people.updateUser(admin, id, input);
   }
@@ -185,7 +195,7 @@ export class SettingsController {
         ),
       ),
     )
-    input: z.infer<typeof userRoleChangeSchema>,
+    input: UserRoleChange,
   ): Promise<{ ok: boolean }> {
     return this.people.changeRole(admin, id, input);
   }
@@ -196,7 +206,7 @@ export class SettingsController {
   userStatus(
     @CurrentUser() admin: User,
     @Param('userId') id: string,
-    @Body(settings(userStatusSchema)) input: z.infer<typeof userStatusSchema>,
+    @Body(settings(userStatusSchema)) input: UserStatus,
   ): Promise<People> {
     return this.people.userStatus(admin, id, input);
   }
@@ -207,7 +217,7 @@ export class SettingsController {
     @CurrentUser() admin: User,
     @Param('institutionId') id: string,
     @Body(settings(institutionUpdateSchema))
-    input: z.infer<typeof institutionUpdateSchema>,
+    input: InstitutionUpdate,
   ): Promise<People> {
     return this.people.updateInstitution(admin, id, input);
   }
@@ -219,7 +229,7 @@ export class SettingsController {
   createType(
     @CurrentUser() admin: User,
     @Body(settings(institutionTypeUpdateSchema))
-    input: z.infer<typeof institutionTypeUpdateSchema>,
+    input: InstitutionTypeUpdate,
   ): Promise<People> {
     return this.people.createType(admin, input);
   }
@@ -230,7 +240,7 @@ export class SettingsController {
     @CurrentUser() admin: User,
     @Param('typeId') id: string,
     @Body(settings(institutionTypeUpdateSchema))
-    input: z.infer<typeof institutionTypeUpdateSchema>,
+    input: InstitutionTypeUpdate,
   ): Promise<People> {
     return this.people.updateType(admin, id, input);
   }
@@ -242,7 +252,7 @@ export class SettingsController {
   createInstitution(
     @CurrentUser() admin: User,
     @Body(settings(institutionCreateSchema))
-    input: z.infer<typeof institutionCreateSchema>,
+    input: InstitutionCreate,
   ): Promise<People> {
     return this.people.createInstitution(admin, input);
   }
@@ -252,7 +262,7 @@ export class SettingsController {
   @Roles('administrator')
   previewImport(
     @Body(settings(institutionImportRequestSchema))
-    input: z.infer<typeof institutionImportRequestSchema>,
+    input: InstitutionImportRequest,
   ) {
     return this.people.previewImport(input);
   }
@@ -264,7 +274,7 @@ export class SettingsController {
   importInstitutions(
     @CurrentUser() admin: User,
     @Body(settings(institutionImportRequestSchema))
-    input: z.infer<typeof institutionImportRequestSchema>,
+    input: InstitutionImportRequest,
   ) {
     return this.people.importInstitutions(admin, input);
   }

@@ -16,24 +16,18 @@ export const sessionUserSchema = z.object({
    */
   mustChangePassword: z.literal(true).optional(),
 });
-export type SessionUser = z.infer<typeof sessionUserSchema>;
-
 export const scoringProfileSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   /** Simulation profiles must be labelled as such wherever scores appear (PRD §7.1). */
   simulation: z.boolean(),
 });
-export type ScoringProfileSummary = z.infer<typeof scoringProfileSummarySchema>;
-
 export const simulationClockSchema = z.object({
   runId: z.string(),
   /** Simulated business time; distinct from actual time used for audit. */
   businessTime: instantSchema,
   timezone: z.string(),
 });
-export type SimulationClock = z.infer<typeof simulationClockSchema>;
-
 export const sessionSchema = z.object({
   user: sessionUserSchema,
   clock: simulationClockSchema,
@@ -68,8 +62,6 @@ export const signInRequestSchema = z.union([
   demoSignInSchema,
   passwordSignInSchema,
 ]);
-export type SignInRequest = z.infer<typeof signInRequestSchema>;
-
 /**
  * A right email and password answers 202 with a challenge: a six-digit code is emailed, and
  * `POST /session/code` with the code starts the session. Demo sign-in answers with a session.
@@ -111,6 +103,7 @@ export type AuthConfig = z.infer<typeof authConfigSchema>;
 export const passwordResetRequestSchema = z.object({
   email: z.string().trim().min(3).max(254),
 });
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
 
 /** What a single-use link from an invitation or reset email is for. */
 export const authTokenSchema = z.object({

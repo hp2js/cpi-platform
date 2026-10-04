@@ -2,10 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   passwordProblems,
   type Account,
-  type accountUpdateSchema,
-  type changePasswordSchema,
+  type AccountUpdate,
+  type ChangePassword,
 } from '@cpi/contracts';
-import type { z } from 'zod';
 import { CONFIG, type AppConfig } from '../config';
 import { DB, write, type Database, type Db } from '../database/db';
 import { Events } from '../events/events';
@@ -33,10 +32,7 @@ export class AccountService {
     return this.account(this.db, user);
   }
 
-  update(
-    user: User,
-    input: z.infer<typeof accountUpdateSchema>,
-  ): Promise<Account> {
+  update(user: User, input: AccountUpdate): Promise<Account> {
     return write(this.db, async (tx, businessTime) => {
       const changed = (['displayName', 'jobTitle', 'phone'] as const).filter(
         (key) => user[key] !== input[key],
@@ -55,10 +51,7 @@ export class AccountService {
   }
 
   /** Also how a person replaces their emailed temporary password, which ends that state. */
-  async changePassword(
-    user: User,
-    input: z.infer<typeof changePasswordSchema>,
-  ): Promise<void> {
+  async changePassword(user: User, input: ChangePassword): Promise<void> {
     const temporary = user.passwordExpiresAt !== null;
     if (
       !temporary &&
