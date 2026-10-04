@@ -129,6 +129,13 @@ export class Sessions {
     );
   }
 
+  /** Development reset: sign-in lockouts belong to the data being reset. */
+  async clearAllFailures() {
+    const redis = this.infrastructure.redis;
+    const throttles = await redis.keys('login-*');
+    if (throttles.length) await redis.del(...throttles);
+  }
+
   /* Emailed sign-in codes (second factor), held in Redis for 10 minutes; only a hash is kept. */
 
   async startChallenge(user: User, code: string) {

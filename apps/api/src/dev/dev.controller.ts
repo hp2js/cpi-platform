@@ -3,46 +3,41 @@ import {
   Controller,
   Get,
   HttpCode,
-  Inject,
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { Public, Sessions } from '../auth/sessions';
-import { CONFIG, disposableDatabase, type AppConfig } from '../config';
-import { loadFixtures, seedOptions } from '../database/fixtures';
-import { Mailer } from '../email/mailer';
-import { systemState } from '../database/schema';
-import { notFound } from '../http/api-error';
-import { DeliveryWorker } from '../events/delivery-worker';
-import { Infrastructure } from '../infrastructure';
+import { SchemaValidationPipe } from '../http/validation.pipe';
+import { DevEnvironmentGuard } from './dev-environment.guard';
+import { DevService } from './dev.service';
+
+/** Anything but `{ enabled: true }` turns the failure mode off. */
+const emailFailureSchema = z
+  .unknown()
+  .transform(
+    (body) =>
+      typeof body === 'object' &&
+      body !== null &&
+      'enabled' in body &&
+      body.enabled === true,
+  );
 
 /**
  * Development controls for rehearsing recovery paths, on the same paths as the mock API's so
  * the dev toolbar and e2e specs work against either. Never available in production.
  */
 @Public()
+@UseGuards(DevEnvironmentGuard)
 @Controller('__mock')
 export class DevController {
   constructor(
-    private readonly infrastructure: Infrastructure,
+    private readonly dev: DevService,
     private readonly sessions: Sessions,
-    private readonly mailer: Mailer,
-    private readonly worker: DeliveryWorker,
-    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
-
-  /** The database, or 404 outside development demo deployments on the demo database. */
-  private devDatabase() {
-    if (
-      this.config.NODE_ENV === 'production' ||
-      !this.config.DEMO_MODE ||
-      !disposableDatabase(this.config)
-    )
-      throw notFound();
-    return this.infrastructure.database;
-  }
 
   /** Restores the fixtures and signs the caller out, like the mock's reset. */
   @Post('reset')
@@ -50,51 +45,37 @@ export class DevController {
   async reset(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ) {
-    await loadFixtures(
-      this.devDatabase(),
-      seedOptions(this.config, this.mailer),
-    );
+  ): Promise<{ runId: string }> {
+    const result = await this.dev.reset();
     await this.sessions.end(request, response);
-    // Sign-in lockouts belong to the data being reset.
-    const redis = this.infrastructure.redis;
-    const throttles = await redis.keys('login-*');
-    if (throttles.length) await redis.del(...throttles);
-    return { runId: 'run-001' };
+    return result;
   }
 
   @Get('email-failure')
-  async emailFailure() {
-    const [state] = await this.devDatabase()
-      .select({ enabled: systemState.emailFailureMode })
-      .from(systemState);
-    return { enabled: state?.enabled ?? false };
+  emailFailure(): Promise<{ enabled: boolean }> {
+    return this.dev.emailFailure();
   }
 
   /** While on, the demo email sink rejects deliveries (AT12). */
   @Post('email-failure')
   @HttpCode(200)
-  async setEmailFailure(@Body() body: { enabled?: unknown } | undefined) {
-    const enabled = body?.enabled === true;
-    await this.devDatabase()
-      .update(systemState)
-      .set({ emailFailureMode: enabled });
-    return { enabled };
+  setEmailFailure(
+    @Body(new SchemaValidationPipe(emailFailureSchema)) enabled: boolean,
+  ): Promise<{ enabled: boolean }> {
+    return this.dev.setEmailFailure(enabled);
   }
 
   /** Attempts every queued or retrying email now, without waiting for its backoff. */
   @Post('deliveries/run')
   @HttpCode(204)
-  async runDeliveries() {
-    this.devDatabase();
-    await this.worker.run(true);
+  runDeliveries(): Promise<void> {
+    return this.dev.runDeliveries();
   }
 
   /** The caller's next request gets 401 `session_expired`. */
   @Post('expire-session')
   @HttpCode(204)
-  async expire(@Req() request: Request) {
-    this.devDatabase();
-    await this.sessions.expire(request);
+  expire(@Req() request: Request): Promise<void> {
+    return this.sessions.expire(request);
   }
 }
