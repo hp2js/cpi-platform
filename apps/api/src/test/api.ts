@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { Objects } from '../storage/objects';
 import { loadConfig } from '../config';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import Redis from 'ioredis';
@@ -19,7 +19,9 @@ import * as schema from '../database/schema';
 export const integration = process.env.INTEGRATION === '1';
 
 // The example's values are the local Docker services, for checkouts without a .env (and CI).
-config({ path: ['../../.env', '../../.env.example'], quiet: true });
+// Earlier files win: loadEnvFile never overrides a variable that is already set.
+for (const file of ['../../.env', '../../.env.example'])
+  if (existsSync(file)) process.loadEnvFile(file);
 // Tests run the demo deployment and read account emails from the sink, whatever .env says:
 // they must never send real email. A test opts out per server through startApi(env).
 Object.assign(process.env, {

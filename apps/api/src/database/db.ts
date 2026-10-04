@@ -7,6 +7,8 @@ export type Database = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 /** Work that must happen only once the transaction has committed (e.g. sending email). */
 export type AfterCommit = (task: () => Promise<void>) => void;
+/** Injection token for the shared Drizzle instance (`@Inject(DB) db: Database`). */
+export const DB = Symbol('DB');
 /** Either the pool or an open transaction. */
 export type Db = Database | Tx;
 

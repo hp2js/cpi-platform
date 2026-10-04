@@ -43,12 +43,17 @@ export function toEvidenceItem(item: EvidenceRow): EvidenceItem {
   };
 }
 
-/** Drafts are private to the institution (PRD §5.2), so only its own users reach them. */
-export async function ownObligation(db: Db, user: User, id: string) {
+export async function obligationById(db: Db, id: string) {
   const [obligation] = await db
     .select()
     .from(obligations)
     .where(eq(obligations.id, id));
+  return obligation;
+}
+
+/** Drafts are private to the institution (PRD §5.2), so only its own users reach them. */
+export async function ownObligation(db: Db, user: User, id: string) {
+  const obligation = await obligationById(db, id);
   if (!obligation || obligation.institutionId !== user.institutionId)
     throw notFound();
   return obligation;
