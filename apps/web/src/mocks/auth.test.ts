@@ -5,20 +5,23 @@ import {
   passwordProblems,
   peopleSchema,
   sessionSchema,
+  signInChallengeSchema,
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { request } from '@/lib/api';
-import { acceptInvitation, emailedLink } from '@/test/api-helpers';
+import {
+  emailedCode,
+  emailedLink,
+  emailedPassword,
+  passwordSignIn,
+} from '@/test/api-helpers';
 import { signInAs } from '@/test/render-app';
 import { getDb } from './db';
 import { DEMO_PASSWORD } from './services/auth';
 
-const signIn = (email: string, password: string) =>
-  request('/api/session', sessionSchema, {
-    method: 'POST',
-    json: { email, password },
-  });
+/** Both steps: the password, then the emailed code. */
+const signIn = passwordSignIn;
 
 describe('password sign-in (PRD §13.1)', () => {
   it('signs in with email and password and never says which part was wrong', async () => {
@@ -47,6 +50,34 @@ describe('password sign-in (PRD §13.1)', () => {
     );
   });
 
+  it('starts a session only after the emailed code, which works once', async () => {
+    const { challengeId } = await request(
+      '/api/session',
+      signInChallengeSchema,
+      {
+        method: 'POST',
+        json: { email: 'officer.a@example.invalid', password: DEMO_PASSWORD },
+      },
+    );
+    await expect(request('/api/session', sessionSchema)).rejects.toMatchObject({
+      status: 401,
+    });
+    const code = emailedCode('officer.a@example.invalid');
+    const confirm = (value: string) =>
+      request('/api/session/code', sessionSchema, {
+        method: 'POST',
+        json: { challengeId, code: value },
+      });
+    await expect(
+      confirm(code === '000000' ? '111111' : '000000'),
+    ).rejects.toMatchObject({ status: 401, code: 'invalid_code' });
+    expect((await confirm(code)).user.id).toBe('officer-a');
+    await expect(confirm(code)).rejects.toMatchObject({
+      status: 410,
+      code: 'code_expired',
+    });
+  });
+
   it('locks an email for 15 minutes after five failures', async () => {
     for (let attempt = 0; attempt < 5; attempt += 1)
       await expect(
@@ -66,7 +97,7 @@ describe('password sign-in (PRD §13.1)', () => {
 });
 
 describe('invitations', () => {
-  it('invites a new account by email; the link sets a password once', async () => {
+  it('emails a temporary password that must be replaced at first sign-in', async () => {
     await signInAs('administrator');
     await request('/api/settings/users', peopleSchema, {
       method: 'POST',
@@ -78,44 +109,41 @@ describe('invitations', () => {
         institutionId: null,
       },
     });
-    const email = getDb().deliveries.at(-1)!;
-    expect(email).toMatchObject({
-      recipientEmail: 'new.officer@example.invalid',
+    expect(getDb().emailSink.at(-1)).toMatchObject({
+      to: 'new.officer@example.invalid',
       subject: 'You are invited to the CPI Platform',
-      eventType: 'account.invitation',
     });
-    // Only a hash of the token is stored.
-    const token = emailedLink('new.officer@example.invalid');
-    expect(JSON.stringify(getDb().users)).not.toContain(token);
-    // No in-app notification carries the link.
-    expect(JSON.stringify(getDb().notifications)).not.toContain(token);
+    // Only a hash is stored, and the secret skips the delivery outbox.
+    const temporary = emailedPassword('new.officer@example.invalid');
+    expect(JSON.stringify(getDb().users)).not.toContain(temporary);
+    expect(JSON.stringify(getDb().deliveries)).not.toContain(temporary);
+    expect(JSON.stringify(getDb().notifications)).not.toContain(temporary);
 
-    const link = await request(`/api/auth/tokens/${token}`, authTokenSchema);
-    expect(link).toMatchObject({
-      purpose: 'invitation',
-      displayName: 'New Officer',
-    });
+    const session = await signIn('new.officer@example.invalid', temporary);
+    expect(session.user.mustChangePassword).toBe(true);
     await expect(
-      request(`/api/auth/tokens/${token}`, z.unknown(), {
+      request('/api/notifications', z.unknown()),
+    ).rejects.toMatchObject({ status: 403, code: 'password_change_required' });
+    await expect(
+      request('/api/account/password', z.unknown(), {
         method: 'POST',
-        json: { password: 'short' },
+        json: { newPassword: temporary },
       }),
     ).rejects.toMatchObject({ status: 422, code: 'weak_password' });
-    await acceptInvitation(
-      'new.officer@example.invalid',
-      'a-long-demo-passphrase',
-    );
-    expect((await request('/api/session', sessionSchema)).user.email).toBe(
-      'new.officer@example.invalid',
-    );
-    // Single use.
+    await request('/api/account/password', z.undefined(), {
+      method: 'POST',
+      json: { newPassword: 'a-long-demo-passphrase' },
+    });
+    expect(
+      (await request('/api/session', sessionSchema)).user.mustChangePassword,
+    ).toBeUndefined();
     await expect(
-      request(`/api/auth/tokens/${token}`, authTokenSchema),
-    ).rejects.toMatchObject({ status: 404 });
+      signIn('new.officer@example.invalid', temporary),
+    ).rejects.toMatchObject({ status: 401 });
     await signIn('new.officer@example.invalid', 'a-long-demo-passphrase');
   });
 
-  it('resends a replacement link and refuses an expired one', async () => {
+  it('resends a replacement password and refuses an expired one', async () => {
     await signInAs('administrator');
     const people = await request('/api/settings/users', peopleSchema, {
       method: 'POST',
@@ -131,27 +159,29 @@ describe('invitations', () => {
       (candidate) => candidate.email === 'deputy.demo-002@example.invalid',
     )!;
     expect(user.status).toBe('invited');
-    const first = emailedLink(user.email);
+    expect(user.invitationExpiresAt).not.toBeNull();
+    const first = emailedPassword(user.email);
     await request(`/api/settings/users/${user.id}/invitation`, peopleSchema, {
       method: 'POST',
     });
-    const second = emailedLink(user.email);
+    const second = emailedPassword(user.email);
     expect(second).not.toBe(first);
-    await expect(
-      request(`/api/auth/tokens/${first}`, authTokenSchema),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(signIn(user.email, first)).rejects.toMatchObject({
+      status: 401,
+    });
     getDb().users.find(
       (candidate) => candidate.id === user.id,
-    )!.authLink!.expiresAt = '2020-01-01T00:00:00Z';
-    await expect(
-      request(`/api/auth/tokens/${second}`, authTokenSchema),
-    ).rejects.toMatchObject({ status: 410, code: 'link_expired' });
+    )!.passwordExpiresAt = '2020-01-01T00:00:00Z';
+    await expect(signIn(user.email, second)).rejects.toMatchObject({
+      status: 401,
+      code: 'invalid_credentials',
+    });
   });
 });
 
 describe('password reset and change', () => {
   it('answers every reset request the same way and resets by email link', async () => {
-    const before = getDb().deliveries.length;
+    const before = getDb().emailSink.length;
     const unknown = await request(
       '/api/auth/password-reset',
       z.object({ message: z.string() }),
@@ -160,7 +190,7 @@ describe('password reset and change', () => {
         json: { email: 'nobody@example.invalid' },
       },
     );
-    expect(getDb().deliveries.length).toBe(before);
+    expect(getDb().emailSink.length).toBe(before);
     const known = await request(
       '/api/auth/password-reset',
       z.object({ message: z.string() }),

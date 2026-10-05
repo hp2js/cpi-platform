@@ -319,7 +319,7 @@ function AddFocalPerson({
     onSuccess: async () => {
       setOpen(false);
       onInvited(
-        `${values.displayName.trim()} was added and invited by email to set a password (the link lasts 7 days).`,
+        `${values.displayName.trim()} was added and invited by email with a temporary password (it lasts 7 days).`,
       );
       await queryClient.invalidateQueries();
     },
@@ -347,8 +347,8 @@ function AddFocalPerson({
           <DialogTitle>Add a focal person for {institution.id}</DialogTitle>
           <DialogDescription>
             A platform account that reports for {institution.name}. They get an
-            email invitation to set their own password, then sign in with this
-            email.
+            email with a temporary password, sign in with this email, and choose
+            their own password.
           </DialogDescription>
         </DialogHeader>
         <form

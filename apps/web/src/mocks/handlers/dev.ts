@@ -13,6 +13,11 @@ export const devHandlers = [
   http.get('/api/__mock/email-failure', () =>
     HttpResponse.json({ enabled: getDb().emailFailureMode }),
   ),
+  // The mock attempts deliveries immediately, so nothing waits for a backoff.
+  http.post(
+    '/api/__mock/deliveries/run',
+    () => new HttpResponse(null, { status: 204 }),
+  ),
   http.post('/api/__mock/expire-session', () => {
     commit((db) => {
       if (db.session) db.session.expired = true;

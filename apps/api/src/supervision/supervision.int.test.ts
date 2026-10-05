@@ -15,9 +15,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { auditEvents, notifications, supervisions } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import {
-  STRONG_PASSWORD,
+  activateInvited,
   completeDraft,
-  emailedToken,
   publishSeedForm,
   submitDraft,
 } from '../test/journeys';
@@ -81,9 +80,11 @@ describe.skipIf(!integration)(
             })
           ).status,
         ).toBe(200);
-      const two = api.client();
-      const token = await emailedToken(admin, 'supervisor.two@example.invalid');
-      await two.post(`/auth/tokens/${token}`, { password: STRONG_PASSWORD });
+      const two = await activateInvited(
+        admin,
+        api.client(),
+        'supervisor.two@example.invalid',
+      );
       return { id, two };
     }
 

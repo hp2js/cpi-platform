@@ -7,3 +7,5 @@ export * from './reporting.js';
 export * from './forms.js';
 export * from './plans.js';
 export * from './pdf.js';
+export * from './uploads.js';
+export * from './annual.js';

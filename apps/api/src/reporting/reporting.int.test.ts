@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import type {
   Completeness,
@@ -6,7 +8,12 @@ import type {
   ReportBundle,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { auditEvents, notifications, systemState } from '../database/schema';
+import {
+  auditEvents,
+  evidence,
+  notifications,
+  systemState,
+} from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import {
   attestation,
@@ -49,6 +56,73 @@ describe.skipIf(!integration)('institution reporting', () => {
     expect((await other.request(`${path}/report`)).status).toBe(404);
     const officer = await api.client().signIn('officer-a');
     expect((await officer.request(`${path}/report`)).status).toBe(403);
+  });
+
+  it('refuses each unsafe or uninspectable fixture on both upload paths and stores nothing', async () => {
+    await published();
+    const fixtures = join(__dirname, '../../../../e2e/fixtures');
+    const read = (name: string) =>
+      new Uint8Array(readFileSync(join(fixtures, name)));
+    const expected = JSON.parse(
+      readFileSync(join(fixtures, 'rejected/expected.json'), 'utf8'),
+    ) as Record<string, string>;
+    const objects = async () => {
+      const found = [];
+      for await (const location of api.objects.list()) found.push(location);
+      return found.length;
+    };
+    const stored = async () => ({
+      evidence: (await api.db.select().from(evidence)).length,
+      objects: await objects(),
+    });
+    const before = await stored();
+    for (const name of Object.keys(expected)) {
+      const bytes = read(`rejected/${name}`);
+      const report = await focal.upload(
+        `${path}/evidence`,
+        { name, bytes },
+        { category: 'other' },
+      );
+      const foundation = await focal.upload(
+        '/institutions/DEMO-001/foundations',
+        { name, bytes },
+        {
+          kind: 'procedures',
+          approvalReference: 'REF-REJECTED',
+          effectiveFrom: '2026-07-01',
+          claimedChecks: '[true,true,true,true]',
+        },
+      );
+      for (const result of [report, foundation])
+        expect([name, result.status, result.body]).toEqual([
+          name,
+          422,
+          expect.objectContaining({
+            code: 'upload_rejected',
+            fieldErrors: { file: expect.any(String) },
+          }),
+        ]);
+    }
+    expect(await stored()).toEqual(before);
+
+    // Supported files still pass.
+    for (const name of [
+      'minutes.pdf',
+      'cpc-minutes.docx',
+      'allocation-register.xlsx',
+      'notice-board.png',
+      'photo.jpg',
+    ])
+      expect([
+        name,
+        (
+          await focal.upload(
+            `${path}/evidence`,
+            { name, bytes: read(name) },
+            { category: 'other' },
+          )
+        ).status,
+      ]).toEqual([name, 201]);
   });
 
   it('rejects a disguised executable (AT21)', async () => {

@@ -75,7 +75,10 @@ describe.skipIf(!integration)('administrator console', () => {
     expect((await page('?q=Swapping')).total).toBe(2);
     expect((await page('?elevated=true')).total).toBe(0);
     const csv = await admin.request('/audit.csv?action=form.publish');
-    expect(csv.headers.get('content-type')).toContain('text/csv');
+    expect(csv.headers.get('content-type')).toBe('text/csv; charset=utf-8');
+    expect(csv.headers.get('content-disposition')).toBe(
+      'attachment; filename="cpi-audit-log.csv"',
+    );
     expect(String(csv.body).split('\r\n')[0]).toMatch(
       /^business_time,actual_time,actor/,
     );

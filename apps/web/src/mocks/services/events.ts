@@ -65,7 +65,7 @@ function deliverWithRetries(db: MockDb, delivery: MockDelivery) {
  * Notify recipients of an event. The in-app notification is always recorded; email is a
  * minimal summary with a link, never evidence or unreleased scores.
  */
-function portalUrl(path: string) {
+export function portalUrl(path: string) {
   return new URL(path, globalThis.location?.origin ?? 'http://localhost').href;
 }
 
@@ -130,33 +130,21 @@ export function notify(
 }
 
 /**
- * An email only, with no in-app notification: for account invitations and password resets,
- * whose single-use links must not sit in an inbox. Delivery retries like any other email.
+ * Account emails (temporary passwords, sign-in codes, resets) carry secrets, so like the API
+ * they skip the delivery outbox and go straight to the email sink.
  */
-export function sendEmail(
+export function sendAccountEmail(
   db: MockDb,
-  key: string,
-  eventType: string,
-  recipient: MockUser,
-  message: { subject: string; body: string; link: string },
+  to: string,
+  message: { subject: string; body: string },
 ) {
-  const delivery: MockDelivery = {
-    id: nextId('dlv'),
-    key,
-    eventType,
-    recipientId: recipient.id,
-    recipientName: recipient.displayName,
-    recipientEmail: recipient.email,
-    recipientRole: recipient.role,
+  db.emailSink.push({
+    id: nextId('mail'),
+    to,
     subject: message.subject,
-    body: `${message.body}\n\n${portalUrl(message.link)}`,
-    status: 'queued',
-    attempts: 0,
-    lastAttemptAt: null,
-    lastError: null,
-  };
-  db.deliveries.push(delivery);
-  deliverWithRetries(db, delivery);
+    body: message.body,
+    deliveredAt: db.businessTime,
+  });
 }
 
 export function institutionUsers(institutionId: string) {

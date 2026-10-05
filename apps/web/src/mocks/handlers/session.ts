@@ -5,6 +5,7 @@ import {
   passwordResetRequestSchema,
   passwordSignInSchema,
   setPasswordSchema,
+  signInCodeSchema,
   type AuthConfig,
   type DemoAccount,
 } from '@cpi/contracts';
@@ -12,13 +13,19 @@ import { commit, getDb } from '../db';
 import {
   accountForToken,
   accountStatus,
+  canSignIn,
   clearFailures,
+  CODE_ATTEMPTS,
   DEMO_PASSWORD,
   hashPassword,
+  codeHash,
   lockedFor,
+  now,
   passwordMatches,
+  prepareChallenge,
   prepareLink,
   recordFailure,
+  sendChallenge,
   sendLink,
 } from '../services/auth';
 import { audit } from '../services/events';
@@ -73,7 +80,9 @@ export const sessionHandlers = [
 
   http.get('/api/session', async () => {
     await networkDelay();
-    return HttpResponse.json(toSession(requireUser()));
+    return HttpResponse.json(
+      toSession(requireUser({ temporaryPasswordAllowed: true })),
+    );
   }),
 
   http.post('/api/session', async ({ request }) => {
@@ -124,21 +133,73 @@ export const sessionHandlers = [
     const user = db.users.find((candidate) => candidate.email === email);
     const ok =
       user &&
-      accountStatus(user) === 'active' &&
+      canSignIn(user) &&
       (await passwordMatches(user, parsed.data.password));
     if (!ok) {
       commit((store) => recordFailure(store, email));
       return apiError(401, WRONG, 'invalid_credentials');
     }
+    // The password is right; the session starts once the emailed code is entered too.
+    const challenge = await prepareChallenge();
+    let expiresAt = '';
     commit((store) => {
-      clearFailures(store, email);
-      store.session = { userId: user.id, expired: false };
+      expiresAt = sendChallenge(store, user, challenge);
+    });
+    return HttpResponse.json(
+      { challengeId: challenge.id, expiresAt },
+      { status: 202 },
+    );
+  }),
+
+  http.post('/api/session/code', async ({ request }) => {
+    await networkDelay();
+    const parsed = signInCodeSchema.safeParse(
+      await request.json().catch(() => undefined),
+    );
+    if (!parsed.success)
+      return apiError(
+        422,
+        'Enter the 6-digit code from the email.',
+        'invalid_request',
+        { code: 'Enter the 6-digit code from the email.' },
+      );
+    const { challengeId, code } = parsed.data;
+    const stored = getDb().signInChallenges[challengeId];
+    const expired = () =>
+      apiError(
+        410,
+        'This code has expired. Sign in again to get a new one.',
+        'code_expired',
+      );
+    if (!stored || stored.expiresAt < now()) return expired();
+    const user = getDb().users.find(
+      (candidate) => candidate.id === stored.userId,
+    );
+    if (stored.codeHash !== (await codeHash(challengeId, code))) {
+      commit((db) => {
+        const current = db.signInChallenges[challengeId];
+        if (current && (current.attempts += 1) >= CODE_ATTEMPTS)
+          delete db.signInChallenges[challengeId];
+        if (user) recordFailure(db, user.email);
+      });
+      return apiError(
+        401,
+        'That code is not right. Check the latest email and try again.',
+        'invalid_code',
+        { code: 'That code is not right.' },
+      );
+    }
+    if (!user || !canSignIn(user)) return expired();
+    commit((db) => {
+      delete db.signInChallenges[challengeId];
+      clearFailures(db, user.email);
+      db.session = { userId: user.id, expired: false };
       audit(
-        store,
+        db,
         user,
         'session.sign_in',
         { type: 'user', id: user.id },
-        'Password sign-in',
+        'Password and emailed code sign-in',
       );
     });
     return HttpResponse.json(toSession(user));
@@ -166,7 +227,7 @@ export const sessionHandlers = [
       (candidate) => candidate.email === parsed.data.email.toLowerCase(),
     );
     if (user && accountStatus(user) === 'active') {
-      const link = await prepareLink('reset');
+      const link = await prepareLink();
       commit((db) => sendLink(db, user, link));
     }
     return HttpResponse.json(
@@ -229,6 +290,7 @@ export const sessionHandlers = [
     const purpose = user.authLink!.purpose;
     commit((db) => {
       user.passwordHash = hash;
+      user.passwordExpiresAt = null;
       user.authLink = null;
       clearFailures(db, user.email);
       db.session = { userId: user.id, expired: false };

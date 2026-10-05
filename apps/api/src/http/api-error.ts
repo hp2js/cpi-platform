@@ -24,3 +24,13 @@ export const notFound = () =>
   new ApiError(404, 'The requested resource does not exist.', 'not_found');
 export const forbidden = () =>
   new ApiError(403, 'You do not have access to this action.', 'forbidden');
+
+/** For `SchemaValidationPipe`: the endpoint's own 422 message, field errors and code. */
+export const invalidBody =
+  (
+    message: string,
+    fieldErrors?: Record<string, string>,
+    code = 'invalid_request',
+  ) =>
+  () =>
+    new ApiError(422, message, code, fieldErrors);

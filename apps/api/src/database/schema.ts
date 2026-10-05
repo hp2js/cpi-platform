@@ -89,8 +89,13 @@ export const users = pgTable('users', {
   phone: text().notNull().default(''),
   institutionId: text().references(() => institutions.id),
   active: boolean().notNull().default(true),
-  /** scrypt hash; the demo marker for seeded accounts; null until an invited person sets one. */
+  /** scrypt hash; the demo marker for seeded accounts; null for accounts invited by link before temporary passwords. */
   passwordHash: text(),
+  /**
+   * Set while the account still uses the emailed temporary password: it stops working at this
+   * time, and the person must choose their own password before using the platform.
+   */
+  passwordExpiresAt: instant(),
   /** The current single-use invitation or reset link (its token hash only). */
   authLink: jsonb().$type<{
     purpose: 'invitation' | 'reset';
@@ -772,6 +777,8 @@ export const deliveries = pgTable('deliveries', {
   attempts: integer().notNull().default(0),
   lastAttemptAt: instant(),
   lastError: text(),
+  /** Real time the delivery worker may next try it; null once delivered or failed. */
+  nextAttemptAt: instant(),
 });
 
 /** Local stand-in for email (no real recipients). */

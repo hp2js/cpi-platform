@@ -1,4 +1,4 @@
-import { count } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import type {
   AnnualOverview,
   AuditPage,
@@ -16,10 +16,16 @@ import type {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import annualFixtures from '../../../../docs/acceptance/annual-fixtures.json';
 import {
+  deliveries,
+  emailSink,
   notifications,
   processedEvents,
   systemState,
+  users,
 } from '../database/schema';
+import { loadConfig } from '../config';
+import { lockWrites, write } from '../database/db';
+import { Events } from '../events/events';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -41,13 +47,28 @@ describe.skipIf(!integration)(
     let api: Awaited<ReturnType<typeof startApi>>;
     let admin: Client;
     beforeAll(async () => {
-      api = await startApi();
+      // Retries without backoff, so failures reach the queue within a poll or two.
+      api = await startApi({ DELIVERY_RETRY_DELAYS_MS: '0,0' });
     }, 60_000);
     afterAll(() => api?.stop());
     beforeEach(async () => {
       await api.reset();
       admin = await api.client().signIn('administrator');
     });
+
+    /** Waits for the delivery worker to finish every queued or retrying email. */
+    async function deliveriesSettled() {
+      await expect
+        .poll(
+          async () =>
+            (await admin.json<Delivery[]>('/admin/deliveries')).filter(
+              (delivery) =>
+                delivery.status === 'queued' || delivery.status === 'retrying',
+            ).length,
+          { timeout: 10_000 },
+        )
+        .toBe(0);
+    }
 
     async function runYear() {
       const result = await admin.post('/simulation/scenario');
@@ -369,6 +390,7 @@ describe.skipIf(!integration)(
         ),
       ).not.toContain('submission.received');
 
+      await deliveriesSettled();
       const failed = await admin.json<Delivery[]>(
         '/admin/deliveries?status=failed',
       );
@@ -394,6 +416,120 @@ describe.skipIf(!integration)(
         ]),
       );
       expect((await officer.request('/audit')).status).toBe(403);
+      expect((await officer.request('/audit.csv')).status).toBe(403);
+    });
+
+    it('delivers outside the business transaction and resumes rows an interrupted worker left (HP2-43)', async () => {
+      await api.db.update(systemState).set({ emailFailureMode: true });
+      await publishSeedForm(admin);
+      await deliveriesSettled();
+      // Every delivery failed, yet the publication stands.
+      const all = await admin.json<Delivery[]>('/admin/deliveries');
+      expect(all.length).toBeGreaterThan(0);
+      expect(all.every((delivery) => delivery.status === 'failed')).toBe(true);
+      expect(
+        (await admin.json<{ status: string }>('/forms/form-v1')).status,
+      ).toBe('published');
+
+      // A worker that stopped mid-retry leaves the row retrying; the next poll finishes it once.
+      await api.db
+        .update(deliveries)
+        .set({ status: 'retrying', attempts: 1, nextAttemptAt: null })
+        .where(eq(deliveries.id, all[0]!.id));
+      await api.db.update(systemState).set({ emailFailureMode: false });
+      await deliveriesSettled();
+      expect(
+        (await admin.json<Delivery[]>('/admin/deliveries')).find(
+          (delivery) => delivery.id === all[0]!.id,
+        ),
+      ).toMatchObject({ status: 'delivered', attempts: 2 });
+      expect(await admin.json<unknown[]>('/admin/email-sink')).toHaveLength(1);
+    });
+
+    it('delivers committed work after a crash and replays an event without a second message (HP2-43)', async () => {
+      const events = new Events(loadConfig(process.env));
+      const recipients = await api.db
+        .select()
+        .from(users)
+        .where(inArray(users.id, ['officer-a', 'focal-demo-001']));
+      const notify = () =>
+        write(api.db, (tx, businessTime) =>
+          events.notify(
+            tx,
+            businessTime,
+            'test.restart',
+            'test.restart',
+            recipients,
+            {
+              title: 'Restart check',
+              body: 'Queued while the API was down.',
+              link: null,
+            },
+          ),
+        );
+      const sink = async () =>
+        (await api.db.select().from(emailSink)).filter(
+          (mail) => mail.subject === 'Restart check',
+        );
+
+      // The API crashes; meanwhile a committed change queues two deliveries, and is replayed.
+      await api.kill();
+      await notify();
+      await notify(); // the replay queues nothing more
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const queued = await api.db
+        .select()
+        .from(deliveries)
+        .where(eq(deliveries.eventType, 'test.restart'));
+      expect(queued.map((row) => row.status)).toEqual(['queued', 'queued']);
+
+      // The restarted worker finds the committed rows and delivers each once.
+      await api.start();
+      await deliveriesSettled();
+      expect(await sink()).toHaveLength(2);
+      await notify();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      expect(await sink()).toHaveLength(2);
+    });
+
+    it('refuses simulation controls to everyone but administrators, changing nothing', async () => {
+      const records = async () => ({
+        state: (await api.db.select().from(systemState))[0],
+        events: (await api.db.select({ n: count() }).from(processedEvents))[0],
+      });
+      const before = await records();
+      for (const account of ['officer-a', 'supervisor', 'focal-demo-001']) {
+        const client = await api.client().signIn(account);
+        for (const [path, body] of [
+          ['/simulation/advance', { boundaryId: 'Q1-open' }],
+          ['/simulation/reset', undefined],
+          ['/simulation/scenario', undefined],
+        ] as const)
+          expect((await client.post(path, body)).status).toBe(403);
+      }
+      expect(await records()).toEqual(before);
+      expect((await admin.json<SimulationState>('/simulation')).controls).toBe(
+        true,
+      );
+    });
+
+    it('starts a new run only after a write in progress commits, and records it (HP2-42)', async () => {
+      let reset: Awaited<ReturnType<Client['post']>> | undefined;
+      await api.db.transaction(async (tx) => {
+        await lockWrites(tx); // A write in progress holds the write lock.
+        const pending = admin.post('/simulation/reset').then((result) => {
+          reset = result;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        expect(reset).toBeUndefined();
+        void pending;
+      });
+      await expect.poll(() => reset?.status, { timeout: 10_000 }).toBe(200);
+      const { events } = await admin.json<AuditPage>(
+        '/audit?action=simulation.reset',
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0]!.summary).toMatch(/^Started run-002, replacing run-001/);
     });
 
     it('tries a different profile in a new run and keeps the profile library (PRD §7.1, AT24)', async () => {
@@ -461,6 +597,9 @@ describe.skipIf(!integration)(
           reason: 'Already assigned to Officer B.',
         }),
       ).toMatchObject({ status: 409, body: { code: 'no_change' } });
+      // A session opened before the reassignment loses access on its next request.
+      const before = await api.client().signIn('officer-b');
+      expect((await before.request('/institutions/DEMO-005')).status).toBe(200);
       await admin.post('/assignments', {
         institutionId: 'DEMO-005',
         officerId: 'officer-a',
@@ -474,8 +613,17 @@ describe.skipIf(!integration)(
           .filter((row) => row.institutionId === 'DEMO-005')
           .map((row) => row.officerId),
       ).toEqual(['officer-b', 'officer-a']);
-      const before = await api.client().signIn('officer-b');
       expect((await before.request('/institutions/DEMO-005')).status).toBe(404);
+      expect(
+        (await before.request('/obligations?institutionId=DEMO-005')).status,
+      ).toBe(404);
+      expect(
+        (
+          await before.json<{ institutionId: string }[]>(
+            '/evidence?institutionId=DEMO-005',
+          )
+        ).length,
+      ).toBe(0);
       const after = await api.client().signIn('officer-a');
       expect((await after.request('/institutions/DEMO-005')).status).toBe(200);
     });

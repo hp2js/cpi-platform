@@ -54,13 +54,16 @@ function account(user: MockUser): Account {
 export const accountHandlers = [
   http.post('/api/account/password', async ({ request }) => {
     await networkDelay();
-    const user = requireUser();
+    const user = requireUser({ temporaryPasswordAllowed: true });
     const parsed = changePasswordSchema.safeParse(
       await request.json().catch(() => undefined),
     );
+    // Replacing the emailed temporary password does not ask for it again.
+    const temporary = !!user.passwordExpiresAt;
     if (
       !parsed.success ||
-      !(await passwordMatches(user, parsed.data.currentPassword))
+      (!temporary &&
+        !(await passwordMatches(user, parsed.data.currentPassword ?? '')))
     )
       return apiError(
         422,
@@ -71,6 +74,8 @@ export const accountHandlers = [
         },
       );
     const problems = passwordProblems(parsed.data.newPassword, user.email);
+    if (temporary && (await passwordMatches(user, parsed.data.newPassword)))
+      problems.push('Choose a password different from the emailed one.');
     if (problems.length)
       return apiError(422, problems.join(' '), 'weak_password', {
         newPassword: problems.join(' '),
@@ -78,13 +83,16 @@ export const accountHandlers = [
     const hash = await hashPassword(user, parsed.data.newPassword);
     commit((db) => {
       user.passwordHash = hash;
+      user.passwordExpiresAt = null;
       user.authLink = null;
       audit(
         db,
         user,
-        'account.password_change',
+        temporary ? 'account.activate' : 'account.password_change',
         { type: 'user', id: user.id },
-        'Password changed',
+        temporary
+          ? 'Temporary password replaced at first sign-in'
+          : 'Password changed',
       );
     });
     return new HttpResponse(null, { status: 204 });
@@ -92,7 +100,9 @@ export const accountHandlers = [
 
   http.get('/api/account', async () => {
     await networkDelay();
-    return HttpResponse.json(account(requireUser()));
+    return HttpResponse.json(
+      account(requireUser({ temporaryPasswordAllowed: true })),
+    );
   }),
   http.put('/api/account', async ({ request }) => {
     await networkDelay();

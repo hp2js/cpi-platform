@@ -109,18 +109,6 @@ export function proposalsFor(
   });
 }
 
-/**
- * The next quarter the institution still has to propose, or revise and propose again: the
- * earliest one not yet locked whose latest baseline is missing or returned.
- */
-export function nextProposal(db: MockDb, institutionId: string) {
-  return proposalsFor(db, institutionId).find(
-    (proposal) =>
-      !proposal.locked &&
-      (proposal.status === 'not_proposed' || proposal.status === 'returned'),
-  );
-}
-
 /** Quarters already started whose baseline is still not approved, for supervisors. */
 export function startedWithoutBaseline(db: MockDb, institutionIds: string[]) {
   const now = Date.parse(db.businessTime);

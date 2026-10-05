@@ -91,6 +91,8 @@ describe.skipIf(!integration)('session and directory', () => {
       accountId: 'administrator',
     });
     expect(signIn.headers.get('set-cookie')).toMatch(/HttpOnly/i);
+    expect(signIn.headers.get('set-cookie')).toMatch(/SameSite=Lax/i);
+    expect(signIn.headers.get('set-cookie')).toMatch(/Path=\/api(;|$)/);
     const session = signIn.body as Session;
     expect(session).toMatchObject({
       user: { id: 'administrator', role: 'administrator' },
@@ -142,7 +144,10 @@ describe.skipIf(!integration)('sign-in configuration', () => {
       await demo.stop();
     }
 
-    const real = await startApi({ DEMO_MODE: 'false' });
+    const real = await startApi({
+      DEMO_MODE: 'false',
+      ADMIN_EMAIL: 'operator@example.invalid',
+    });
     try {
       const client = real.client();
       expect(await client.json<AuthConfig>('/auth/config')).toMatchObject({

@@ -80,8 +80,6 @@ export const reminderScheduleSchema = z.object({
     .refine((days) => new Set(days).size === days.length, 'Days must differ.'),
   overdueNotice: z.boolean(),
 });
-export type ReminderSchedule = z.infer<typeof reminderScheduleSchema>;
-
 const lockSchema = z.object({
   editable: z.boolean(),
   /** Why the value can no longer change, in plain words. */
@@ -215,18 +213,24 @@ export const institutionTypeUpdateSchema = z.object({
 });
 export type InstitutionTypeUpdate = z.infer<typeof institutionTypeUpdateSchema>;
 
-const fictional = z
+/**
+ * Demonstration deployments (DEMO_MODE, and the mock) hold synthetic data only: their sign-in
+ * accounts must use this fictional domain. The API checks it; the schemas accept any address.
+ */
+export const FICTIONAL_EMAIL = /^[^@\s]+@example\.invalid$/;
+export const FICTIONAL_EMAIL_MESSAGE =
+  'Use a fictional @example.invalid address.';
+
+const accountEmail = z
   .string()
   .trim()
-  .regex(
-    /^[^@\s]+@example\.invalid$/,
-    'Use a fictional @example.invalid address.',
-  );
+  .max(254)
+  .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, 'Enter a valid email address.');
 
 export const userCreateSchema = z
   .object({
     displayName: z.string().trim().min(3).max(80),
-    email: fictional,
+    email: accountEmail,
     jobTitle: z.string().trim().max(80),
     role: roleSchema,
     institutionId: institutionIdSchema.nullable(),
@@ -249,6 +253,7 @@ export const userStatusSchema = z.object({
    */
   confirmNoFocalPerson: z.boolean().optional(),
 });
+export type UserStatus = z.infer<typeof userStatusSchema>;
 
 /** What an administrator may change on someone else's account; email is the sign-in identity. */
 export const userUpdateSchema = z.object({
@@ -293,7 +298,7 @@ export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 
 const focalUserSchema = z.object({
   displayName: z.string().trim().min(3).max(80),
-  email: fictional,
+  email: accountEmail,
   jobTitle: z.string().trim().max(80),
 });
 
@@ -306,7 +311,8 @@ export const institutionCreateSchema = institutionUpdateSchema.extend({
       /^[A-Z]+-\d{3}$/,
       'Use capital letters, a hyphen and three digits, e.g. MDA-123.',
     ),
-  officerId: z.string().min(1, 'Choose the reviewing officer.'),
+  /** Null leaves the institution without a reviewing officer until one is assigned. */
+  officerId: z.string().min(1).nullable(),
   /** Null leaves the institution without a supervisor until one is assigned. */
   supervisorId: z.string().nullable(),
   focalUser: focalUserSchema.nullable(),
@@ -323,6 +329,9 @@ export const institutionImportRequestSchema = z.object({
   csv: z.string().min(1).max(2_000_000),
   seedOpenedQuarters: z.boolean(),
 });
+export type InstitutionImportRequest = z.infer<
+  typeof institutionImportRequestSchema
+>;
 export const institutionImportColumns = [
   'institution_id',
   'name',
@@ -336,8 +345,9 @@ export const institutionImportColumns = [
   'focal_email',
 ] as const;
 /**
- * Optional: when the column is absent or blank and exactly one supervisor is active, that
- * supervisor is assigned.
+ * `officer_email` and `supervisor_email` may be blank: no reviewing officer until one is
+ * assigned; for the supervisor, when the column is absent or blank and exactly one supervisor is
+ * active, that supervisor is assigned.
  */
 export const institutionImportOptionalColumns = ['supervisor_email'] as const;
 export const institutionImportPreviewSchema = z.object({
@@ -365,10 +375,6 @@ export const institutionImportResultSchema = z.object({
   created: z.array(institutionIdSchema),
   focalUsers: z.number().int().nonnegative(),
 });
-export type InstitutionImportResult = z.infer<
-  typeof institutionImportResultSchema
->;
-
 /** What needs the administrator now; each item links to where it is handled (PRD §9). */
 export const adminAttentionSchema = z.array(
   z.object({
@@ -396,3 +402,4 @@ export type UserRoleChange = z.infer<typeof userRoleChangeSchema>;
 export const supportAccessRequestSchema = z.object({
   reason: z.string().trim().min(20).max(500),
 });
+export type SupportAccessRequest = z.infer<typeof supportAccessRequestSchema>;

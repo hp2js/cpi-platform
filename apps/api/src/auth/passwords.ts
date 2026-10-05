@@ -1,6 +1,7 @@
 import {
   createHash,
   randomBytes,
+  randomInt,
   scrypt as scryptCallback,
   timingSafeEqual,
   type ScryptOptions,
@@ -21,6 +22,22 @@ export const DEMO_PASSWORD_MARKER = 'demo-password';
 
 export const INVITATION_TTL_MS = 7 * 86_400_000;
 export const RESET_TTL_MS = 3_600_000;
+/** How long an emailed temporary password works if the person never signs in. */
+export const TEMPORARY_PASSWORD_TTL_MS = INVITATION_TTL_MS;
+
+/** Without look-alike characters (0/O, 1/l/I), so it can be typed from the email. */
+const READABLE = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** Four groups of four from 56 characters: about 93 bits, typed as `xxxx-xxxx-xxxx-xxxx`. */
+export function temporaryPassword() {
+  return Array.from({ length: 4 }, () =>
+    Array.from({ length: 4 }, () => READABLE[randomInt(READABLE.length)]).join(
+      '',
+    ),
+  ).join('-');
+}
+
+/** A six-digit sign-in code, emailed after the password is accepted. */
+export const signInCode = () => String(randomInt(1_000_000)).padStart(6, '0');
 
 // OWASP's scrypt baseline: N=2^17, r=8, p=1 (about 128 MiB per hash).
 const COST = { N: 2 ** 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
@@ -79,10 +96,28 @@ export async function passwordMatches(
 }
 
 export type AccountStatus = 'active' | 'invited' | 'deactivated';
-/** Invited accounts exist but cannot sign in until the person sets a password. */
+/** Invited accounts have not yet chosen their own password (they may hold a temporary one). */
 export function accountStatus(user: UserRow): AccountStatus {
   if (!user.active) return 'deactivated';
-  return user.passwordHash ? 'active' : 'invited';
+  return user.passwordHash && !user.passwordExpiresAt ? 'active' : 'invited';
+}
+
+/** Whether the account may sign in with a password: active, or within its temporary password. */
+export function canSignIn(user: UserRow) {
+  return (
+    user.active &&
+    user.passwordHash !== null &&
+    (!user.passwordExpiresAt || Date.parse(user.passwordExpiresAt) > Date.now())
+  );
+}
+
+/** When an invited account's temporary password or invitation link stops working. */
+export function invitationExpiresAt(user: UserRow) {
+  if (accountStatus(user) !== 'invited') return null;
+  return (
+    user.passwordExpiresAt ??
+    (user.authLink?.purpose === 'invitation' ? user.authLink.expiresAt : null)
+  );
 }
 
 export const hashToken = (token: string) =>

@@ -1,9 +1,12 @@
 import 'reflect-metadata';
-import { ConsoleLogger } from '@nestjs/common';
+import { ConsoleLogger, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule, configureApp } from './app.module';
-import { CONFIG, type loadConfig } from './config';
-import { prepareDatabase } from './database/setup';
+import { CONFIG, ConfigError, type loadConfig } from './config';
+import { seedOptions } from './database/fixtures';
+import { MigrationError, prepareDatabase } from './database/setup';
+import { Mailer } from './email/mailer';
+import { errorCode } from './http/diagnostics';
 import { Infrastructure } from './infrastructure';
 
 async function bootstrap() {
@@ -15,7 +18,20 @@ async function bootstrap() {
   app.enableShutdownHooks();
   const config = app.get<ReturnType<typeof loadConfig>>(CONFIG);
   if (config.DB_AUTO_SETUP)
-    await prepareDatabase(app.get(Infrastructure).database);
+    await prepareDatabase(
+      app.get(Infrastructure).database,
+      seedOptions(config, app.get(Mailer)),
+    );
   await app.listen(config.API_PORT, '0.0.0.0');
 }
-void bootstrap();
+bootstrap().catch((error: unknown) => {
+  // Migration and configuration errors explain themselves; anything else logs only a safe code.
+  new Logger('Bootstrap').error(
+    error instanceof MigrationError
+      ? { event: 'database.migration_failed', message: error.message }
+      : error instanceof ConfigError
+        ? { event: 'config.invalid', message: error.message }
+        : { event: 'api.startup_failed', code: errorCode(error) },
+  );
+  process.exit(1);
+});

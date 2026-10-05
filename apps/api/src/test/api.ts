@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { Objects } from '../storage/objects';
 import { loadConfig } from '../config';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import Redis from 'ioredis';
@@ -19,7 +19,16 @@ import * as schema from '../database/schema';
 export const integration = process.env.INTEGRATION === '1';
 
 // The example's values are the local Docker services, for checkouts without a .env (and CI).
-config({ path: ['../../.env', '../../.env.example'], quiet: true });
+// Earlier files win: loadEnvFile never overrides a variable that is already set.
+for (const file of ['../../.env', '../../.env.example'])
+  if (existsSync(file)) process.loadEnvFile(file);
+// Tests run the demo deployment and read account emails from the sink, whatever .env says:
+// they must never send real email. A test opts out per server through startApi(env).
+Object.assign(process.env, {
+  DEMO_MODE: 'true',
+  ADMIN_EMAIL: '',
+  RESEND_API_KEY: '',
+});
 
 function testUrls() {
   const database = new URL(process.env.DATABASE_URL ?? '');
@@ -66,27 +75,41 @@ export async function startApi(env: Record<string, string> = {}) {
   await loadFixtures(db);
 
   const port = await freePort();
-  const server: ChildProcess = spawn(process.execPath, ['dist/main.js'], {
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      API_PORT: String(port),
-      DATABASE_URL: urls.database,
-      REDIS_URL: urls.redis,
-      S3_PREFIX: objectPrefix,
-      ...env,
-    },
-    // API_LOG=1 shows the server's JSON log (for example a 500's cause).
-    stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],
-  });
   const url = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; ; attempt += 1) {
-    const ready = await fetch(`${url}/api/health/ready`).catch(() => undefined);
-    if (ready?.ok) break;
-    if (attempt > 100 || server.exitCode !== null)
-      throw new Error('The API did not become ready.');
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  const spawnServer = async () => {
+    const started: ChildProcess = spawn(process.execPath, ['dist/main.js'], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        API_PORT: String(port),
+        DATABASE_URL: urls.database,
+        REDIS_URL: urls.redis,
+        S3_PREFIX: objectPrefix,
+        ...env,
+      },
+      // API_LOG=1 shows the server's JSON log (for example a 500's cause).
+      stdio: ['ignore', process.env.API_LOG ? 'inherit' : 'ignore', 'inherit'],
+    });
+    for (let attempt = 0; ; attempt += 1) {
+      const ready = await fetch(`${url}/api/health/ready`).catch(
+        () => undefined,
+      );
+      if (ready?.ok) break;
+      if (attempt > 100 || started.exitCode !== null)
+        throw new Error('The API did not become ready.');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return started;
+  };
+  const stopServer = (signal: NodeJS.Signals = 'SIGTERM') =>
+    new Promise<void>((resolve) => {
+      if (server.exitCode !== null || server.signalCode !== null) resolve();
+      else {
+        server.once('exit', () => resolve());
+        server.kill(signal);
+      }
+    });
+  let server = await spawnServer();
 
   return {
     db,
@@ -103,12 +126,14 @@ export async function startApi(env: Record<string, string> = {}) {
       }
     },
     client: () => new Client(url),
+    /** Stops the API abruptly by default, like a crash; the database and bucket stay. */
+    kill: (signal: NodeJS.Signals = 'SIGKILL') => stopServer(signal),
+    /** Starts the API again on the same port, database and bucket. */
+    async start() {
+      server = await spawnServer();
+    },
     async stop() {
-      server.kill();
-      await new Promise<void>((resolve) => {
-        if (server.exitCode !== null || server.signalCode !== null) resolve();
-        else server.once('exit', () => resolve());
-      });
+      await stopServer();
       for await (const location of objects.list())
         await objects.remove(location);
       objects.onApplicationShutdown();

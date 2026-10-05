@@ -27,6 +27,11 @@ export const simulationStateSchema = z.object({
   boundaries: z.array(clockBoundarySchema),
   /** Boundary events already processed in this run; replays are no-ops. */
   processedEvents: z.number().int().nonnegative(),
+  /**
+   * Whether advancing, a new run and the scripted year are available: only in the isolated demo
+   * environment. Otherwise business time follows the real clock.
+   */
+  controls: z.boolean(),
 });
 export type SimulationState = z.infer<typeof simulationStateSchema>;
 
@@ -160,11 +165,13 @@ export type AnnualOverview = z.infer<typeof annualOverviewSchema>;
 export const publishRequestSchema = z.object({
   institutionIds: z.array(institutionIdSchema).min(1),
 });
+export type PublishRequest = z.infer<typeof publishRequestSchema>;
 export const correctionRequestSchema = z.object({
   institutionId: institutionIdSchema,
   periodId: z.string(),
   reason: z.string().min(10).max(2000),
 });
+export type CorrectionRequest = z.infer<typeof correctionRequestSchema>;
 export const closeNonresponseRequestSchema = z.object({
   reason: z.string().min(10).max(2000),
 });

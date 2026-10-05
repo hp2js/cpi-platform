@@ -89,11 +89,7 @@ describe('clarification and revision loop (AT09, AT27)', () => {
     expect(bundle.clarifications[0]?.items[0]?.criterion).toMatch(/^M-01/);
     const extra = await request(`${path}/evidence`, evidenceItemSchema, {
       method: 'POST',
-      body: uploadForm(
-        'exception-review.pdf',
-        new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x32]),
-        'other',
-      ),
+      body: uploadForm('exception-review.pdf', pdfBytes('2'), 'other'),
     });
     const answers = structuredClone(bundle.draft!.answers);
     answers.milestones['DEMO-001:M-01']!.evidence.push({
@@ -239,11 +235,7 @@ describe('evidence uploads (FR06)', () => {
     const first = await upload();
     const retry = await upload();
     expect(retry.id).toBe(first.id);
-    const body = uploadForm(
-      'minutes-signed.pdf',
-      new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x39]),
-      'cpc_minutes',
-    );
+    const body = uploadForm('minutes-signed.pdf', pdfBytes('9'), 'cpc_minutes');
     body.append('replaces', first.id);
     const replacement = await request(`${path}/evidence`, evidenceItemSchema, {
       method: 'POST',
@@ -532,7 +524,7 @@ describe('foundations (PRD §10.3, AT28)', () => {
     ).toBe(true);
     const body = uploadForm(
       'risk-assessment-v2.pdf',
-      new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x33]),
+      pdfBytes('3'),
       'risk_assessment',
     );
     body.append('kind', 'risk_assessment');

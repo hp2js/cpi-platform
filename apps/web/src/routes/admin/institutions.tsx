@@ -141,7 +141,7 @@ function InstitutionsTable({
                   )}
                 </TableCell>
                 <TableCell className="text-sm">
-                  {/* Invited accounts cannot sign in until they set a password. */}
+                  {/* Invited accounts have not yet chosen their own password. */}
                   {institution.focalPersons.filter(
                     (person) => person.status === 'active',
                   ).length || (

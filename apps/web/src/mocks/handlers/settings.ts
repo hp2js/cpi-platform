@@ -1,5 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import {
+  FICTIONAL_EMAIL,
+  FICTIONAL_EMAIL_MESSAGE,
   calendarUpdateSchema,
   riskScaleUpdateSchema,
   institutionCreateSchema,
@@ -18,7 +20,12 @@ import type { z } from 'zod';
 import { commit, getDb, nextId, type MockDb } from '../db';
 import type { MockUser } from '@cpi/contracts/fixtures';
 import type { MockProfile } from '@cpi/contracts/fixtures';
-import { accountStatus, prepareLink, sendLink } from '../services/auth';
+import {
+  accountStatus,
+  invitationExpiresAt,
+  prepareInvitation,
+  sendInvitation,
+} from '../services/auth';
 import { supervisedInstitutionIds, supervisorIdOf } from '../services/scope';
 import { skipPastBoundaries } from '../services/clock';
 import {
@@ -188,10 +195,11 @@ function typeLabelTaken(db: MockDb, label: string, exceptId?: string) {
 function notifyOfficers(db: MockDb, rows: NewInstitution[]) {
   const byOfficer = new Map<string, NewInstitution[]>();
   for (const row of rows)
-    byOfficer.set(row.officer!.id, [
-      ...(byOfficer.get(row.officer!.id) ?? []),
-      row,
-    ]);
+    if (row.officer)
+      byOfficer.set(row.officer.id, [
+        ...(byOfficer.get(row.officer.id) ?? []),
+        row,
+      ]);
   for (const [officerId, assigned] of byOfficer) {
     const officer = db.users.find((user) => user.id === officerId)!;
     notify(
@@ -226,10 +234,7 @@ function people(): People {
       institutionId: user.institutionId ?? null,
       active: user.active,
       status: accountStatus(user),
-      invitationExpiresAt:
-        user.authLink?.purpose === 'invitation'
-          ? user.authLink.expiresAt
-          : null,
+      invitationExpiresAt: invitationExpiresAt(user),
       assignedInstitutionIds:
         user.role === 'supervisor'
           ? supervisedInstitutionIds(user.id)
@@ -265,10 +270,7 @@ function people(): People {
             jobTitle: user.jobTitle ?? '',
             active: user.active,
             status: accountStatus(user),
-            invitationExpiresAt:
-              accountStatus(user) === 'invited'
-                ? (user.authLink?.expiresAt ?? null)
-                : null,
+            invitationExpiresAt: invitationExpiresAt(user),
           })),
         officer: officer ? { id: officer.id, name: officer.displayName } : null,
         supervisor: supervisor
@@ -671,6 +673,11 @@ export const settingsHandlers = [
     const admin = requireRole('administrator');
     const input = await body(request, userCreateSchema);
     const db = getDb();
+    // The mock is a demonstration deployment: synthetic sign-in addresses only.
+    if (!FICTIONAL_EMAIL.test(input.email))
+      return apiError(422, 'Some values need attention.', 'invalid_settings', {
+        email: FICTIONAL_EMAIL_MESSAGE,
+      });
     if (
       db.users.some(
         (user) => user.email.toLowerCase() === input.email.toLowerCase(),
@@ -684,7 +691,7 @@ export const settingsHandlers = [
       !db.institutions.some((item) => item.id === input.institutionId)
     )
       return notFound();
-    const invitation = await prepareLink('invitation');
+    const invitation = await prepareInvitation();
     const user: MockUser = {
       id: nextId('user'),
       displayName: input.displayName,
@@ -697,8 +704,8 @@ export const settingsHandlers = [
     };
     commit((store) => {
       store.users.push(user);
-      // The person sets their own password from the invitation email.
-      sendLink(store, user, invitation, admin);
+      // A random temporary password is emailed; the person replaces it at first sign-in.
+      sendInvitation(store, user, invitation, admin);
       audit(
         store,
         admin,
@@ -891,9 +898,9 @@ export const settingsHandlers = [
           : 'Reactivate the account before inviting again.',
         'not_invited',
       );
-    const invitation = await prepareLink('invitation');
+    const invitation = await prepareInvitation();
     commit((store) => {
-      sendLink(store, user, invitation, admin);
+      sendInvitation(store, user, invitation, admin);
       audit(
         store,
         admin,
@@ -940,13 +947,13 @@ export const settingsHandlers = [
     if (problems.length)
       return apiError(422, problems.join(' '), 'invalid_institution');
     const invitation = candidate.focalUser
-      ? await prepareLink('invitation')
+      ? await prepareInvitation()
       : undefined;
     commit((store) => {
       createInstitution(
         store,
         admin,
-        { ...candidate, officer: candidate.officer! },
+        { ...candidate, officer: candidate.officer ?? null },
         input.seedOpenedQuarters,
         nextId,
         invitation,
@@ -956,7 +963,7 @@ export const settingsHandlers = [
         admin,
         'institution.create',
         { type: 'institution', id: candidate.id },
-        `${candidate.name}, reviewed by ${candidate.officer!.displayName}; Accounting Officer ${candidate.accountingOfficer.name}`,
+        `${candidate.name}, ${candidate.officer ? `reviewed by ${candidate.officer.displayName}` : 'no reviewing officer yet'}; Accounting Officer ${candidate.accountingOfficer.name}`,
       );
       notifyOfficers(store, [candidate]);
     });
@@ -988,7 +995,7 @@ export const settingsHandlers = [
       );
     const invitations = await Promise.all(
       rows.map((row) =>
-        row.focalUser ? prepareLink('invitation') : Promise.resolve(undefined),
+        row.focalUser ? prepareInvitation() : Promise.resolve(undefined),
       ),
     );
     commit((store) => {
@@ -996,7 +1003,7 @@ export const settingsHandlers = [
         createInstitution(
           store,
           admin,
-          { ...row, officer: row.officer! },
+          { ...row, officer: row.officer ?? null },
           input.seedOpenedQuarters,
           nextId,
           invitations[index],
