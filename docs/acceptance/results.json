@@ -561,5 +561,81 @@
         "status": "passed"
       }
     ]
+  },
+  "currentRefresh": {
+    "executedOn": "2026-10-05",
+    "mainCommit": "5018b7f8a8621bd1b2383d87224a24ec495dc5eb",
+    "acceptanceCommit": "a1a87be7c8d19cf039e3cbd409a5a5c68a1ef107",
+    "scope": "Local merge of main and HP2-36; original top-level results remain historical. No full browser or production-image rerun.",
+    "unitAndBuild": {
+      "command": "pnpm check",
+      "contractsPassed": 90,
+      "apiUnitPassed": 15,
+      "webPassed": 164,
+      "scoringFixturesPassed": 27
+    },
+    "persistedApi": {
+      "command": "pnpm test:integration",
+      "filesPassed": 24,
+      "testsPassed": 133,
+      "integrationPassed": 118,
+      "unitPassed": 15,
+      "failed": 0
+    },
+    "focusedBrowser": {
+      "specs": [
+        "e2e/files.spec.ts",
+        "e2e/thin-path.spec.ts",
+        "e2e/safeguards.spec.ts"
+      ],
+      "baseURL": "http://127.0.0.1:5181",
+      "database": "cpi_hp2_36_acceptance_demo",
+      "redisDatabase": 14,
+      "objectPrefix": "evidence/hp2-36-acceptance/",
+      "email": "controlled sink; external email disabled",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "cases": [
+        {
+          "file": "files.spec.ts",
+          "title": "an institution previews and downloads its own Word, Excel and image files, also after a reload",
+          "status": "expected",
+          "results": ["passed"]
+        },
+        {
+          "file": "files.spec.ts",
+          "title": "an officer opens the foundation documents they review",
+          "status": "expected",
+          "results": ["passed"]
+        },
+        {
+          "file": "safeguards.spec.ts",
+          "title": "clarification, revised submission, re-review and carry-forward (AT09, AT27)",
+          "status": "expected",
+          "results": ["passed"]
+        },
+        {
+          "file": "safeguards.spec.ts",
+          "title": "an inflated baseline cannot be approved without the checks and can be returned (AT31)",
+          "status": "expected",
+          "results": ["passed"]
+        },
+        {
+          "file": "safeguards.spec.ts",
+          "title": "failed email is visible to the administrator and succeeds on retry (AT12)",
+          "status": "expected",
+          "results": ["passed"]
+        },
+        {
+          "file": "thin-path.spec.ts",
+          "title": "publish, report, submit, review and finalize one quarter",
+          "status": "expected",
+          "results": ["passed"]
+        }
+      ]
+    },
+    "acceptance": "Partial; see README scenario matrix and remaining work"
   }
 }
