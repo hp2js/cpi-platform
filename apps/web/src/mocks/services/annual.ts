@@ -10,7 +10,12 @@ import { daysLate } from './obligations';
 import { baselineOf, periodOf } from './reporting';
 import { scoreSummary } from '@cpi/contracts';
 import { points as formatPoints } from '@cpi/contracts';
-import { annualTotal, rational, type Rational } from '@cpi/contracts';
+import {
+  annualTotal,
+  foundationAtCutoff,
+  rational,
+  type Rational,
+} from '@cpi/contracts';
 import { activeProfile, activeWeights, profileLabel } from './profiles';
 
 const checklistKey = {
@@ -157,18 +162,18 @@ function foundationOutcome(
   maxPoints: number,
 ) {
   const db = getDb();
-  const active = db.foundationVersions.find(
-    (version) =>
-      version.institutionId === institutionId &&
-      version.kind === kind &&
-      version.status === 'active',
+  const active = foundationAtCutoff(
+    db.foundationVersions.filter(
+      (version) =>
+        version.institutionId === institutionId && version.kind === kind,
+    ),
+    db.cycle.evaluationCutoff,
   );
-  const review = db.foundationReviews.find(
-    (candidate) =>
-      candidate.institutionId === institutionId && candidate.kind === kind,
-  );
-  const current =
-    review && active && review.versionId === active.id ? review : undefined;
+  const current = active
+    ? db.foundationReviews.find(
+        (candidate) => candidate.versionId === active.id,
+      )
+    : undefined;
   const score: ComponentScore = current
     ? (() => {
         const passed = current.checks.filter(
@@ -247,7 +252,7 @@ export function evaluate(institutionId: string): AnnualEvaluation {
       .filter((foundation) => foundation.fraction === null)
       .map(
         (foundation) =>
-          `${foundation.outcome.label} not reviewed on its active version`,
+          `${foundation.outcome.label} not reviewed on its version effective at cutoff`,
       ),
   ];
   let total: AnnualEvaluation['total'];

@@ -34,6 +34,17 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
     expect(plan.risks[0]).toMatchObject({ severity: expect.any(Number) });
     const inflated = latest(plan, 'FY2026-27-Q2');
     expect(inflated.milestones).toHaveLength(12);
+    const lockedQ1 = latest(plan, 'FY2026-27-Q1');
+    expect(lockedQ1.milestones).toHaveLength(4);
+    expect(
+      await officer.post(`/baselines/${inflated.id}/approve`, {
+        version: 1,
+        rationale:
+          'Material coverage must be confirmed before this proposal can activate.',
+        checks: { ...checks, noFragmentation: false },
+      }),
+    ).toMatchObject({ status: 422 });
+
     expect(
       (
         await officer.post(`/baselines/${inflated.id}/approve`, {
@@ -97,6 +108,13 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       })
     ).body as Baseline;
     expect(approved).toMatchObject({ status: 'approved', version: 2 });
+    expect(
+      latest(
+        await officer.json<Plan>('/institutions/DEMO-004/plan'),
+        'FY2026-27-Q1',
+      ).milestones,
+    ).toEqual(lockedQ1.milestones);
+
     // Version 1 is kept.
     expect(
       (await officer.json<Plan>('/institutions/DEMO-004/plan')).baselines
@@ -110,6 +128,16 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
     const plan = await focal.json<Plan>('/institutions/DEMO-006/plan');
     const q1 = latest(plan, 'FY2026-27-Q1');
     expect(q1.locked).toBe(true);
+    expect(
+      await focal.delete(
+        `/institutions/DEMO-006/plan-milestones/${encodeURIComponent(q1.milestones[1]!.id)}`,
+      ),
+    ).toMatchObject({ status: 409, body: { code: 'baseline_locked' } });
+    expect(
+      latest(await focal.json<Plan>('/institutions/DEMO-006/plan'), q1.periodId)
+        .milestones,
+    ).toEqual(q1.milestones);
+
     const request = (body: object) =>
       focal.post('/institutions/DEMO-006/amendments', body);
     expect(
@@ -196,6 +224,17 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       'FY2026-27-Q1',
     );
     expect(q1.historicalSeed?.confirmedAt).toBeNull();
+    const beforeConfirmation = await officer.json<ReviewBundle>(
+      `/reviews/${item!.submissionId}`,
+    );
+    expect(
+      (
+        await officer.post(`/reviews/${item!.submissionId}/finalize`, {
+          revision: 1,
+        })
+      ).status,
+    ).toBe(422);
+
     const confirmed = (
       await officer.post(`/baselines/${q1.id}/confirm-seed`, {
         version: q1.version,
@@ -216,6 +255,12 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
       })
     ).body as ReviewBundle;
     expect(final.item.state).toBe('finalized');
+    expect(confirmed.historicalSeed?.loadedAt).toBe(
+      q1.historicalSeed?.loadedAt,
+    );
+    expect(confirmed.milestones).toEqual(q1.milestones);
+    expect(final.answers).toEqual(beforeConfirmation.answers);
+    expect(final.receipt).toEqual(beforeConfirmation.receipt);
   });
 
   it('scores claimed checks provisionally, reviewed checks after review, and drops credit on supersession (AT28)', async () => {

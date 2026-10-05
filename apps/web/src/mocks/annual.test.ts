@@ -262,3 +262,44 @@ describe('scripted demonstration year (PRD §17)', () => {
     },
   );
 });
+
+describe('foundation cutoff selection (AT28)', () => {
+  it('keeps the cutoff version after a future document and review arrive', async () => {
+    await runYear();
+    const db = getDb();
+    const old = db.foundationVersions.find(
+      (v) =>
+        v.institutionId === 'DEMO-001' &&
+        v.kind === 'risk_assessment' &&
+        v.status === 'active',
+    )!;
+    const oldReview = db.foundationReviews.find((r) => r.versionId === old.id)!;
+    old.status = 'superseded';
+    old.effectiveTo = '2027-08-01';
+    db.foundationVersions.unshift({
+      ...old,
+      id: 'future-assessment',
+      version: 2,
+      status: 'active',
+      effectiveFrom: '2027-08-01',
+      effectiveTo: null,
+    });
+    db.foundationReviews.unshift({
+      ...oldReview,
+      versionId: 'future-assessment',
+      checks: oldReview.checks.map((c) => ({
+        ...c,
+        outcome: 'fail',
+        reason: 'Future version has no support.',
+      })),
+    });
+    const annual = await request('/api/annual', annualOverviewSchema);
+    const row = annual.institutions.find(
+      (r) => r.institutionId === 'DEMO-001',
+    )!;
+    expect(
+      row.foundations.find((f) => f.kind === 'risk_assessment'),
+    ).toMatchObject({ versionId: old.id, score: { points: '15.00' } });
+    expect(row.total).toMatchObject({ points: '88.75' });
+  });
+});

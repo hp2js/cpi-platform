@@ -100,9 +100,8 @@ None recorded. A failing fixture is linked to a Linear defect here before it is 
 
 ## Open questions for review
 
-1. The API and the mock score the foundation version whose status is `active`, while PRD §10.3 asks for the version effective at the original cutoff. They agree for SF-16 and SF-17, but would differ if a replacement recorded before evaluation took effect only after the cutoff. Confirm whether that case can arise, and add a fixture if it can.
-2. With a foundation withdrawn and no valid replacement, PRD §10.3 says the final fraction reflects the deficiency (0/4); the implementation shows the foundation as not reviewed, so the annual result stays pending. Confirm the intended disposition path.
-3. Workflow states (publication blocked, closure refused before the cutoff, amendment and inflated-proposal refusal) are executed by the integration and mock tests each fixture lists, not by the worksheet runner. Retest those when the fixture or the rule changes.
+1. With a foundation withdrawn and no valid replacement, PRD §10.3 says the final fraction reflects the deficiency (0/4); the implementation shows the foundation as not reviewed, so the annual result stays pending. The explicit final disposition path is tracked in HP2-57.
+2. Workflow states (publication blocked, closure refused before the cutoff, amendment and inflated-proposal refusal) are executed by the integration and mock tests each fixture lists, not by the worksheet runner. Retest those when the fixture or the rule changes.
 
 ## Team review of inputs
 

@@ -637,5 +637,36 @@
       ]
     },
     "acceptance": "Partial; see README scenario matrix and remaining work"
+  },
+  "completionPass": {
+    "executedOn": "2026-10-05",
+    "baseCommit": "a935013",
+    "scope": "Working-tree cutoff selection fix and acceptance tests; not unconditional product sign-off",
+    "unitAndBuild": {
+      "command": "pnpm check",
+      "contractsPassed": 92,
+      "apiUnitPassed": 15,
+      "webPassed": 165
+    },
+    "persistedApi": {
+      "command": "pnpm test:integration",
+      "testsPassed": 140,
+      "filesPassed": 25,
+      "failed": 0
+    },
+    "finalFocusedApi": {
+      "files": [
+        "src/annual/acceptance.int.test.ts",
+        "src/planning/planning.int.test.ts"
+      ],
+      "testsPassed": 12,
+      "failed": 0,
+      "note": "After final access-control and planning assertions; overlaps the full suite, do not add counts."
+    },
+    "remaining": {
+      "AT23": "Full core keyboard journey: HP2-35",
+      "AT28": "Final foundation disposition: HP2-57",
+      "humanRolePlay": "HP2-33; no actual participant observations recorded"
+    }
   }
 }

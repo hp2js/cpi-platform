@@ -89,6 +89,10 @@ test('scripted year, withheld results, batch publication and oversight (AT13–A
 
   // Supervisor metrics carry numerators and denominators; filters live in the URL.
   await as(page, 'supervisor', '/supervisor');
+  await expect(
+    page.getByText(/plans differ in size and ambition/),
+  ).toBeVisible();
+  await expect(page.getByText('4 milestones').first()).toBeVisible();
   const coverage = page.getByRole('row', { name: /Submission coverage/ });
   await expect(coverage.getByRole('cell').nth(0)).toHaveText('31');
   await expect(coverage.getByRole('cell').nth(1)).toHaveText('32');

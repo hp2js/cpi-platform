@@ -30,3 +30,31 @@ export function annualTotal(
     implementationPoints: format2(implementationPoints),
   };
 }
+
+/** AT28: validity dates are Nairobi calendar days; effectiveTo is exclusive.
+ * Select the version at the evaluation cutoff, even if it has since been superseded.
+ * A withdrawal leaves the evaluation pending; it must not revive older credit.
+ */
+export function foundationAtCutoff<
+  T extends {
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    version: number;
+    status: string;
+  },
+>(versions: readonly T[], cutoff: string): T | undefined {
+  const instant = Date.parse(cutoff);
+  const start = (date: string) => Date.parse(`${date}T00:00:00+03:00`);
+  const eligible = versions
+    .filter(
+      (v) =>
+        start(v.effectiveFrom) <= instant &&
+        (v.effectiveTo === null || instant < start(v.effectiveTo)),
+    )
+    .sort(
+      (a, b) =>
+        b.effectiveFrom.localeCompare(a.effectiveFrom) || b.version - a.version,
+    );
+  const selected = eligible[0];
+  return selected?.status === 'withdrawn' ? undefined : selected;
+}

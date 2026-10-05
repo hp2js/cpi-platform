@@ -1,6 +1,7 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
   annualTotal,
+  foundationAtCutoff,
   isEvidenceAnswer,
   format2,
   mul,
@@ -226,19 +227,18 @@ function foundationOutcome(
   kind: FoundationKind,
   maxPoints: number,
 ) {
-  const active = data.foundationVersions.find(
-    (version) =>
-      version.institutionId === institutionId &&
-      version.kind === kind &&
-      version.status === 'active',
+  const active = foundationAtCutoff(
+    data.foundationVersions.filter(
+      (version) =>
+        version.institutionId === institutionId && version.kind === kind,
+    ),
+    data.cycle.evaluationCutoff,
   );
-  // The latest review counts (rows are loaded newest first).
-  const review = data.foundationReviews.find(
-    (candidate) =>
-      candidate.institutionId === institutionId && candidate.kind === kind,
-  );
-  const current =
-    review && active && review.versionId === active.id ? review : undefined;
+  const current = active
+    ? data.foundationReviews.find(
+        (candidate) => candidate.versionId === active.id,
+      )
+    : undefined;
   const passed = current?.checks.filter(
     (check) => check.outcome === 'pass',
   ).length;
@@ -312,7 +312,7 @@ export function evaluate(
       .filter((foundation) => foundation.fraction === null)
       .map(
         (foundation) =>
-          `${foundation.outcome.label} not reviewed on its active version`,
+          `${foundation.outcome.label} not reviewed on its version effective at cutoff`,
       ),
   ];
   let total: AnnualEvaluation['total'];
