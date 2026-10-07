@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import {
   consolidatedSummary,
+  defaultReportIdentity,
   closeNonresponseRequestSchema,
   correctionRequestSchema,
   extensionRequestSchema,
@@ -31,6 +32,7 @@ import { requireRole } from '../services/session';
 import { activeWeights, profileLabel } from '../services/profiles';
 import type { MockUser } from '@cpi/contracts/fixtures';
 import { oversightFor } from './oversight';
+import { reportIdentityOf } from './report-identity';
 
 function cutoffPassed() {
   const db = getDb();
@@ -55,6 +57,7 @@ function toPublished(publication: MockPublication): PublishedResult {
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
     simulation: true,
+    identity: publication.identity ?? defaultReportIdentity,
     evaluation: publication.evaluation as PublishedResult['evaluation'],
   };
 }
@@ -301,6 +304,8 @@ export const annualHandlers = [
             evaluation.total.status === 'calculated'
               ? evaluation.total.points
               : '',
+          // The report identity in force now; a correction uses the identity at its time (HP2-65).
+          identity: reportIdentityOf(db),
         };
         db.publications.push(publication);
         // The earlier release stays accessible as superseded (§7.4, AT20).

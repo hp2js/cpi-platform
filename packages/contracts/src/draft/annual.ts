@@ -3,6 +3,7 @@ import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 import { indicatorWeightsSchema } from './forms.js';
 import { metricSchema } from './oversight.js';
+import { reportIdentitySchema } from './identity.js';
 import { componentScoreSchema, fractionSchema } from './review.js';
 
 /** Named business-time boundaries the demo clock can advance to (FR14). */
@@ -191,6 +192,8 @@ export const publishedResultSchema = z.object({
   correctionReason: z.string().nullable(),
   profileName: z.string(),
   simulation: z.boolean(),
+  /** The report identity in force when this version was published (HP2-65). */
+  identity: reportIdentitySchema,
   evaluation: annualEvaluationSchema.omit({
     publication: true,
     correction: true,

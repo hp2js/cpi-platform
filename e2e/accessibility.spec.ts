@@ -164,6 +164,7 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/users', 'admin users'],
     ['/admin/account', 'my account'],
     ['/admin/reviews', 'admin reviews'],
+    ['/admin/report-identity', 'admin report identity'],
   ] as const) {
     await visit(page, 'administrator', path);
     await page.waitForLoadState('networkidle');

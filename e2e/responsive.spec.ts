@@ -73,6 +73,7 @@ test('mid-year screens fit a phone', async ({ page }) => {
     ['administrator', '/admin/forms/form-v2'],
     ['administrator', '/admin/notifications'],
     ['administrator', '/admin/audit'],
+    ['administrator', '/admin/report-identity'],
     ['administrator', '/admin/simulation'],
     ['administrator', '/admin/assignments'],
     ['supervisor', '/supervisor/institutions'],

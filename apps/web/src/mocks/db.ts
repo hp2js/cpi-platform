@@ -11,6 +11,8 @@ import type {
   InstitutionRecord,
   Receipt,
   ReportAnswers,
+  ReportIdentity,
+  ReportImage,
 } from '@cpi/contracts';
 import { initialBaselines, type MockBaseline } from '@cpi/contracts/fixtures';
 import {
@@ -174,6 +176,11 @@ export interface MockDb {
   processedEvents: string[];
   closures: { obligationId: string; reason: string; by: string; at: string }[];
   publications: MockPublication[];
+  /** The cycle's report identity (HP2-65); null until an administrator sets one. */
+  reportIdentity: ReportIdentity | null;
+  reportIdentityChanges: { at: string; by: string; summary: string }[];
+  /** Report logos and signatures; the bytes are kept by SHA-256 like evidence files. */
+  reportImages: (ReportImage & { uploadedAt: string; uploadedBy: string })[];
   corrections: {
     id: string;
     institutionId: string;
@@ -232,6 +239,8 @@ export interface MockPublication {
   /** Immutable snapshot of the evaluation at release. */
   evaluation: unknown;
   points: string;
+  /** The report identity in force at release (HP2-65). */
+  identity: ReportIdentity | null;
 }
 
 export interface MockNotification {
@@ -275,10 +284,11 @@ export interface MockDelivery {
  * 17: the risk scale's change log.
  * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
+ * 20: the report identity, its change log and images; the identity kept with each release.
  */
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '19:d6784c09';
+export const SCHEMA_SHAPE = '20:ad4ce8f9';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -353,6 +363,9 @@ function seed(): MockDb {
     foundationReviews: [],
     processedEvents: [],
     closures: [],
+    reportIdentity: null,
+    reportIdentityChanges: [],
+    reportImages: [],
     publications: [],
     corrections: [],
     evidence: foundations.evidence,

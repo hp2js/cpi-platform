@@ -12,6 +12,7 @@ import {
   Ruler,
   ScrollText,
   SlidersHorizontal,
+  Stamp,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -62,7 +63,10 @@ const sections = [
   },
   {
     heading: 'Publication',
-    items: [{ to: '/admin/annual', label: 'Annual evaluation', icon: Award }],
+    items: [
+      { to: '/admin/annual', label: 'Annual evaluation', icon: Award },
+      { to: '/admin/report-identity', label: 'Report identity', icon: Stamp },
+    ],
   },
   {
     heading: 'Operations',

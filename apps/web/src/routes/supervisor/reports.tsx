@@ -28,6 +28,11 @@ import {
   downloadExport,
 } from '@/features/annual/queries';
 import { AnnualResultView } from '@/features/annual/result-view';
+import { reportIdentityQuery } from '@/features/report-identity/queries';
+import {
+  ReportCover,
+  ReportSignoff,
+} from '@/features/report-identity/report-identity';
 import { formatDateTime } from '@/lib/dates';
 
 /** One quarter's points in the summary, with its status in words where there are none. */
@@ -164,8 +169,7 @@ function Summary({ data }: { data: ConsolidatedReport }) {
         Summary of all institutions
       </h2>
       <p className="text-sm text-base-dark">
-        {data.released.length} of {data.summary.length} institutions released.
-        Listed by institution ID, not ranked.
+        Every expected institution, listed by institution ID and not ranked.
       </p>
       {data.summary.length > controls.pageSize && (
         <div data-print-hide>
@@ -338,6 +342,8 @@ function ReportBody({ data }: { data: ConsolidatedReport }) {
 
 export function ReportsPage() {
   const report = useQuery(consolidatedReportQuery);
+  // The latest release's identity; before any release, the identity in force (HP2-65).
+  const current = useQuery(reportIdentityQuery);
   const csv = useMutation({
     mutationFn: () =>
       downloadExport('/api/annual/report.csv', 'cpi-consolidated-results.csv'),
@@ -405,7 +411,19 @@ export function ReportsPage() {
               {data.released.length + data.unreleased.length} institutions
               released
             </p>
+            {(data.released.at(-1)?.identity ?? current.data) && (
+              <ReportCover
+                identity={(data.released.at(-1)?.identity ?? current.data)!}
+                cycleLabel={data.cycleLabel}
+                subject="Consolidated report on all institutions"
+              />
+            )}
             <ReportBody data={data} />
+            {(data.released.at(-1)?.identity ?? current.data) && (
+              <ReportSignoff
+                identity={(data.released.at(-1)?.identity ?? current.data)!}
+              />
+            )}
           </div>
         )}
       </QueryView>

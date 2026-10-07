@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { loadConfig } from '../config';
 import { Infrastructure } from '../infrastructure';
-import { evidence, evidenceFiles } from '../database/schema';
+import { evidence, evidenceFiles, reportImages } from '../database/schema';
 import { write } from '../database/db';
 import { Objects } from './objects';
 import { Files } from './files';
@@ -75,6 +75,18 @@ async function main() {
             )
             .limit(1);
           if (reference) return;
+          // Report logos and signatures are kept: published reports keep showing them.
+          const [image] = await tx
+            .select({ id: reportImages.id })
+            .from(reportImages)
+            .where(
+              and(
+                eq(reportImages.bucket, location.bucket),
+                eq(reportImages.objectKey, location.objectKey),
+              ),
+            )
+            .limit(1);
+          if (image) return;
           count++;
           console.log(
             `${process.argv.includes('--delete') ? 'Deleting' : 'Orphan'} ${location.objectKey}`,

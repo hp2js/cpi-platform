@@ -16,6 +16,7 @@ import {
 import type {
   BaselineCheck,
   FormChange,
+  ReportIdentity,
   RiskScale,
   AccountingOfficer,
   Attestation,
@@ -217,6 +218,33 @@ export const cycles = pgTable('cycles', {
       source:
         'Demonstration labels from common 1–5 risk practice; confirm against the EACC risk assessment template before use.',
     }),
+  /** Who issues the cycle's annual report and how it is branded (HP2-65); null until set. */
+  reportIdentity: jsonb().$type<ReportIdentity>(),
+});
+
+/** Changes to the report identity, for the settings page; each is also audited. */
+export const reportIdentityChanges = pgTable('report_identity_changes', {
+  id: serial().primaryKey(),
+  at: instant().notNull(),
+  by: text().notNull(),
+  summary: text().notNull(),
+});
+
+/**
+ * Report logos and signature images (HP2-65). The bytes are in object storage; a published
+ * report keeps referring to the image it was published with, so rows are never deleted.
+ */
+export const reportImages = pgTable('report_images', {
+  id: text().primaryKey(),
+  bucket: text().notNull(),
+  objectKey: text().notNull(),
+  mimeType: text().$type<'image/png' | 'image/jpeg'>().notNull(),
+  sizeBytes: integer().notNull(),
+  sha256: text().notNull(),
+  width: integer().notNull(),
+  height: integer().notNull(),
+  uploadedAt: instant().notNull(),
+  uploadedBy: text().notNull(),
 });
 
 export const riskScaleChanges = pgTable('risk_scale_changes', {
@@ -720,6 +748,8 @@ export const publications = pgTable('publications', {
   /** Immutable snapshot of the evaluation at release. */
   evaluation: jsonb().notNull(),
   points: text().notNull(),
+  /** The report identity in force at release (HP2-65); null for releases made before it existed. */
+  identity: jsonb().$type<ReportIdentity>(),
 });
 
 export const corrections = pgTable('corrections', {

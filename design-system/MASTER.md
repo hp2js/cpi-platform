@@ -432,6 +432,7 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   action. Demonstration accounts sit in a gold panel below the card ("Trying out the
   platform?"), with an outline button that opens the drawer, so a demo is easy to find without
   competing with the form. Nothing floats over the page.
+- **Report identity.** Administrators set who issues the annual report (Publication → Report identity): organization name, logo, report title, accent colour, foreword, contact, footer and an optional signatory with signature image. Only the cover block (`ReportCover`) and the sign-off (`ReportSignoff`) carry it, and the accent is applied through `--report-accent` on those blocks only. Fixed, whatever the branding: page layout and type scale, the app's own theme tokens, focus and accessibility behaviour, status shown in words as well as colour, and the simulation marking (banner and result text), which branding cannot remove. The accent must reach 4.5:1 contrast on white; logos are PNG without transparency or JPEG, at most 300 KB and 1200 px. Official names such as EACC can be the issuer only with a recorded authorization. Each publication keeps the identity in force when it was released.
 - **Print.** Reports and receipts print as documents: no app header, navigation, buttons, search,
   pagers or screen-only guidance; the simulation banner remains as the marking. Type prints at
   75% with compact table padding; tables fit the page width, wrap between words, keep rows whole

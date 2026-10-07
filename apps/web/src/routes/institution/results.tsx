@@ -4,7 +4,11 @@ import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
 import { downloadExport, resultsQuery } from '@/features/annual/queries';
-import { institutionQuery } from '@/features/directory/queries';
+import { cycleQuery, institutionQuery } from '@/features/directory/queries';
+import {
+  ReportCover,
+  ReportSignoff,
+} from '@/features/report-identity/report-identity';
 import { useSession } from '@/features/session/use-session';
 import { AnnualResultView } from '@/features/annual/result-view';
 import { formatDateTime } from '@/lib/dates';
@@ -14,6 +18,7 @@ export function ResultsPage() {
   const institutionId = useSession().user.institutionId ?? '';
   // Whose result this is: the page names the institution, which a printout needs.
   const institution = useQuery(institutionQuery(institutionId));
+  const cycle = useQuery(cycleQuery);
   const exportCsv = useMutation({
     mutationFn: () =>
       downloadExport('/api/results/export.csv', 'cpi-annual-result.csv'),
@@ -89,11 +94,20 @@ export function ResultsPage() {
                     </p>
                   </div>
                   {result.status === 'current' ? (
-                    <AnnualResultView
-                      evaluation={result.evaluation}
-                      profileName={result.profileName}
-                      simulation={result.simulation}
-                    />
+                    <>
+                      {/* Branded as published: the identity kept with this version (HP2-65). */}
+                      <ReportCover
+                        identity={result.identity}
+                        cycleLabel={cycle.data?.label ?? ''}
+                        subject={`${result.institutionId} · ${result.institutionName}`}
+                      />
+                      <AnnualResultView
+                        evaluation={result.evaluation}
+                        profileName={result.profileName}
+                        simulation={result.simulation}
+                      />
+                      <ReportSignoff identity={result.identity} />
+                    </>
                   ) : (
                     <p className="bg-base-lightest p-4 text-sm">
                       Superseded result:{' '}

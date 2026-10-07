@@ -9,3 +9,4 @@ export * from './plans.js';
 export * from './pdf.js';
 export * from './uploads.js';
 export * from './annual.js';
+export * from './identity.js';

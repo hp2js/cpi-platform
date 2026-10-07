@@ -16,6 +16,7 @@ import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database, type Db } from '../database/db';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
+import { reportIdentityOf } from '../cycle/report-identity.service';
 import { ApiError, notFound } from '../http/api-error';
 import { effectiveCutoff } from '../review/clarifications';
 import { obligationById } from '../reporting/report';
@@ -101,6 +102,9 @@ export class AnnualService {
           'correction_required',
         );
       const batchId = await nextId(tx, 'batch');
+      // Each release keeps the report identity in force now; a correction is a new version
+      // released under the identity in force at that time (HP2-65).
+      const identity = await reportIdentityOf(tx);
       for (const evaluation of evaluations) {
         const previous = evaluation.publication;
         const correction = evaluation.correction;
@@ -130,6 +134,7 @@ export class AnnualService {
               evaluation.total.status === 'calculated'
                 ? evaluation.total.points
                 : '',
+            identity,
           },
           previous?.id,
           tx,

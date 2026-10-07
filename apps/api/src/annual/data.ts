@@ -2,6 +2,7 @@ import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
   annualTotal,
   consolidatedSummary,
+  defaultReportIdentity,
   isEvidenceAnswer,
   format2,
   mul,
@@ -447,6 +448,7 @@ export function toPublished(
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
     simulation: true,
+    identity: publication.identity ?? defaultReportIdentity,
     evaluation: publication.evaluation as PublishedResult['evaluation'],
   };
 }

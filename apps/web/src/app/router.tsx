@@ -418,6 +418,14 @@ const adminAnnualRoute = createRoute({
   path: 'annual',
   component: page(() => import('@/routes/admin/annual'), 'AnnualPage'),
 });
+const adminReportIdentityRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'report-identity',
+  component: page(
+    () => import('@/routes/admin/report-identity'),
+    'ReportIdentityPage',
+  ),
+});
 const adminAssignmentsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'assignments',
@@ -594,6 +602,7 @@ export const routeTree = rootRoute.addChildren([
       adminHomeRoute,
       adminSimulationRoute,
       adminAnnualRoute,
+      adminReportIdentityRoute,
       adminAssignmentsRoute,
       adminCalendarRoute,
       adminRiskScaleRoute,
