@@ -91,5 +91,18 @@ export function reportBundle(obligation: MockObligation): ReportBundle {
     submitted: latestSubmitted(obligation.id),
     editable:
       form !== null && reportingOpen(obligation) && isEditableState(obligation),
+    closure: (() => {
+      const closure = db.closures.find(
+        (candidate) => candidate.obligationId === obligation.id,
+      );
+      return closure
+        ? { reason: closure.reason, by: closure.by, at: closure.at }
+        : null;
+    })(),
+    resultPublished: db.publications.some(
+      (publication) =>
+        publication.institutionId === obligation.institutionId &&
+        publication.supersededBy === null,
+    ),
   };
 }

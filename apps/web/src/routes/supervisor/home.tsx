@@ -235,11 +235,14 @@ function NeedsAttention({ data }: { data: Oversight }) {
             ))}
           </ul>
           {flaggedItems.length > 0 && (
-            <PlanningWorkList
-              items={flaggedItems}
-              audience="supervisor"
-              caption="Urgent plan work waiting on officers"
-            />
+            <div className="grid gap-2">
+              <h3 className="font-bold">Urgent plan work</h3>
+              <PlanningWorkList
+                items={flaggedItems}
+                audience="supervisor"
+                caption="Urgent plan work waiting on officers"
+              />
+            </div>
           )}
         </>
       )}

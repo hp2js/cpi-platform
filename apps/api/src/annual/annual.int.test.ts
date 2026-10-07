@@ -5,6 +5,7 @@ import type {
   Foundations,
   InstitutionResults,
   Oversight,
+  ReportBundle,
   ReviewQueueItem,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -73,6 +74,26 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
     expect(
       await admin.post('/annual/publish', { institutionIds: ['DEMO-001'] }),
     ).toMatchObject({ status: 422, body: { code: 'not_releasable' } });
+  });
+
+  it('tells the institution what was recorded for a quarter closed without submission (HP2-47)', async () => {
+    await readyDemo8();
+    const focal = await api.client().signIn('focal-demo-008');
+    const report = () =>
+      focal.json<ReportBundle>(
+        `/obligations/${encodeURIComponent('DEMO-008:FY2026-27-Q1')}/report`,
+      );
+    expect(await report()).toMatchObject({
+      editable: false,
+      resultPublished: false,
+      closure: {
+        reason: 'No report was received for this quarter.',
+        by: 'Prevention Officer B',
+        at: '2027-08-01T09:00:00+03:00',
+      },
+    });
+    await admin.post('/annual/publish', { institutionIds: ['DEMO-008'] });
+    expect((await report()).resultPublished).toBe(true);
   });
 
   it('publishes only after the cutoff', async () => {

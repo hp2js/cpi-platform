@@ -31,3 +31,51 @@ export function responseDueAt(
     shiftDays(localDate(start), counting.clarificationDays, counting),
   );
 }
+
+/** Whole elapsed days between two instants, never negative. */
+export function wholeDays(from: string, to: string) {
+  return Math.max(
+    0,
+    Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000),
+  );
+}
+
+/**
+ * Review queue timing (HP2-48), shared by the API and the mock. Open work waits on the officer
+ * from receipt or the latest reopening, or on the institution while a clarification is open;
+ * finalized work does not wait, and its case age stops at finalization.
+ */
+export function queueTiming(input: {
+  receivedAt: string;
+  firstSubmittedAt: string;
+  finalizedAt: string | null;
+  /** The latest reopening of this revision, if any. */
+  reopenedAt: string | null;
+  /** When the open clarification on this revision was requested, if one is open. */
+  clarificationRequestedAt: string | null;
+  now: string;
+}) {
+  const { finalizedAt, now } = input;
+  if (finalizedAt)
+    return {
+      waiting: null,
+      caseDays: wholeDays(input.firstSubmittedAt, finalizedAt),
+    };
+  const officerSince =
+    input.reopenedAt &&
+    Date.parse(input.reopenedAt) > Date.parse(input.receivedAt)
+      ? input.reopenedAt
+      : input.receivedAt;
+  const waiting = input.clarificationRequestedAt
+    ? {
+        on: 'institution' as const,
+        since: input.clarificationRequestedAt,
+        days: wholeDays(input.clarificationRequestedAt, now),
+      }
+    : {
+        on: 'officer' as const,
+        since: officerSince,
+        days: wholeDays(officerSince, now),
+      };
+  return { waiting, caseDays: wholeDays(input.firstSubmittedAt, now) };
+}

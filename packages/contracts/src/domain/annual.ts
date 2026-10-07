@@ -1,4 +1,8 @@
-import type { FoundationKind, IndicatorWeights } from '../draft/index.js';
+import type {
+  FoundationKind,
+  IndicatorWeights,
+  ReopenEligibility,
+} from '../draft/index.js';
 import { add, format2, mul, rational, sum, type Rational } from './rational.js';
 
 /**
@@ -29,4 +33,40 @@ export function annualTotal(
     foundationPoints: format2(foundationPoints),
     implementationPoints: format2(implementationPoints),
   };
+}
+
+/**
+ * Whether a finalized review can be reopened (PRD §7.4), with the reason in words when it
+ * cannot. Shared by the API and the mock: the review page explains it before asking for a
+ * reason, and the reopen action enforces the same rule (HP2-51).
+ */
+export function reopenEligibility(input: {
+  finalized: boolean;
+  current: boolean;
+  periodId: string;
+  periodLabel: string;
+  institutionId: string;
+  published: boolean;
+  /** The institution's open correction case, if any. */
+  correction: NonNullable<ReopenEligibility['correction']> | null;
+}): ReopenEligibility {
+  const { published, correction } = input;
+  const refuse = (reason: string) => ({
+    allowed: false,
+    reason,
+    published,
+    correction,
+  });
+  if (!input.finalized)
+    return refuse('Only a finalized review can be reopened.');
+  if (!input.current) return refuse('A newer revision exists.');
+  if (published && !correction)
+    return refuse(
+      `${input.institutionId}'s annual result is published. An administrator must open a correction case for ${input.periodLabel} before this review can be reopened.`,
+    );
+  if (published && correction && correction.periodId !== input.periodId)
+    return refuse(
+      `The open correction case for ${input.institutionId} is for ${correction.periodLabel}, not ${input.periodLabel}. An administrator must open a case for ${input.periodLabel} before this review can be reopened.`,
+    );
+  return { allowed: true, reason: null, published, correction };
 }

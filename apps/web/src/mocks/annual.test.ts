@@ -4,6 +4,7 @@ import {
   inboxSchema,
   institutionResultsSchema,
   oversightSchema,
+  reportBundleSchema,
   reviewBundleSchema,
   reviewQueueSchema,
   scenarioResultSchema,
@@ -82,6 +83,20 @@ describe('scripted demonstration year (PRD §17)', () => {
         'Prevention Officer A',
       ]);
 
+      // A closed quarter tells the institution what was recorded, not that it will open (HP2-47).
+      await signInAs('focal-demo-005');
+      const closedQ3 = () =>
+        request(
+          `/api/obligations/${encodeURIComponent('DEMO-005:FY2026-27-Q3')}/report`,
+          reportBundleSchema,
+        );
+      const closed = await closedQ3();
+      expect(closed).toMatchObject({
+        editable: false,
+        resultPublished: false,
+        closure: { by: 'Prevention Officer B', reason: expect.any(String) },
+      });
+
       // Nothing numerical reaches an institution before release (AT18).
       await signInAs('focal-demo-001');
       const before = await request('/api/results', institutionResultsSchema);
@@ -96,6 +111,8 @@ describe('scripted demonstration year (PRD §17)', () => {
         method: 'POST',
         json: { institutionIds: Object.keys(expected) },
       });
+      await signInAs('focal-demo-005');
+      expect((await closedQ3()).resultPublished).toBe(true);
       await signInAs('focal-demo-004');
       const released = await request('/api/results', institutionResultsSchema);
       expect(released.results).toHaveLength(1);

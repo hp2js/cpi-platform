@@ -1,4 +1,10 @@
-import type { Baseline, Foundations, Plan, ReviewBundle } from '@cpi/contracts';
+import type {
+  Baseline,
+  Foundations,
+  Plan,
+  PlanningWork,
+  ReviewBundle,
+} from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { integration, startApi } from '../test/api';
 import {
@@ -27,6 +33,74 @@ describe.skipIf(!integration)('plan baselines and foundations', () => {
     mandatoryObligations: true,
     noFragmentation: true,
   };
+
+  it('lists plan work waiting on officers, urgent first, and drops it once done (HP2-52)', async () => {
+    const officer = await api.client().signIn('officer-a');
+    const work = await officer.json<PlanningWork>('/planning/work');
+    expect(work.totals.items).toBe(work.items.length);
+    expect(new Set(work.items.map((item) => item.officerId))).toEqual(
+      new Set(['officer-a']),
+    );
+    const demo1 = work.items.filter(
+      (item) => item.institutionId === 'DEMO-001',
+    );
+    expect(demo1.map((item) => item.kind).sort()).toEqual([
+      'foundation',
+      'foundation',
+      'foundation',
+      'proposal',
+      'proposal',
+      'proposal',
+      'seed_confirmation',
+    ]);
+    const q2 = demo1.find((item) => item.title.startsWith('Q2 '))!;
+    expect(q2.flag).toBe(
+      'Q2 started on 1 Oct 2026 without an approved baseline',
+    );
+    expect(q2.tab).toBe('baselines');
+    // Urgent items come first.
+    const firstUnflagged = work.items.findIndex((item) => !item.flag);
+    expect(work.items.slice(firstUnflagged).every((item) => !item.flag)).toBe(
+      true,
+    );
+    expect(work.totals.flagged).toBe(firstUnflagged);
+
+    // Confirming the seeded baseline and approving Q2 take them off the list.
+    const plan = await officer.json<Plan>('/institutions/DEMO-001/plan');
+    await officer.post(
+      `/baselines/${latest(plan, 'FY2026-27-Q1').id}/confirm-seed`,
+      {
+        version: 1,
+      },
+    );
+    await officer.post(
+      `/baselines/${latest(plan, 'FY2026-27-Q2').id}/approve`,
+      {
+        version: latest(plan, 'FY2026-27-Q2').version,
+        rationale: 'Matches the approved plan and the cycle guidance.',
+        checks,
+      },
+    );
+    const after = await officer.json<PlanningWork>('/planning/work');
+    expect(after.totals.items).toBe(work.totals.items - 2);
+    expect(after.totals.flagged).toBe(work.totals.flagged - 2);
+
+    // The supervisor sees both officers' counts; institutions cannot read it.
+    const supervisor = await api.client().signIn('supervisor');
+    const all = await supervisor.json<PlanningWork>('/planning/work');
+    expect(all.byOfficer.map((row) => row.officerId).sort()).toEqual([
+      'officer-a',
+      'officer-b',
+    ]);
+    expect(
+      all.byOfficer.find((row) => row.officerId === 'officer-a'),
+    ).toMatchObject({
+      items: after.totals.items,
+      flagged: after.totals.flagged,
+    });
+    const focal = await api.client().signIn('focal-demo-001');
+    expect((await focal.request('/planning/work')).status).toBe(403);
+  });
 
   it('requires every check and a rationale, and lets the officer return an inflated proposal (AT31)', async () => {
     const officer = await api.client().signIn('officer-a');
