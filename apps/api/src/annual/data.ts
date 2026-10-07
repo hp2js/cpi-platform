@@ -1,6 +1,9 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
   annualTotal,
+  reviewAtCutoff,
+  versionAtCutoff,
+  type VersionAtCutoff,
   exportPayload,
   publishedResultSchema,
   isEvidenceAnswer,
@@ -236,19 +239,22 @@ function foundationOutcome(
   kind: FoundationKind,
   maxPoints: number,
 ) {
-  const active = data.foundationVersions.find(
-    (version) =>
-      version.institutionId === institutionId &&
-      version.kind === kind &&
-      version.status === 'active',
+  // The version effective at the cutoff counts, never a withdrawn one (§10.3, AT28).
+  const atCutoff = versionAtCutoff(
+    data.foundationVersions.filter(
+      (version) =>
+        version.institutionId === institutionId && version.kind === kind,
+    ),
+    data.cycle.evaluationCutoff,
   );
-  // The latest review counts (rows are loaded newest first).
-  const review = data.foundationReviews.find(
-    (candidate) =>
-      candidate.institutionId === institutionId && candidate.kind === kind,
+  // Its latest review, or the unsupported disposition (rows are loaded newest first).
+  const current = reviewAtCutoff(
+    data.foundationReviews.filter(
+      (candidate) =>
+        candidate.institutionId === institutionId && candidate.kind === kind,
+    ),
+    atCutoff,
   );
-  const current =
-    review && active && review.versionId === active.id ? review : undefined;
   const passed = current?.checks.filter(
     (check) => check.outcome === 'pass',
   ).length;
@@ -265,11 +271,12 @@ function foundationOutcome(
         }
       : { status: 'pending', maxPoints, reason: 'foundation_not_reviewed' };
   return {
+    atCutoff,
     outcome: {
       kind,
       label: foundationLabels[kind],
       score,
-      versionId: active?.id ?? null,
+      versionId: atCutoff.status === 'applicable' ? atCutoff.versionId : null,
       reviewId: current ? String(current.id) : null,
       reviewedBy: current?.reviewedBy ?? null,
       reviewerId: null,
@@ -295,6 +302,12 @@ function foundationOutcome(
 // decisions, closures and foundation reviews if display names stop being unique.
 const accountId = (data: AnnualData, displayName: string | null) =>
   data.users.find((user) => user.displayName === displayName)?.id ?? null;
+
+const pendingReason: Record<VersionAtCutoff['status'], string> = {
+  applicable: 'not reviewed on the version effective at the cutoff',
+  none: 'has no valid version at the cutoff: record an unsupported disposition or a valid replacement',
+  conflict: 'has versions with overlapping effective dates at the cutoff',
+};
 
 const statusReason: Record<QuarterDisposition['status'], string> = {
   finalized: '',
@@ -331,7 +344,7 @@ export function evaluate(
       .filter((foundation) => foundation.fraction === null)
       .map(
         (foundation) =>
-          `${foundation.outcome.label} not reviewed on its active version`,
+          `${foundation.outcome.label} ${pendingReason[foundation.atCutoff.status]}`,
       ),
   ];
   let total: AnnualEvaluation['total'];

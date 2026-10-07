@@ -4,11 +4,15 @@ import { z } from 'zod';
 import {
   foundationKindSchema,
   foundationReviewRequestSchema,
+  foundationUnsupportedRequestSchema,
+  versionAtCutoff,
   type Foundations,
 } from '@cpi/contracts';
 import { assignedInstitutionIds, canReadInstitution } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database } from '../database/db';
+import { currentState } from '../database/state';
+import { effectiveCutoff } from '../review/clarifications';
 import { Events, assignedOfficers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Files } from '../storage/files';
@@ -252,10 +256,20 @@ export class FoundationsService {
         tx,
       );
       if (!version) throw notFound();
-      if (version.status !== 'active')
+      // The active version gives current credit; the version effective at the cutoff gives the
+      // annual one, even after a future-effective successor is recorded (AT28).
+      const { cycle } = await currentState(tx);
+      const atCutoff = versionAtCutoff(
+        await this.repository.versionsOf(institutionId, kind.data, tx),
+        cycle.evaluationCutoff,
+      );
+      if (
+        version.status !== 'active' &&
+        !(atCutoff.status === 'applicable' && atCutoff.versionId === version.id)
+      )
         throw new ApiError(
           409,
-          'Review the active version; this one is superseded or withdrawn.',
+          'Review the active version or the one effective at the evaluation cutoff; this one is neither.',
           'not_active',
         );
       const fieldErrors: Record<string, string> = {};
@@ -292,6 +306,92 @@ export class FoundationsService {
         'foundation.review',
         { type: 'foundation', id: version.id, version: version.version },
         `${foundationLabels[kind.data]}: ${parsed.data.checks.filter((check) => check.outcome === 'pass').length} of 4 checks met`,
+      );
+      return foundationsFor(tx, institutionId, true);
+    });
+  }
+
+  /**
+   * Records that no valid document supports the checks at the cutoff: an explicit 0 of 4 with a
+   * reason, never inferred (PRD §10.3, AT28). Only after the cutoff and any extension, and only
+   * when no version covers the cutoff: otherwise review that version or resolve the conflict.
+   */
+  unsupported(
+    user: User,
+    institutionId: string,
+    kindParam: string,
+    body: unknown,
+  ): Promise<Foundations> {
+    return write(this.db, async (tx, businessTime) => {
+      if (!(await canReadInstitution(tx, user, institutionId)))
+        throw notFound();
+      if (
+        user.role !== 'officer' ||
+        !(await assignedInstitutionIds(tx, user.id)).includes(institutionId)
+      )
+        throw new ApiError(
+          403,
+          'Only the assigned officer can review foundations.',
+          'forbidden',
+        );
+      const kind = foundationKindSchema.safeParse(kindParam);
+      if (!kind.success) throw notFound();
+      const parsed = foundationUnsupportedRequestSchema.safeParse(body);
+      if (!parsed.success)
+        throw new ApiError(
+          422,
+          'Give a reason of at least 10 characters.',
+          'reason_required',
+          { reason: 'Give a reason of at least 10 characters.' },
+        );
+      if (
+        Date.parse(businessTime) <= (await effectiveCutoff(tx, institutionId))
+      )
+        throw new ApiError(
+          409,
+          'An unsupported disposition can be recorded only after the evaluation cutoff and any extension.',
+          'cutoff_not_passed',
+        );
+      const { cycle } = await currentState(tx);
+      const atCutoff = versionAtCutoff(
+        await this.repository.versionsOf(institutionId, kind.data, tx),
+        cycle.evaluationCutoff,
+      );
+      if (atCutoff.status === 'applicable')
+        throw new ApiError(
+          409,
+          'A valid version covers the cutoff: review it instead.',
+          'version_at_cutoff',
+        );
+      if (atCutoff.status === 'conflict')
+        throw new ApiError(
+          409,
+          'Versions with overlapping effective dates cover the cutoff: resolve the dates first.',
+          'conflicting_versions',
+        );
+      const reason = parsed.data.reason;
+      await this.repository.insertReview(
+        {
+          institutionId,
+          kind: kind.data,
+          versionId: null,
+          checks: [0, 1, 2, 3].map(() => ({
+            outcome: 'fail' as const,
+            passage: '',
+            reason,
+          })),
+          reviewedBy: user.displayName,
+          reviewedAt: businessTime,
+        },
+        tx,
+      );
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'foundation.unsupported',
+        { type: 'foundation', id: `${institutionId}:${kind.data}` },
+        `${foundationLabels[kind.data]}: no valid version at the cutoff; 0 of 4. ${reason}`,
       );
       return foundationsFor(tx, institutionId, true);
     });

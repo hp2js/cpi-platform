@@ -62,7 +62,7 @@ How each functional requirement and mandatory scenario is met and what checks it
 | AT25 baseline timing                                 | `thin-path.test`, `safeguards.spec`                                              | `planning`, `review`                              |
 | AT26 submission authority                            | `thin-path.test`                                                                 | `reporting`                                       |
 | AT27 decision invalidation                           | `safeguards.test`, `safeguards.spec`                                             | `review`                                          |
-| AT28 foundation validity                             | `safeguards.test`                                                                | `planning`                                        |
+| AT28 foundation validity                             | `safeguards.test` (incl. cutoff version and unsupported disposition)             | `planning`, `annual`                              |
 | AT29 cutoff fairness                                 | `safeguards.test` (extension and closure)                                        | `annual`, `review`                                |
 | AT30 evidence suitability                            | `thin-path.test`                                                                 | `review`                                          |
 | AT31 denominator gaming                              | `safeguards.test`, `safeguards.spec`                                             | `planning`, `plan-editor`                         |

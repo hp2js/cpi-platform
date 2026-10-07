@@ -1,4 +1,7 @@
 import {
+  reviewAtCutoff,
+  versionAtCutoff,
+  type VersionAtCutoff,
   type AnnualEvaluation,
   type ComponentScore,
   type FoundationKind,
@@ -164,18 +167,22 @@ function foundationOutcome(
   maxPoints: number,
 ) {
   const db = getDb();
-  const active = db.foundationVersions.find(
-    (version) =>
-      version.institutionId === institutionId &&
-      version.kind === kind &&
-      version.status === 'active',
+  // The version effective at the cutoff counts, never a withdrawn one (§10.3, AT28).
+  const atCutoff = versionAtCutoff(
+    db.foundationVersions.filter(
+      (version) =>
+        version.institutionId === institutionId && version.kind === kind,
+    ),
+    db.cycle.evaluationCutoff,
   );
-  const review = db.foundationReviews.find(
-    (candidate) =>
-      candidate.institutionId === institutionId && candidate.kind === kind,
+  // Its latest review (stored newest first), or the unsupported disposition.
+  const current = reviewAtCutoff(
+    db.foundationReviews.filter(
+      (candidate) =>
+        candidate.institutionId === institutionId && candidate.kind === kind,
+    ),
+    atCutoff,
   );
-  const current =
-    review && active && review.versionId === active.id ? review : undefined;
   const score: ComponentScore = current
     ? (() => {
         const passed = current.checks.filter(
@@ -193,11 +200,12 @@ function foundationOutcome(
       })()
     : { status: 'pending', maxPoints, reason: 'foundation_not_reviewed' };
   return {
+    atCutoff,
     outcome: {
       kind,
       label: kindLabel[kind],
       score,
-      versionId: active?.id ?? null,
+      versionId: atCutoff.status === 'applicable' ? atCutoff.versionId : null,
       reviewId: current?.id ?? null,
       reviewedBy: current?.reviewedBy ?? null,
       reviewerId: null,
@@ -228,6 +236,12 @@ function foundationOutcome(
 /** Actors are stored by display name, as in the API; this finds the account behind one. */
 const accountId = (displayName: string | null) =>
   getDb().users.find((user) => user.displayName === displayName)?.id ?? null;
+
+const pendingReason: Record<VersionAtCutoff['status'], string> = {
+  applicable: 'not reviewed on the version effective at the cutoff',
+  none: 'has no valid version at the cutoff: record an unsupported disposition or a valid replacement',
+  conflict: 'has versions with overlapping effective dates at the cutoff',
+};
 
 const statusReason: Record<QuarterDisposition['status'], string> = {
   finalized: '',
@@ -262,7 +276,7 @@ export function evaluate(institutionId: string): AnnualEvaluation {
       .filter((foundation) => foundation.fraction === null)
       .map(
         (foundation) =>
-          `${foundation.outcome.label} not reviewed on its active version`,
+          `${foundation.outcome.label} ${pendingReason[foundation.atCutoff.status]}`,
       ),
   ];
   let total: AnnualEvaluation['total'];

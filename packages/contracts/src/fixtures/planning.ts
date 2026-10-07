@@ -156,7 +156,8 @@ export interface MockFoundationReview {
   id: string;
   institutionId: string;
   kind: FoundationKind;
-  versionId: string;
+  /** Null for an unsupported disposition: no valid version covered the cutoff (AT28). */
+  versionId: string | null;
   checks: { outcome: 'pass' | 'fail'; passage: string; reason: string }[];
   reviewedBy: string;
   reviewedAt: string;

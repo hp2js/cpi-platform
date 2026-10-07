@@ -552,6 +552,156 @@ describe('foundations (PRD §10.3, AT28)', () => {
   });
 });
 
+describe('foundation disposition at the cutoff (PRD §10.3, AT28)', () => {
+  it('scores the version effective at the cutoff, and a withdrawn one only through an explicit unsupported disposition', async () => {
+    const pass = { outcome: 'pass' as const, passage: 'Section 1', reason: '' };
+    const path = '/api/institutions/DEMO-008/foundations';
+    const indicator = (
+      foundations: z.infer<typeof foundationsSchema>,
+      kind: string,
+    ) => foundations.indicators.find((candidate) => candidate.kind === kind)!;
+    await signInAs('officer-b');
+    const before = await request(path, foundationsSchema);
+    const original = indicator(before, 'procedures').versions[0]!;
+    const mitigation = indicator(before, 'mitigation_plan').versions[0]!;
+    await request(`${path}/mitigation_plan/review`, foundationsSchema, {
+      method: 'PUT',
+      json: { versionId: mitigation.id, checks: [pass, pass, pass, pass] },
+    });
+    await signInAs('focal-demo-008');
+    await request(
+      `/api/foundation-versions/${mitigation.id}/withdraw`,
+      foundationsSchema,
+      {
+        method: 'POST',
+        json: { reason: 'Adopted in error; a new plan is being drafted.' },
+      },
+    );
+    // A replacement recorded now takes effect only after the cutoff.
+    const body = uploadForm('procedures-v2.pdf', pdfBytes('2'), 'procedures');
+    body.append('kind', 'procedures');
+    body.append('approvalReference', 'Board resolution 12 Jun 2027');
+    body.append('effectiveFrom', '2027-09-01');
+    body.append('claimedChecks', JSON.stringify([true, true, true, true]));
+    await request(path, foundationsSchema, { method: 'POST', body });
+
+    await signInAs('officer-b');
+    const unsupported = (reason: string) =>
+      request(`${path}/mitigation_plan/unsupported`, foundationsSchema, {
+        method: 'POST',
+        json: { reason },
+      });
+    await expect(
+      unsupported('The plan was withdrawn and no replacement was adopted.'),
+    ).rejects.toMatchObject({ status: 409, code: 'cutoff_not_passed' });
+    getDb().businessTime = '2027-08-01T09:00:00+03:00';
+    for (const quarter of [1, 2, 3, 4])
+      await request(
+        `/api/obligations/${encodeURIComponent(`DEMO-008:FY2026-27-Q${quarter}`)}/close-nonresponse`,
+        z.unknown(),
+        {
+          method: 'POST',
+          json: { reason: 'No report was received for this quarter.' },
+        },
+      );
+    const risk = indicator(before, 'risk_assessment').versions[0]!;
+    await request(`${path}/risk_assessment/review`, foundationsSchema, {
+      method: 'PUT',
+      json: { versionId: risk.id, checks: [pass, pass, pass, pass] },
+    });
+    const withSuccessor = await request(path, foundationsSchema);
+    expect(indicator(withSuccessor, 'procedures').atCutoff).toEqual({
+      status: 'applicable',
+      versionId: original.id,
+    });
+    expect(indicator(withSuccessor, 'mitigation_plan').atCutoff).toEqual({
+      status: 'none',
+    });
+
+    // The superseded version effective at the cutoff can still be reviewed; the withdrawn one cannot.
+    const failed = {
+      outcome: 'fail' as const,
+      passage: '',
+      reason: 'No approval details are recorded.',
+    };
+    const reviewed = await request(
+      `${path}/procedures/review`,
+      foundationsSchema,
+      {
+        method: 'PUT',
+        json: { versionId: original.id, checks: [pass, pass, pass, failed] },
+      },
+    );
+    expect(indicator(reviewed, 'procedures').cutoffReview).toMatchObject({
+      versionId: original.id,
+    });
+    await expect(
+      request(`${path}/mitigation_plan/review`, z.unknown(), {
+        method: 'PUT',
+        json: { versionId: mitigation.id, checks: [pass, pass, pass, pass] },
+      }),
+    ).rejects.toMatchObject({ status: 409, code: 'not_active' });
+
+    // The withdrawn plan's earlier 4/4 gives no credit: pending until an explicit disposition.
+    await signInAs('administrator');
+    const demo8 = async () =>
+      (await request('/api/annual', annualOverviewSchema)).institutions.find(
+        (evaluation) => evaluation.institutionId === 'DEMO-008',
+      )!;
+    expect((await demo8()).total).toMatchObject({
+      status: 'pending',
+      reasons: [
+        'Mitigation plan has no valid version at the cutoff: record an unsupported disposition or a valid replacement',
+      ],
+    });
+    await signInAs('officer-b');
+    await expect(
+      request(`${path}/procedures/unsupported`, z.unknown(), {
+        method: 'POST',
+        json: { reason: 'No valid procedures document at the cutoff.' },
+      }),
+    ).rejects.toMatchObject({ status: 409, code: 'version_at_cutoff' });
+    await expect(unsupported('short')).rejects.toMatchObject({
+      status: 422,
+      code: 'reason_required',
+    });
+    const disposed = await unsupported(
+      'The plan was withdrawn and no replacement was adopted.',
+    );
+    expect(indicator(disposed, 'mitigation_plan').cutoffReview).toMatchObject({
+      versionId: null,
+    });
+
+    // Procedures 10 × 3/4 + risk 15 + mitigation 0; every quarter closed: 22.50.
+    await signInAs('administrator');
+    const final = await demo8();
+    expect(final.total).toMatchObject({
+      status: 'calculated',
+      points: '22.50',
+      foundationPoints: '22.50',
+    });
+    expect(
+      final.foundations.map((foundation) => [
+        foundation.kind,
+        foundation.versionId,
+        foundation.score.status === 'calculated' && foundation.score.points,
+      ]),
+    ).toEqual([
+      ['procedures', original.id, '7.50'],
+      ['risk_assessment', risk.id, '15.00'],
+      ['mitigation_plan', null, '0.00'],
+    ]);
+    // History is kept: the earlier review of the withdrawn plan is still recorded.
+    expect(
+      getDb().foundationReviews.filter(
+        (review) =>
+          review.institutionId === 'DEMO-008' &&
+          review.kind === 'mitigation_plan',
+      ),
+    ).toHaveLength(2);
+  });
+});
+
 describe('prior phase regressions', () => {
   it('still submits a first revision without clarifications', async () => {
     await publishSeedForm();

@@ -2,6 +2,9 @@ import { http, HttpResponse } from 'msw';
 import {
   foundationKindSchema,
   foundationReviewRequestSchema,
+  foundationUnsupportedRequestSchema,
+  reviewAtCutoff,
+  versionAtCutoff,
   type ComponentScore,
   type FoundationKind,
   type Foundations,
@@ -15,7 +18,11 @@ import {
   type MockEvidence,
 } from '../db';
 import type { MockUser } from '@cpi/contracts/fixtures';
-import type { MockFoundationVersion } from '@cpi/contracts/fixtures';
+import type {
+  MockFoundationReview,
+  MockFoundationVersion,
+} from '@cpi/contracts/fixtures';
+import { effectiveCutoff } from '../services/clarifications';
 import { assignedOfficers, audit, notify } from '../services/events';
 import { checkUpload, sha256 } from '../services/evidence';
 import { storeFile } from '../services/files';
@@ -48,6 +55,13 @@ const calculated = (maxPoints: number, numerator: number): ComponentScore => ({
   points: points(maxPoints, { numerator, denominator: 4 }),
 });
 
+const toReview = (review: MockFoundationReview) => ({
+  versionId: review.versionId,
+  checks: review.checks,
+  reviewedBy: review.reviewedBy,
+  reviewedAt: review.reviewedAt,
+});
+
 /** Checklist scoring (PRD §10.3): claimed checks with a supplied document, then officer-accepted checks. */
 function foundationsFor(user: MockUser, institutionId: string): Foundations {
   const db = getDb();
@@ -63,15 +77,18 @@ function foundationsFor(user: MockUser, institutionId: string): Foundations {
         )
         .sort((a, b) => b.version - a.version);
       const active = versions.find((version) => version.status === 'active');
-      const review =
-        db.foundationReviews.find(
-          (candidate) =>
-            candidate.institutionId === institutionId &&
-            candidate.kind === kind,
-        ) ?? null;
+      const reviews = db.foundationReviews.filter(
+        (candidate) =>
+          candidate.institutionId === institutionId && candidate.kind === kind,
+      );
+      // The latest review of the active version gives current credit; a review of a superseded
+      // or withdrawn version cannot (AT28). Earlier reviews stay as history.
+      const review = active
+        ? reviews.find((candidate) => candidate.versionId === active.id)
+        : undefined;
+      const atCutoff = versionAtCutoff(versions, db.cycle.evaluationCutoff);
+      const cutoffReview = reviewAtCutoff(reviews, atCutoff);
       const maxPoints = maxPointsFor(kind);
-      // A review of a superseded or withdrawn version cannot supply current credit (AT28).
-      const reviewCurrent = review && active && review.versionId === active.id;
       return {
         kind,
         label: labels[kind],
@@ -96,12 +113,9 @@ function foundationsFor(user: MockUser, institutionId: string): Foundations {
           claimedChecks: version.claimedChecks,
           withdrawnReason: version.withdrawnReason,
         })),
-        review: review && {
-          versionId: review.versionId,
-          checks: review.checks,
-          reviewedBy: review.reviewedBy,
-          reviewedAt: review.reviewedAt,
-        },
+        review: review ? toReview(review) : null,
+        atCutoff,
+        cutoffReview: cutoffReview ? toReview(cutoffReview) : null,
         provisional: internal
           ? calculated(
               maxPoints,
@@ -109,7 +123,7 @@ function foundationsFor(user: MockUser, institutionId: string): Foundations {
             )
           : null,
         reviewed: internal
-          ? reviewCurrent
+          ? review
             ? calculated(
                 maxPoints,
                 review.checks.filter((check) => check.outcome === 'pass')
@@ -125,6 +139,12 @@ function foundationsFor(user: MockUser, institutionId: string): Foundations {
     }),
   };
 }
+
+const versionsOf = (institutionId: string, kind: FoundationKind) =>
+  getDb().foundationVersions.filter(
+    (version) =>
+      version.institutionId === institutionId && version.kind === kind,
+  );
 
 function readable(user: MockUser, institutionId: unknown) {
   if (
@@ -347,10 +367,19 @@ export const foundationHandlers = [
           candidate.kind === kind.data,
       );
       if (!version) return notFound();
-      if (version.status !== 'active')
+      // The active version gives current credit; the version effective at the cutoff gives the
+      // annual one, even after a future-effective successor is recorded (AT28).
+      const atCutoff = versionAtCutoff(
+        versionsOf(institutionId, kind.data),
+        getDb().cycle.evaluationCutoff,
+      );
+      if (
+        version.status !== 'active' &&
+        !(atCutoff.status === 'applicable' && atCutoff.versionId === version.id)
+      )
         return apiError(
           409,
-          'Review the active version; this one is superseded or withdrawn.',
+          'Review the active version or the one effective at the evaluation cutoff; this one is neither.',
           'not_active',
         );
       const fieldErrors: Record<string, string> = {};
@@ -370,14 +399,8 @@ export const foundationHandlers = [
           fieldErrors,
         );
       commit((db) => {
-        db.foundationReviews = db.foundationReviews.filter(
-          (review) =>
-            !(
-              review.institutionId === institutionId &&
-              review.kind === kind.data
-            ),
-        );
-        db.foundationReviews.push({
+        // Newest first; earlier reviews stay as history.
+        db.foundationReviews.unshift({
           id: nextId('foundation-review'),
           institutionId,
           kind: kind.data,
@@ -392,6 +415,84 @@ export const foundationHandlers = [
           'foundation.review',
           { type: 'foundation', id: version.id, version: version.version },
           `${labels[kind.data]}: ${body.data.checks.filter((check) => check.outcome === 'pass').length} of 4 checks met`,
+        );
+      });
+      return HttpResponse.json(foundationsFor(user, institutionId));
+    },
+  ),
+
+  // No valid document at the cutoff: an explicit 0 of 4 with a reason, never inferred (AT28).
+  http.post(
+    '/api/institutions/:institutionId/foundations/:kind/unsupported',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('officer', 'supervisor', 'administrator');
+      const institutionId = readable(user, params.institutionId);
+      if (
+        user.role !== 'officer' ||
+        !assignedInstitutionIds(user.id).includes(institutionId)
+      )
+        return apiError(
+          403,
+          'Only the assigned officer can review foundations.',
+          'forbidden',
+        );
+      const kind = foundationKindSchema.safeParse(params.kind);
+      if (!kind.success) return notFound();
+      const body = foundationUnsupportedRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!body.success)
+        return apiError(
+          422,
+          'Give a reason of at least 10 characters.',
+          'reason_required',
+          { reason: 'Give a reason of at least 10 characters.' },
+        );
+      const db = getDb();
+      if (Date.parse(db.businessTime) <= effectiveCutoff(institutionId))
+        return apiError(
+          409,
+          'An unsupported disposition can be recorded only after the evaluation cutoff and any extension.',
+          'cutoff_not_passed',
+        );
+      const atCutoff = versionAtCutoff(
+        versionsOf(institutionId, kind.data),
+        db.cycle.evaluationCutoff,
+      );
+      if (atCutoff.status === 'applicable')
+        return apiError(
+          409,
+          'A valid version covers the cutoff: review it instead.',
+          'version_at_cutoff',
+        );
+      if (atCutoff.status === 'conflict')
+        return apiError(
+          409,
+          'Versions with overlapping effective dates cover the cutoff: resolve the dates first.',
+          'conflicting_versions',
+        );
+      const reason = body.data.reason;
+      commit((db) => {
+        db.foundationReviews.unshift({
+          id: nextId('foundation-review'),
+          institutionId,
+          kind: kind.data,
+          versionId: null,
+          checks: [0, 1, 2, 3].map(() => ({
+            outcome: 'fail' as const,
+            passage: '',
+            reason,
+          })),
+          reviewedBy: user.displayName,
+          reviewedAt: db.businessTime,
+        });
+        audit(
+          db,
+          user,
+          'foundation.unsupported',
+          { type: 'foundation', id: `${institutionId}:${kind.data}` },
+          `${labels[kind.data]}: no valid version at the cutoff; 0 of 4. ${reason}`,
         );
       });
       return HttpResponse.json(foundationsFor(user, institutionId));
