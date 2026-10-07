@@ -80,11 +80,15 @@ function ReportBody({ data }: { data: ConsolidatedReport }) {
           />
         </div>
       )}
-      {(printing ? data.released : released.visible).map((result) => (
+      {(printing ? data.released : released.visible).map((result, index) => (
         <section
           key={result.id}
           aria-labelledby={`rel-${result.id}`}
-          className="grid gap-3 break-inside-avoid"
+          // In print each institution starts on its own page, after the first.
+          data-print-break-before={
+            index > 0 || data.unreleased.length > 0 || undefined
+          }
+          className="grid gap-3"
         >
           <h2 id={`rel-${result.id}`} className="text-lg font-bold">
             {result.institutionId} {result.institutionName}{' '}
@@ -132,6 +136,7 @@ export function ReportsPage() {
         eyebrow="Oversight"
         title="Consolidated annual report"
         description="Released results with their explanation, and every unreleased institution with its reason. Exports follow the versioned cpi-export-1 schema."
+        screenOnlyDescription
         actions={
           <>
             <Button variant="plain" onClick={() => window.print()}>
@@ -157,7 +162,7 @@ export function ReportsPage() {
           </>
         }
       />
-      <Alert>
+      <Alert data-print-hide>
         <AlertDescription>
           Exports are for a labelled mock consumer. No claim is made that EACC
           or PSPMU has accepted this format or approved an integration.

@@ -140,6 +140,7 @@ export function OfficerLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >

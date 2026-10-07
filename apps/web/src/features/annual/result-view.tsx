@@ -53,7 +53,8 @@ function foundationResult(score: Evaluation['foundations'][number]['score']) {
         : `Prerequisite not met: ${score.fraction.numerator} of ${score.fraction.denominator} checks (no points)`
       : 'Prerequisite: pending review';
   return score.status === 'calculated'
-    ? `${score.points} / ${score.maxPoints}`
+    ? // Non-breaking spaces keep "10.00 / 10" on one line when the column is narrow.
+      `${score.points}\u00a0/\u00a0${score.maxPoints}`
     : `Pending (max ${score.maxPoints})`;
 }
 
@@ -68,10 +69,10 @@ export function AnnualResultView({
   simulation: boolean;
 }) {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6 print:gap-3">
       <section
         aria-labelledby={`total-${evaluation.institutionId}`}
-        className="rounded-lg border bg-white p-5"
+        className="rounded-lg border bg-white p-5 print:p-3"
       >
         <h3 id={`total-${evaluation.institutionId}`} className="font-bold">
           Annual result

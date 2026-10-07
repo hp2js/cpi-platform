@@ -227,6 +227,7 @@ export function InstitutionLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 border-b bg-white"
           >

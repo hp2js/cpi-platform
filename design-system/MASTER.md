@@ -432,6 +432,11 @@ control (stricter than WCAG 2.2's 24 px, as requested).
   action. Demonstration accounts sit in a gold panel below the card ("Trying out the
   platform?"), with an outline button that opens the drawer, so a demo is easy to find without
   competing with the form. Nothing floats over the page.
+- **Print.** Reports and receipts print as documents: no app header, navigation, buttons, search,
+  pagers or screen-only guidance; the simulation banner remains as the marking. Type prints at
+  75% with compact table padding; tables fit the page width, wrap between words, keep rows whole
+  and repeat their header row. A long block may break across pages; a report section that should
+  stand alone starts a new page instead of being forced unbreakable.
 - **Class merging.** Always use `cn` from `lib/utils.ts`. It knows our custom container names
   and that `text-base` is a colour, not a font size. New tokens must update its configuration
   when needed; otherwise caller overrides can silently fail.

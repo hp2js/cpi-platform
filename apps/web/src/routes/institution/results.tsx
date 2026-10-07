@@ -4,11 +4,16 @@ import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
 import { downloadExport, resultsQuery } from '@/features/annual/queries';
+import { institutionQuery } from '@/features/directory/queries';
+import { useSession } from '@/features/session/use-session';
 import { AnnualResultView } from '@/features/annual/result-view';
 import { formatDateTime } from '@/lib/dates';
 
 export function ResultsPage() {
   const results = useQuery(resultsQuery);
+  const institutionId = useSession().user.institutionId ?? '';
+  // Whose result this is: the page names the institution, which a printout needs.
+  const institution = useQuery(institutionQuery(institutionId));
   const exportCsv = useMutation({
     mutationFn: () =>
       downloadExport('/api/results/export.csv', 'cpi-annual-result.csv'),
@@ -19,8 +24,14 @@ export function ResultsPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        eyebrow={
+          institution.data
+            ? `${institutionId} · ${institution.data.name}`
+            : institutionId
+        }
         title="Annual results"
         description="Your own published result and its explanation. Other institutions’ results and evidence are never shown here."
+        screenOnlyDescription
         actions={
           current && (
             <>
