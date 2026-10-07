@@ -134,6 +134,8 @@
   --container-desktop-lg: 75rem;
   --container-widescreen: 87.5rem;
   --container-measure: 68ch;
+  /* The phone width the form preview can be shown at; matches the 390 px accessibility check. */
+  --container-phone: 24.375rem;
 
   /* Minimum target size, in px so the density setting below never shrinks it. */
   --spacing-touch: 44px;

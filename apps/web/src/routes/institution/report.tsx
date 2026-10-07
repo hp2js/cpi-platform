@@ -393,7 +393,8 @@ function ReportEditor({
         <aside className="rounded-lg border border-base-lighter bg-white p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+5rem)] desktop:order-last">
           <ReportContents bundle={bundle} values={values} />
         </aside>
-        <div className="grid gap-8">
+        {/* Fields lay out by the width they get, as in the administrator's phone-width preview. */}
+        <div className="@container grid gap-8">
           {form.sections.map((section) => (
             <section
               key={section.id}

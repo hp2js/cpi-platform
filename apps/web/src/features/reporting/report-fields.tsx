@@ -126,7 +126,7 @@ function RowsField({
                 Remove row {index + 1}
               </Button>
             </div>
-            <div data-columns className="grid gap-3 tablet:grid-cols-2">
+            <div data-columns className="grid gap-3 @tablet:grid-cols-2">
               {columns.map((column) => {
                 const cellId = `${id}-r${index}-${column.id}`;
                 const cell = row[column.id] ?? null;
@@ -608,7 +608,7 @@ export function QuestionField({
                   return (
                     <li
                       key={item.id}
-                      className="grid gap-2 rounded-md border bg-white p-3 tablet:grid-cols-[1fr_auto] tablet:items-center"
+                      className="grid gap-2 rounded-md border bg-white p-3 @tablet:grid-cols-[1fr_auto] @tablet:items-center"
                     >
                       <span id={`${itemId}-label`}>{item.label}</span>
                       <YesNo
@@ -928,7 +928,7 @@ export function MilestoneCard({
       id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
       className={cn(
-        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 tablet:p-6',
+        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 @tablet:p-6',
         questions.length > 0 && 'border-l-8 border-l-warning',
       )}
     >
@@ -964,7 +964,7 @@ export function MilestoneCard({
         >
           {milestone.title}
         </h3>
-        <dl className="mt-2 grid gap-1 text-sm tablet:grid-cols-[auto_1fr] tablet:gap-x-3">
+        <dl className="mt-2 grid gap-1 text-sm @tablet:grid-cols-[auto_1fr] @tablet:gap-x-3">
           <dt className="text-base-dark">Activity</dt>
           <dd>{milestone.activity}</dd>
           <dt className="text-base-dark">Completion condition</dt>

@@ -170,8 +170,13 @@ test('mid-year screens for every role', async ({ page }) => {
     await scan(page, name);
   }
   await page.goto('/admin/forms/form-v2');
-  await page.getByRole('tab', { name: 'Preview as institution' }).click();
-  await scan(page, 'admin form preview');
+  // The builder with its live preview beside it, then a question open and the setup shown.
+  await expect(
+    page.getByRole('heading', { name: 'Institution preview' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Expand all questions' }).click();
+  await page.locator('summary', { hasText: 'Form setup' }).click();
+  await scan(page, 'admin form builder');
 });
 
 test('year-end screens for every role', async ({ page }) => {

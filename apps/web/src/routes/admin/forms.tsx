@@ -18,6 +18,7 @@ import {
 import { cycleQuery } from '@/features/directory/queries';
 import {
   createFormVersion,
+  formCreationQuery,
   formsQuery,
   invalidateForms,
 } from '@/features/forms/queries';
@@ -39,6 +40,8 @@ export function FormsPage() {
   const navigate = useNavigate();
   const forms = useQuery(formsQuery);
   const cycle = useQuery(cycleQuery);
+  // The server says whether a version can be started, and why not (FR03).
+  const creation = useQuery(formCreationQuery);
   const create = useMutation({
     mutationFn: createFormVersion,
     onSuccess: async (form) => {
@@ -49,8 +52,8 @@ export function FormsPage() {
       });
     },
   });
-  const hasDraft = forms.data?.some((form) => form.status === 'draft');
-  const hasPublished = forms.data?.some((form) => form.status === 'published');
+  const refusal =
+    creation.data?.allowed === false ? creation.data.reason : null;
   const periodLabel = (id: string) =>
     cycle.data?.periods.find((period) => period.id === id)?.label ?? id;
   return (
@@ -62,21 +65,26 @@ export function FormsPage() {
         actions={
           <Button
             onClick={() => create.mutate()}
-            disabled={!hasPublished || hasDraft || create.isPending}
-            aria-describedby={
-              hasDraft || !hasPublished ? 'new-version-hint' : undefined
-            }
+            disabled={!creation.data?.allowed || create.isPending}
+            aria-describedby={refusal ? 'new-version-hint' : undefined}
           >
             <Plus aria-hidden="true" />
             New version
           </Button>
         }
       />
-      {(hasDraft || (forms.isSuccess && !hasPublished)) && (
+      {refusal && (
         <p id="new-version-hint" className="text-sm text-base-dark">
-          {hasDraft
-            ? 'A draft version is already open. Publish or edit it before starting another.'
-            : 'Publish the first version before creating another.'}
+          {refusal}
+        </p>
+      )}
+      {creation.data?.allowed && (
+        <p className="text-sm text-base-dark">
+          A new version can be used from{' '}
+          {creation.data.assignablePeriods
+            .map((period) => period.label)
+            .join(', ')}
+          .
         </p>
       )}
       {create.isError && (

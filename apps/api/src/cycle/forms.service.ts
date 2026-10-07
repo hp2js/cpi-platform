@@ -1,10 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   diffForms,
+  formCheckRequestSchema,
+  formCreation,
   formDiscardSchema,
   formDraftUpdateSchema,
+  periodImpact,
   summarizeChanges,
   type Cycle,
+  type FormCheck,
+  type FormCreation,
+  type FormImpact,
   type FormValidation,
   type FormVersion,
 } from '@cpi/contracts';
@@ -37,6 +43,9 @@ function changesOf(form: FormVersion, forms: FormVersion[], cycle: Cycle) {
   );
   return diffForms(base, form, periodLabel(cycle));
 }
+
+/** Everyone told when a version is published (FR03). */
+const notifiedRoles = ['institution', 'officer', 'supervisor'] as const;
 
 /** Reporting form versions (FR03). Drafts are administrator-only. */
 @Injectable()
@@ -93,6 +102,77 @@ export class FormsService {
     const form = await this.find(this.db, id);
     const issues = validateForm(form, await this.formContext(this.db));
     return { valid: issues.length === 0, issues };
+  }
+
+  /** Whether a new version can be started now, and which periods it could use (FR03). */
+  async creation(): Promise<FormCreation> {
+    const context = await this.formContext(this.db);
+    return formCreation(context.forms, context.cycle, (periodId) =>
+      periodLocked(context, periodId),
+    );
+  }
+
+  /**
+   * Publication checks, changes and impact for a draft as edited, before it is saved, so the
+   * editor can point to each problem as it appears (FR03). Nothing is written.
+   */
+  async check(id: string, body: unknown): Promise<FormCheck> {
+    const form = await this.find(this.db, id);
+    if (form.status !== 'draft')
+      throw new ApiError(
+        409,
+        'Published versions cannot be edited. Create a new version instead.',
+        'version_locked',
+      );
+    const parsed = formCheckRequestSchema.safeParse(body);
+    if (!parsed.success)
+      throw new ApiError(
+        422,
+        'Check the highlighted fields.',
+        'invalid_form',
+        issuesAsFieldErrors(
+          parsed.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        ),
+      );
+    const context = await this.formContext(this.db);
+    const edited = { ...form, ...parsed.data };
+    const issues = validateForm(edited, context);
+    return {
+      valid: issues.length === 0,
+      issues,
+      changes: changesOf(edited, context.forms, context.cycle),
+      impact: await this.impact(edited, context),
+    };
+  }
+
+  private async impact(
+    form: FormVersion,
+    context: Awaited<ReturnType<FormsService['formContext']>>,
+  ): Promise<FormImpact> {
+    const periods = periodImpact(form, context.forms, context.cycle, (id) =>
+      periodLocked(context, id),
+    );
+    const [institutions, ...recipients] = await Promise.all([
+      this.repository.institutionsReportingIn(
+        periods
+          .filter((period) => period.nextVersion === form.version)
+          .map((period) => period.periodId),
+        this.db,
+      ),
+      ...notifiedRoles.map(async (role) => ({
+        role,
+        count: (await usersWithRole(this.db, role)).length,
+      })),
+    ]);
+    return {
+      periods,
+      institutions,
+      recipients,
+      locksProfile: !form.weightsLocked,
+    };
   }
 
   update(user: User, id: string, body: unknown) {
@@ -210,11 +290,11 @@ export class FormsService {
         businessTime,
         `${form.id}:published`,
         'form.published',
-        [
-          ...(await usersWithRole(tx, 'institution')),
-          ...(await usersWithRole(tx, 'officer')),
-          ...(await usersWithRole(tx, 'supervisor')),
-        ],
+        (
+          await Promise.all(
+            notifiedRoles.map((role) => usersWithRole(tx, role)),
+          )
+        ).flat(),
         {
           title: `Reporting form version ${form.version} published`,
           body: form.basedOnVersion
@@ -235,12 +315,13 @@ export class FormsService {
   create(user: User) {
     return write(this.db, async (tx, businessTime) => {
       const context = await this.formContext(tx);
+      const creation = formCreation(context.forms, context.cycle, (periodId) =>
+        periodLocked(context, periodId),
+      );
       if (context.forms.some((form) => form.status === 'draft'))
-        throw new ApiError(
-          409,
-          'Finish or discard the existing draft version first.',
-          'draft_exists',
-        );
+        throw new ApiError(409, creation.reason!, 'draft_exists');
+      if (!creation.allowed)
+        throw new ApiError(409, creation.reason!, 'no_assignable_period');
       const latest = context.forms.at(-1);
       if (!latest) throw notFound();
       const draft = await this.repository.insertForm(

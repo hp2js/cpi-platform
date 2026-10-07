@@ -1,7 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import {
+  formCheckRequestSchema,
+  formCreation,
   formDiscardSchema,
   formDraftUpdateSchema,
+  periodImpact,
+  type FormImpact,
   type FormVersion,
 } from '@cpi/contracts';
 import { commit, getDb, type MockDb } from '../db';
@@ -30,6 +34,32 @@ function refreshChanges(db: MockDb, form: FormVersion) {
   form.changes = diffForms(base, form, periodLabel(db));
 }
 
+/** Everyone told when a version is published (FR03). */
+const notifiedRoles = ['institution', 'officer', 'supervisor'] as const;
+
+/** Periods, institutions and recipients a publication would affect (FR03). */
+function impactOf(db: MockDb, form: FormVersion): FormImpact {
+  const periods = periodImpact(form, db.forms, db.cycle, periodLocked);
+  const moving = new Set(
+    periods
+      .filter((period) => period.nextVersion === form.version)
+      .map((period) => period.periodId),
+  );
+  return {
+    periods,
+    institutions: new Set(
+      db.obligations
+        .filter((obligation) => moving.has(obligation.periodId))
+        .map((obligation) => obligation.institutionId),
+    ).size,
+    recipients: notifiedRoles.map((role) => ({
+      role,
+      count: usersWithRole(role).length,
+    })),
+    locksProfile: !form.weightsLocked,
+  };
+}
+
 export const formHandlers = [
   http.get('/api/forms', async () => {
     await networkDelay();
@@ -38,6 +68,13 @@ export const formHandlers = [
       (form) => user.role === 'administrator' || form.status === 'published',
     );
     return HttpResponse.json([...forms].sort((a, b) => b.version - a.version));
+  }),
+  /** Whether a new version can be started now (FR03). Registered before `:formId`. */
+  http.get('/api/forms/creation', async () => {
+    await networkDelay();
+    requireRole('administrator');
+    const db = getDb();
+    return HttpResponse.json(formCreation(db.forms, db.cycle, periodLocked));
   }),
   http.get('/api/forms/:formId', async ({ params }) => {
     await networkDelay();
@@ -58,6 +95,44 @@ export const formHandlers = [
     if (!form) return notFound();
     const issues = validateForm(form);
     return HttpResponse.json({ valid: issues.length === 0, issues });
+  }),
+  /** Checks a draft as edited, without saving it: issues, changes and publication impact. */
+  http.post('/api/forms/:formId/check', async ({ params, request }) => {
+    await networkDelay();
+    requireRole('administrator');
+    const db = getDb();
+    const form = db.forms.find((candidate) => candidate.id === params.formId);
+    if (!form) return notFound();
+    if (form.status !== 'draft')
+      return apiError(
+        409,
+        'Published versions cannot be edited. Create a new version instead.',
+        'version_locked',
+      );
+    const parsed = formCheckRequestSchema.safeParse(
+      await request.json().catch(() => undefined),
+    );
+    if (!parsed.success)
+      return apiError(
+        422,
+        'Check the highlighted fields.',
+        'invalid_form',
+        issuesAsFieldErrors(
+          parsed.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        ),
+      );
+    const edited: FormVersion = { ...structuredClone(form), ...parsed.data };
+    refreshChanges(db, edited);
+    const issues = validateForm(edited);
+    return HttpResponse.json({
+      valid: issues.length === 0,
+      issues,
+      changes: edited.changes,
+      impact: impactOf(db, edited),
+    });
   }),
   http.put('/api/forms/:formId', async ({ params, request }) => {
     await networkDelay();
@@ -165,11 +240,7 @@ export const formHandlers = [
         db,
         `${form.id}:published`,
         'form.published',
-        [
-          ...usersWithRole('institution'),
-          ...usersWithRole('officer'),
-          ...usersWithRole('supervisor'),
-        ],
+        notifiedRoles.flatMap((role) => usersWithRole(role)),
         {
           title: `Reporting form version ${form.version} published`,
           body: form.basedOnVersion
@@ -190,12 +261,11 @@ export const formHandlers = [
     await networkDelay();
     const user = requireRole('administrator');
     const db = getDb();
+    const creation = formCreation(db.forms, db.cycle, periodLocked);
     if (db.forms.some((form) => form.status === 'draft'))
-      return apiError(
-        409,
-        'Finish or discard the existing draft version first.',
-        'draft_exists',
-      );
+      return apiError(409, creation.reason!, 'draft_exists');
+    if (!creation.allowed)
+      return apiError(409, creation.reason!, 'no_assignable_period');
     const latest = [...db.forms].sort((a, b) => b.version - a.version)[0];
     if (!latest) return notFound();
     const draft: FormVersion = {

@@ -1,6 +1,9 @@
 import type {
   Column,
+  Cycle,
   FormChange,
+  FormCreation,
+  FormPeriodImpact,
   FormIssue,
   FormVersion,
   Question,
@@ -385,4 +388,67 @@ export function summarizeChanges(changes: FormChange[]) {
       .filter(Boolean)
       .join(', ') || 'No question changes'
   );
+}
+
+/**
+ * What publishing `form` would do to each period of the cycle (FR03): periods it is assigned
+ * to move to it (or get their first version), the rest keep theirs, and a period that has
+ * started reporting cannot move. `locked` is the caller's period lock rule.
+ */
+export function periodImpact(
+  form: Pick<FormVersion, 'id' | 'version' | 'periodIds'>,
+  forms: FormVersion[],
+  cycle: Cycle,
+  locked: (periodId: string) => boolean,
+): FormPeriodImpact[] {
+  return cycle.periods.map((period) => {
+    const current = forms
+      .filter(
+        (candidate) =>
+          candidate.id !== form.id &&
+          candidate.status === 'published' &&
+          candidate.periodIds.includes(period.id),
+      )
+      .sort((a, b) => b.version - a.version)[0];
+    const currentVersion = current?.version ?? null;
+    const base = { periodId: period.id, label: period.label, currentVersion };
+    if (!form.periodIds.includes(period.id))
+      return { ...base, outcome: 'keeps', nextVersion: currentVersion };
+    if (current && locked(period.id))
+      return { ...base, outcome: 'locked', nextVersion: currentVersion };
+    return {
+      ...base,
+      outcome: current ? 'moves' : 'assigned',
+      nextVersion: form.version,
+    };
+  });
+}
+
+/**
+ * Whether a new version can be started (FR03). It needs a period that has not started
+ * reporting, and the one open draft must be published or discarded first; a draft whose
+ * periods have all started is called out, since it can only be reassigned or discarded.
+ */
+export function formCreation(
+  forms: FormVersion[],
+  cycle: Cycle,
+  locked: (periodId: string) => boolean,
+): FormCreation {
+  const assignablePeriods = cycle.periods
+    .filter((period) => !locked(period.id))
+    .map((period) => ({ id: period.id, label: period.label }));
+  const draft = forms.find((form) => form.status === 'draft');
+  const published = forms.some((form) => form.status === 'published');
+  const reason = !published
+    ? 'Publish the first version before creating another.'
+    : assignablePeriods.length === 0
+      ? 'Every period in this cycle has started reporting, so a new version would have no period to use it. Started periods keep the version they started on.'
+      : draft
+        ? draft.periodIds.some((id) =>
+            assignablePeriods.some((period) => period.id === id),
+          )
+          ? `Draft version ${draft.version} is already open. Publish or discard it before starting another.`
+          : `Draft version ${draft.version} has no period that can still use it, so it cannot be published as it is. Assign it to ${assignablePeriods.map((period) => period.label).join(', ')}, or discard it, before starting another.`
+        : null;
+  return { allowed: reason === null, reason, assignablePeriods };
 }

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { api, midYear, signInAs, visit } from './support';
+import { api, midYear, publishedYear, signInAs, visit } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -54,6 +54,10 @@ test('an administrator adds repeated rows and limits, sees the changes, publishe
   await checklist.getByLabel('Item 1').fill('Gift register kept');
   await checklist.getByRole('button', { name: 'Add item' }).click();
   await checklist.getByLabel('Item 2').fill('Declarations filed');
+  // The live preview beside the editor shows the new questions as institutions will see them.
+  const preview = page.getByRole('region', { name: 'Institution preview' });
+  await expect(preview.getByText('Trainings held this quarter')).toBeVisible();
+  await expect(preview.getByLabel('Staff trained')).toBeVisible();
   await scan(page);
   await page.getByRole('button', { name: 'Save draft' }).click();
   const changes = page.getByRole('region', {
@@ -68,10 +72,12 @@ test('an administrator adds repeated rows and limits, sees the changes, publishe
   // Another administrator saves first: this page is told, and reloads their work.
   const other = await context.newPage();
   await other.goto('/admin/forms/form-v2');
+  await other.locator('summary', { hasText: 'Form setup' }).click();
   await other.getByLabel('Form title').fill('Quarterly progress report (v2)');
   await other.getByRole('button', { name: 'Save draft' }).click();
   await expect(other.getByText(/^Saved /)).toBeVisible();
   await other.close();
+  await page.locator('summary', { hasText: 'Form setup' }).click();
   await page.getByLabel('Form title').fill('Something else');
   await page.getByRole('button', { name: 'Save draft' }).click();
   await expect(
@@ -149,4 +155,147 @@ test('an unwanted draft version is discarded with a reason', async ({
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Version 2' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'New version' })).toBeEnabled();
+});
+
+test('problems show at their field as they are typed, and publishing previews and reports its impact (HP2-70)', async ({
+  page,
+}) => {
+  await midYear(page);
+  await visit(page, 'administrator', '/admin/forms/form-v2');
+  const checks = page.getByRole('region', { name: 'Publication checks' });
+  await expect(checks).toContainText('No issues');
+
+  // Without saving: the problem appears at the field and in the linked summary.
+  await page.locator('summary', { hasText: 'Form setup' }).click();
+  const title = page.getByLabel('Form title');
+  await title.fill('');
+  await expect(page.locator('#title-issues')).toContainText(
+    'Give the form a title.',
+  );
+  await expect(title).toHaveAttribute('aria-invalid', 'true');
+  await expect(checks.getByRole('link', { name: 'Form' })).toHaveAttribute(
+    'href',
+    '#edit-title',
+  );
+  await page.getByRole('button', { name: 'Expand all questions' }).click();
+  const label = page
+    .getByRole('region', { name: 'Section 1' })
+    .getByLabel('Question label')
+    .first();
+  const original = await label.inputValue();
+  await label.fill('');
+  await expect(
+    page.locator('#edit-s0-q0').getByText('Give the question a label.'),
+  ).toBeVisible();
+  await expect(
+    checks.getByRole('link', { name: 'Section 1, question 1' }),
+  ).toBeVisible();
+  await label.fill(original);
+  await title.fill('Quarterly progress report');
+  await expect(checks).toContainText('No issues');
+  await expect(
+    page.getByRole('button', { name: 'Publish version 2' }),
+  ).toBeDisabled();
+  await page.getByRole('button', { name: 'Save draft' }).click();
+
+  // The confirmation says which periods move, who reports on it and who is told.
+  await page.getByRole('button', { name: 'Publish version 2' }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText('Q1 keeps version 1');
+  await expect(confirm).toContainText('Q2 moves from version 1 to version 2');
+  await expect(confirm).toContainText(
+    '8 institutions will report on this version.',
+  );
+  await expect(confirm).toContainText(
+    'Notified on publication: 8 institution users, 2 officers and 1 supervisor.',
+  );
+  await confirm.getByRole('button', { name: 'Publish' }).click();
+
+  // Afterwards, what happened.
+  const outcome = page
+    .getByRole('status')
+    .filter({ hasText: 'Version 2 is published' });
+  await expect(outcome).toContainText('Q2 moved from version 1 to version 2');
+  await expect(outcome).toContainText('Notified: 8 institution users');
+  await expect(page.getByText(/this version is locked/)).toBeVisible();
+});
+
+test('no new version is offered once every period has started reporting (HP2-70)', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await publishedYear(page);
+  await visit(page, 'administrator', '/admin/forms');
+  await expect(
+    page.getByRole('button', { name: 'New version' }),
+  ).toBeDisabled();
+  await expect(page.locator('#new-version-hint')).toContainText(
+    'Every period in this cycle has started reporting',
+  );
+});
+
+test('the builder opens on its questions, with an outline and a live preview beside them (HP2-93)', async ({
+  page,
+}) => {
+  await midYear(page);
+  await visit(page, 'administrator', '/admin/forms/form-v2');
+  // Questions first: setup is folded, each question is a one-line row.
+  await expect(page.getByLabel('Form title')).toBeHidden();
+  const first = page.locator('#edit-s0-q0');
+  const toggle = first.getByRole('button', { expanded: false }).first();
+  await expect(toggle).toBeVisible();
+  await expect(first.getByLabel('Question label')).toBeHidden();
+
+  // The outline jumps to a question and opens it.
+  await page.getByRole('button', { name: 'Outline' }).click();
+  const outline = page.getByRole('navigation', { name: 'Form outline' });
+  const target = outline.getByRole('link').nth(3);
+  const name = (await target.textContent())!.trim();
+  await target.click();
+  const opened = page.getByRole('button', { name, expanded: true });
+  await expect(opened).toBeVisible();
+
+  // An edit shows in the preview beside it, without saving.
+  const preview = page.getByRole('region', { name: 'Institution preview' });
+  const section = page.getByRole('region', { name: 'Section 3' });
+  const added = await addQuestion(page, section, 'Short text');
+  await added
+    .getByLabel('Question label')
+    .fill('Name of the new integrity champion');
+  await expect(
+    preview.getByLabel('Name of the new integrity champion'),
+  ).toBeVisible();
+  const [editorBox, previewBox] = await Promise.all([
+    section.boundingBox(),
+    preview.boundingBox(),
+  ]);
+  expect(previewBox!.x).toBeGreaterThan(editorBox!.x + editorBox!.width - 1);
+
+  // Phone width, and collapse everything.
+  await preview.getByRole('button', { name: 'Phone width' }).click();
+  await expect(
+    preview.getByRole('button', { name: 'Phone width', pressed: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Collapse all questions' }).click();
+  await expect(page.getByLabel('Question label')).toHaveCount(0);
+});
+
+test('on a phone, the builder stacks the preview under the editor (HP2-93)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await midYear(page);
+  await visit(page, 'administrator', '/admin/forms/form-v2');
+  const preview = page.getByRole('region', { name: 'Institution preview' });
+  await expect(preview).toBeAttached();
+  const [editorBox, previewBox] = await Promise.all([
+    page.getByRole('region', { name: 'Section 1' }).boundingBox(),
+    preview.boundingBox(),
+  ]);
+  expect(previewBox!.y).toBeGreaterThan(editorBox!.y);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

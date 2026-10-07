@@ -1,5 +1,7 @@
 // @vitest-environment node
 import {
+  formCheckSchema,
+  formCreationSchema,
   formValidationSchema,
   formVersionSchema,
   type FormVersion,
@@ -323,5 +325,65 @@ describe('checklists, repeated rows and answer limits (FR03)', () => {
         },
       }),
     ).toEqual([]);
+  });
+
+  it('checks unsaved edits, linked to their fields, with the publication impact (HP2-70)', async () => {
+    const draft = await newDraft();
+    const sections = structuredClone(draft.sections);
+    sections[0]!.questions[0]!.label = ' ';
+    const check = await request(
+      `/api/forms/${draft.id}/check`,
+      formCheckSchema,
+      {
+        method: 'POST',
+        json: {
+          title: draft.title,
+          periodIds: ['FY2026-27-Q1', 'FY2026-27-Q3', 'FY2026-27-Q4'],
+          sections,
+        },
+      },
+    );
+    expect(check.valid).toBe(false);
+    expect(check.issues).toEqual(
+      expect.arrayContaining([
+        {
+          path: 'sections.0.questions.0.label',
+          message: 'Give the question a label.',
+        },
+        expect.objectContaining({ path: 'periodIds' }),
+      ]),
+    );
+    expect(
+      check.impact.periods.map((period) => [period.label, period.outcome]),
+    ).toEqual([
+      ['Q1', 'locked'],
+      ['Q2', 'keeps'],
+      ['Q3', 'moves'],
+      ['Q4', 'moves'],
+    ]);
+    expect(check.impact.institutions).toBe(8);
+    expect(check.impact.recipients).toEqual([
+      { role: 'institution', count: 8 },
+      { role: 'officer', count: 2 },
+      { role: 'supervisor', count: 1 },
+    ]);
+    // Nothing was saved.
+    expect(getDb().forms.find((form) => form.id === draft.id)?.revision).toBe(
+      draft.revision,
+    );
+  });
+
+  it('explains when no period is left for a new version (HP2-70)', async () => {
+    await publishSeedForm();
+    await signInAs('administrator');
+    const creation = () => request('/api/forms/creation', formCreationSchema);
+    expect(await creation()).toMatchObject({ allowed: true, reason: null });
+    getDb().businessTime = '2027-08-01T09:00:00+03:00';
+    const refused = await creation();
+    expect(refused).toMatchObject({ allowed: false, assignablePeriods: [] });
+    expect(refused.reason).toMatch(/Every period in this cycle has started/);
+    await expect(
+      request('/api/forms', formVersionSchema, { method: 'POST' }),
+    ).rejects.toMatchObject({ status: 409, code: 'no_assignable_period' });
   });
 });
