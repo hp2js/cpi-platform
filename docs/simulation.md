@@ -10,7 +10,7 @@ How the business clock, new runs and the scripted year behave, and where they ar
 | `DEMO_MODE=false` (real records)                                     | Follows the real clock (`RealTimeClock`, checked every second) | Refused for everyone: `409 demo_only`         |
 | `DEMO_MODE=true` on any other database (a misconfiguration)          | Does not move                                                  | Refused for everyone: `409 not_demo_database` |
 
-`GET /api/simulation` reports `controls: true` only in the demo environment; the Simulation clock page hides the buttons otherwise. `pnpm db:seed` and the development reset (`POST /api/__mock/reset`) follow the same database rule. Refused requests change nothing.
+`GET /api/simulation` reports `controls: true` only in the demo environment. Otherwise `blockedBy` names why (`demo_only` or `not_demo_database`), and the Simulation clock page hides the buttons and shows that reason with its fix. `pnpm db:seed` and the development reset (`POST /api/__mock/reset`) follow the same database rule. Refused requests change nothing.
 
 Whether advanced by an administrator or by the real clock, each boundary (reporting opens, reminders, overdue notices, cutoffs) is processed once per run: replays are no-ops.
 

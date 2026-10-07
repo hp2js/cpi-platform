@@ -88,9 +88,13 @@ export const disposableDatabase = (config: AppConfig) =>
     decodeURIComponent(new URL(config.DATABASE_URL).pathname.slice(1)),
   );
 
-/** Demonstration controls (clock, new run, scripted year) are available only here. */
-export const demoEnvironment = (config: AppConfig) =>
-  config.DEMO_MODE && disposableDatabase(config);
+/** Why demonstration controls (clock, new run, scripted year) are unavailable, or null. */
+export const demoBlock = (config: AppConfig) =>
+  !config.DEMO_MODE
+    ? ('demo_only' as const)
+    : !disposableDatabase(config)
+      ? ('not_demo_database' as const)
+      : null;
 
 /** Names the invalid variables, never their values, so its message is safe to print. */
 export class ConfigError extends Error {}

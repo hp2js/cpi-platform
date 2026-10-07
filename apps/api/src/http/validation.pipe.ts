@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import type { z } from 'zod';
 
-/** Query parameters an endpoint reads as optional strings (not validated; see REFACTOR_REPORT.md). */
+/** Query parameters an endpoint reads as optional strings (not validated; see docs/refactor-report.md). */
 export type QueryFilters = Record<string, string | undefined>;
 
 /**

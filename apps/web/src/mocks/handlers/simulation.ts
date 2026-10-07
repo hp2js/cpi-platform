@@ -25,6 +25,7 @@ function state(): SimulationState {
     processedEvents: db.processedEvents.length,
     // The mock is always a demonstration.
     controls: true,
+    blockedBy: null,
   };
 }
 

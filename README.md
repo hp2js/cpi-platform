@@ -1,8 +1,21 @@
 # CPI Platform
 
-HP2JS's Adili V3 Track 2 workspace for corruption prevention reporting and review.
+[![CI](https://github.com/hp2js/cpi-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hp2js/cpi-platform/actions/workflows/ci.yml)
 
-The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. The [domain decision register](docs/domain-decisions.md) records prototype defaults, unresolved organizer constraints and their requirement/issue traceability. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns [the storage guide](docs/storage.md) covers files and maintenance, [the data model](docs/data-model.md) explains entities and state transitions, and [the platform contracts](docs/platform-contracts.md) cover sessions, Redis, notification delivery, secrets and outage behaviour. [Verification results](docs/verification-results.md) record the latest authorization, upload, concurrency and recovery runs. The [design specification](design-system/MASTER.md) defines the USWDS foundation, Adili brand theme and shared component behavior.
+HP2JS's Adili V3 Track 2 workspace for corruption prevention reporting and review. Institutions submit quarterly reports with evidence, prevention officers review them against the approved plan, and the platform calculates, publishes and explains annual scores to supervisors and institutions. Everything in this repository is synthetic: eight fictional institutions and a scripted reporting year.
+
+**Run it:** install Docker, then `cp .env.example .env && docker compose up -d --build --wait` and open http://localhost:5180. Pick a one-click demo account on the sign-in page. To play the whole year, sign in as the administrator and choose **Run the scripted year** on the Simulation clock page. Details are in [Start with Docker](#start-with-docker).
+
+| Looking for                       | Where                                                                                                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Product definition                | [PRD](docs/HP2JS%20—%20Adili-V3-Track-2-PRD.md); [domain decisions](docs/domain-decisions.md) record defaults and open organizer questions                                                       |
+| Architecture                      | [Platform contracts](docs/platform-contracts.md), [API handover](docs/api-handover.md), [frontend guide](docs/frontend.md), [storage](docs/storage.md), [design system](design-system/MASTER.md) |
+| Data model                        | [Data model](docs/data-model.md)                                                                                                                                                                 |
+| Scoring worksheet                 | [Scoring worksheet](docs/acceptance/scoring-worksheet.md)                                                                                                                                        |
+| Acceptance evidence               | [PRD coverage](docs/prd-coverage.md), [verification results](docs/verification-results.md), [demo evidence packs](docs/demo-evidence-packs)                                                      |
+| Path-to-production roadmap        | Pending ([HP2-80](https://linear.app/hp2js/issue/HP2-80))                                                                                                                                        |
+| Each member's contribution        | Pending                                                                                                                                                                                          |
+| Licence and intellectual property | Pending: the organizer has not stated the terms yet (HP2-5), so none are granted or implied                                                                                                      |
 
 ## Start with Docker
 

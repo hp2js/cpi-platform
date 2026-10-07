@@ -32,6 +32,11 @@ export const simulationStateSchema = z.object({
    * environment. Otherwise business time follows the real clock.
    */
   controls: z.boolean(),
+  /**
+   * Why the controls are off, so the administrator can fix the environment: demo mode is off
+   * (`demo_only`), or the database is not the dedicated demo database (`not_demo_database`).
+   */
+  blockedBy: z.enum(['demo_only', 'not_demo_database']).nullable(),
 });
 export type SimulationState = z.infer<typeof simulationStateSchema>;
 

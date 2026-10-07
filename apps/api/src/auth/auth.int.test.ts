@@ -616,6 +616,7 @@ describe.skipIf(!integration)('seeding', () => {
             const state = await admin.json<SimulationState>('/simulation');
             return (
               !state.controls &&
+              state.blockedBy === 'demo_only' &&
               Math.abs(Date.parse(state.businessTime) - Date.now()) < 5000
             );
           },
