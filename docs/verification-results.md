@@ -1,4 +1,4 @@
-# Verification results: authorization, uploads, concurrency and recovery
+# Verification results: authorization, uploads, concurrency, recovery and performance
 
 Run on 2 October 2026 on the local demonstration environment (the chosen demo environment; nothing is publicly hosted, so TLS was not in scope). Every result below is from an actual run; nothing is extrapolated.
 
@@ -88,3 +88,67 @@ pnpm docker:up && pnpm test:smoke
 # E2E needs demo mode on a disposable *_demo database; it resets that database.
 pnpm test:e2e
 ```
+
+# Performance: p95 at 20 concurrent users (PRD §4.2)
+
+Run on 7 October 2026. Target: ordinary reads and writes have p95 under 2 seconds at 20 concurrent users, excluding upload transfer and external providers. **Result: met in both runs, at the eight-institution demo data volume.** Scale is the 500-institution rehearsal's question and is not claimed here.
+
+## Setup
+
+| Item            | Value                                                                                                                                                                                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hardware        | Apple M1, 8 cores, 8 GB, macOS (Darwin 27.0.0), Node 24.21.0. The load generator ran on the same machine, and the development Compose stack was also running (web and API containers at about 17% CPU each)                                                                                                           |
+| Deployment mode | The compiled API (`node dist/main.js`, one process) on the host, as the integration tests run it. PostgreSQL, Redis and MinIO in the local Docker Compose services. `NODE_ENV=test` only changes the cookie `secure` flag and production guards                                                                       |
+| Data            | Fictional fixtures: 8 institutions, 2 officers, 1 supervisor. Restored at the start of each round in the run's own `<database>_test` database and Redis index 15, never the demo database. The demo database's audit, submission, decision and publication counts were the same before and after the run (7, 2, 0, 0) |
+| Code            | API at `a47991a`; the load test is `apps/api/src/load/load.int.test.ts`                                                                                                                                                                                                                                               |
+
+**Method.** Five rounds. Each round keeps 20 users busy at once:
+
+1. 8 institution users each save their Q1 draft five times and submit it, while 12 readers loop: 4 officer queues, 4 supervisor dashboards (unfiltered and filtered by period, institution and officer), and 4 administrator annual evaluations.
+2. 8 officer users each accept every milestone and finalize one submission, while the same 12 readers keep looping.
+
+Every request is timed from the client. A status of 400 or more counts as an error, and any error fails the run with its cause. Percentiles are nearest-rank. Evidence uploads, suitability checks and seeded-baseline confirmation are setup and are not timed: the target excludes upload transfer.
+
+## Results (milliseconds)
+
+Run 1:
+
+| Journey                            | Requests | p50 | p95 | p99 | Errors | Target |
+| ---------------------------------- | -------: | --: | --: | --: | -----: | ------ |
+| institution: draft save            |      200 | 164 | 348 | 400 |   0.0% | met    |
+| institution: submit                |       40 | 335 | 463 | 515 |   0.0% | met    |
+| officer: queue                     |      915 | 110 | 180 | 292 |   0.0% | met    |
+| officer: review decision           |      160 | 340 | 397 | 405 |   0.0% | met    |
+| officer: finalize                  |       40 | 473 | 594 | 625 |   0.0% | met    |
+| supervisor: dashboards and filters |      914 | 109 | 177 | 278 |   0.0% | met    |
+| administrator: annual evaluation   |      913 | 109 | 177 | 271 |   0.0% | met    |
+
+Run 2, repeated straight after:
+
+| Journey                            | Requests | p50 | p95 | p99 | Errors | Target |
+| ---------------------------------- | -------: | --: | --: | --: | -----: | ------ |
+| institution: draft save            |      200 | 146 | 213 | 228 |   0.0% | met    |
+| institution: submit                |       40 | 289 | 401 | 485 |   0.0% | met    |
+| officer: queue                     |      926 | 107 | 192 | 287 |   0.0% | met    |
+| officer: review decision           |      160 | 371 | 597 | 754 |   0.0% | met    |
+| officer: finalize                  |       40 | 586 | 775 | 824 |   0.0% | met    |
+| supervisor: dashboards and filters |      922 | 109 | 197 | 290 |   0.0% | met    |
+| administrator: annual evaluation   |      921 | 108 | 200 | 279 |   0.0% | met    |
+
+No journey is over target, so no issue is filed for this run.
+
+## Limits
+
+- **Data volume.** Eight institutions only; the 500-institution rehearsal measures scale.
+- **Sample size.** Submit and finalize have 40 samples each (one per institution per round), so their p99 is close to their maximum.
+- **Write lock.** Every write waits for the single write lock, so the slowest writes (finalize, review decisions) are where contention would show first as concurrency rises.
+- **Same machine.** Client, API and services share one machine, so no network latency is included. A hosted run would add it.
+
+## Rerun
+
+```sh
+pnpm services:up
+LOAD_OUT=load-results.json pnpm --filter @cpi/api test:load   # LOAD_ROUNDS and LOAD_SAVES change the volume
+```
+
+The results, the environment (date, commit, CPU, memory, Node) and the first error of any journey are written to `LOAD_OUT`.

@@ -15,7 +15,8 @@
     "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts",
     "storage:migrate": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts migrate",
     "storage:gc": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts gc",
-    "user:invite-admin": "tsx --env-file-if-exists=../../.env src/auth/invite-admin.ts"
+    "user:invite-admin": "tsx --env-file-if-exists=../../.env src/auth/invite-admin.ts",
+    "test:load": "tsc -p tsconfig.build.json && INTEGRATION=1 LOAD=1 vitest run src/load --no-file-parallelism"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1143.0",
