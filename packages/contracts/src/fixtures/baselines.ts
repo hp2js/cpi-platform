@@ -260,7 +260,7 @@ export const initialBaselines: MockBaseline[] = institutions.flatMap(
           // still confirm correspondence before any dependent score is finalized.
           historicalSeed: {
             reason:
-              'SEEDED HISTORICAL BASELINE for the simulated year, loaded from the fictional approved plan.',
+              'Seeded historical baseline for the simulated year, loaded from the fictional approved plan.',
             loadedAt: SEED_LOADED_AT,
             confirmedBy: null,
             confirmedAt: null,

@@ -818,7 +818,7 @@ function DraftEditor({
 
             <div className="@container">
               <div className="grid items-start gap-6 @tablet-lg:grid-cols-[minmax(0,1fr)_var(--container-mobile-lg)]">
-                <div className="@container grid min-w-0 gap-6">
+                <div className="@container grid min-w-0 gap-4">
                   <section
                     aria-labelledby="checks-heading"
                     className="rounded-lg border bg-white p-4"
@@ -826,7 +826,12 @@ function DraftEditor({
                     <h2 id="checks-heading" className="font-bold">
                       Publication checks
                     </h2>
-                    <p className="mb-2 text-sm text-base-dark">
+                    <p
+                      className={cn(
+                        'text-sm text-base-dark',
+                        issues.length ? 'mb-2' : 'sr-only',
+                      )}
+                    >
                       Checked as you edit, including unsaved changes. Each
                       problem is also shown where it is.
                     </p>

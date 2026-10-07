@@ -10,6 +10,13 @@ import { PlanningService } from './planning.service';
 export class PlanningController {
   constructor(private readonly planning: PlanningService) {}
 
+  /** Plan work waiting on officers in the caller's scope (HP2-52). */
+  @Get('planning/work')
+  @Roles('officer', 'supervisor', 'administrator')
+  work(@CurrentUser() user: User) {
+    return this.planning.work(user);
+  }
+
   @Get('institutions/:institutionId/plan')
   plan(
     @CurrentUser() user: User,

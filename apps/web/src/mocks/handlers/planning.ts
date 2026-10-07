@@ -4,6 +4,8 @@ import {
   amendmentRequestSchema,
   approveBaselineRequestSchema,
   confirmSeedRequestSchema,
+  planningWorkFor,
+  planningWorkSummary,
   returnBaselineRequestSchema,
   type Activity,
   type Baseline,
@@ -23,7 +25,12 @@ import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { periodLocked, proposalsFor } from '../services/plans';
 import { baselineOf, periodOf } from '../services/reporting';
-import { assignedInstitutionIds, canReadInstitution } from '../services/scope';
+import {
+  assignedInstitutionIds,
+  canReadInstitution,
+  readableInstitutionIds,
+} from '../services/scope';
+import { foundationsFor } from './foundations';
 import { requireRole, requireUser } from '../services/session';
 
 /** A baseline locks once reporting opens on its period or any work has started (PRD §10.4). */
@@ -173,6 +180,28 @@ function requireLatest(baseline: MockBaseline, version: number) {
 }
 
 export const planningHandlers = [
+  /** Plan work waiting on officers in the caller's scope (HP2-52). */
+  http.get('/api/planning/work', async () => {
+    await networkDelay();
+    const user = requireRole('officer', 'supervisor', 'administrator');
+    const db = getDb();
+    const items = readableInstitutionIds(user).flatMap((institutionId) => {
+      const plan = planFor(user, institutionId);
+      const [officer] = assignedOfficers(institutionId);
+      return planningWorkFor(
+        {
+          institutionId,
+          institutionName: plan.institutionName,
+          officerId: officer?.id ?? null,
+          officerName: officer?.displayName ?? null,
+        },
+        plan,
+        foundationsFor(user, institutionId),
+        db.businessTime,
+      );
+    });
+    return HttpResponse.json(planningWorkSummary(items));
+  }),
   http.get('/api/institutions/:institutionId/plan', async ({ params }) => {
     await networkDelay();
     const user = requireUser();

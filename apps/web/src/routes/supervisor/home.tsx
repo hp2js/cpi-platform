@@ -31,6 +31,8 @@ import {
 } from '@/features/oversight/queries';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { planningWorkQuery } from '@/features/planning/queries';
+import { PlanningWorkList } from '@/features/planning/work-list';
 
 const route = getRouteApi('/authed/supervisor/');
 
@@ -136,6 +138,9 @@ function Filters({ search }: { search: OversightSearch }) {
  * count says whose move it is and opens the submissions list.
  */
 function NeedsAttention({ data }: { data: Oversight }) {
+  // Plan work is counted across the supervisor's institutions (HP2-52).
+  const work = useQuery(planningWorkQuery);
+  const planTotals = work.data?.totals ?? { items: 0, flagged: 0 };
   const pastTarget = data.trends.reduce(
     (sum, point) => sum + point.reviewOverdue,
     0,
@@ -159,7 +164,18 @@ function NeedsAttention({ data }: { data: Oversight }) {
       count: data.backlog.awaitingInstitution,
       urgent: false,
     },
+    {
+      label: 'Plans and documents awaiting officer',
+      detail:
+        planTotals.flagged > 0
+          ? `Baselines, amendments and foundation documents across your institutions; ${planTotals.flagged} urgent`
+          : 'Baselines, amendments and foundation documents across your institutions',
+      count: planTotals.items,
+      urgent: planTotals.flagged > 0,
+      plans: true,
+    },
   ];
+  const flaggedItems = work.data?.items.filter((item) => item.flag) ?? [];
   const total = items.reduce((sum, item) => sum + item.count, 0);
   return (
     <section aria-labelledby="attention-heading" className="grid gap-3">
@@ -172,36 +188,60 @@ function NeedsAttention({ data }: { data: Oversight }) {
             className="size-5 shrink-0 text-success-darker"
             aria-hidden="true"
           />
-          Nothing is waiting on review in this view.
+          Nothing is waiting on review or plan approval in this view.
         </p>
       ) : (
-        <ul className="grid gap-3 tablet:grid-cols-3">
-          {items.map((item) => (
-            <li
-              key={item.label}
-              className={cn(
-                'grid gap-1 border border-base-lighter bg-white p-4',
-                item.count > 0 &&
-                  (item.urgent
-                    ? 'border-l-8 border-l-error'
-                    : 'border-l-8 border-l-warning'),
-              )}
-            >
-              <p className="text-sm font-bold">{item.label}</p>
-              <p className="text-xl font-bold tabular-nums">{item.count}</p>
-              <p className="text-xs text-base-dark">{item.detail}</p>
-              {item.count > 0 && (
-                <Link
-                  to="/supervisor/submissions"
-                  className="mt-1 text-sm usa-link"
-                >
-                  View submissions
-                  <span className="sr-only"> {item.label.toLowerCase()}</span>
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-3 tablet:grid-cols-2 widescreen:grid-cols-4">
+            {items.map((item) => (
+              <li
+                key={item.label}
+                className={cn(
+                  'grid gap-1 border border-base-lighter bg-white p-4',
+                  item.count > 0 &&
+                    (item.urgent
+                      ? 'border-l-8 border-l-error'
+                      : 'border-l-8 border-l-warning'),
+                )}
+              >
+                <p className="text-sm font-bold">{item.label}</p>
+                <p className="text-xl font-bold tabular-nums">{item.count}</p>
+                <p className="text-xs text-base-dark">{item.detail}</p>
+                {item.count > 0 &&
+                  ('plans' in item ? (
+                    <Link
+                      to="/supervisor/workload"
+                      className="mt-1 text-sm usa-link"
+                    >
+                      View officer workload
+                      <span className="sr-only">
+                        {' '}
+                        {item.label.toLowerCase()}
+                      </span>
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/supervisor/submissions"
+                      className="mt-1 text-sm usa-link"
+                    >
+                      View submissions
+                      <span className="sr-only">
+                        {' '}
+                        {item.label.toLowerCase()}
+                      </span>
+                    </Link>
+                  ))}
+              </li>
+            ))}
+          </ul>
+          {flaggedItems.length > 0 && (
+            <PlanningWorkList
+              items={flaggedItems}
+              audience="supervisor"
+              caption="Urgent plan work waiting on officers"
+            />
+          )}
+        </>
       )}
     </section>
   );

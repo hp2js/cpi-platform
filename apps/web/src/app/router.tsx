@@ -21,6 +21,15 @@ interface RouterContext {
   queryClient: QueryClient;
 }
 
+/** The officer's institution page tabs, kept in the URL so work items can link to them. */
+const officerInstitutionTabs = [
+  'quarters',
+  'baselines',
+  'amendments',
+  'foundations',
+  'plan',
+] as const;
+type OfficerInstitutionTab = (typeof officerInstitutionTabs)[number];
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
   notFoundComponent: NotFoundPage,
@@ -262,6 +271,12 @@ const officerReviewRoute = createRoute({
 const officerInstitutionRoute = createRoute({
   getParentRoute: () => officerRoute,
   path: 'institutions/$institutionId',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: OfficerInstitutionTab } =>
+    officerInstitutionTabs.includes(search.tab as OfficerInstitutionTab)
+      ? { tab: search.tab as OfficerInstitutionTab }
+      : {},
   component: page(
     () => import('@/routes/officer/institution'),
     'OfficerInstitutionPage',

@@ -259,7 +259,7 @@ test('clarification, revised submission, re-review and carry-forward (AT09, AT27
     })
     .click();
   await expect(
-    page.getByText(/SEEDED HISTORICAL BASELINE · confirmed/).first(),
+    page.getByText(/Seeded historical baseline · confirmed/).first(),
   ).toBeVisible();
   await page.goBack();
   await page.getByRole('button', { name: 'Finalize review' }).click();

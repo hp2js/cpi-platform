@@ -50,6 +50,7 @@ import {
   confirmSeed,
   decideAmendment,
   invalidatePlan,
+  planKeys,
   planQuery,
   returnBaseline,
 } from '@/features/planning/queries';
@@ -493,8 +494,10 @@ function FoundationReview({
           reason: check.reason,
         })),
       }),
-    onSuccess: (next) =>
-      queryClient.setQueryData(foundationKeys.all(institutionId), next),
+    onSuccess: async (next) => {
+      queryClient.setQueryData(foundationKeys.all(institutionId), next);
+      await queryClient.invalidateQueries({ queryKey: planKeys.work });
+    },
   });
   const errors = isApiError(mutation.error) ? mutation.error.fieldErrors : {};
   const update = (index: number, patch: Partial<(typeof checks)[number]>) =>
@@ -668,6 +671,8 @@ function Foundations({ institutionId }: { institutionId: string }) {
 
 export function OfficerInstitutionPage() {
   const { institutionId } = route.useParams();
+  const tab = route.useSearch().tab ?? 'baselines';
+  const navigate = route.useNavigate();
   const plan = useQuery(planQuery(institutionId));
   const pendingAmendments =
     plan.data?.amendments.filter((amendment) => amendment.status === 'pending')
@@ -680,7 +685,16 @@ export function OfficerInstitutionPage() {
         description={plan.data?.approvedPlanReference}
       />
       <OfficerAssignment institutionId={institutionId} />
-      <Tabs defaultValue="baselines" className="grid grid-cols-1 gap-4">
+      <Tabs
+        value={tab}
+        onValueChange={(value) =>
+          void navigate({
+            search: { tab: value as typeof tab },
+            replace: true,
+          })
+        }
+        className="grid grid-cols-1 gap-4"
+      >
         <TabsList className="h-auto w-fit max-w-full flex-wrap justify-start">
           <TabsTrigger value="quarters">Quarters</TabsTrigger>
           <TabsTrigger value="baselines">Baselines</TabsTrigger>

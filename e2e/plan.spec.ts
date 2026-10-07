@@ -248,3 +248,34 @@ test('the administrator sets when baseline proposals are due and labels the risk
     ),
   ).toBeVisible();
 });
+
+test('a seeded Q1 baseline has one plain status for each role (HP2-53)', async ({
+  page,
+}) => {
+  await reset(page);
+  await visit(page, 'focal-demo-001', '/institution/plan');
+  const own = page.getByRole('article', { name: /^Q1 baseline/ });
+  await expect(
+    own.getByText('Seeded historical baseline · officer to confirm'),
+  ).toBeVisible();
+  await expect(own.getByText(/Nothing is needed from you/)).toBeVisible();
+  await expect(own.getByText('Approved', { exact: true })).toHaveCount(0);
+  await expect(own.getByText(/SEEDED HISTORICAL/)).toHaveCount(0);
+
+  await visit(page, 'officer-a', '/officer/institutions/DEMO-001');
+  const officer = page.getByRole('article', { name: /^Q1 · version/ });
+  await expect(
+    officer.getByText('Seeded historical baseline · officer to confirm'),
+  ).toBeVisible();
+  await expect(officer.getByText('Approved', { exact: true })).toHaveCount(0);
+  await expect(
+    officer.getByRole('button', {
+      name: 'Confirm correspondence with the approved plan',
+    }),
+  ).toBeVisible();
+
+  await visit(page, 'supervisor', '/supervisor/institutions/DEMO-001');
+  await expect(
+    page.getByText('Seeded historical baseline · officer to confirm').first(),
+  ).toBeVisible();
+});

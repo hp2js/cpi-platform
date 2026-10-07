@@ -200,7 +200,7 @@ test('publish, report, submit, review and finalize one quarter', async ({
     })
     .click();
   await expect(
-    page.getByText(/SEEDED HISTORICAL BASELINE · confirmed/).first(),
+    page.getByText(/Seeded historical baseline · confirmed/).first(),
   ).toBeVisible();
   await page.goto(reviewUrl);
   await page.getByRole('button', { name: 'Finalize review' }).click();

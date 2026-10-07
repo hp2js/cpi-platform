@@ -349,7 +349,7 @@ export async function createInstitution(
       status: 'approved',
       historicalSeed: {
         reason:
-          'SEEDED HISTORICAL BASELINE for the simulated year, loaded on onboarding because the quarter had already opened.',
+          'Seeded historical baseline for the simulated year, loaded on onboarding because the quarter had already opened.',
         loadedAt: businessTime,
         confirmedBy: null,
         confirmedAt: null,
