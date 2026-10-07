@@ -30,25 +30,27 @@ Everything here is synthetic. The institution, people, suppliers, staff numbers,
 
 The institution discloses the limitation itself and does not claim check 3, so provisional and reviewed R are both 0.75. The officer records the rejected check with the F2 §3.0 passage as the reason.
 
-## Quarterly baseline (M-01 supplier rotation, M-02 training, M-03 CPC, M-04 IAO)
+## Quarterly baseline (locked per quarter; CPC and IAO meetings added to every quarter)
 
-| Quarter | M-01 Rotation used for quarterly order | M-02 Named cohort trained | M-03 CPC | M-04 IAO | I (prov. = reviewed) |
+| Quarter | Planned milestone 1 | Planned milestone 2 | CPC | IAO | I (prov. = reviewed) |
 |---|---|---|---|---|---|
-| Q1 | ✗ Order 14 Aug went to one supplier; list not yet approved | ✗ Cohort A: 9 of 12 trained | ✓ 22 Sep | ✓ 15 Sep | **0.50** |
-| Q2 | ✓ Order 9 Nov to S-01/S-02/S-03 (positions 1-3) | ✗ Cohort B: 0 of 8 (postponed to 13 Jan) | ✓ 10 Dec | ✓ 1 Dec | **0.75** |
-| Q3 | — no submission — | — | — | — | missing → **0** after closure |
-| Q4 | ✓ Order 5 May to positions next due | ✓ Cohort D: 9 of 9, 20 May | ✓ 15 Jun | ✓ 3 Jun | **1.00** |
+| Q1 | **M-01** Rotation used for quarterly order: ✗ order of 14 Aug went to one supplier; list not yet approved | **M-02** Named staff trained: ✗ 9 of 12 | **M-03** ✓ 22 Sep | **M-04** ✓ 15 Sep | **0.50** |
+| Q2 | **M-05** Q2 exception review of rotation control: ✓ completed 3 Dec, no exceptions | **M-06** Spot-check ≥10 approvals: ✗ only 8 checked | **M-07** ✓ 14 Dec | **M-08** ✓ 7 Dec | **0.75** |
+| Q3 | **M-09** Q3 exception review | **M-10** Q3 spot-check | **M-11** | **M-12** | missing → **0** after closure |
+| Q4 | **M-13** Q4 exception review: ✓ completed 28 May, no exceptions | **M-14** Spot-check: ✓ 12 checked, findings in CPC minutes | **M-15** ✓ 15 Jun | **M-16** ✓ 3 Jun | **1.00** |
 
-Q1 and Q2 claims are honest: unachieved milestones are reported as *Not achieved*, with the minute that records their status. M-02 shows that partial attendance (9 of 12) earns 0, not 75%. Late corrective progress (Cohort A make-up on 21 Oct; Cohort B on 13 Jan) is visible in later minutes but earns no credit twice.
+Activities: A-01 Introduce supplier rotation (R-01 Irregular procurement of medical supplies), A-02 Train staff in affected functions (Q1 only), A-03 Spot-check procurement approvals (R-02 Weak oversight of procurement approvals). CPC and IAO milestones are committee obligations covering all identified risks.
+
+Q1 and Q2 claims are honest: unachieved milestones are reported as *Not achieved*, citing the minute that records their status. Two threshold cases show that partial completion earns 0: M-02 (9 of 12 named staff) and M-06 (8 of at least 10 approvals). Late corrective progress is visible in later minutes but earns no credit twice: the training make-up on 21 Oct, and the last two Q2 spot-check items on 19 Jan. Spot-check findings appear in the CPC minutes (MIN. CPC/06), as the M-06/M-10/M-14 evidence rule requires. Exception reviews appear in both sets of minutes (MIN. CPC/05, MIN. IAO/03).
 
 ## The missing Q3 (demo walkthrough)
 
 1. Q3 opens on 1 Jan 2027 with a locked 4-milestone baseline. No report is submitted by 15 Apr 2027. Reminders go out on 8 Apr and 14 Apr, and an overdue notice on 16 Apr.
 2. Officer B issues a nonresponse notice on 19 Apr 2027 with a 7-day window to 26 Apr. No response arrives.
 3. **Before disposition:** generate the annual report. DEMO-005 shows as **pending**, publication is blocked (AT14 behaviour), and no 70.00 or renormalised figure such as 36.25 + 60 × 2.25 ÷ 3 = 81.25 appears.
-4. The Q4 report (12 Jul 2027) explains the gap in MIN. CPC/03/Q4 and Section E, and claims no Q3 milestone. It must not be treated as a Q3 submission.
+4. The Q4 report (12 Jul 2027) explains the gap in MIN. CPC/03/Q4 and Section E, and claims no Q3 milestone (M-09 to M-12). It must not be treated as a Q3 submission.
 5. **After the 31 Jul 2027 cutoff:** Officer B closes Q3 for nonresponse with I3 = 0 and a reason (AT15). The annual result becomes **70.00**.
-6. Trace: R-01 → A-01 → M-01 → per-quarter decisions → I = 0.50 / 0.75 / 0 / 1.00 → F2 §3.0 rejected check → R = 0.75 → published 70.00.
+6. Trace: R-01 → A-01 → M-01 / M-05 / M-09 / M-13 and R-02 → A-03 → M-06 / M-10 / M-14 → per-quarter decisions → I = 0.50 / 0.75 / 0 / 1.00 → F2 §3.0 rejected check → R = 0.75 → published 70.00.
 
 ## Quarterly readiness snapshots (internal, labelled)
 
