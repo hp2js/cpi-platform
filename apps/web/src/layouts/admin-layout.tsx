@@ -12,6 +12,7 @@ import {
   Ruler,
   ScrollText,
   SlidersHorizontal,
+  Sparkles,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -73,6 +74,7 @@ const sections = [
         icon: CalendarClock,
       },
       { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
+      { to: '/admin/assistant', label: 'Evidence assistant', icon: Sparkles },
       { to: '/admin/notifications', label: 'Notifications', icon: Mail },
       { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
     ],

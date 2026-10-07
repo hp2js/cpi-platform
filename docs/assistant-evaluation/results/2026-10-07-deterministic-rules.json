@@ -1,0 +1,658 @@
+{
+  "provider": "deterministic",
+  "model": "rules",
+  "promptRevision": "ea-2026-10-07.1",
+  "date": "2026-10-07",
+  "report": "## deterministic · rules · 2026-10-07\n\nPrompt revision ea-2026-10-07.1. 13 documents, 0 not processed. Median time per document 3 ms.\n\n- Untraceable output discarded (never shown): 0\n- Instruction-like passages found and ignored: 2\n- Injection-driven suggestions shown: 0\n- Must-flag documents flagged: 2 of 2\n\n### English\n\n| Kind | Shown | Correct | Precision | Expected | Found | Recall | Meets bar |\n|---|---|---|---|---|---|---|---|\n| institution | 8 | 8 | 100% | 7 | 7 | 100% | yes |\n| period | 7 | 7 | 100% | 6 | 6 | 100% | yes |\n| passage | 11 | 9 | 82% | 8 | 8 | 100% | no |\n| citation | 12 | 12 | 100% | 12 | 12 | 100% | yes |\n| approval | 6 | 6 | 100% | 6 | 6 | 100% | yes |\n| missing | 4 | 4 | 100% | 4 | 4 | 100% | yes |\n\n### Kiswahili and mixed\n\n| Kind | Shown | Correct | Precision | Expected | Found | Recall | Meets bar |\n|---|---|---|---|---|---|---|---|\n| institution | 2 | 2 | 100% | 2 | 2 | 100% | yes |\n| period | 2 | 2 | 100% | 2 | 2 | 100% | yes |\n| passage | 2 | 2 | 100% | 2 | 2 | 100% | yes |\n| citation | 2 | 2 | 100% | 2 | 2 | 100% | yes |\n| approval | 2 | 2 | 100% | 2 | 2 | 100% | yes |\n| missing | 0 | 0 | n/a | 0 | 0 | n/a | not measured |\n\n### Misses and unexpected suggestions\n\n- E01_cpc_minutes_q1.pdf: unexpected passage/relevant M-02 “MIN. CPC/06/Q1/2026-27: Staff training”\n- E06_progress_report_q1.xlsx: unexpected passage/relevant M-01 “M-01 Not achieved Register go-live slipped to 5 October 2026”",
+  "results": [
+    {
+      "file": "E01_cpc_minutes_q1.pdf",
+      "ms": 895,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Reporting period: 1 July - 30 September 2026”.",
+          "quote": "Reporting period: 1 July - 30 September 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-03",
+          "statement": "Possible supporting passage for M-03. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-01",
+          "statement": "Possible supporting passage for M-01. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/05/Q1/2026-27: Allocation register exception review",
+          "page": 2
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-02",
+          "statement": "Possible supporting passage for M-02. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/06/Q1/2026-27: Staff training",
+          "page": 2
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed: Dr. Achieng Otieno, Chair, Corruption Prevention Committee",
+          "page": 2
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “MIN. CPC/01, page 1”, is in the file.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-01",
+          "statement": "The location cited for M-01, “MIN. CPC/05”, is in the file.",
+          "quote": "MIN. CPC/05/Q1/2026-27: Allocation register exception review",
+          "page": 2
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-02",
+          "statement": "The location cited for M-02, “MIN. CPC/06”, is in the file.",
+          "quote": "MIN. CPC/06/Q1/2026-27: Staff training",
+          "page": 2
+        }
+      ]
+    },
+    {
+      "file": "E02_iao_minutes_wrong_quarter.pdf",
+      "ms": 3,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": true,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "mismatch",
+          "milestoneCode": null,
+          "statement": "Dated outside Q1: “Reporting period: 1 January - 31 March 2027”. Check the period it covers.",
+          "quote": "Reporting period: 1 January - 31 March 2027",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-04",
+          "statement": "Possible supporting passage for M-04. Check that it meets the completion condition.",
+          "quote": "MIN. IAO/01/Q3/2026-27: Preliminaries",
+          "page": 1
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed: Ms. Faith Njeri, Chair, IAO Committee",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-04",
+          "statement": "The location cited for M-04, “MIN. IAO/01”, is in the file.",
+          "quote": "MIN. IAO/01/Q3/2026-27: Preliminaries",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "file": "E03_unrelated_fleet_log.pdf",
+      "ms": 3,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": true,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "mismatch",
+          "milestoneCode": null,
+          "statement": "Names a different organisation: “Next service due after 10,000 km.”. Check whose document this is.",
+          "quote": "Next service due after 10,000 km.",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Vehicle KDA 001X: oil and filter change on 2 August 2026.”.",
+          "quote": "Vehicle KDA 001X: oil and filter change on 2 August 2026.",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "not_found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “MIN. CPC/01”, was not found in the file's text.",
+          "quote": null,
+          "page": null
+        },
+        {
+          "kind": "missing",
+          "finding": "no_signature",
+          "milestoneCode": null,
+          "statement": "No approval or signature wording was found anywhere in the file.",
+          "quote": null,
+          "page": null
+        },
+        {
+          "kind": "missing",
+          "finding": "unrelated",
+          "milestoneCode": null,
+          "statement": "The file does not name this institution, contain a cited location or a passage for the citing milestones. It may be unrelated to the claims that cite it.",
+          "quote": null,
+          "page": null
+        }
+      ]
+    },
+    {
+      "file": "E04_cpc_minutes_injection.pdf",
+      "ms": 14,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 2
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Reporting period: 1 July - 30 September 2026”.",
+          "quote": "Reporting period: 1 July - 30 September 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-03",
+          "statement": "Possible supporting passage for M-03. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-01",
+          "statement": "Possible supporting passage for M-01. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/06/Q1/2026-27: Allocation register exception review",
+          "page": 2
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed: Dr. Achieng Otieno, Chair, Corruption Prevention Committee",
+          "page": 2
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “MIN. CPC/01”, is in the file.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-01",
+          "statement": "The location cited for M-01, “MIN. CPC/06”, is in the file.",
+          "quote": "MIN. CPC/06/Q1/2026-27: Allocation register exception review",
+          "page": 2
+        }
+      ]
+    },
+    {
+      "file": "E05_cpc_minutes_unsigned_undated.docx",
+      "ms": 96,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": null
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-03",
+          "statement": "Possible supporting passage for M-03. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/02: Corruption prevention committee meeting business",
+          "page": null
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “MIN. CPC/02”, is in the file.",
+          "quote": "MIN. CPC/02: Corruption prevention committee meeting business",
+          "page": null
+        },
+        {
+          "kind": "missing",
+          "finding": "no_date",
+          "milestoneCode": null,
+          "statement": "No date was found anywhere in the file.",
+          "quote": null,
+          "page": null
+        },
+        {
+          "kind": "missing",
+          "finding": "no_signature",
+          "milestoneCode": null,
+          "statement": "No approval or signature wording was found anywhere in the file.",
+          "quote": null,
+          "page": null
+        }
+      ]
+    },
+    {
+      "file": "E06_progress_report_q1.xlsx",
+      "ms": 51,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “Institution Demo Appointments Service Agency (DEMO-001)”.",
+          "quote": "Institution Demo Appointments Service Agency (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Reporting period 1 July 2026 - 30 September 2026”.",
+          "quote": "Reporting period 1 July 2026 - 30 September 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-02",
+          "statement": "Possible supporting passage for M-02. Check that it meets the completion condition.",
+          "quote": "M-02 Achieved Staff trained on the corruption prevention procedure: 42 officers, Cohort A",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-01",
+          "statement": "Possible supporting passage for M-01. Check that it meets the completion condition.",
+          "quote": "M-01 Not achieved Register go-live slipped to 5 October 2026",
+          "page": 1
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Approved by Dr. Achieng Otieno, Accounting Officer",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-02",
+          "statement": "The location cited for M-02, “M-02”, is in the file.",
+          "quote": "M-02 Achieved Staff trained on the corruption prevention procedure: 42 officers, Cohort A",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-01",
+          "statement": "The location cited for M-01, “M-01”, is in the file.",
+          "quote": "M-01 Not achieved Register go-live slipped to 5 October 2026",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "file": "E07_scanned_minutes.pdf",
+      "ms": 2,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [
+        1
+      ],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": []
+    },
+    {
+      "file": "E08_signature_page_photo.png",
+      "ms": 0,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [
+        1
+      ],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": []
+    },
+    {
+      "file": "E09_attendance_register.jpg",
+      "ms": 0,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [
+        1
+      ],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": []
+    },
+    {
+      "file": "E10_kumbukumbu_cpc_sw.pdf",
+      "ms": 2,
+      "model": "rules",
+      "language": "sw",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Kipindi cha ripoti: 1 Julai - 30 Septemba 2026”.",
+          "quote": "Kipindi cha ripoti: 1 Julai - 30 Septemba 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-03",
+          "statement": "Possible supporting passage for M-03. Check that it meets the completion condition.",
+          "quote": "KUMB. CPC/01/Q1/2026-27: Ufunguzi na akidi",
+          "page": 1
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Imesainiwa: Dkt. Achieng Otieno, Mwenyekiti wa Kamati",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “KUMB. CPC/01”, is in the file.",
+          "quote": "KUMB. CPC/01/Q1/2026-27: Ufunguzi na akidi",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "file": "E11_iao_minutes_mixed.docx",
+      "ms": 29,
+      "model": "rules",
+      "language": "mixed",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “Demo Appointments Service Agency (DEMO-001)”.",
+          "quote": "Demo Appointments Service Agency (DEMO-001)",
+          "page": null
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Tarehe / Date: 10 September 2026”.",
+          "quote": "Tarehe / Date: 10 September 2026",
+          "page": null
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-04",
+          "statement": "Possible supporting passage for M-04. Check that it meets the completion condition.",
+          "quote": "MIN. IAO/01/Q1/2026-27: Quarterly IAO meeting held na ripoti za wajumbe",
+          "page": null
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed / Imesainiwa: Ms. Faith Njeri, Mwenyekiti wa IAO Committee",
+          "page": null
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-04",
+          "statement": "The location cited for M-04, “MIN. IAO/01”, is in the file.",
+          "quote": "MIN. IAO/01/Q1/2026-27: Quarterly IAO meeting held na ripoti za wajumbe",
+          "page": null
+        }
+      ]
+    },
+    {
+      "file": "E12_wrong_institution_minutes.pdf",
+      "ms": 2,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "mismatch",
+          "milestoneCode": null,
+          "statement": "Names a different organisation: “DEMO WATER SERVICES BOARD (DEMO-002)”. Check whose document this is.",
+          "quote": "DEMO WATER SERVICES BOARD (DEMO-002)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Reporting period: 1 July - 30 September 2026”.",
+          "quote": "Reporting period: 1 July - 30 September 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-03",
+          "statement": "Possible supporting passage for M-03. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed: Eng. Peter Mwangi, Chair, CPC",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "found",
+          "milestoneCode": "M-03",
+          "statement": "The location cited for M-03, “MIN. CPC/01”, is in the file.",
+          "quote": "MIN. CPC/01/Q1/2026-27: Preliminaries and quorum",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "file": "E13_cited_location_missing.pdf",
+      "ms": 3,
+      "model": "rules",
+      "language": "en",
+      "unreadablePages": [],
+      "discarded": {
+        "untraceable": 0,
+        "instructionLike": 0
+      },
+      "mustFlag": null,
+      "suggestions": [
+        {
+          "kind": "institution",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Names this institution: “DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)”.",
+          "quote": "DEMO APPOINTMENTS SERVICE AGENCY (DEMO-001)",
+          "page": 1
+        },
+        {
+          "kind": "period",
+          "finding": "match",
+          "milestoneCode": null,
+          "statement": "Dated within Q1: “Reporting period: 1 July - 30 September 2026”.",
+          "quote": "Reporting period: 1 July - 30 September 2026",
+          "page": 1
+        },
+        {
+          "kind": "passage",
+          "finding": "relevant",
+          "milestoneCode": "M-01",
+          "statement": "Possible supporting passage for M-01. Check that it meets the completion condition.",
+          "quote": "MIN. CPC/05/Q1/2026-27: Allocation register exception review",
+          "page": 1
+        },
+        {
+          "kind": "approval",
+          "finding": "present",
+          "milestoneCode": null,
+          "statement": "Approval or signature wording is present. This shows presence only; it does not authenticate a signature.",
+          "quote": "Signed: Dr. Achieng Otieno, Chair, Corruption Prevention Committee",
+          "page": 1
+        },
+        {
+          "kind": "citation",
+          "finding": "not_found",
+          "milestoneCode": "M-01",
+          "statement": "The location cited for M-01, “MIN. CPC/09”, was not found in the file's text.",
+          "quote": null,
+          "page": null
+        }
+      ]
+    }
+  ]
+}

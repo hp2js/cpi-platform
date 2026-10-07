@@ -398,6 +398,14 @@ const adminSimulationRoute = createRoute({
   path: 'simulation',
   component: page(() => import('@/routes/admin/simulation'), 'SimulationPage'),
 });
+const adminAssistantRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'assistant',
+  component: page(
+    () => import('@/routes/admin/assistant'),
+    'AssistantSettingsPage',
+  ),
+});
 const adminAnnualRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'annual',
@@ -578,6 +586,7 @@ export const routeTree = rootRoute.addChildren([
     adminRoute.addChildren([
       adminHomeRoute,
       adminSimulationRoute,
+      adminAssistantRoute,
       adminAnnualRoute,
       adminAssignmentsRoute,
       adminCalendarRoute,

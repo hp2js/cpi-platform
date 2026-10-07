@@ -56,22 +56,25 @@ async function uploadPdf(
   obligationId: string,
   name: string,
   category: string,
+  bytes?: number[],
 ) {
   return page.evaluate(
-    async ([id, fileName, kind]) => {
+    async ([id, fileName, kind, contents]) => {
       const body = new FormData();
       body.append(
         'file',
         new File(
           [
-            new Uint8Array([
-              0x25,
-              0x50,
-              0x44,
-              0x46,
-              0x2d,
-              ...new TextEncoder().encode(`${fileName}\n%%EOF\n`),
-            ]),
+            contents
+              ? new Uint8Array(contents)
+              : new Uint8Array([
+                  0x25,
+                  0x50,
+                  0x44,
+                  0x46,
+                  0x2d,
+                  ...new TextEncoder().encode(`${fileName}\n%%EOF\n`),
+                ]),
           ],
           fileName,
         ),
@@ -84,19 +87,24 @@ async function uploadPdf(
         })
       ).json() as Promise<{ id: string }>;
     },
-    [obligationId, name, category] as const,
+    [obligationId, name, category, bytes] as const,
   );
 }
 
-/** Submits a complete Q1 report for an institution through the mock API. */
-export async function submitQ1(page: Page, institutionId: string) {
+/** Submits a complete Q1 report for an institution; `minutes` replaces the stand-in file. */
+export async function submitQ1(
+  page: Page,
+  institutionId: string,
+  minutes?: { name: string; bytes: number[]; passage: string },
+) {
   const obligation = `${institutionId}:FY2026-27-Q1`;
   await signInAs(page, `focal-${institutionId.toLowerCase()}`);
-  const minutes = await uploadPdf(
+  const upload = await uploadPdf(
     page,
     obligation,
-    `cpc-minutes-${institutionId}.pdf`,
+    minutes?.name ?? `cpc-minutes-${institutionId}.pdf`,
     'cpc_minutes',
+    minutes?.bytes,
   );
   const bundle = await api<{ baseline: { milestones: { id: string }[] } }>(
     page,
@@ -104,7 +112,7 @@ export async function submitQ1(page: Page, institutionId: string) {
   );
   const answers = {
     questions: {
-      'cpc-minutes': { evidenceIds: [minutes.id], unavailable: null },
+      'cpc-minutes': { evidenceIds: [upload.id], unavailable: null },
       'iao-minutes': {
         evidenceIds: [],
         unavailable: { explanation: 'IAO minutes are awaiting signature.' },
@@ -121,7 +129,9 @@ export async function submitQ1(page: Page, institutionId: string) {
           output: 'Done.',
           emergingIssues: '',
           actions: '',
-          evidence: [{ evidenceId: minutes.id, passage: 'Item 4' }],
+          evidence: [
+            { evidenceId: upload.id, passage: minutes?.passage ?? 'Item 4' },
+          ],
           evidenceUnavailable: null,
         },
       ]),

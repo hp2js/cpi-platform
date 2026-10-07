@@ -452,7 +452,9 @@ function UploadButton({
         </Label>
         {!replaces && (
           <span className="text-xs text-base-dark">
-            PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB
+            PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB. Submitted files may be
+            read by AI to help officers review them; officers make every
+            decision.
           </span>
         )}
       </div>

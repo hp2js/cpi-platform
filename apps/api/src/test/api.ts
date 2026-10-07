@@ -23,11 +23,16 @@ export const integration = process.env.INTEGRATION === '1';
 for (const file of ['../../.env', '../../.env.example'])
   if (existsSync(file)) process.loadEnvFile(file);
 // Tests run the demo deployment and read account emails from the sink, whatever .env says:
-// they must never send real email. A test opts out per server through startApi(env).
+// they must never send real email, nor documents to an AI provider. A test opts out per
+// server through startApi(env).
 Object.assign(process.env, {
   DEMO_MODE: 'true',
   ADMIN_EMAIL: '',
   RESEND_API_KEY: '',
+  ASSISTANT_PROVIDER: 'deterministic',
+  ASSISTANT_API_KEY: '',
+  ASSISTANT_PROVIDER_TERMS: '',
+  ASSISTANT_HIDDEN_KINDS: '',
 });
 
 function testUrls() {

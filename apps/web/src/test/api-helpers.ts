@@ -39,11 +39,15 @@ export async function publishSeedForm() {
 }
 
 /** Uploads minutes, claims every milestone with them, and saves the draft. */
-export async function completeDraft(institutionId: string, fileSuffix = '') {
+export async function completeDraft(
+  institutionId: string,
+  fileSuffix = '',
+  bytes = pdfBytes(),
+) {
   const path = obligationPath(institutionId);
   const upload = await request(`${path}/evidence`, evidenceItemSchema, {
     method: 'POST',
-    body: uploadForm(`cpc-minutes${fileSuffix}.pdf`, pdfBytes(), 'cpc_minutes'),
+    body: uploadForm(`cpc-minutes${fileSuffix}.pdf`, bytes, 'cpc_minutes'),
   });
   const bundle = await request(`${path}/report`, reportBundleSchema);
   const answers: ReportAnswers = {

@@ -26,13 +26,16 @@ const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 export default function PdfPreview({
   blob,
   title,
+  page,
 }: {
   blob: Blob;
   title: string;
+  /** The page to open at (1-based). */
+  page?: number;
 }) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [pageNumber, setPageNumber] = useState(page ?? 1);
   // null fits the page to the available width.
   const [zoom, setZoom] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
@@ -51,7 +54,10 @@ export default function PdfPreview({
         return task.promise;
       })
       .then((proxy) => {
-        if (proxy && !cancelled) setDocument(proxy);
+        if (proxy && !cancelled) {
+          setPageNumber((number) => Math.min(number, proxy.numPages));
+          setDocument(proxy);
+        }
       })
       .catch(() => {
         if (!cancelled)

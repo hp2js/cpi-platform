@@ -80,6 +80,12 @@ importers:
       ioredis:
         specifier: 6.0.0
         version: 6.0.0
+      mammoth:
+        specifier: 1.13.0
+        version: 1.13.0
+      pdfjs-dist:
+        specifier: 6.3.289
+        version: 6.3.289
       pg:
         specifier: 8.23.0
         version: 8.23.0
@@ -92,6 +98,9 @@ importers:
       react-email:
         specifier: 6.11.0
         version: 6.11.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      read-excel-file:
+        specifier: 9.3.10
+        version: 9.3.10
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2

@@ -16,6 +16,7 @@ import { assignments, formVersions, obligations } from '../database/schema';
 import { currentState } from '../database/state';
 import type { Events } from '../events/events';
 import { advanceTo } from './clock';
+import { packMinutes, packPassage } from './evidence-packs';
 
 /**
  * Scripted demonstration year (PRD §17.1–17.2), ported from the mock API's scenario. Every step
@@ -120,23 +121,35 @@ export async function runScenario(
     return value;
   }
 
+  /**
+   * Uploads the pack's signed minutes for this quarter (or `from` another quarter or revision),
+   * falling back to a stand-in file where the pack has none.
+   */
   async function upload(
     institutionId: string,
     quarter: number,
     name: string,
     category: string,
     replaces?: string,
+    from: { quarter?: number; revision?: number } = {},
   ) {
     const body = new FormData();
+    const pack = packMinutes(
+      institutionId,
+      from.quarter ?? quarter,
+      category === 'iao_minutes' ? 'IAO' : 'CPC',
+      from.revision,
+    );
     const salt = `${institutionId}-${quarter}-${name}`;
     body.append(
       'file',
       new Blob([
-        new TextEncoder().encode(`%PDF-${salt}
+        pack?.bytes ??
+          new TextEncoder().encode(`%PDF-${salt}
 %%EOF
 `),
       ]),
-      name,
+      pack?.name ?? name,
     );
     body.append('category', category);
     if (replaces) body.append('replaces', replaces);
@@ -152,6 +165,8 @@ export async function runScenario(
     bundle: ReportBundle,
     cpc: string | null,
     iao: string | null,
+    institutionId: string,
+    quarter: number,
   ): ReportAnswers {
     const unavailable = {
       explanation:
@@ -171,7 +186,11 @@ export async function runScenario(
       },
       milestones: Object.fromEntries(
         bundle.baseline.milestones.map((milestone) => {
-          const file = milestone.title.includes('IAO') ? iao : cpc;
+          const committee = milestone.title.includes('IAO') ? 'IAO' : 'CPC';
+          const file = committee === 'IAO' ? iao : cpc;
+          const passage =
+            packPassage(institutionId, quarter, milestone.title, committee) ??
+            'Minutes, item 4';
           return [
             milestone.id,
             {
@@ -179,9 +198,7 @@ export async function runScenario(
               output: `${milestone.code} completed as planned.`,
               emergingIssues: '',
               actions: '',
-              evidence: file
-                ? [{ evidenceId: file, passage: 'Minutes, item 4' }]
-                : [],
+              evidence: file ? [{ evidenceId: file, passage }] : [],
               evidenceUnavailable: file ? null : unavailable,
             },
           ];
@@ -262,7 +279,7 @@ export async function runScenario(
       current.id,
       current.currentRevision,
       quarter,
-      claimAll(bundle, cpc, iao),
+      claimAll(bundle, cpc, iao, institutionId, quarter),
       bundle.draft?.version ?? 0,
     );
     await log(
@@ -607,7 +624,7 @@ export async function runScenario(
     const iao = (
       await upload('DEMO-002', 1, 'iao-minutes-q1-signed.pdf', 'iao_minutes')
     ).id;
-    return claimAll(bundle, cpc, iao);
+    return claimAll(bundle, cpc, iao, 'DEMO-002', 1);
   });
   await at('2026-10-09T10:00:00+03:00');
   await review('DEMO-002', 1);
@@ -646,6 +663,7 @@ export async function runScenario(
         'cpc-minutes-q2-2027.pdf',
         'cpc_minutes',
         wrong.id,
+        { revision: 2 },
       )
     ).id;
     const answers = structuredClone(bundle.draft!.answers);

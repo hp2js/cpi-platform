@@ -87,12 +87,18 @@ function save(url: string, fileName: string) {
 const SHEET_ROWS = 200;
 const SHEET_COLUMNS = 30;
 
-function SpreadsheetPreview({ blob }: { blob: Blob }) {
+function SpreadsheetPreview({
+  blob,
+  initialSheet,
+}: {
+  blob: Blob;
+  initialSheet?: number;
+}) {
   const [sheets, setSheets] = useState<
     { sheet: string; data: unknown[][] }[] | null
   >(null);
   const [error, setError] = useState<string | null>(null);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState((initialSheet ?? 1) - 1);
   useEffect(() => {
     let cancelled = false;
     import('read-excel-file/browser')
@@ -254,11 +260,13 @@ function Preview({
   url,
   kind,
   title,
+  page,
 }: {
   file: FetchedFile;
   url: string;
   kind: Kind;
   title: string;
+  page?: number;
 }) {
   const [actualSize, setActualSize] = useState(false);
   switch (kind) {
@@ -267,7 +275,7 @@ function Preview({
         <Suspense
           fallback={<PreviewMessage>Loading the PDF viewer…</PreviewMessage>}
         >
-          <PdfPreview blob={file.blob} title={title} />
+          <PdfPreview blob={file.blob} title={title} page={page} />
         </Suspense>
       );
     case 'image':
@@ -310,7 +318,7 @@ function Preview({
     case 'docx':
       return <DocumentPreview blob={file.blob} title={title} />;
     case 'xlsx':
-      return <SpreadsheetPreview blob={file.blob} />;
+      return <SpreadsheetPreview blob={file.blob} initialSheet={page} />;
     case 'text':
       return <TextPreview blob={file.blob} />;
     default:
@@ -323,7 +331,13 @@ function Preview({
   }
 }
 
-function ViewerBody({ file: item }: { file: ViewableFile }) {
+function ViewerBody({
+  file: item,
+  page,
+}: {
+  file: ViewableFile;
+  page?: number;
+}) {
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'error'; message: string }
@@ -392,7 +406,13 @@ function ViewerBody({ file: item }: { file: ViewableFile }) {
       ) : (
         <span />
       )}
-      <Preview file={file} url={url} kind={kind} title={item.fileName} />
+      <Preview
+        file={file}
+        url={url}
+        kind={kind}
+        title={item.fileName}
+        page={page}
+      />
     </div>
   );
 }
@@ -405,9 +425,15 @@ function ViewerBody({ file: item }: { file: ViewableFile }) {
 export function FileViewer({
   file,
   className,
+  page,
+  label,
 }: {
   file: ViewableFile;
   className?: string;
+  /** Opens at this PDF page or workbook sheet (1-based). */
+  page?: number;
+  /** Trigger text instead of the file name, which stays available to screen readers. */
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const kind = kindOf(file.mimeType ?? '', file.fileName);
@@ -427,8 +453,10 @@ export function FileViewer({
           type="button"
           className={cn('usa-link text-left font-bold break-all', className)}
         >
-          {file.fileName}
-          <span className="sr-only"> (view or download)</span>
+          {label ?? file.fileName}
+          <span className="sr-only">
+            {label ? ` (${file.fileName})` : ' (view or download)'}
+          </span>
         </button>
       </DialogTrigger>
       <DialogContent className="grid h-[90svh] max-h-[90svh] grid-cols-1 grid-rows-[auto_1fr] p-4 tablet:max-w-desktop tablet:p-6">
@@ -443,7 +471,7 @@ export function FileViewer({
             )}
           </DialogDescription>
         </DialogHeader>
-        {open && <ViewerBody file={file} />}
+        {open && <ViewerBody file={file} page={page} />}
       </DialogContent>
     </Dialog>
   );

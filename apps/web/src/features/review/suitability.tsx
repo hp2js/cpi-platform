@@ -6,7 +6,8 @@ import {
   type ReviewBundle,
   type SuitabilityChecks,
 } from '@cpi/contracts';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { FileViewer } from '@/features/files/file-viewer';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { AssistantPanel, assistantQuery } from './assistant';
 import { recordSuitability, reviewKeys } from './queries';
 
 type Outcome = SuitabilityChecks['institution']['outcome'];
@@ -93,6 +95,10 @@ function FileChecks({
     )
     .map((milestone) => milestone.code);
   const idBase = `suit-${item.id}`;
+  // The evidence assistant's latest reading of this file version, if any (PRD §14).
+  const assistant = useQuery(assistantQuery(bundle.submissionId, item.id));
+  const latest = assistant.data?.runs.find((run) => run.evidenceId === item.id);
+  const hints = latest?.status === 'completed' ? latest.checkHints : [];
 
   return (
     <li className="grid gap-3 rounded-lg border border-base-lighter bg-white p-4">
@@ -182,6 +188,13 @@ function FileChecks({
               </span>
             </div>
           )}
+          {hints.length > 0 && (
+            <p className="text-xs text-base-dark">
+              The evidence assistant's findings are shown under each check.
+              Using one fills in that check only; nothing is recorded until you
+              save the checks.
+            </p>
+          )}
           {suitabilityCheckKeys.map((key) => {
             const check = checks[key];
             const unset = showMissing && check.outcome === null;
@@ -199,6 +212,46 @@ function FileChecks({
                 <legend className="text-sm font-bold">
                   {suitabilityCheckLabels[key]}
                 </legend>
+                {hints
+                  .filter((hint) => hint.check === key)
+                  .map((hint) => (
+                    <div
+                      key={hint.check}
+                      className="flex flex-wrap items-start gap-2 bg-info-lighter px-3 py-2 text-xs"
+                    >
+                      <Sparkles
+                        className="mt-1 size-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <p className="min-w-0 flex-1">
+                        <span className="font-bold">
+                          AI suggests {outcomeLabel[hint.outcome]}:
+                        </span>{' '}
+                        {hint.reason}
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setChecks({
+                            ...checks,
+                            [key]: {
+                              outcome: hint.outcome,
+                              reason:
+                                hint.outcome === 'pass' ? '' : hint.reason,
+                            },
+                          })
+                        }
+                      >
+                        Use
+                        <span className="sr-only">
+                          {' '}
+                          the AI suggestion for {suitabilityCheckLabels[key]}
+                        </span>
+                      </Button>
+                    </div>
+                  ))}
                 {unset && (
                   <p
                     id={`${idBase}-${key}-error`}
@@ -290,6 +343,7 @@ function FileChecks({
           </div>
         </form>
       )}
+      <AssistantPanel submissionId={bundle.submissionId} item={item} />
     </li>
   );
 }

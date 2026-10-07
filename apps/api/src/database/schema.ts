@@ -18,6 +18,10 @@ import type {
   FormChange,
   RiskScale,
   AccountingOfficer,
+  AssistantFinding,
+  AssistantKind,
+  AssistantRun,
+  AssistantSuggestion,
   Attestation,
   AuditEvent,
   ClarificationItem,
@@ -279,6 +283,8 @@ export const systemState = pgTable('system_state', {
   businessTime: instant().notNull(),
   /** Development control: the demo email sink rejects deliveries (AT12). */
   emailFailureMode: boolean().notNull().default(false),
+  /** Evidence assistant on or off for the deployment (PRD §14); a reset turns it off. */
+  assistantEnabled: boolean().notNull().default(false),
 });
 
 /** Clock boundary events already processed in a run: replays are no-ops. */
@@ -803,4 +809,49 @@ export const auditEvents = pgTable('audit_events', {
   summary: text().notNull(),
   businessTime: instant().notNull(),
   actualTime: instant().notNull(),
+});
+
+/* Evidence assistant (PRD §14): suggestions are officer aids, never review records. */
+
+/** One run per request; a completed run is reused for the same file version, model and prompt. */
+export const assistantRuns = pgTable('assistant_runs', {
+  id: text().primaryKey(),
+  seq: serial(),
+  evidenceId: text()
+    .notNull()
+    .references(() => evidence.id),
+  status: text().$type<AssistantRun['status']>().notNull(),
+  message: text(),
+  provider: text().notNull(),
+  model: text().notNull(),
+  promptRevision: text().notNull(),
+  language: text().$type<NonNullable<AssistantRun['language']>>(),
+  unit: text().$type<NonNullable<AssistantRun['unit']>>(),
+  unreadablePages: jsonb().$type<number[]>().notNull().default([]),
+  discarded: jsonb()
+    .$type<AssistantRun['discarded']>()
+    .notNull()
+    .default({ untraceable: 0, instructionLike: 0 }),
+  hiddenKinds: jsonb().$type<AssistantKind[]>().notNull().default([]),
+  requestedBy: text().notNull(),
+  /** Business time, for the record. */
+  requestedAt: instant().notNull(),
+  /** Real time, for the timeout. */
+  startedAt: instant().notNull(),
+  durationMs: integer(),
+});
+
+export const assistantSuggestions = pgTable('assistant_suggestions', {
+  id: text().primaryKey(),
+  seq: serial(),
+  runId: text()
+    .notNull()
+    .references(() => assistantRuns.id),
+  kind: text().$type<AssistantKind>().notNull(),
+  finding: text().$type<AssistantFinding>().notNull(),
+  milestoneCode: text(),
+  statement: text().notNull(),
+  quote: text(),
+  page: integer(),
+  decision: jsonb().$type<NonNullable<AssistantSuggestion['decision']>>(),
 });
