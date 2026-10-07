@@ -2,10 +2,18 @@ DEMO-005 | Demo Referral Hospital Board | Q3 FY 2026/2027 (1 January - 31 March 
 
 THIS FOLDER IS INTENTIONALLY EMPTY OF EVIDENCE. Do not upload this file.
 
-Scenario (PRD §17.1, annual example B; acceptance test AT15): the institution makes NO Q3 submission.
+Locked Q3 baseline (4 milestones, weight 1 each), activated before Q3 opened:
+  M-09  A-01  Supplier rotation applied to quarterly orders: quarter 3 exception review
+              An exception review of the control was completed and recorded by the end of Q3.
+  M-10  A-03  Procurement approval spot-check completed
+              A sample of at least ten approvals was checked in Q3 and findings recorded.
+  M-11  Committee obligation  The Corruption Prevention Committee met during the quarter.
+  M-12  Committee obligation  The Integrity Assurance Officers met during the quarter.
+
+Scenario (PRD 17.1, annual example B; acceptance test AT15): the institution makes NO Q3 submission.
 - No Q3 progress report, CPC minutes or IAO minutes exist for upload.
 - Submission deadline 15 April 2027 passes; reminders at 7 days (8 Apr), 1 day (14 Apr) and overdue (16 Apr 2027).
 - Officer B issues a nonresponse notice on 19 April 2027 with a 7-day response window (to 26 April 2027). No response arrives.
 - While evaluation is open, Q3 stays MISSING and the annual result is PENDING (not 70.00). No renormalisation over Q1, Q2 and Q4.
 - After the evaluation cutoff (31 July 2027) Officer B closes Q3 with I3 = 0 and a recorded reason. Only then is the annual result 70.00.
-- The Q4 report (05_Q4) explains the gap and claims no Q3 milestone. It is not a Q3 submission and must not be attached to Q3.
+- The Q4 report (05_Q4) explains the gap and claims no Q3 milestone (M-09 to M-12). It is not a Q3 submission and must not be attached to Q3.
