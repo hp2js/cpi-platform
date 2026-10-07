@@ -153,6 +153,7 @@ export interface MockFoundationVersion {
 }
 
 export interface MockFoundationReview {
+  id: string;
   institutionId: string;
   kind: FoundationKind;
   versionId: string;

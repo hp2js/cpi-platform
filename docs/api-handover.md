@@ -131,15 +131,15 @@ Form versions carry `revision` and `changes: [{ kind: added | removed | changed 
 
 ### Annual evaluation and publication (§7.6, FR12–FR13, FR16)
 
-| Method and path                                       | Roles   | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/annual`                                     | O, S, A | Per institution: four quarter dispositions, three foundation outcomes, total (pending with reasons until all are final), publication and correction state.                                                                                                                                                                                                                                                                             |
-| `POST /api/annual/publish`                            | A       | After the cutoff only. Batch of releasable institutions; a republish needs an open correction case and creates version n+1, superseding the previous (AT19–AT20).                                                                                                                                                                                                                                                                      |
-| `POST /api/annual/corrections`                        | A       | Opens a case for one quarter of a published result.                                                                                                                                                                                                                                                                                                                                                                                    |
-| `POST /api/annual/extensions`                         | A       | Authorized institution-specific evaluation extension `{ institutionId, untilDate, reason, authorizedBy }` (AT29). Must end after the cutoff and never before an open clarification window. Evaluations expose `extension`, `extensionRequired` and `holds`; release waits until the extension ends.                                                                                                                                    |
-| `GET /api/annual/report(.csv)`                        | S, A    | `cpi-export-1` JSON, or CSV with formula-injection-safe cells.                                                                                                                                                                                                                                                                                                                                                                         |
-| `GET /api/results`, `/export.csv`                     | I       | Own publications only (current and superseded).                                                                                                                                                                                                                                                                                                                                                                                        |
-| `GET /api/oversight?periodId&institutionId&officerId` | S, A    | §4.3 metrics with numerator and denominator (`percent: null` when the denominator is zero), backlog, workload (a supervisor sees only the officers reviewing their institutions), finalized-only comparison with plan size, `trends` per quarter across the cycle (`due`, `submitted`, `onTime`, `finalized`, `awaitingOfficer`, `reviewOverdue`, `averagePoints`; `due: 0` for quarters not yet due) and the `reviewTarget` in force. |
+| Method and path                                         | Roles   | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/annual`                                       | O, S, A | Per institution: four quarter dispositions, three foundation outcomes, total (pending with reasons until all are final), publication and correction state.                                                                                                                                                                                                                                                                             |
+| `POST /api/annual/publish`                              | A       | After the cutoff only. Batch of releasable institutions; a republish needs an open correction case and creates version n+1, superseding the previous (AT19–AT20).                                                                                                                                                                                                                                                                      |
+| `POST /api/annual/corrections`                          | A       | Opens a case for one quarter of a published result.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `POST /api/annual/extensions`                           | A       | Authorized institution-specific evaluation extension `{ institutionId, untilDate, reason, authorizedBy }` (AT29). Must end after the cutoff and never before an open clarification window. Evaluations expose `extension`, `extensionRequired` and `holds`; release waits until the extension ends.                                                                                                                                    |
+| `GET /api/annual/report`, `/report.csv`, `/report.json` | S, A    | The on-screen report; the `cpi-export-2` export as CSV or JSON (see below), audited.                                                                                                                                                                                                                                                                                                                                                   |
+| `GET /api/results`, `/export.csv`, `/export.json`       | I       | Own publications only (current and superseded); the export holds the current release.                                                                                                                                                                                                                                                                                                                                                  |
+| `GET /api/oversight?periodId&institutionId&officerId`   | S, A    | §4.3 metrics with numerator and denominator (`percent: null` when the denominator is zero), backlog, workload (a supervisor sees only the officers reviewing their institutions), finalized-only comparison with plan size, `trends` per quarter across the cycle (`due`, `submitted`, `onTime`, `finalized`, `awaitingOfficer`, `reviewOverdue`, `averagePoints`; `due: 0` for quarters not yet due) and the `reviewTarget` in force. |
 
 ### Settings (PRD §7.1, FR01, FR02, §10.1)
 
@@ -239,49 +239,161 @@ Review actions belong to the assigned officer. An administrator may take one onl
 | `GET /api/simulation`, `POST /advance`, `/reset`                          | any; A | Named boundaries processed once per run (AT13, AT24). `controls` is true only in the demo environment (`DEMO_MODE` and a `…_demo` database), and `blockedBy` (`demo_only`, `not_demo_database` or null) says why it is not; advance and reset answer `409 demo_only` or `not_demo_database` elsewhere, where business time follows the real clock. See [`simulation.md`](simulation.md). |
 | `POST /api/simulation/scenario`                                           | A      | Demo driver (HP2-28), demo environment only. `apps/api/src/simulation/scenario.ts` plays the steps; the expected results are asserted in `simulation.int.test.ts`.                                                                                                                                                                                                                       |
 
-## Export column dictionary (`cpi-export-1`, FR16)
+## Export (`cpi-export-2`, PRD §12.3, FR13, FR16)
 
-`GET /api/annual/report.csv` and `GET /api/results/export.csv` return one row per foundation component and per quarter of each published result:
+Four endpoints return the same rows. The CSV's columns are the JSON row keys, in this order:
 
-| Column                    | Meaning                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `schema_version`          | Always `cpi-export-1`.                                                          |
-| `simulation`              | `true`: the demonstration profile, not official EACC scoring.                   |
-| `cycle_id`                | Stable cycle identifier, e.g. `FY2026-27`.                                      |
-| `scoring_profile_version` | The profile the result was scored with.                                         |
-| `institution_id`          | Stable institution identifier, e.g. `DEMO-001`.                                 |
-| `period_id`               | Quarter identifier; empty for foundation rows.                                  |
-| `submission_revision`     | The finalized revision behind a quarter row; empty for foundations.             |
-| `indicator_id`            | `procedures`, `risk_assessment`, `mitigation_plan` or `implementation`.         |
-| `maximum_points`          | Points available for the row under the profile.                                 |
-| `earned_points`           | Points earned, two decimals, half-up from exact fractions; empty while pending. |
-| `status`                  | Disposition or score status, with `(late)` for a late quarter.                  |
-| `published_at`            | Release time, ISO 8601 with offset.                                             |
-| `publication_version`     | 1 for the first release; higher after a correction.                             |
+- `GET /api/annual/report.csv` and `/api/annual/report.json` (supervisor, administrator): every institution in scope, released and unreleased.
+- `GET /api/results/export.csv` and `/api/results/export.json` (institution): its own current released result only; 404 `not_published` before release.
 
-Cells that begin with `=`, `+`, `-`, `@`, a tab or a carriage return are prefixed with `'` so spreadsheets do not run them as formulas. A minimal JSON report (`GET /api/annual/report`):
+Each released result has one `annual_total` row, one row per foundation and one per quarter. Every download is recorded in the audit log (`export.download`). The rows are built by `exportPayload` in `packages/contracts/src/domain/export.ts`, which the API and the mock share, so their exports are identical.
+
+**Formats.** Timestamps are ISO 8601 in UTC (`Z`), in columns ending `_utc`. Points are annual points out of 100, as decimal strings with two places, rounded half up from exact fractions. Days late are whole days in `days_late_unit`. The JSON payload repeats these in `formats`.
+
+**Compatibility.** `cpi-export-2` replaces `cpi-export-1` and is not backwards compatible. It adds the total, names and traceability columns, and moves lateness out of `status` into `late`. `scoring_profile_version` is now the profile version, not its name, and `simulation` comes from the profile.
+
+| Column                    | Meaning                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`          | Always `cpi-export-2`.                                                                                                                                                                                        |
+| `simulation`              | `true` when the scoring profile the result used is a simulation profile, not official EACC scoring. Taken from the profile, never assumed.                                                                    |
+| `cycle_id`                | Stable cycle identifier, e.g. `FY2026-27`.                                                                                                                                                                    |
+| `cycle_label`             | Display name of the cycle.                                                                                                                                                                                    |
+| `scoring_profile_id`      | Stable identifier of the scoring profile, e.g. `hackathon-mock-v1`.                                                                                                                                           |
+| `scoring_profile_version` | The profile version (an integer), frozen with the published result.                                                                                                                                           |
+| `institution_id`          | Stable institution identifier, e.g. `DEMO-001`.                                                                                                                                                               |
+| `institution_name`        | Institution name.                                                                                                                                                                                             |
+| `release_status`          | `released`, or `unreleased`: one `annual_total` row with no points, whose `status` and `rule_explanation` say why.                                                                                            |
+| `indicator_id`            | `annual_total`, `procedures`, `risk_assessment`, `mitigation_plan` or `implementation` (one row per quarter).                                                                                                 |
+| `period_id`               | Quarter identifier; empty except on `implementation` rows.                                                                                                                                                    |
+| `form_version`            | The reporting form version the submission was made on, e.g. `form-v1`.                                                                                                                                        |
+| `submission_id`           | The submission behind a quarter row.                                                                                                                                                                          |
+| `submission_revision`     | The finalized revision of that submission.                                                                                                                                                                    |
+| `decision_ids`            | The source decisions: milestone decision IDs for a quarter, the foundation review ID for a foundation. Empty for the total (traced by `publication_id`) and for closures. JSON array; joined with `;` in CSV. |
+| `reviewer_ref`            | Account ID of the officer who finalized, closed or reviewed, e.g. `officer-a`.                                                                                                                                |
+| `reviewed_at_utc`         | When the quarter was finalized or closed, or the foundation reviewed.                                                                                                                                         |
+| `maximum_points`          | Points available for the row: 100.00 for the total, the foundation weight, or implementation ÷ 4 per quarter. Empty while unreleased.                                                                         |
+| `earned_points`           | Points earned, from exact fractions. Empty while pending or unreleased.                                                                                                                                       |
+| `status`                  | Score status (`calculated`, `pending`) or quarter disposition (`finalized`, `closed_without_submission`, …); `ready_not_published` or `pending` when unreleased. Lateness is never mixed in.                  |
+| `late`                    | Whether the quarter was first submitted after its deadline. No penalty is applied.                                                                                                                            |
+| `days_late`               | Days after the deadline, 0 when on time.                                                                                                                                                                      |
+| `days_late_unit`          | `calendar` or `working`, as the cycle counts days.                                                                                                                                                            |
+| `missing_data_status`     | `complete`, `closed_without_submission` (an explicit zero) or `pending`.                                                                                                                                      |
+| `rule_explanation`        | How the row was scored, including each rejected milestone or failed check with its reason, or why the result is unreleased.                                                                                   |
+| `publication_id`          | The release the row belongs to.                                                                                                                                                                               |
+| `publication_version`     | 1 for the first release; higher after a correction.                                                                                                                                                           |
+| `batch_id`                | The publication batch.                                                                                                                                                                                        |
+| `published_at_utc`        | Release time.                                                                                                                                                                                                 |
+
+Cells that begin with `=`, `+`, `-`, `@`, a tab or a carriage return are prefixed with `'` so spreadsheets do not run them as formulas. A sample from `GET /api/annual/report.json` after the scripted year, with DEMO-001 published (three of its 15 rows):
 
 ```json
 {
-  "schemaVersion": "cpi-export-1",
-  "simulation": true,
-  "generatedAt": "2027-08-01T08:00:00+03:00",
-  "cycleLabel": "FY 2026/27",
-  "profileName": "Hackathon Mock v1",
-  "released": [
+  "schemaVersion": "cpi-export-2",
+  "generatedAtUtc": "2027-08-01T05:00:00.000Z",
+  "formats": {
+    "timestamps": "ISO 8601 in UTC (suffix Z); columns ending _utc",
+    "points": "Annual points out of 100, decimal strings with 2 places, rounded half up",
+    "daysLate": "Whole days, counted as days_late_unit states",
+    "lists": "decision_ids is a JSON array; in CSV its values are joined with ;"
+  },
+  "rows": [
     {
-      "institutionId": "DEMO-001",
-      "version": 1,
-      "evaluation": { "total": { "status": "calculated", "points": "88.75" } }
-    }
-  ],
-  "unreleased": [
+      "schema_version": "cpi-export-2",
+      "simulation": true,
+      "cycle_id": "FY2026-27",
+      "cycle_label": "FY 2026/27",
+      "scoring_profile_id": "hackathon-mock-v1",
+      "scoring_profile_version": 1,
+      "institution_id": "DEMO-001",
+      "institution_name": "Demo Appointments Service Agency",
+      "release_status": "released",
+      "indicator_id": "annual_total",
+      "period_id": null,
+      "form_version": null,
+      "submission_id": null,
+      "submission_revision": null,
+      "decision_ids": [],
+      "reviewer_ref": null,
+      "reviewed_at_utc": null,
+      "maximum_points": "100.00",
+      "earned_points": "88.75",
+      "status": "calculated",
+      "late": null,
+      "days_late": null,
+      "days_late_unit": null,
+      "missing_data_status": "complete",
+      "rule_explanation": "Foundations 40.00 + implementation 48.75 (60 × average 13/16 over four quarters) = 88.75",
+      "publication_id": "pub-1243",
+      "publication_version": 1,
+      "batch_id": "batch-1242",
+      "published_at_utc": "2027-08-01T05:00:00.000Z"
+    },
     {
-      "institutionId": "DEMO-005",
-      "reasons": ["Q3 not submitted and not yet closed"]
+      "schema_version": "cpi-export-2",
+      "simulation": true,
+      "cycle_id": "FY2026-27",
+      "cycle_label": "FY 2026/27",
+      "scoring_profile_id": "hackathon-mock-v1",
+      "scoring_profile_version": 1,
+      "institution_id": "DEMO-001",
+      "institution_name": "Demo Appointments Service Agency",
+      "release_status": "released",
+      "indicator_id": "implementation",
+      "period_id": "FY2026-27-Q1",
+      "form_version": "form-v1",
+      "submission_id": "sub-0194",
+      "submission_revision": 1,
+      "decision_ids": ["dec-0312", "dec-0314", "dec-0316", "dec-0318"],
+      "reviewer_ref": "officer-a",
+      "reviewed_at_utc": "2026-10-07T07:00:00.000Z",
+      "maximum_points": "15.00",
+      "earned_points": "7.50",
+      "status": "finalized",
+      "late": false,
+      "days_late": 0,
+      "days_late_unit": "calendar",
+      "missing_data_status": "complete",
+      "rule_explanation": "Q1: 2/4 milestones accepted × 60 ÷ 4. M-01 rejected: The exception review is not recorded in the minutes. M-02 rejected: Training attendance is not recorded.",
+      "publication_id": "pub-1243",
+      "publication_version": 1,
+      "batch_id": "batch-1242",
+      "published_at_utc": "2027-08-01T05:00:00.000Z"
+    },
+    {
+      "schema_version": "cpi-export-2",
+      "simulation": true,
+      "cycle_id": "FY2026-27",
+      "cycle_label": "FY 2026/27",
+      "scoring_profile_id": "hackathon-mock-v1",
+      "scoring_profile_version": 1,
+      "institution_id": "DEMO-002",
+      "institution_name": "Demo Water Services Board",
+      "release_status": "unreleased",
+      "indicator_id": "annual_total",
+      "period_id": null,
+      "form_version": null,
+      "submission_id": null,
+      "submission_revision": null,
+      "decision_ids": [],
+      "reviewer_ref": null,
+      "reviewed_at_utc": null,
+      "maximum_points": null,
+      "earned_points": null,
+      "status": "ready_not_published",
+      "late": null,
+      "days_late": null,
+      "days_late_unit": null,
+      "missing_data_status": "complete",
+      "rule_explanation": "Ready, not yet published.",
+      "publication_id": null,
+      "publication_version": null,
+      "batch_id": null,
+      "published_at_utc": null
     }
   ]
 }
 ```
+
+`GET /api/annual/report` is the on-screen consolidated report, not the export.
 
 Development-only mock routes under `/api/__mock/*` (reset, session expiry, latency, email failure, fault injection) are not part of the contract.

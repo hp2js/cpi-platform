@@ -378,6 +378,7 @@ export const foundationHandlers = [
             ),
         );
         db.foundationReviews.push({
+          id: nextId('foundation-review'),
           institutionId,
           kind: kind.data,
           versionId: version.id,

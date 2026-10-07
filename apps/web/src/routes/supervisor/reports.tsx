@@ -113,25 +113,19 @@ export function ReportsPage() {
     mutationFn: () =>
       downloadExport('/api/annual/report.csv', 'cpi-consolidated-results.csv'),
   });
-  function downloadJson() {
-    if (!report.data) return;
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(report.data, null, 2)], {
-        type: 'application/json',
-      }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'cpi-consolidated-results.json';
-    link.click();
-    URL.revokeObjectURL(url);
-  }
+  const json = useMutation({
+    mutationFn: () =>
+      downloadExport(
+        '/api/annual/report.json',
+        'cpi-consolidated-results.json',
+      ),
+  });
   return (
     <div className="grid gap-6">
       <PageHeader
         eyebrow="Oversight"
         title="Consolidated annual report"
-        description="Released results with their explanation, and every unreleased institution with its reason. Exports follow the versioned cpi-export-1 schema."
+        description="Released results with their explanation, and every unreleased institution with its reason. Exports follow the versioned cpi-export-2 schema, with the same rows in CSV and JSON."
         actions={
           <>
             <Button variant="plain" onClick={() => window.print()}>
@@ -148,8 +142,8 @@ export function ReportsPage() {
             </Button>
             <Button
               variant="plain"
-              onClick={downloadJson}
-              disabled={!report.data}
+              onClick={() => json.mutate()}
+              disabled={json.isPending}
             >
               <Download aria-hidden="true" />
               JSON

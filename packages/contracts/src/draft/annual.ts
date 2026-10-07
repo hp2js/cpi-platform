@@ -79,6 +79,18 @@ export const quarterDispositionSchema = z.object({
   planSize: z.number().int().nonnegative(),
   /** Officer's recorded reason when a quarter was closed without submission. */
   note: z.string().nullable(),
+  /*
+   * Source records, so an exported result traces back to its decisions (FR16). Defaults keep
+   * results published before these fields existed readable.
+   */
+  submissionId: z.string().nullable().default(null),
+  formVersionId: z.string().nullable().default(null),
+  /** The milestone decisions the finalized score counts. */
+  decisionIds: z.array(z.string()).default([]),
+  /** The reviewer's account ID; `reviewedBy` is their display name. */
+  reviewerId: z.string().nullable().default(null),
+  /** When the quarter was finalized or closed without submission. */
+  reviewedAt: instantSchema.nullable().default(null),
 });
 export type QuarterDisposition = z.infer<typeof quarterDispositionSchema>;
 
@@ -88,6 +100,11 @@ export const foundationOutcomeSchema = z.object({
   score: componentScoreSchema,
   versionId: z.string().nullable(),
   failedChecks: z.array(z.object({ check: z.string(), reason: z.string() })),
+  /** The foundation review the score counts, for traceability (FR16). */
+  reviewId: z.string().nullable().default(null),
+  reviewedBy: z.string().nullable().default(null),
+  reviewerId: z.string().nullable().default(null),
+  reviewedAt: instantSchema.nullable().default(null),
 });
 
 export const annualEvaluationSchema = z.object({
@@ -98,6 +115,16 @@ export const annualEvaluationSchema = z.object({
   foundations: z.array(foundationOutcomeSchema).length(3),
   /** Weights of the profile the evaluation used; each quarter is worth implementation ÷ 4. */
   weights: indicatorWeightsSchema,
+  /** The scoring profile the evaluation used, frozen with a published result. */
+  scoringProfile: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      version: z.number().int().positive(),
+      simulation: z.boolean(),
+    })
+    .nullable()
+    .default(null),
   /** Annual score, or pending with reasons: never renormalised over reported quarters (§10.5). */
   total: z.discriminatedUnion('status', [
     z.object({
@@ -214,8 +241,8 @@ export const institutionResultsSchema = z.object({
 });
 export type InstitutionResults = z.infer<typeof institutionResultsSchema>;
 
+/** The on-screen consolidated report; the versioned export is `exportPayloadSchema`. */
 export const consolidatedReportSchema = z.object({
-  schemaVersion: z.literal('cpi-export-1'),
   simulation: z.boolean(),
   generatedAt: instantSchema,
   cycleLabel: z.string(),
@@ -225,8 +252,85 @@ export const consolidatedReportSchema = z.object({
     z.object({
       institutionId: institutionIdSchema,
       institutionName: z.string(),
+      /** Calculable and free of holds: waiting only for publication. */
+      ready: z.boolean(),
       reasons: z.array(z.string()),
     }),
   ),
 });
 export type ConsolidatedReport = z.infer<typeof consolidatedReportSchema>;
+
+/*
+ * The annual export (PRD §12.3, FR13, FR16). CSV and JSON carry the same rows: CSV columns are
+ * these keys in this order. A change that is not backwards compatible bumps the version.
+ */
+export const EXPORT_SCHEMA_VERSION = 'cpi-export-2';
+
+export const exportRowSchema = z.object({
+  schema_version: z.literal(EXPORT_SCHEMA_VERSION),
+  /** Taken from the scoring profile the result used. */
+  simulation: z.boolean(),
+  cycle_id: z.string(),
+  cycle_label: z.string(),
+  scoring_profile_id: z.string().nullable(),
+  scoring_profile_version: z.number().int().positive().nullable(),
+  institution_id: institutionIdSchema,
+  institution_name: z.string(),
+  /** Unreleased institutions get one `annual_total` row with no points and the reasons. */
+  release_status: z.enum(['released', 'unreleased']),
+  indicator_id: z.enum([
+    'annual_total',
+    'procedures',
+    'risk_assessment',
+    'mitigation_plan',
+    'implementation',
+  ]),
+  /** Set on implementation rows only. */
+  period_id: z.string().nullable(),
+  form_version: z.string().nullable(),
+  submission_id: z.string().nullable(),
+  submission_revision: z.number().int().positive().nullable(),
+  /** Implementation: milestone decisions; foundations: the foundation review. */
+  decision_ids: z.array(z.string()),
+  reviewer_ref: z.string().nullable(),
+  reviewed_at_utc: instantSchema.nullable(),
+  /** Annual points, decimal strings with 2 places, rounded half up. */
+  maximum_points: z.string().nullable(),
+  earned_points: z.string().nullable(),
+  status: z.string(),
+  late: z.boolean().nullable(),
+  days_late: z.number().int().nonnegative().nullable(),
+  days_late_unit: dayCountingModeSchema.nullable(),
+  missing_data_status: z.enum([
+    'complete',
+    'closed_without_submission',
+    'pending',
+  ]),
+  rule_explanation: z.string(),
+  publication_id: z.string().nullable(),
+  publication_version: z.number().int().positive().nullable(),
+  batch_id: z.string().nullable(),
+  published_at_utc: instantSchema.nullable(),
+});
+export type ExportRow = z.infer<typeof exportRowSchema>;
+
+export const exportFormats = {
+  timestamps: 'ISO 8601 in UTC (suffix Z); columns ending _utc',
+  points:
+    'Annual points out of 100, decimal strings with 2 places, rounded half up',
+  daysLate: 'Whole days, counted as days_late_unit states',
+  lists: 'decision_ids is a JSON array; in CSV its values are joined with ;',
+} as const;
+
+export const exportPayloadSchema = z.object({
+  schemaVersion: z.literal(EXPORT_SCHEMA_VERSION),
+  generatedAtUtc: instantSchema,
+  formats: z.object({
+    timestamps: z.literal(exportFormats.timestamps),
+    points: z.literal(exportFormats.points),
+    daysLate: z.literal(exportFormats.daysLate),
+    lists: z.literal(exportFormats.lists),
+  }),
+  rows: z.array(exportRowSchema),
+});
+export type ExportPayload = z.infer<typeof exportPayloadSchema>;

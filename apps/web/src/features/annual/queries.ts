@@ -64,7 +64,7 @@ export async function invalidateAnnual(queryClient: QueryClient) {
 
 /** Downloads a scoped export through the authenticated API, never a public storage URL. */
 export async function downloadExport(path: `/api/${string}`, fileName: string) {
-  const response = await fetch(path, { headers: { Accept: 'text/csv' } });
+  const response = await fetch(path);
   if (!response.ok) throw new Error('The export could not be generated.');
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement('a');

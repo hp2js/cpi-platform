@@ -1,14 +1,24 @@
-import type {
-  AnnualEvaluation,
-  AnnualOverview,
-  ConsolidatedReport,
-  Foundations,
-  InstitutionResults,
-  Oversight,
-  ReviewQueueItem,
+import {
+  exportColumns,
+  exportPayloadSchema,
+  parseCsv,
+  type AnnualEvaluation,
+  type AnnualOverview,
+  type ConsolidatedReport,
+  type Foundations,
+  type InstitutionResults,
+  type Oversight,
+  type ReviewQueueItem,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { systemState } from '../database/schema';
+import { eq, inArray } from 'drizzle-orm';
+import {
+  auditEvents,
+  decisions,
+  foundationReviews,
+  submissions,
+  systemState,
+} from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -236,4 +246,98 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
     ).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003', 'DEMO-004']);
     expect((await officer.json<ReviewQueueItem[]>('/reviews')).length).toBe(0);
   });
+
+  it('exports cpi-export-2 rows that trace back to their source decisions (FR13, FR16, §12.3)', async () => {
+    expect((await admin.post('/simulation/scenario')).status).toBe(200);
+    expect(
+      (await admin.post('/annual/publish', { institutionIds: ['DEMO-001'] }))
+        .status,
+    ).toBe(200);
+    const json = await admin.request('/annual/report.json');
+    expect(json.headers.get('content-disposition')).toBe(
+      'attachment; filename="cpi-consolidated-results.json"',
+    );
+    const payload = exportPayloadSchema.parse(json.body);
+    const rows = payload.rows.filter(
+      (row) => row.institution_id === 'DEMO-001',
+    );
+    expect(rows[0]).toMatchObject({
+      indicator_id: 'annual_total',
+      release_status: 'released',
+      maximum_points: '100.00',
+      earned_points: '88.75',
+      simulation: true,
+      scoring_profile_version: 1,
+      publication_version: 1,
+    });
+
+    // Follow the Q1 row back to the persisted decisions and submission (FR16).
+    const q1 = rows.find((row) => row.period_id === 'FY2026-27-Q1')!;
+    const traced = await api.db
+      .select()
+      .from(decisions)
+      .where(inArray(decisions.id, q1.decision_ids));
+    expect(traced.length).toBeGreaterThan(0);
+    expect(traced).toHaveLength(q1.decision_ids.length);
+    expect(
+      traced.every(
+        (decision) =>
+          decision.submissionId === q1.submission_id &&
+          decision.supersededAt === null,
+      ),
+    ).toBe(true);
+    const accepted = traced.filter((d) => d.outcome === 'accepted').length;
+    expect(q1.rule_explanation).toContain(
+      `${accepted}/${traced.length} milestones accepted`,
+    );
+    const [submission] = await api.db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.id, q1.submission_id!));
+    expect(submission).toMatchObject({
+      revision: q1.submission_revision,
+      formVersionId: q1.form_version,
+    });
+    expect(q1.reviewer_ref).toMatch(/^officer-/);
+    const procedures = rows.find((row) => row.indicator_id === 'procedures')!;
+    const [review] = await api.db
+      .select()
+      .from(foundationReviews)
+      .where(eq(foundationReviews.id, Number(procedures.decision_ids[0])));
+    expect(review).toMatchObject({
+      institutionId: 'DEMO-001',
+      kind: 'procedures',
+    });
+
+    // Unreleased institutions carry reasons and no numbers (AT18).
+    const unreleased = payload.rows.filter(
+      (row) => row.release_status === 'unreleased',
+    );
+    expect(unreleased).toHaveLength(7);
+    expect(unreleased.every((row) => row.earned_points === null)).toBe(true);
+
+    // The CSV carries the same rows, column for column.
+    const csv = parseCsv(
+      String((await admin.request('/annual/report.csv')).body),
+    );
+    expect(csv[0]).toEqual(exportColumns);
+    expect(csv).toHaveLength(payload.rows.length + 1);
+    expect(
+      await api.db
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.action, 'export.download')),
+    ).toHaveLength(2);
+
+    // An institution exports only its own released result (AT19).
+    const focal = await api.client().signIn('focal-demo-001');
+    const own = exportPayloadSchema.parse(
+      (await focal.request('/results/export.json')).body,
+    );
+    expect(own.rows.every((row) => row.institution_id === 'DEMO-001')).toBe(
+      true,
+    );
+    const other = await api.client().signIn('focal-demo-002');
+    expect((await other.request('/results/export.json')).status).toBe(404);
+  }, 120_000);
 });

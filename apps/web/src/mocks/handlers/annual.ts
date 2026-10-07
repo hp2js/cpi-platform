@@ -4,6 +4,7 @@ import {
   correctionRequestSchema,
   extensionRequestSchema,
   publishRequestSchema,
+  publishedResultSchema,
   type AnnualOverview,
   type ConsolidatedReport,
   type PublishedResult,
@@ -11,8 +12,8 @@ import {
 import { commit, getDb, nextId, type MockPublication } from '../db';
 import { evaluate } from '../services/annual';
 import { effectiveCutoff } from '../services/clarifications';
-import { toCsv } from '@cpi/contracts';
-import { format2, mul, rational } from '@cpi/contracts';
+import { exportCsv, exportPayload, type ExportPayload } from '@cpi/contracts';
+import type { MockUser } from '@cpi/contracts/fixtures';
 import {
   assignedOfficers,
   audit,
@@ -27,7 +28,7 @@ import {
   readableInstitutionIds,
 } from '../services/scope';
 import { requireRole } from '../services/session';
-import { profileLabel } from '../services/profiles';
+import { activeProfile, profileLabel } from '../services/profiles';
 
 function cutoffPassed() {
   const db = getDb();
@@ -36,6 +37,10 @@ function cutoffPassed() {
 
 function toPublished(publication: MockPublication): PublishedResult {
   const db = getDb();
+  // Parsed so snapshots published before the traceability fields get their defaults.
+  const evaluation = publishedResultSchema.shape.evaluation.parse(
+    publication.evaluation,
+  );
   return {
     id: publication.id,
     institutionId: publication.institutionId,
@@ -51,8 +56,9 @@ function toPublished(publication: MockPublication): PublishedResult {
     supersededBy: publication.supersededBy,
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
-    simulation: true,
-    evaluation: publication.evaluation as PublishedResult['evaluation'],
+    evaluation,
+    simulation:
+      evaluation.scoringProfile?.simulation ?? activeProfile().simulation,
   };
 }
 
@@ -61,7 +67,7 @@ function overview(institutionIds: string[]): AnnualOverview {
   return {
     cycleLabel: db.cycle.label,
     profileName: profileLabel(),
-    simulation: true,
+    simulation: activeProfile().simulation,
     evaluationCutoff: db.cycle.evaluationCutoff,
     cutoffPassed: cutoffPassed(),
     asOf: db.businessTime,
@@ -90,6 +96,7 @@ function consolidated(scope: string[]): ConsolidatedReport {
       return {
         institutionId: institution.id,
         institutionName: institution.name,
+        ready: evaluation.releasable,
         reasons:
           evaluation.total.status === 'pending'
             ? evaluation.total.reasons
@@ -97,8 +104,7 @@ function consolidated(scope: string[]): ConsolidatedReport {
       };
     });
   return {
-    schemaVersion: 'cpi-export-1',
-    simulation: true,
+    simulation: activeProfile().simulation,
     generatedAt: db.businessTime,
     cycleLabel: db.cycle.label,
     profileName: profileLabel(),
@@ -107,75 +113,46 @@ function consolidated(scope: string[]): ConsolidatedReport {
   };
 }
 
-/** Export rows follow the PRD §12.3 contract fields, one row per quarter or foundation component. */
-function exportRows(results: PublishedResult[]) {
+/** The versioned export (PRD §12.3), built by the same domain function as the API's. */
+function exportOf(
+  released: PublishedResult[],
+  unreleased: ConsolidatedReport['unreleased'],
+) {
   const db = getDb();
-  return results.flatMap((result) => [
-    ...result.evaluation.foundations.map((foundation) => [
-      'cpi-export-1',
-      true,
-      db.cycle.id,
-      result.profileName,
-      result.institutionId,
-      '',
-      '',
-      foundation.kind,
-      foundation.score.maxPoints,
-      foundation.score.status === 'calculated' ? foundation.score.points : '',
-      foundation.score.status,
-      result.publishedAt,
-      result.version,
-    ]),
-    ...result.evaluation.quarters.map((quarter) => [
-      'cpi-export-1',
-      true,
-      db.cycle.id,
-      result.profileName,
-      result.institutionId,
-      quarter.periodId,
-      quarter.revision ?? '',
-      'implementation',
-      result.evaluation.weights.implementation / 4,
-      quarter.implementation
-        ? format2(
-            mul(
-              rational(result.evaluation.weights.implementation, 4),
-              rational(
-                quarter.implementation.numerator,
-                quarter.implementation.denominator,
-              ),
-            ),
-          )
-        : '',
-      quarter.status + (quarter.late ? ' (late)' : ''),
-      result.publishedAt,
-      result.version,
-    ]),
-  ]);
-}
-const exportHeader = [
-  'schema_version',
-  'simulation',
-  'cycle_id',
-  'scoring_profile_version',
-  'institution_id',
-  'period_id',
-  'submission_revision',
-  'indicator_id',
-  'maximum_points',
-  'earned_points',
-  'status',
-  'published_at',
-  'publication_version',
-];
-
-function csvResponse(name: string, body: string) {
-  return new HttpResponse(body, {
-    headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${name}"`,
-    },
+  return exportPayload({
+    cycle: db.cycle,
+    profile: activeProfile(),
+    generatedAt: db.businessTime,
+    released,
+    unreleased,
   });
+}
+
+/** Every export download is audited, as in the API. */
+function download(
+  user: MockUser,
+  scope: string,
+  name: string,
+  format: string,
+  payload: ExportPayload,
+) {
+  commit((db) =>
+    audit(
+      db,
+      user,
+      'export.download',
+      { type: 'export', id: scope, version: payload.schemaVersion },
+      `${format.toUpperCase()}, ${payload.rows.length} rows`,
+    ),
+  );
+  const headers = {
+    'Content-Disposition': `attachment; filename="${name}.${format}"`,
+  };
+  return format === 'json'
+    ? HttpResponse.json(payload, { headers })
+    : new HttpResponse(exportCsv(payload), {
+        headers: { ...headers, 'Content-Type': 'text/csv; charset=utf-8' },
+      });
 }
 
 export const annualHandlers = [
@@ -473,15 +450,17 @@ export const annualHandlers = [
     const user = requireRole('supervisor', 'administrator');
     return HttpResponse.json(consolidated(readableInstitutionIds(user)));
   }),
-  http.get('/api/annual/report.csv', async () => {
+  http.get('/api/annual/report.:format', async ({ params }) => {
+    if (params.format !== 'csv' && params.format !== 'json') return notFound();
     await networkDelay();
     const user = requireRole('supervisor', 'administrator');
-    return csvResponse(
-      'cpi-consolidated-results.csv',
-      toCsv(
-        exportHeader,
-        exportRows(consolidated(readableInstitutionIds(user)).released),
-      ),
+    const report = consolidated(readableInstitutionIds(user));
+    return download(
+      user,
+      'consolidated',
+      'cpi-consolidated-results',
+      params.format,
+      exportOf(report.released, report.unreleased),
     );
   }),
 
@@ -503,7 +482,8 @@ export const annualHandlers = [
       results,
     });
   }),
-  http.get('/api/results/export.csv', async () => {
+  http.get('/api/results/export.:format', async ({ params }) => {
+    if (params.format !== 'csv' && params.format !== 'json') return notFound();
     await networkDelay();
     const user = requireRole('institution');
     const results = getDb()
@@ -519,9 +499,12 @@ export const annualHandlers = [
         'There is no published result to export yet.',
         'not_published',
       );
-    return csvResponse(
-      `cpi-result-${user.institutionId}.csv`,
-      toCsv(exportHeader, exportRows(results)),
+    return download(
+      user,
+      user.institutionId!,
+      `cpi-result-${user.institutionId}`,
+      params.format,
+      exportOf(results, []),
     );
   }),
 

@@ -1,6 +1,8 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
   annualTotal,
+  exportPayload,
+  publishedResultSchema,
   isEvidenceAnswer,
   format2,
   mul,
@@ -149,12 +151,18 @@ function quarterDisposition(
     rejected: [] as QuarterDisposition['rejected'],
     planSize: milestones.length,
     note: null as string | null,
+    submissionId: submission?.id ?? null,
+    formVersionId: submission?.formVersionId ?? null,
+    decisionIds: [] as string[],
+    reviewerId: null as string | null,
+    reviewedAt: submission?.finalizedAt ?? null,
   };
   if (obligation.state === 'closed_without_submission') {
     const closure = data.closures.find(
       (candidate) => candidate.obligationId === obligation.id,
     );
     base.reviewedBy = closure?.by ?? null;
+    base.reviewedAt = closure?.at ?? null;
     base.note = closure ? `Closed without submission: ${closure.reason}` : null;
     // An explicit officer disposition of zero, recorded after the cutoff (§10.5).
     return {
@@ -170,7 +178,8 @@ function quarterDisposition(
     };
   }
   if (obligation.state === 'finalized' && submission) {
-    const decisions = activeDecisions(data, submission).map(toDecision);
+    const decided = activeDecisions(data, submission);
+    const decisions = decided.map(toDecision);
     const score = scoreSummary(
       data.profile.weights.implementation,
       milestones,
@@ -199,6 +208,7 @@ function quarterDisposition(
           status: 'finalized',
           implementation: score.fraction,
           rejected,
+          decisionIds: decided.map((decision) => decision.id),
         },
         fraction: rational(
           score.fraction.numerator,
@@ -260,6 +270,10 @@ function foundationOutcome(
       label: foundationLabels[kind],
       score,
       versionId: active?.id ?? null,
+      reviewId: current ? String(current.id) : null,
+      reviewedBy: current?.reviewedBy ?? null,
+      reviewerId: null,
+      reviewedAt: current?.reviewedAt ?? null,
       failedChecks: current
         ? current.checks.flatMap((check, index) =>
             check.outcome === 'fail'
@@ -276,6 +290,11 @@ function foundationOutcome(
     fraction: passed !== undefined ? rational(passed, 4) : null,
   };
 }
+
+// ponytail: actors are stored by display name, so the account ID is looked up by it; store IDs on
+// decisions, closures and foundation reviews if display names stop being unique.
+const accountId = (data: AnnualData, displayName: string | null) =>
+  data.users.find((user) => user.displayName === displayName)?.id ?? null;
 
 const statusReason: Record<QuarterDisposition['status'], string> = {
   finalized: '',
@@ -367,9 +386,21 @@ export function evaluate(
     officerName:
       data.users.find((user) => user.id === officer?.officerId)?.displayName ??
       'Unassigned',
-    quarters: quarters.map((quarter) => quarter.disposition),
-    foundations: foundations.map((foundation) => foundation.outcome),
+    quarters: quarters.map(({ disposition }) => ({
+      ...disposition,
+      reviewerId: accountId(data, disposition.reviewedBy),
+    })),
+    foundations: foundations.map(({ outcome }) => ({
+      ...outcome,
+      reviewerId: accountId(data, outcome.reviewedBy),
+    })),
     weights: { ...w },
+    scoringProfile: {
+      id: data.profile.id,
+      name: data.profile.name,
+      version: data.profile.version,
+      simulation: data.profile.simulation,
+    },
     total,
     releasable: total.status === 'calculated' && holds.length === 0,
     extension: extension
@@ -417,7 +448,7 @@ export function overview(
   return {
     cycleLabel: data.cycle.label,
     profileName: data.profile.name,
-    simulation: true,
+    simulation: data.profile.simulation,
     evaluationCutoff: data.cycle.evaluationCutoff,
     cutoffPassed: cutoffPassed(data),
     asOf: data.businessTime,
@@ -429,6 +460,10 @@ export function toPublished(
   data: AnnualData,
   publication: PublicationRow,
 ): PublishedResult {
+  // Parsed so snapshots published before the traceability fields get their defaults.
+  const evaluation = publishedResultSchema.shape.evaluation.parse(
+    publication.evaluation,
+  );
   return {
     id: publication.id,
     institutionId: publication.institutionId,
@@ -444,8 +479,9 @@ export function toPublished(
     supersededBy: publication.supersededBy,
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
-    simulation: true,
-    evaluation: publication.evaluation as PublishedResult['evaluation'],
+    evaluation,
+    simulation:
+      evaluation.scoringProfile?.simulation ?? data.profile.simulation,
   };
 }
 
@@ -472,6 +508,7 @@ export function consolidated(
       return {
         institutionId: institution.id,
         institutionName: institution.name,
+        ready: evaluation.releasable,
         reasons:
           evaluation.total.status === 'pending'
             ? evaluation.total.reasons
@@ -479,8 +516,7 @@ export function consolidated(
       };
     });
   return {
-    schemaVersion: 'cpi-export-1',
-    simulation: true,
+    simulation: data.profile.simulation,
     generatedAt: data.businessTime,
     cycleLabel: data.cycle.label,
     profileName: data.profile.name,
@@ -489,67 +525,19 @@ export function consolidated(
   };
 }
 
-export const exportHeader = [
-  'schema_version',
-  'simulation',
-  'cycle_id',
-  'scoring_profile_version',
-  'institution_id',
-  'period_id',
-  'submission_revision',
-  'indicator_id',
-  'maximum_points',
-  'earned_points',
-  'status',
-  'published_at',
-  'publication_version',
-];
-
-/** Export rows follow the PRD §12.3 contract fields, one row per quarter or foundation component. */
-export function exportRows(cycleId: string, results: PublishedResult[]) {
-  return results.flatMap((result) => [
-    ...result.evaluation.foundations.map((foundation) => [
-      'cpi-export-1',
-      true,
-      cycleId,
-      result.profileName,
-      result.institutionId,
-      '',
-      '',
-      foundation.kind,
-      foundation.score.maxPoints,
-      foundation.score.status === 'calculated' ? foundation.score.points : '',
-      foundation.score.status,
-      result.publishedAt,
-      result.version,
-    ]),
-    ...result.evaluation.quarters.map((quarter) => [
-      'cpi-export-1',
-      true,
-      cycleId,
-      result.profileName,
-      result.institutionId,
-      quarter.periodId,
-      quarter.revision ?? '',
-      'implementation',
-      result.evaluation.weights.implementation / 4,
-      quarter.implementation
-        ? format2(
-            mul(
-              rational(result.evaluation.weights.implementation, 4),
-              rational(
-                quarter.implementation.numerator,
-                quarter.implementation.denominator,
-              ),
-            ),
-          )
-        : '',
-      quarter.status + (quarter.late ? ' (late)' : ''),
-      result.publishedAt,
-      result.version,
-    ]),
-  ]);
-}
+/** The versioned export of what `consolidated` shows (PRD §12.3). */
+export const exportOf = (
+  data: AnnualData,
+  released: PublishedResult[],
+  unreleased: ConsolidatedReport['unreleased'],
+) =>
+  exportPayload({
+    cycle: data.cycle,
+    profile: data.profile,
+    generatedAt: data.businessTime,
+    released,
+    unreleased,
+  });
 
 const metric = (
   id: string,

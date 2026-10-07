@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './test';
-import { reset, visit as as } from './support';
+import { readFile } from 'node:fs/promises';
+import { publishedYear, reset, visit as as } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -182,4 +183,50 @@ test('a published result is corrected only through a case and keeps its history 
   await expect(
     page.getByText(/correction: Later evidence shows/),
   ).toBeVisible();
+});
+
+test('supervisors and institutions download the server export as CSV and JSON (FR13, FR16)', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await publishedYear(page);
+  await as(page, 'supervisor', '/supervisor/reports');
+  const read = async (name: string) => {
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name, exact: true }).click(),
+    ]);
+    const path = await download.path();
+    return {
+      file: download.suggestedFilename(),
+      text: await readFile(path, 'utf8'),
+    };
+  };
+  const json = await read('JSON');
+  expect(json.file).toBe('cpi-consolidated-results.json');
+  const payload = JSON.parse(json.text) as {
+    schemaVersion: string;
+    rows: {
+      institution_id: string;
+      indicator_id: string;
+      earned_points: string;
+    }[];
+  };
+  expect(payload.schemaVersion).toBe('cpi-export-2');
+  expect(
+    payload.rows.find(
+      (row) =>
+        row.institution_id === 'DEMO-001' &&
+        row.indicator_id === 'annual_total',
+    )?.earned_points,
+  ).toBe('88.75');
+  const csv = await read('CSV');
+  expect(csv.text.split('\r\n')[0]).toMatch(/^schema_version,simulation,/);
+  expect(csv.text.trim().split('\r\n')).toHaveLength(payload.rows.length + 1);
+
+  await as(page, 'focal-demo-005', '/institution/results');
+  const own = await read('Export JSON');
+  const rows = (JSON.parse(own.text) as typeof payload).rows;
+  expect(rows.every((row) => row.institution_id === 'DEMO-005')).toBe(true);
+  expect(rows[0]?.earned_points).toBe('70.00');
 });
