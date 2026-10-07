@@ -1,126 +1,25 @@
 import { test, expect, type Page } from './test';
-import { passSuitability } from './support';
+import {
+  api,
+  openApp,
+  passSuitability,
+  reset,
+  signInAs,
+  submitQ1 as submitFor,
+  visit as signIn,
+} from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
   'Mock API journeys run against the development stack',
 );
 
-/** Loads the app and waits until the mock API worker is serving requests. */
-async function openApp(page: Page) {
-  await page.goto('/sign-in?demo=open');
-  // The app renders only after the worker has started, so this proves the mock is live.
-  await expect(
-    page.getByRole('heading', { name: 'Prevention officer' }),
-  ).toBeVisible();
-}
-
-/** Calls the mock API from inside the page, so the service worker handles it. */
-async function api(
-  page: Page,
-  path: string,
-  init?: { method?: string; json?: unknown; headers?: Record<string, string> },
-) {
-  return page.evaluate(
-    async ([url, options]) => {
-      const response = await fetch(url, {
-        method: options?.method ?? 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options?.headers ?? {}),
-        },
-        body:
-          options?.json === undefined
-            ? undefined
-            : JSON.stringify(options.json),
-      });
-      return response.status === 204
-        ? null
-        : ((await response.json()) as unknown);
-    },
-    [path, init] as const,
-  );
-}
-
-async function signIn(page: Page, accountId: string, path: string) {
-  await api(page, '/api/session', { method: 'POST', json: { accountId } });
-  await page.goto(path);
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-}
-
 /** Publishes the form and submits DEMO-001 Q1 with shared CPC minutes on every milestone. */
 async function submitQ1(page: Page) {
-  await openApp(page);
-  await api(page, '/api/__mock/reset', { method: 'POST' });
-  await api(page, '/api/session', {
-    method: 'POST',
-    json: { accountId: 'administrator' },
-  });
+  await reset(page);
+  await signInAs(page, 'administrator');
   await api(page, '/api/forms/form-v1/publish', { method: 'POST' });
-  await api(page, '/api/session', {
-    method: 'POST',
-    json: { accountId: 'focal-demo-001' },
-  });
-  const obligation = encodeURIComponent('DEMO-001:FY2026-27-Q1');
-  const upload = (await page.evaluate(async (o) => {
-    const body = new FormData();
-    body.append(
-      'file',
-      new File(
-        [new TextEncoder().encode('%PDF-1\n%%EOF\n')],
-        'cpc-minutes-q1.pdf',
-      ),
-    );
-    body.append('category', 'cpc_minutes');
-    return (
-      await fetch(`/api/obligations/${o}/evidence`, { method: 'POST', body })
-    ).json();
-  }, obligation)) as { id: string };
-  const bundle = (await api(page, `/api/obligations/${obligation}/report`)) as {
-    baseline: { milestones: { id: string }[] };
-  };
-  const milestones = Object.fromEntries(
-    bundle.baseline.milestones.map((m) => [
-      m.id,
-      {
-        completed: true,
-        output: 'Done.',
-        emergingIssues: '',
-        actions: '',
-        evidence: [{ evidenceId: upload.id, passage: 'Item 4' }],
-        evidenceUnavailable: null,
-      },
-    ]),
-  );
-  const answers = {
-    questions: {
-      'cpc-minutes': { evidenceIds: [upload.id], unavailable: null },
-      'iao-minutes': {
-        evidenceIds: [],
-        unavailable: { explanation: 'IAO minutes are awaiting signature.' },
-      },
-      'emerging-issues': 'Registry staff turnover.',
-      'actions-planned': 'Recruit two officers.',
-      remarks: '',
-    },
-    milestones,
-  };
-  await api(page, `/api/obligations/${obligation}/draft`, {
-    method: 'PUT',
-    json: { baseVersion: 0, answers },
-  });
-  await api(page, `/api/obligations/${obligation}/submit`, {
-    method: 'POST',
-    headers: { 'Idempotency-Key': 'e2e-q1' },
-    json: {
-      draftVersion: 1,
-      attestation: {
-        authorized: true,
-        submitterRole: 'IAO',
-        approval: { kind: 'reference', reference: 'CPC minutes item 4' },
-      },
-    },
-  });
+  await submitFor(page, 'DEMO-001');
 }
 
 test('clarification, revised submission, re-review and carry-forward (AT09, AT27)', async ({

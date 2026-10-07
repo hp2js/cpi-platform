@@ -1,34 +1,13 @@
 import { test, expect, type Page } from './test';
+import { reset, visit as as } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
   'Mock API journeys run against the development stack',
 );
 
-async function openApp(page: Page) {
-  await page.goto('/sign-in?demo=open');
-  await expect(
-    page.getByRole('heading', { name: 'Prevention officer' }),
-  ).toBeVisible();
-}
-
-async function as(page: Page, accountId: string, path: string) {
-  await page.evaluate(
-    (id) =>
-      fetch('/api/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: id }),
-      }),
-    accountId,
-  );
-  await page.goto(path);
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-}
-
 async function runYear(page: Page) {
-  await openApp(page);
-  await page.evaluate(() => fetch('/api/__mock/reset', { method: 'POST' }));
+  await reset(page);
   await as(page, 'administrator', '/admin/simulation');
   await page.getByRole('button', { name: 'Run the scripted year' }).click();
   await page
