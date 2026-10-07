@@ -1,59 +1,56 @@
 # DEMO-001 Evidence Pack: Demo Appointments Service Agency (DASA)
 
-**Scenario (PRD §17.1):** Full foundation readiness and implementation trajectory, used in annual Example A (§10.6, acceptance test AT16). Assigned to **Officer A**.
+**Scenario:** full foundation readiness and implementation trajectory, annual Example A (PRD §10.6, test AT16), using the revised quarterly baseline (M-01 to M-16). Assigned to **Officer A**.
+
 **Expected annual result:** 10 + 15 + 15 + 60 × (0.50 + 0.75 + 1.00 + 1.00) ÷ 4 = **88.75**
 
 Everything here is synthetic. The institution, people, staff numbers, signatures and events are fictional, and every address uses `example.invalid`.
 
 ## Files and when to upload them (simulated time)
 
-| Folder | File | Category | Simulated upload |
-|---|---|---|---|
-| 01_Foundations | DEMO-001_F1_Procedures_…_v1.0.pdf | Procedure | 29 Sep 2026 (before 30 Sep foundation deadline) |
-| 01_Foundations | DEMO-001_F2_…_Risk_Assessment_Report_FY2026-27.pdf | Risk assessment | 29 Sep 2026 |
-| 01_Foundations | DEMO-001_F3_…_Mitigation_Plan_FY2026-27.pdf | Mitigation plan | 29 Sep 2026 |
-| 02_Q1 … 05_Q4 | DEMO-001_Qn_Implementation_Progress_Report_AppendixV.pdf | Progress report | Q1 9 Oct 2026; Q2 14 Jan 2027; Q3 8 Apr 2027; Q4 9 Jul 2027 (all on time) |
-| 02_Q1 … 05_Q4 | DEMO-001_Qn_CPC_Minutes_Signed.pdf | Signed CPC minutes | with that quarter's report |
-| 02_Q1 … 05_Q4 | DEMO-001_Qn_IAO_Committee_Minutes_Signed.pdf | Signed IAO minutes | with that quarter's report |
-
-In total there are 15 PDFs: 3 foundation documents plus 3 per quarter. Each quarterly submission follows the 23rd Cycle rule that the progress report is accompanied only by the signed CPC and IAO minutes. `DEMO-001_seed_fixture.json` holds the baseline, the expected decisions and the SHA-256 hash of each file.
-
-## Foundation checks (all 12 accepted, giving 40 points)
-
-| Indicator | Check | Where it is supported |
+| Folder | Files | Simulated upload |
 |---|---|---|
-| Procedures (10) | Institutional identity and scope | F1 §1.0 |
-| | Prevention procedure content | F1 §2.0–3.9 |
-| | Approval details | F1 cover and §5.0 (Board Res. DASA/BD/RES/2026/031, 28 Aug 2026, signed) |
-| | Designated implementation responsibility | F1 §4.0 (Designated Senior Officer, CPC, IAO Committee, enforcement structure) |
-| Risk assessment (15) | Coverage of core and support functions | F2 §2.0 |
-| | Identified risks and causes | F2 §4.0 register (R-01 to R-10, with risk sources) |
-| | Probability and impact on declared scale | F2 §3.0 scales and §4.0 Pr × Im |
-| | Existing controls and assessment context | F2 §1.0, §4.0 last column, §6.0 |
-| Mitigation plan (15) | Link to identified risks | F3 §1.0 risk column |
-| | Strategies and activities | F3 §1.0 (A-01 to A-04) |
-| | Outputs and KPIs | F3 §1.0 |
-| | Responsibility, resources and timeframe | F3 §1.0 and §2.0 named cohorts |
+| 01_Foundations | F1 Procedures, F2 Risk Assessment (core and support functions), F3 Mitigation Plan | 29 Sep 2026 |
+| 02_Q1 | Appendix V progress report, signed CPC minutes, signed IAO minutes | 9 Oct 2026 |
+| 03_Q2 | the same three files | 14 Jan 2027 |
+| 04_Q3 | the same three files | 8 Apr 2027 |
+| 05_Q4 | the same three files | 9 Jul 2027 |
 
-## Locked quarterly baseline and outcomes
+All 12 foundation checks are accepted, giving 40 points. Risk R-02 is now *Weak oversight of procurement approvals* (score 4 × 4 = 16). Activity A-03, *Spot-check procurement approvals*, treats it from Q2 to Q4. CPC and IAO meetings are shown as committee obligations covering all identified risks.
 
-There are four milestones per quarter, each with weight 1. M-01 and M-02 are DEMO-001's own milestones. M-03 (CPC meeting) and M-04 (IAO meeting) are the baseline obligations that apply to every institution.
+## Locked baseline and outcomes
 
-| Quarter | M-01 Register + exception review | M-02 Training (named cohort) | M-03 CPC | M-04 IAO | I(q) | Snapshot 40 + 60·I |
-|---|---|---|---|---|---|---|
-| Q1 | ✗ Go-live slipped to 5 Oct; no review | ✗ Cohort A postponed | ✓ 24 Sep | ✓ 17 Sep | 2/4 = 0.50 | 70.00 |
-| Q2 | ✗ Register live, but review done 13 Jan (after quarter end) | ✓ Cohort B, 26 Nov | ✓ 15 Dec | ✓ 8 Dec | 3/4 = 0.75 | 85.00 |
-| Q3 | ✓ Review DASA/IA/ER/…/Q3, 10 Mar | ✓ Cohort C, 18 Feb | ✓ 19 Mar | ✓ 12 Mar | 4/4 = 1.00 | 100.00 |
-| Q4 | ✓ Review DASA/IA/ER/…/Q4, 9 Jun | ✓ Cohort D, 20 May | ✓ 18 Jun | ✓ 11 Jun | 4/4 = 1.00 | 100.00 |
+DEMO-001 reports honestly, so the provisional and reviewed results are equal in every quarter.
 
-The evidence passages for each milestone are as follows. M-01 is supported by MIN. CPC/05 and MIN. IAO/03. M-02 is supported by MIN. CPC/06 and MIN. IAO/04, which list the trained staff numbers. M-03 and M-04 are each supported by the signed minutes as a whole, including the signature page.
+| Quarter | Milestone | Activity / risk | Outcome | Supporting passage |
+|---|---|---|---|---|
+| Q1 | M-01 Register + exception review | A-01 / R-01 | ✗ Go-live slipped to 5 Oct | CPC/05, IAO/03 |
+| | M-02 Staff trained | A-02 / R-01, R-02 | ✗ Postponed to 15 Oct | CPC/06, IAO/04 |
+| | M-03 CPC / M-04 IAO | Committee obligation | ✓ 24 Sep / ✓ 17 Sep | Signed minutes |
+| | **I1** | | **2/4 = 0.50** | |
+| Q2 | M-05 Q2 exception review | A-01 / R-01 | ✗ Completed 13 Jan, after quarter end | CPC/05, IAO/03 |
+| | M-06 Procurement spot-check | A-03 / R-02 | ✓ 12 approvals checked 2 Dec; 3 findings | CPC/06 |
+| | M-07 CPC / M-08 IAO | Committee obligation | ✓ 15 Dec / ✓ 8 Dec | Signed minutes |
+| | **I2** | | **3/4 = 0.75** | |
+| Q3 | M-09 Q3 exception review | A-01 / R-01 | ✓ 10 Mar | CPC/05, IAO/03 |
+| | M-10 Procurement spot-check | A-03 / R-02 | ✓ 14 approvals checked 5 Mar; 1 finding | CPC/06 |
+| | M-11 CPC / M-12 IAO | Committee obligation | ✓ 19 Mar / ✓ 12 Mar | Signed minutes |
+| | **I3** | | **4/4 = 1.00** | |
+| Q4 | M-13 Q4 exception review | A-01 / R-01 | ✓ 9 Jun | CPC/05, IAO/03 |
+| | M-14 Procurement spot-check | A-03 / R-02 | ✓ 15 approvals checked 4 Jun; 0 findings | CPC/06 |
+| | M-15 CPC / M-16 IAO | Committee obligation | ✓ 18 Jun / ✓ 11 Jun | Signed minutes |
+| | **I4** | | **4/4 = 1.00** | |
 
-DEMO-001 reports honestly, so the provisional and reviewed results are equal in every quarter. The late Q1 training (15 Oct) and the late Q2 exception review (13 Jan) appear only as corrective progress. They are never claimed, so they never earn credit twice, which matches §10.4.
+Every spot-check meets the "at least ten approvals" condition. Its sample size, period and findings are recorded in the CPC minutes, which is the evidence expectation in the baseline.
 
-## Assumptions to confirm with the team
+Two items were completed late and appear only as corrective progress, with no credit:
+- Training of the 12 named staff on 15 Oct 2026, which belongs to Q1's M-02.
+- The Q2 exception review on 13 Jan 2027, which belongs to M-05.
 
-The first assumption is that M-01 and M-02 recur every quarter, with M-02 tied to the cohort named for that quarter in F3 §2.0. A four-milestone denominator in every quarter is needed to produce Example A's fractions of 0.50, 0.75, 1.00 and 1.00.
+## Notes
 
-The second assumption concerns AT32, the §3.3 worked case (Q1 claims 4/4, the reviewer accepts 3/4, and the annual result is 96.25). The PRD calls this "a separate calculation variant," so this pack does not implement it. That variant is in `Test Docs Variants/DEMO-001_AT32_Worked_Case_96.25` and is loaded in its own simulation run, never alongside this pack.
+The baseline numbering assigns M-11/M-12 and M-15/M-16 to the Q3 and Q4 CPC and IAO meetings.
 
-Allocation counts in the minutes run from one report's cut-off to the next, not by calendar quarter. The Q4 minutes and report therefore describe the 8 March to 6 June 2027 window as following the Q3 cut-off of 7 March.
+Allocation counts in the minutes run from one report's cut-off to the next, not by calendar quarter. The Q4 minutes and progress report therefore describe the 8 March to 6 June 2027 window as following the Q3 cut-off of 7 March.
+
+The PRD §3.3 worked case (AT32, annual 96.25) is a separate calculation variant of DEMO-001 and is not part of this pack. It must be loaded in its own simulation run, never alongside this pack.

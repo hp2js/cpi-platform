@@ -6,6 +6,7 @@
   "assigned_officer": "Officer B",
   "scoring_profile": "Hackathon Mock v1",
   "principal_scenario": "PRD 17.1 DEMO-007: uploaded evidence for the wrong period, corrected by a new version. Exercises AT30, AT09, AT27 and AT10.",
+  "baseline_note": "Milestone IDs are unique across the year: Q1 M-01..M-04, Q2 M-05..M-08, Q3 M-09..M-12, Q4 M-13..M-16. Committee obligations (CPC, IAO) are added to every quarter.",
   "baseline_status": "SEEDED HISTORICAL BASELINE - officer confirms correspondence to DEBF/ABC/CRMP/2026-27/v1.0",
   "foundations": {
     "procedures": {
@@ -54,8 +55,8 @@
         },
         {
           "milestone_id": "M-03",
-          "activity_id": "A-03",
-          "risk_id": "ALL",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
           "description": "Quarterly CPC meeting held",
           "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
           "weight": 1,
@@ -65,8 +66,8 @@
         },
         {
           "milestone_id": "M-04",
-          "activity_id": "A-04",
-          "risk_id": "ALL",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
           "description": "Quarterly IAO Committee meeting held",
           "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
           "weight": 1,
@@ -87,44 +88,44 @@
       "on_time": true,
       "milestones": [
         {
-          "milestone_id": "M-01",
+          "milestone_id": "M-05",
           "activity_id": "A-01",
           "risk_id": "R-01",
-          "description": "Award criteria and results published",
-          "completion_condition": "Criteria were published before awards, and results after, for the quarter. [Round 2]",
+          "description": "Award criteria and results published: quarter 2 exception review",
+          "completion_condition": "An exception review of the control was completed and recorded by the end of Q2.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/05/Q2/2026-27; MIN. IAO/03/Q2/2026-27"
+          "evidence_passage": "MIN. IAO/03/Q2/2026-27; MIN. CPC/05/Q2/2026-27"
         },
         {
-          "milestone_id": "M-02",
-          "activity_id": "A-02",
-          "risk_id": "R-01",
-          "description": "Staff trained on the corruption prevention procedure",
-          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort B]",
-          "weight": 1,
-          "claimed_completed": true,
-          "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/06/Q2/2026-27; MIN. IAO/04/Q2/2026-27"
-        },
-        {
-          "milestone_id": "M-03",
+          "milestone_id": "M-06",
           "activity_id": "A-03",
-          "risk_id": "ALL",
+          "risk_id": "R-02",
+          "description": "Procurement approval spot-check completed",
+          "completion_condition": "A sample of at least ten approvals was checked in Q2 and findings recorded.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q2/2026-27"
+        },
+        {
+          "milestone_id": "M-07",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
           "description": "Quarterly CPC meeting held",
-          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "completion_condition": "The Corruption Prevention Committee met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
           "evidence_passage": "DEBF/CPC/MIN/Q2/2026-27 signature page"
         },
         {
-          "milestone_id": "M-04",
-          "activity_id": "A-04",
-          "risk_id": "ALL",
-          "description": "Quarterly IAO Committee meeting held",
-          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "milestone_id": "M-08",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
+          "description": "Quarterly IAO meeting held",
+          "completion_condition": "The Integrity Assurance Officers met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
@@ -148,7 +149,7 @@
             "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_CPC_Minutes_Signed.pdf",
             "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_IAO_Committee_Minutes_Signed.pdf"
           ],
-          "claims": "4 of 4 Achieved; CPC citations name DEBF/CPC/MIN/Q2/2026-27",
+          "claims": "M-05 to M-08 all Achieved; CPC citations name DEBF/CPC/MIN/Q2/2026-27",
           "provisional_I": 1.0,
           "provisional_reason": "Every claim has an attached file of the required category; provisional scoring does not judge period.",
           "evidence_suitability": {
@@ -158,7 +159,7 @@
               "relevance": "Deficient",
               "signature_presence": "Pass",
               "readability": "Pass",
-              "reason": "Signed minutes of the DEBF CPC meeting of 15 Dec 2025 (DEBF/CPC/MIN/Q2/2025-26, FY 2025/2026). They do not record the Q2 FY 2026/2027 meeting cited in the report and contain no passage on round 2 or Cohort B. Evidence deficiency (wrong period); no allegation of misconduct."
+              "reason": "Signed minutes of the DEBF CPC meeting of 15 Dec 2025 (DEBF/CPC/MIN/Q2/2025-26, FY 2025/2026). They do not record the Q2 FY 2026/2027 meeting cited in the report and contain no Q2 FY 2026/2027 procurement spot-check. Evidence deficiency (wrong period); no allegation of misconduct."
             },
             "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_IAO_Committee_Minutes_Signed.pdf": {
               "institution_match": "Pass",
@@ -170,36 +171,35 @@
             }
           },
           "officer_draft_decisions": {
-            "M-01": {
-              "status": "clarification_requested",
-              "relies_on": [
-                "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_CPC_Minutes_Signed.pdf",
-                "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_IAO_Committee_Minutes_Signed.pdf"
-              ],
-              "reason": "MIN. IAO/03/Q2 (8 Dec 2026) shows criteria published 2 Oct 2026 and awards decided 4 Dec 2026, but results publication was still pending at that date. The cited CPC passage is not in the attached file, so 'results after awards, within Q2' is not substantiated."
-            },
-            "M-02": {
+            "M-05": {
               "status": "accepted",
               "relies_on": [
                 "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_IAO_Committee_Minutes_Signed.pdf"
               ],
-              "passage": "MIN. IAO/04/Q2/2026-27",
-              "reason": "Cohort B, 7 of 7 named staff trained 24 Nov 2026. CPC file not relied on."
+              "passage": "MIN. IAO/03/Q2/2026-27",
+              "reason": "Exception review DEBF/IA/ER/2026-27/Q2 completed 14 Dec 2026 and recorded at the IAO meeting of 15 Dec 2026. CPC file not relied on."
             },
-            "M-03": {
+            "M-06": {
               "status": "clarification_requested",
               "relies_on": [
                 "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_CPC_Minutes_Signed.pdf"
               ],
-              "reason": "Attached CPC minutes are for 15 Dec 2025 (FY 2025/2026); no evidence of a Q2 FY 2026/2027 CPC meeting."
+              "reason": "The completion condition requires spot-check findings recorded in the CPC minutes. The attached CPC file is for 15 Dec 2025 and contains no Q2 FY 2026/2027 spot-check; the IAO minutes only say the findings will go to the CPC."
             },
-            "M-04": {
+            "M-07": {
+              "status": "clarification_requested",
+              "relies_on": [
+                "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_CPC_Minutes_Signed.pdf"
+              ],
+              "reason": "Attached CPC minutes are for 15 Dec 2025 (FY 2025/2026); no evidence of a CPC meeting in Q2 FY 2026/2027."
+            },
+            "M-08": {
               "status": "accepted",
               "relies_on": [
                 "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_IAO_Committee_Minutes_Signed.pdf"
               ],
               "passage": "DEBF/IAO/MIN/Q2/2026-27 signature page",
-              "reason": "IAO met 8 Dec 2026, signed 9 Dec 2026."
+              "reason": "IAO met 15 Dec 2026, signed 16 Dec 2026."
             }
           },
           "status_after_review": "superseded by revision 2; retained with receipt and evidence"
@@ -219,14 +219,14 @@
           "provisional_I": 1.0,
           "dependency_effects": {
             "needs_re_review": [
-              "M-01",
-              "M-03"
+              "M-06",
+              "M-07"
             ],
             "carry_forward_after_explicit_confirmation": [
-              "M-02",
-              "M-04"
+              "M-05",
+              "M-08"
             ],
-            "reason": "M-01 and M-03 depended on the replaced CPC evidence slot; M-02 and M-04 relied only on the unchanged IAO file."
+            "reason": "M-06 and M-07 depended on the replaced CPC evidence slot; M-05 and M-08 relied only on the unchanged IAO file."
           },
           "evidence_suitability": {
             "03_Q2/r2_submitted_2027-01-22/DEMO-007_Q2_CPC_Minutes_Signed.pdf": {
@@ -239,22 +239,22 @@
             }
           },
           "final_decisions": {
-            "M-01": {
-              "status": "accepted",
-              "passage": "MIN. CPC/05/Q2/2026-27",
-              "reason": "Criteria 2 Oct 2026 < award decision 4 Dec 2026 < results 11 Dec 2026, all within Q2."
-            },
-            "M-02": {
+            "M-05": {
               "status": "accepted",
               "carried_forward_from": "rev1 decision",
               "confirmed_against_revision": 2
             },
-            "M-03": {
+            "M-06": {
+              "status": "accepted",
+              "passage": "MIN. CPC/06/Q2/2026-27",
+              "reason": "12 approvals checked (10 Dec 2026), at least ten required; findings (2 missing declarations) recorded at CPC 18 Dec 2026."
+            },
+            "M-07": {
               "status": "accepted",
               "passage": "DEBF/CPC/MIN/Q2/2026-27 signature page",
-              "reason": "CPC met 16 Dec 2026, chaired by AO, IAO Chair as Secretary; signed 18 Dec 2026."
+              "reason": "CPC met 18 Dec 2026; minutes signed 21 Dec 2026."
             },
-            "M-04": {
+            "M-08": {
               "status": "accepted",
               "carried_forward_from": "rev1 decision",
               "confirmed_against_revision": 2
@@ -266,8 +266,8 @@
       "clarification": {
         "id": "CLR-DEMO-007-Q2-01",
         "criteria": [
-          "Q2 M-01",
-          "Q2 M-03"
+          "Q2 M-06",
+          "Q2 M-07"
         ],
         "requested_evidence": "Signed minutes of the Q2 FY 2026/2027 CPC meeting cited as DEBF/CPC/MIN/Q2/2026-27. The attached file records the meeting of 15 Dec 2025 (FY 2025/2026).",
         "issued_at": "2027-01-19T10:15:00+03:00",
@@ -278,8 +278,8 @@
       "obsolete_finalize_test": "After revision 2 arrives, an attempt to finalize against revision 1 returns a version conflict (AT10).",
       "alternative_branch_no_response": {
         "description": "No timely response; closed after response deadline and evaluation cutoff 2027-07-31",
-        "M-01": 0,
-        "M-03": 0,
+        "M-06": 0,
+        "M-07": 0,
         "reviewed_I": 0.5,
         "annual_score": 92.5
       }
@@ -291,44 +291,44 @@
       "on_time": true,
       "milestones": [
         {
-          "milestone_id": "M-01",
+          "milestone_id": "M-09",
           "activity_id": "A-01",
           "risk_id": "R-01",
-          "description": "Award criteria and results published",
-          "completion_condition": "Criteria were published before awards, and results after, for the quarter. [Round 3]",
+          "description": "Award criteria and results published: quarter 3 exception review",
+          "completion_condition": "An exception review of the control was completed and recorded by the end of Q3.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/05/Q3/2026-27; MIN. IAO/03/Q3/2026-27"
+          "evidence_passage": "MIN. IAO/03/Q3/2026-27; MIN. CPC/05/Q3/2026-27"
         },
         {
-          "milestone_id": "M-02",
-          "activity_id": "A-02",
-          "risk_id": "R-01",
-          "description": "Staff trained on the corruption prevention procedure",
-          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort C]",
-          "weight": 1,
-          "claimed_completed": true,
-          "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/06/Q3/2026-27; MIN. IAO/04/Q3/2026-27"
-        },
-        {
-          "milestone_id": "M-03",
+          "milestone_id": "M-10",
           "activity_id": "A-03",
-          "risk_id": "ALL",
+          "risk_id": "R-02",
+          "description": "Procurement approval spot-check completed",
+          "completion_condition": "A sample of at least ten approvals was checked in Q3 and findings recorded.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q3/2026-27"
+        },
+        {
+          "milestone_id": "M-11",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
           "description": "Quarterly CPC meeting held",
-          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "completion_condition": "The Corruption Prevention Committee met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
           "evidence_passage": "DEBF/CPC/MIN/Q3/2026-27 signature page"
         },
         {
-          "milestone_id": "M-04",
-          "activity_id": "A-04",
-          "risk_id": "ALL",
-          "description": "Quarterly IAO Committee meeting held",
-          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "milestone_id": "M-12",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
+          "description": "Quarterly IAO meeting held",
+          "completion_condition": "The Integrity Assurance Officers met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
@@ -347,44 +347,44 @@
       "on_time": true,
       "milestones": [
         {
-          "milestone_id": "M-01",
+          "milestone_id": "M-13",
           "activity_id": "A-01",
           "risk_id": "R-01",
-          "description": "Award criteria and results published",
-          "completion_condition": "Criteria were published before awards, and results after, for the quarter. [Round 4]",
+          "description": "Award criteria and results published: quarter 4 exception review",
+          "completion_condition": "An exception review of the control was completed and recorded by the end of Q4.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/05/Q4/2026-27; MIN. IAO/03/Q4/2026-27"
+          "evidence_passage": "MIN. IAO/03/Q4/2026-27; MIN. CPC/05/Q4/2026-27"
         },
         {
-          "milestone_id": "M-02",
-          "activity_id": "A-02",
-          "risk_id": "R-01",
-          "description": "Staff trained on the corruption prevention procedure",
-          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort D]",
-          "weight": 1,
-          "claimed_completed": true,
-          "expected_reviewed": true,
-          "evidence_passage": "MIN. CPC/06/Q4/2026-27; MIN. IAO/04/Q4/2026-27"
-        },
-        {
-          "milestone_id": "M-03",
+          "milestone_id": "M-14",
           "activity_id": "A-03",
-          "risk_id": "ALL",
+          "risk_id": "R-02",
+          "description": "Procurement approval spot-check completed",
+          "completion_condition": "A sample of at least ten approvals was checked in Q4 and findings recorded.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q4/2026-27"
+        },
+        {
+          "milestone_id": "M-15",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
           "description": "Quarterly CPC meeting held",
-          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "completion_condition": "The Corruption Prevention Committee met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
           "evidence_passage": "DEBF/CPC/MIN/Q4/2026-27 signature page"
         },
         {
-          "milestone_id": "M-04",
-          "activity_id": "A-04",
-          "risk_id": "ALL",
-          "description": "Quarterly IAO Committee meeting held",
-          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "milestone_id": "M-16",
+          "activity_id": "Committee obligation",
+          "risk_id": "All identified risks",
+          "description": "Quarterly IAO meeting held",
+          "completion_condition": "The Integrity Assurance Officers met during the quarter.",
           "weight": 1,
           "claimed_completed": true,
           "expected_reviewed": true,
@@ -411,48 +411,48 @@
       "category": "procedure",
       "period": null,
       "simulated_upload_at": "2026-09-28T14:00:00+03:00",
-      "bytes": 11046,
-      "sha256": "e24700c12a8a33897c8c57feba9f7f97e9d85adbcb8f0b2bca7f7bbe0463386a"
+      "bytes": 11343,
+      "sha256": "1a808bdb1bedacb676b140ab34605608e9388a5ab70fb31f86a5999f308b3c2d"
     },
     {
       "file": "01_Foundations/DEMO-007_F2_Bribery_and_Corruption_Risk_Assessment_Report_FY2026-27.pdf",
       "category": "risk_assessment",
       "period": null,
       "simulated_upload_at": "2026-09-28T14:00:00+03:00",
-      "bytes": 12425,
-      "sha256": "1d01ff027ce842b4a9b396b7abf27ebe8bc0db8dee25ec35fafea30e285c3c41"
+      "bytes": 12616,
+      "sha256": "a33876d893d3130cfec6e172142fc1ad33f772e3929677355830c95ba99217e8"
     },
     {
       "file": "01_Foundations/DEMO-007_F3_Anti-Bribery_and_Corruption_Mitigation_Plan_FY2026-27.pdf",
       "category": "mitigation_plan",
       "period": null,
       "simulated_upload_at": "2026-09-28T14:00:00+03:00",
-      "bytes": 12233,
-      "sha256": "41e1aa62cf86f87b8f1bca91651d02ab205e1d301a4e3ec313b24b9008a52bcf"
+      "bytes": 14471,
+      "sha256": "1123c310ab9262a028ceb1bcc8c0868f1edf5b7fad85242c03e4397984129fbd"
     },
     {
       "file": "02_Q1/DEMO-007_Q1_CPC_Minutes_Signed.pdf",
       "category": "cpc_minutes",
       "period": "Q1",
       "simulated_upload_at": "2026-10-08T11:00:00+03:00",
-      "bytes": 11319,
-      "sha256": "8c52084432c4c0fc821305b735e760469303994348b3a43e79062fc3a43737d7"
+      "bytes": 11398,
+      "sha256": "1a6c2410d4e7dbd5a577e5e7cecf298d32cf11776b588440eb866aacbdd9d355"
     },
     {
       "file": "02_Q1/DEMO-007_Q1_IAO_Committee_Minutes_Signed.pdf",
       "category": "iao_minutes",
       "period": "Q1",
       "simulated_upload_at": "2026-10-08T11:00:00+03:00",
-      "bytes": 8830,
-      "sha256": "2f64b3d1180847f083d52a171acafa4ce7fb60da6fbb06f2a166ee0da37520e9"
+      "bytes": 8863,
+      "sha256": "d42add4de5639c6e9d3718f09f81a5a26f4182f945ee931353a638223114928c"
     },
     {
       "file": "02_Q1/DEMO-007_Q1_Implementation_Progress_Report_AppendixV.pdf",
       "category": "progress_report",
       "period": "Q1",
       "simulated_upload_at": "2026-10-08T11:00:00+03:00",
-      "bytes": 9767,
-      "sha256": "ea196499a57ad0ac2ba143b913cd617099b81d608e3b98606401b07478ffa97c"
+      "bytes": 9812,
+      "sha256": "a32f928230dcd98865dfbd83734f3ada9eac6b31602f65247da49e0717a06a3e"
     },
     {
       "file": "03_Q2/r1_submitted_2027-01-13/DEMO-007_Q2_CPC_Minutes_Signed.pdf",
@@ -471,8 +471,8 @@
       "category": "iao_minutes",
       "period": "Q2",
       "simulated_upload_at": "2027-01-13T11:00:00+03:00",
-      "bytes": 8806,
-      "sha256": "e7ebd73c478d9a9ec1dad910e71a8876e2ba567534eec054b28235a5e97957c1",
+      "bytes": 8825,
+      "sha256": "51e84ac2132aba9b0766b83127787e0571e5cdc2d8881bfe3b671dcffca116bd",
       "submission_revisions": [
         1,
         2
@@ -484,8 +484,8 @@
       "category": "progress_report",
       "period": "Q2",
       "simulated_upload_at": "2027-01-13T11:00:00+03:00",
-      "bytes": 9729,
-      "sha256": "c3c145e702e9a5f953e8847b50afd436339780fe5c00230cfcef1aed6383cfd1",
+      "bytes": 10029,
+      "sha256": "64941cff3d5f78a4f203b7087665cffff9d6edd6fe0e4b86d15495124fa74b22",
       "submission_revisions": [
         1
       ]
@@ -495,8 +495,8 @@
       "category": "cpc_minutes",
       "period": "Q2",
       "simulated_upload_at": "2027-01-22T14:30:00+03:00",
-      "bytes": 11053,
-      "sha256": "c10a6c1fc87ea15e2dea6717e197101bb2e282827825bed193fd2743f2d0c373",
+      "bytes": 11484,
+      "sha256": "e004c0563458c643482c552095a615d6da54175585aafd5183422b5231bd180b",
       "submission_revisions": [
         2
       ],
@@ -507,8 +507,8 @@
       "category": "progress_report",
       "period": "Q2",
       "simulated_upload_at": "2027-01-22T14:30:00+03:00",
-      "bytes": 10684,
-      "sha256": "cc14e7cc07b29dd4a6c025ea62dc7bb48846e6e31f99a4db509db4ce8d3a52d1",
+      "bytes": 10980,
+      "sha256": "ca303de80d5c9cb50c10d3837a64e3106202d6f6fb38ab1fe56c66f79740ab6f",
       "submission_revisions": [
         2
       ]
@@ -518,48 +518,48 @@
       "category": "cpc_minutes",
       "period": "Q3",
       "simulated_upload_at": "2027-04-09T11:00:00+03:00",
-      "bytes": 11477,
-      "sha256": "4776a7883289b4cabedc608baadc4181df459f059d40424b8951607a45f7fad4"
+      "bytes": 11862,
+      "sha256": "365efc96fce2414f309b6d4541de334c7197e76feee476cc1add23500ecb2f03"
     },
     {
       "file": "04_Q3/DEMO-007_Q3_IAO_Committee_Minutes_Signed.pdf",
       "category": "iao_minutes",
       "period": "Q3",
       "simulated_upload_at": "2027-04-09T11:00:00+03:00",
-      "bytes": 8884,
-      "sha256": "6286dcf1e2dbd651591a064d1b82ebf51acf2fad2df29703ac5192dfc11a0e10"
+      "bytes": 8808,
+      "sha256": "4a149bc89b686827eb32e0dea0106160a243d3780e1a00aa254215bb2ecee482"
     },
     {
       "file": "04_Q3/DEMO-007_Q3_Implementation_Progress_Report_AppendixV.pdf",
       "category": "progress_report",
       "period": "Q3",
       "simulated_upload_at": "2027-04-09T11:00:00+03:00",
-      "bytes": 9732,
-      "sha256": "eb647ad242e49037d9c5f43ea8a96fce31d3be6678116b66e368c7d6ad90f105"
+      "bytes": 11425,
+      "sha256": "d0eceeba4e3a2e3b88edfb281dd13d96ab9dc440c1aa22ddc1d8ba2ac077314e"
     },
     {
       "file": "05_Q4/DEMO-007_Q4_CPC_Minutes_Signed.pdf",
       "category": "cpc_minutes",
       "period": "Q4",
       "simulated_upload_at": "2027-07-08T11:00:00+03:00",
-      "bytes": 11084,
-      "sha256": "f2612ae920561597052e9df42da25e1b984a62fa6917787cc2f6f5292d5a3713"
+      "bytes": 11408,
+      "sha256": "1d469706b78f851f496c6b507f64342520106c396d4e975e771179440905243b"
     },
     {
       "file": "05_Q4/DEMO-007_Q4_IAO_Committee_Minutes_Signed.pdf",
       "category": "iao_minutes",
       "period": "Q4",
       "simulated_upload_at": "2027-07-08T11:00:00+03:00",
-      "bytes": 8793,
-      "sha256": "5fd9357dc302393ee1a326103cabe8452b4dcb034051404abb47287230984e15"
+      "bytes": 8863,
+      "sha256": "6f4373d44c4af5ac8fc5775f911832fd8746f2dc612ddc85c31a842e15d8d43d"
     },
     {
       "file": "05_Q4/DEMO-007_Q4_Implementation_Progress_Report_AppendixV.pdf",
       "category": "progress_report",
       "period": "Q4",
       "simulated_upload_at": "2027-07-08T11:00:00+03:00",
-      "bytes": 9685,
-      "sha256": "37d6859344ad632ecc70eb74fd3d5f447648ceea0d5b1c7d5a69983ff870e695"
+      "bytes": 9751,
+      "sha256": "e7a8b32915387dad46323f5b5d0eb4e4bbad7cc2253e21f2e5152623a008ceb0"
     }
   ]
 }
