@@ -79,3 +79,17 @@ export function queueTiming(input: {
       };
   return { waiting, caseDays: wholeDays(input.firstSubmittedAt, now) };
 }
+
+/**
+ * Where a quarter's reporting stands at `now` (HP2-55): it opens once the quarter has ended
+ * (end of its last day, EAT) and is due once the submission deadline has passed.
+ */
+export function quarterReportingStatus(
+  period: { endsOn: string; submissionDeadline: string },
+  now: string,
+): 'not_open' | 'open' | 'due' {
+  const at = Date.parse(now);
+  if (Date.parse(period.submissionDeadline) < at) return 'due';
+  if (Date.parse(`${period.endsOn}T23:59:59+03:00`) < at) return 'open';
+  return 'not_open';
+}

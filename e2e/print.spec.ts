@@ -59,18 +59,21 @@ test('printed annual results keep every column, reason and the simulation markin
   await expect(page.getByText(/DEMO-001 · /)).toBeVisible();
   expect(await pdfPages(page)).toBeLessThanOrEqual(2);
 
-  // The consolidated report: one institution per page, the first on page one.
+  // The consolidated report: method, coverage and summary first, then one institution per page.
   await page.emulateMedia({ media: 'screen' });
   await visit(page, 'supervisor', '/supervisor/reports');
   await printLayout(page);
   await expectPrintableReport(page);
   const sections = page.locator('main section[aria-labelledby^="rel-"]');
   await expect(sections).toHaveCount(8);
-  const firstTop = await sections
-    .first()
+  const methodTop = await page
+    .locator('#method-heading')
     .evaluate((element) => element.getBoundingClientRect().top + scrollY);
-  expect(firstTop).toBeLessThan(A4_CONTENT_HEIGHT / 2);
+  expect(methodTop).toBeLessThan(A4_CONTENT_HEIGHT / 2);
+  await expect(
+    page.getByRole('table', { name: /Annual results of every expected/ }),
+  ).toBeVisible();
   const pages = await pdfPages(page);
-  expect(pages).toBeGreaterThanOrEqual(8);
-  expect(pages).toBeLessThanOrEqual(16);
+  expect(pages).toBeGreaterThanOrEqual(9);
+  expect(pages).toBeLessThanOrEqual(18);
 });

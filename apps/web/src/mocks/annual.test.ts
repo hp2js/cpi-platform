@@ -3,6 +3,7 @@ import {
   annualOverviewSchema,
   inboxSchema,
   institutionResultsSchema,
+  consolidatedReportSchema,
   oversightSchema,
   reportBundleSchema,
   reviewBundleSchema,
@@ -111,6 +112,28 @@ describe('scripted demonstration year (PRD §17)', () => {
         method: 'POST',
         json: { institutionIds: Object.keys(expected) },
       });
+      // The consolidated summary shows the §17.1 results, by institution (HP2-66).
+      const report = await request(
+        '/api/annual/report',
+        consolidatedReportSchema,
+      );
+      expect(
+        Object.fromEntries(
+          report.summary.map((row) => [row.institutionId, row.points]),
+        ),
+      ).toEqual(expected);
+      expect(report.batches).toEqual([
+        expect.objectContaining({ institutions: 8 }),
+      ]);
+      expect(report.corrections).toEqual([]);
+      expect(
+        report.coverage.find((metric) => metric.id === 'release-coverage'),
+      ).toMatchObject({ numerator: 8, denominator: 8 });
+      expect(
+        report.summary.find((row) => row.institutionId === 'DEMO-003')
+          ?.lateQuarters,
+      ).toBe(1);
+
       await signInAs('focal-demo-005');
       expect((await closedQ3()).resultPublished).toBe(true);
       await signInAs('focal-demo-004');

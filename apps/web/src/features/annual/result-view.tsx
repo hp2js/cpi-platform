@@ -63,10 +63,13 @@ export function AnnualResultView({
   evaluation,
   profileName,
   simulation,
+  methodNote = true,
 }: {
   evaluation: Evaluation;
   profileName: string;
   simulation: boolean;
+  /** Off where the method is stated once for many results (the consolidated report). */
+  methodNote?: boolean;
 }) {
   return (
     <div className="grid gap-6 print:gap-3">
@@ -101,13 +104,15 @@ export function AnnualResultView({
             </ul>
           </div>
         )}
-        <p className="mt-3 text-xs text-base-dark">
-          {profileName}
-          {simulation && ' · simulation profile, not official EACC scoring'}.
-          Late reporting is shown separately; no late penalty is applied in this
-          demonstration. Scores measure performance against each institution’s
-          own accepted plan, not equal prevention impact.
-        </p>
+        {methodNote && (
+          <p className="mt-3 text-xs text-base-dark">
+            {profileName}
+            {simulation && ' · simulation profile, not official EACC scoring'}.
+            Late reporting is shown separately; no late penalty is applied in
+            this demonstration. Scores measure performance against each
+            institution’s own accepted plan, not equal prevention impact.
+          </p>
+        )}
       </section>
 
       <div className="overflow-x-auto rounded-lg border bg-white">

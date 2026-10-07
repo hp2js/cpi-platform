@@ -106,6 +106,9 @@ test('the institution plans a quarter, proposes it, and sees which checks failed
     'R-03 Collusion in appointment panels (severity 15): 1 milestone',
   );
   await proposal
+    .getByRole('button', { name: 'Return it to the institution…' })
+    .click();
+  await proposal
     .getByLabel('Some completion conditions are not objective')
     .check();
   await proposal

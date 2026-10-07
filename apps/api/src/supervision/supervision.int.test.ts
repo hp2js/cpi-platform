@@ -405,5 +405,22 @@ describe.skipIf(!integration)(
         ).body,
       ).toEqual({ changed: ['DEMO-001'], unchanged: ['DEMO-005'] });
     });
+
+    it('reads an open quarter as open, with its deadline and reports in (HP2-55)', async () => {
+      await publishSeedForm(admin);
+      const focal = await api.client().signIn('focal-demo-001');
+      const { draft } = await completeDraft(focal, 'DEMO-001');
+      await submitDraft(focal, 'DEMO-001', draft.version);
+      const officer = await api.client().signIn('officer-a');
+      const [q1, q2] = (await officer.json<Oversight>('/oversight')).trends;
+      expect(q1).toMatchObject({
+        status: 'open',
+        expected: 4,
+        received: 1,
+        due: 0,
+        submissionDeadline: expect.stringMatching(/^2026-10-15T/),
+      });
+      expect(q2).toMatchObject({ status: 'not_open', received: 0 });
+    });
   },
 );

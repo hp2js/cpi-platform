@@ -86,6 +86,9 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
   const [rationale, setRationale] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [failed, setFailed] = useState<BaselineCheck[]>([]);
+  // Each open proposal shows its facts; the approve or return form opens on request, so the
+  // tab does not run to several screens of repeated forms.
+  const [decision, setDecision] = useState<'approve' | 'return' | null>(null);
   const approve = usePlanMutation(baseline.institutionId, () =>
     approveBaseline(baseline.id, baseline.version, rationale, checks),
   );
@@ -162,123 +165,155 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
           </span>
         </p>
       )}
-      <fieldset className="grid gap-2">
-        <legend className="text-sm font-bold">Confirm each check</legend>
-        {checkKeys.map((key) => (
-          <div key={key} className="flex items-start gap-2">
-            <Checkbox
-              id={`${baseline.id}-${key}`}
-              checked={checks[key]}
-              onCheckedChange={(checked) =>
-                setChecks((current) => ({
-                  ...current,
-                  [key]: checked === true,
-                }))
-              }
-              className="mt-1"
-            />
-            <Label
-              htmlFor={`${baseline.id}-${key}`}
-              className="leading-snug font-normal"
-            >
-              {checkLabels[key]}
-            </Label>
-          </div>
-        ))}
-      </fieldset>
-      <div className="grid gap-2">
-        <Label htmlFor={`${baseline.id}-rationale`}>
-          Rationale (kept for audit)
-        </Label>
-        <Textarea
-          id={`${baseline.id}-rationale`}
-          value={rationale}
-          onChange={(event) => setRationale(event.target.value)}
-        />
-      </div>
-      {approve.isError && (
-        <p role="alert" className="text-sm text-error-dark">
-          {approve.error.message}
-        </p>
-      )}
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button
-          disabled={
-            !allChecked || rationale.trim().length < 20 || approve.isPending
+          variant={decision === 'approve' ? 'default' : 'outline'}
+          aria-expanded={decision === 'approve'}
+          aria-controls={`${baseline.id}-decision`}
+          onClick={() =>
+            setDecision((current) => (current === 'approve' ? null : 'approve'))
           }
-          onClick={() => approve.mutate(undefined)}
         >
-          Approve and activate
+          Approve this proposal…
         </Button>
-        {(!allChecked || rationale.trim().length < 20) && (
-          <p className="mt-1 text-xs text-base-dark">
-            Confirm all four checks and give a rationale of at least 20
-            characters.
-          </p>
-        )}
+        <Button
+          variant={decision === 'return' ? 'default' : 'outline'}
+          aria-expanded={decision === 'return'}
+          aria-controls={`${baseline.id}-decision`}
+          onClick={() =>
+            setDecision((current) => (current === 'return' ? null : 'return'))
+          }
+        >
+          Return it to the institution…
+        </Button>
       </div>
-      <div className="grid gap-3 border-t pt-4">
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-bold">
-            Or return it to the institution: which checks are not met?
-          </legend>
-          {checkKeys.map((key) => (
-            <div key={key} className="flex items-start gap-2">
-              <Checkbox
-                id={`${baseline.id}-failed-${key}`}
-                checked={failed.includes(key)}
-                onCheckedChange={(checked) =>
-                  setFailed((current) =>
-                    checked === true
-                      ? [...current, key]
-                      : current.filter((item) => item !== key),
-                  )
-                }
-                className="mt-1"
-              />
-              <Label
-                htmlFor={`${baseline.id}-failed-${key}`}
-                className="leading-snug font-normal"
-              >
-                {failedCheckLabels[key]}
+      <div id={`${baseline.id}-decision`} className="grid gap-4">
+        {decision === 'approve' && (
+          <>
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-bold">Confirm each check</legend>
+              {checkKeys.map((key) => (
+                <div key={key} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`${baseline.id}-${key}`}
+                    checked={checks[key]}
+                    onCheckedChange={(checked) =>
+                      setChecks((current) => ({
+                        ...current,
+                        [key]: checked === true,
+                      }))
+                    }
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor={`${baseline.id}-${key}`}
+                    className="leading-snug font-normal"
+                  >
+                    {checkLabels[key]}
+                  </Label>
+                </div>
+              ))}
+            </fieldset>
+            <div className="grid gap-2">
+              <Label htmlFor={`${baseline.id}-rationale`}>
+                Rationale (kept for audit)
               </Label>
+              <Textarea
+                id={`${baseline.id}-rationale`}
+                value={rationale}
+                onChange={(event) => setRationale(event.target.value)}
+              />
             </div>
-          ))}
-        </fieldset>
-        <div className="grid gap-2">
-          <Label htmlFor={`${baseline.id}-return`}>
-            Feedback for the institution
-          </Label>
-          <Textarea
-            id={`${baseline.id}-return`}
-            value={returnReason}
-            onChange={(event) => setReturnReason(event.target.value)}
-          />
-        </div>
-        {giveBack.isError && (
-          <p role="alert" className="text-sm text-error-dark">
-            {giveBack.error.message}
-          </p>
+            {approve.isError && (
+              <p role="alert" className="text-sm text-error-dark">
+                {approve.error.message}
+              </p>
+            )}
+            <div>
+              <Button
+                disabled={
+                  !allChecked ||
+                  rationale.trim().length < 20 ||
+                  approve.isPending
+                }
+                onClick={() => approve.mutate(undefined)}
+              >
+                Approve and activate
+              </Button>
+              {(!allChecked || rationale.trim().length < 20) && (
+                <p className="mt-1 text-xs text-base-dark">
+                  Confirm all four checks and give a rationale of at least 20
+                  characters.
+                </p>
+              )}
+            </div>
+          </>
         )}
-        <div>
-          <Button
-            variant="outline"
-            disabled={
-              returnReason.trim().length < 10 ||
-              failed.length === 0 ||
-              giveBack.isPending
-            }
-            onClick={() => giveBack.mutate(undefined)}
-          >
-            Return for revision
-          </Button>
-          {(returnReason.trim().length < 10 || failed.length === 0) && (
-            <p className="mt-1 text-xs text-base-dark">
-              Choose at least one check and give feedback of at least 10
-              characters.
-            </p>
-          )}
-        </div>
+        {decision === 'return' && (
+          <div className="grid gap-3">
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-bold">
+                Which checks are not met?
+              </legend>
+              {checkKeys.map((key) => (
+                <div key={key} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`${baseline.id}-failed-${key}`}
+                    checked={failed.includes(key)}
+                    onCheckedChange={(checked) =>
+                      setFailed((current) =>
+                        checked === true
+                          ? [...current, key]
+                          : current.filter((item) => item !== key),
+                      )
+                    }
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor={`${baseline.id}-failed-${key}`}
+                    className="leading-snug font-normal"
+                  >
+                    {failedCheckLabels[key]}
+                  </Label>
+                </div>
+              ))}
+            </fieldset>
+            <div className="grid gap-2">
+              <Label htmlFor={`${baseline.id}-return`}>
+                Feedback for the institution
+              </Label>
+              <Textarea
+                id={`${baseline.id}-return`}
+                value={returnReason}
+                onChange={(event) => setReturnReason(event.target.value)}
+              />
+            </div>
+            {giveBack.isError && (
+              <p role="alert" className="text-sm text-error-dark">
+                {giveBack.error.message}
+              </p>
+            )}
+            <div>
+              <Button
+                variant="outline"
+                disabled={
+                  returnReason.trim().length < 10 ||
+                  failed.length === 0 ||
+                  giveBack.isPending
+                }
+                onClick={() => giveBack.mutate(undefined)}
+              >
+                Return for revision
+              </Button>
+              {(returnReason.trim().length < 10 || failed.length === 0) && (
+                <p className="mt-1 text-xs text-base-dark">
+                  Choose at least one check and give feedback of at least 10
+                  characters.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

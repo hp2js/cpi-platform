@@ -52,6 +52,15 @@ export const comparisonRowSchema = z.object({
 export const trendPointSchema = z.object({
   periodId: z.string(),
   periodLabel: z.string(),
+  /**
+   * Where the quarter stands (HP2-55): reporting not open yet (the quarter has not ended), open
+   * until the submission deadline, or due. Rates need `due`, so they apply only once it is due.
+   */
+  status: z.enum(['not_open', 'open', 'due']),
+  submissionDeadline: instantSchema,
+  /** Reports expected for the quarter in the caller's scope, and how many are in already. */
+  expected: z.number().int().nonnegative(),
+  received: z.number().int().nonnegative(),
   /** Reports whose deadline has passed. */
   due: z.number().int().nonnegative(),
   submitted: z.number().int().nonnegative(),

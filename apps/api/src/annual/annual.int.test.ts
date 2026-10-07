@@ -200,6 +200,40 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       'DEMO-008',
     ]);
     expect(report.unreleased).toHaveLength(7);
+
+    // The year at a glance (HP2-66): every institution, coverage, batches and corrections.
+    expect(report.summary.map((row) => row.institutionId)).toEqual([
+      'DEMO-001',
+      'DEMO-002',
+      'DEMO-003',
+      'DEMO-004',
+      'DEMO-005',
+      'DEMO-006',
+      'DEMO-007',
+      'DEMO-008',
+    ]);
+    expect(report.summary.at(-1)).toMatchObject({
+      released: true,
+      version: 2,
+      points: '40.00',
+      lateQuarters: 0,
+    });
+    expect(report.summary[0]).toMatchObject({ released: false, points: null });
+    expect(report.batches).toHaveLength(2);
+    expect(report.corrections).toEqual([
+      expect.objectContaining({
+        institutionId: 'DEMO-008',
+        fromVersion: 1,
+        toVersion: 2,
+        reason: 'The Q2 closure reason needs restating.',
+      }),
+    ]);
+    expect(
+      report.coverage.find((metric) => metric.id === 'release-coverage'),
+    ).toMatchObject({ numerator: 1, denominator: 8 });
+    expect(
+      report.coverage.find((metric) => metric.id === 'closed-nonresponse'),
+    ).toMatchObject({ numerator: 4, denominator: 32 });
   });
 
   it('records extensions after the cutoff that hold release until they end (AT29)', async () => {

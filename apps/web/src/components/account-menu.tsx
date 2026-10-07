@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   Building2,
   ChevronDown,
+  FlaskConical,
   LogOut,
   UserCog,
   UserRound,
@@ -20,6 +21,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { roleLabel, signOut } from '@/features/session/queries';
 import { cn } from '@/lib/utils';
+
+/** Opens the development controls; dispatched from the account menu on phones. */
+export const OPEN_DEV_CONTROLS = 'cpi:open-dev-controls';
 
 export function AccountMenu({
   session,
@@ -46,7 +50,7 @@ export function AccountMenu({
         <Button
           variant="ghost"
           className={cn(
-            'h-auto max-w-56 gap-2 px-2 py-2 text-left',
+            'h-auto max-w-56 gap-2 px-2 py-2 text-left desktop:max-w-96',
             tone === 'dark' && 'text-white hover:bg-white/10 hover:text-white',
           )}
         >
@@ -71,7 +75,9 @@ export function AccountMenu({
           <span className="sr-only tablet:hidden">
             Account menu for {user.displayName}
           </span>
-          <span className="sr-only max-tablet:hidden">Account menu</span>
+          <span className="sr-only max-tablet:hidden">
+            Account menu for {user.displayName}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
@@ -101,6 +107,16 @@ export function AccountMenu({
           >
             <Building2 aria-hidden="true" />
             Our institution
+          </DropdownMenuItem>
+        )}
+        {import.meta.env.DEV && (
+          // Development builds: the dev controls live here on phones, clear of the content.
+          <DropdownMenuItem
+            className="tablet:hidden"
+            onSelect={() => window.dispatchEvent(new Event(OPEN_DEV_CONTROLS))}
+          >
+            <FlaskConical aria-hidden="true" />
+            Dev controls
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

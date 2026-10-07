@@ -1,8 +1,12 @@
 import type {
+  ConsolidatedReport,
+  ConsolidatedSummaryRow,
   FoundationKind,
   IndicatorWeights,
+  PublishedResult,
   ReopenEligibility,
 } from '../draft/index.js';
+import { points } from './scoring.js';
 import { add, format2, mul, rational, sum, type Rational } from './rational.js';
 
 /**
@@ -69,4 +73,92 @@ export function reopenEligibility(input: {
       `The open correction case for ${input.institutionId} is for ${correction.periodLabel}, not ${input.periodLabel}. An administrator must open a case for ${input.periodLabel} before this review can be reopened.`,
     );
   return { allowed: true, reason: null, published, correction };
+}
+
+/**
+ * The consolidated report's summary, publication batches and corrections (HP2-66), from the
+ * published results themselves, so the summary matches each institution's page and the exports.
+ * `history` is every published version in scope, current and superseded.
+ */
+export function consolidatedSummary(
+  released: PublishedResult[],
+  unreleased: ConsolidatedReport['unreleased'],
+  history: PublishedResult[],
+): Pick<ConsolidatedReport, 'summary' | 'batches' | 'corrections'> {
+  const releasedRows: ConsolidatedSummaryRow[] = released.map((result) => {
+    const { evaluation } = result;
+    const quarterMax = evaluation.weights.implementation / 4;
+    const quarters = evaluation.quarters.map((quarter) => ({
+      periodLabel: quarter.periodLabel,
+      status: quarter.status,
+      points: quarter.implementation
+        ? points(quarterMax, quarter.implementation)
+        : null,
+      late: quarter.late,
+    }));
+    return {
+      institutionId: result.institutionId,
+      institutionName: result.institutionName,
+      released: true,
+      reasons: [],
+      points:
+        evaluation.total.status === 'calculated'
+          ? evaluation.total.points
+          : null,
+      foundationPoints:
+        evaluation.total.status === 'calculated'
+          ? evaluation.total.foundationPoints
+          : null,
+      quarters,
+      lateQuarters: quarters.filter((quarter) => quarter.late).length,
+      officerName: evaluation.officerName,
+      version: result.version,
+      publishedAt: result.publishedAt,
+    };
+  });
+  const unreleasedRows: ConsolidatedSummaryRow[] = unreleased.map((row) => ({
+    institutionId: row.institutionId,
+    institutionName: row.institutionName,
+    released: false,
+    reasons: row.reasons,
+    points: null,
+    foundationPoints: null,
+    quarters: [],
+    lateQuarters: 0,
+    officerName: null,
+    version: null,
+    publishedAt: null,
+  }));
+  const batches = new Map<string, ConsolidatedReport['batches'][number]>();
+  for (const result of [...history].sort(
+    (a, b) => Date.parse(a.publishedAt) - Date.parse(b.publishedAt),
+  )) {
+    const batch = batches.get(result.batchId);
+    if (batch) batch.institutions += 1;
+    else
+      batches.set(result.batchId, {
+        batchId: result.batchId,
+        publishedAt: result.publishedAt,
+        publishedBy: result.publishedBy,
+        institutions: 1,
+      });
+  }
+  return {
+    summary: [...releasedRows, ...unreleasedRows].sort((a, b) =>
+      a.institutionId.localeCompare(b.institutionId),
+    ),
+    batches: [...batches.values()],
+    corrections: history
+      .filter((result) => result.correctionReason !== null)
+      .sort((a, b) => Date.parse(a.publishedAt) - Date.parse(b.publishedAt))
+      .map((result) => ({
+        institutionId: result.institutionId,
+        institutionName: result.institutionName,
+        fromVersion: result.version - 1,
+        toVersion: result.version,
+        reason: result.correctionReason!,
+        publishedAt: result.publishedAt,
+        publishedBy: result.publishedBy,
+      })),
+  };
 }

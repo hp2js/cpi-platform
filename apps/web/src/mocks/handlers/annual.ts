@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import {
+  consolidatedSummary,
   closeNonresponseRequestSchema,
   correctionRequestSchema,
   extensionRequestSchema,
@@ -27,7 +28,9 @@ import {
   readableInstitutionIds,
 } from '../services/scope';
 import { requireRole } from '../services/session';
-import { profileLabel } from '../services/profiles';
+import { activeWeights, profileLabel } from '../services/profiles';
+import type { MockUser } from '@cpi/contracts/fixtures';
+import { oversightFor } from './oversight';
 
 function cutoffPassed() {
   const db = getDb();
@@ -70,7 +73,7 @@ function overview(institutionIds: string[]): AnnualOverview {
 }
 
 /** Released and unreleased results within the caller's scope (a supervisor's institutions). */
-function consolidated(scope: string[]): ConsolidatedReport {
+function consolidated(user: MockUser, scope: string[]): ConsolidatedReport {
   const db = getDb();
   const released = db.publications
     .filter(
@@ -96,6 +99,17 @@ function consolidated(scope: string[]): ConsolidatedReport {
             : ['Ready, not yet published'],
       };
     });
+  const history = db.publications
+    .filter((publication) => scope.includes(publication.institutionId))
+    .map(toPublished);
+  const { metrics, backlog } = oversightFor(user, {
+    periodId: null,
+    institutionId: null,
+    officerId: null,
+  });
+  const quarters = db.obligations.filter((obligation) =>
+    scope.includes(obligation.institutionId),
+  ).length;
   return {
     schemaVersion: 'cpi-export-1',
     simulation: true,
@@ -104,6 +118,23 @@ function consolidated(scope: string[]): ConsolidatedReport {
     profileName: profileLabel(),
     released,
     unreleased,
+    ...consolidatedSummary(released, unreleased, history),
+    coverage: [
+      ...metrics,
+      {
+        id: 'closed-nonresponse',
+        label: 'Closed without submission',
+        definition:
+          'Institution-quarters closed without submission ÷ all institution-quarters',
+        numerator: backlog.closedNonresponse,
+        denominator: quarters,
+        percent:
+          quarters === 0
+            ? null
+            : Math.round((backlog.closedNonresponse / quarters) * 1000) / 10,
+      },
+    ],
+    weights: activeWeights(db),
   };
 }
 
@@ -471,7 +502,7 @@ export const annualHandlers = [
   http.get('/api/annual/report', async () => {
     await networkDelay();
     const user = requireRole('supervisor', 'administrator');
-    return HttpResponse.json(consolidated(readableInstitutionIds(user)));
+    return HttpResponse.json(consolidated(user, readableInstitutionIds(user)));
   }),
   http.get('/api/annual/report.csv', async () => {
     await networkDelay();
@@ -480,7 +511,7 @@ export const annualHandlers = [
       'cpi-consolidated-results.csv',
       toCsv(
         exportHeader,
-        exportRows(consolidated(readableInstitutionIds(user)).released),
+        exportRows(consolidated(user, readableInstitutionIds(user)).released),
       ),
     );
   }),

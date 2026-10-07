@@ -7,15 +7,6 @@ import { QueryView } from '@/components/query-view';
 import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
 import { SelectField } from '@/components/select-field';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { ObligationMatrix } from '@/features/directory/obligation-matrix';
 import {
   assignmentsQuery,
@@ -270,47 +261,13 @@ function Metrics({ data }: { data: Oversight }) {
           <MetricCard key={metric.id} metric={metric} />
         ))}
       </div>
-      <div
-        className={cn(
-          'grid gap-6 rounded-lg border border-base-lighter bg-white p-5',
-          charted && 'desktop:grid-cols-2',
-        )}
-      >
-        {charted && <MetricChart metrics={data.metrics} />}
-        <Table>
-          {charted && (
-            <TableCaption className="text-left">
-              The chart shows the same values as this table.
-            </TableCaption>
-          )}
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Metric</TableHead>
-              <TableHead scope="col">Numerator</TableHead>
-              <TableHead scope="col">Denominator</TableHead>
-              <TableHead scope="col">Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.metrics.map((metric) => (
-              <TableRow key={metric.id}>
-                <TableHead scope="row">{metric.label}</TableHead>
-                <TableCell className="tabular-nums">
-                  {metric.numerator}
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {metric.denominator}
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {metric.percent === null
-                    ? 'Not applicable'
-                    : `${metric.percent}%`}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {/* The cards above carry each value with its numerator and denominator; the chart
+          only draws them, so it is shown once something is non-zero and nothing repeats. */}
+      {charted && (
+        <div className="rounded-lg border border-base-lighter bg-white p-5">
+          <MetricChart metrics={data.metrics} />
+        </div>
+      )}
       <dl className="grid gap-3 tablet:grid-cols-2">
         {[
           {

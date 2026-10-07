@@ -288,9 +288,13 @@ test('an inflated baseline cannot be approved without the checks and can be retu
     ),
   ).toBeVisible();
   await expect(q2.getByText(/A-99 has 8 milestones/)).toBeVisible();
+  await q2.getByRole('button', { name: 'Approve this proposal…' }).click();
   await expect(
     q2.getByRole('button', { name: 'Approve and activate' }),
   ).toBeDisabled();
+  await q2
+    .getByRole('button', { name: 'Return it to the institution…' })
+    .click();
   await q2
     .getByLabel('Feedback for the institution')
     .fill(
@@ -348,5 +352,7 @@ test('failed email is visible to the administrator and succeeds on retry (AT12)'
     .getByRole('navigation', { name: 'Administration' })
     .getByRole('link', { name: 'Audit log' })
     .click();
-  await expect(page.getByText('delivery.retry')).toBeVisible();
+  await expect(
+    page.getByRole('table').getByText('delivery.retry'),
+  ).toBeVisible();
 });

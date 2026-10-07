@@ -89,24 +89,19 @@ test('scripted year, withheld results, batch publication and oversight (AT13–A
 
   // Supervisor metrics carry numerators and denominators; filters live in the URL.
   await as(page, 'supervisor', '/supervisor');
-  const coverage = page.getByRole('row', { name: /Submission coverage/ });
-  await expect(coverage.getByRole('cell').nth(0)).toHaveText('31');
-  await expect(coverage.getByRole('cell').nth(1)).toHaveText('32');
-  await expect(
+  // Each metric is shown once, as a card with its numerator and denominator (HP2-55).
+  const card = (label: string) =>
     page
-      .getByRole('row', { name: /Annual release coverage/ })
-      .getByRole('cell')
-      .nth(2),
-  ).toHaveText('100%');
+      .getByRole('region', { name: 'Coverage and review' })
+      .getByText(label, { exact: true })
+      .first() // the chart below repeats the label as a drawing
+      .locator('..');
+  await expect(card('Submission coverage')).toContainText('31 of 32');
+  await expect(card('Annual release coverage')).toContainText('100%');
   await page.getByRole('combobox', { name: 'Quarter', exact: true }).click();
   await page.getByRole('option', { name: 'Q3' }).click();
   await expect(page).toHaveURL(/periodId=FY2026-27-Q3/);
-  await expect(
-    page
-      .getByRole('row', { name: /Submission coverage/ })
-      .getByRole('cell')
-      .nth(0),
-  ).toHaveText('7');
+  await expect(card('Submission coverage')).toContainText('7 of 8');
   await page.reload();
   await expect(
     page.getByRole('combobox', { name: 'Quarter', exact: true }),
@@ -132,13 +127,11 @@ test('a published result is corrected only through a case and keeps its history 
     .getByRole('link')
     .click();
   const reviewUrl = page.url();
-  await page
-    .getByLabel('Reason for reopening')
-    .fill('Later evidence shows the Q4 exception review was not done.');
-  await page.getByRole('button', { name: 'Reopen with this reason' }).click();
+  // Told before writing a reason (HP2-51); the reopen form only appears once a case is open.
   await expect(
-    page.getByText(/An administrator must open a correction case/),
+    page.getByText(/An administrator must open a correction case for Q4/),
   ).toBeVisible();
+  await expect(page.getByLabel('Reason for reopening')).toHaveCount(0);
 
   await as(page, 'administrator', '/admin/annual');
   const demo8 = page.getByRole('listitem').filter({ hasText: 'DEMO-008' });

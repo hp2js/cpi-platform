@@ -122,7 +122,13 @@ export function SimulationPage() {
                     {formatDateTime(state.businessTime)}
                   </dd>
                   <dt className="text-base-dark">Boundary events processed</dt>
-                  <dd>{state.processedEvents}</dd>
+                  <dd>
+                    {state.processedEvents} since the seed
+                    <span className="block text-xs text-base-dark">
+                      Boundaries before the seed time, such as Q1 reporting
+                      opening, are part of the seeded state and not counted.
+                    </span>
+                  </dd>
                   <dt className="text-base-dark">Next boundary</dt>
                   <dd>
                     {next

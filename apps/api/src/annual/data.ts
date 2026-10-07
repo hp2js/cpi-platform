@@ -1,6 +1,7 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
   annualTotal,
+  consolidatedSummary,
   isEvidenceAnswer,
   format2,
   mul,
@@ -18,6 +19,7 @@ import {
   type PublishedResult,
   type QuarterDisposition,
   type Rational,
+  quarterReportingStatus,
 } from '@cpi/contracts';
 import type { Db } from '../database/db';
 import {
@@ -478,6 +480,17 @@ export function consolidated(
             : ['Ready, not yet published'],
       };
     });
+  const history = data.publications
+    .filter((publication) => scope.includes(publication.institutionId))
+    .map((publication) => toPublished(data, publication));
+  const { metrics, backlog } = oversight(data, scope, false, {
+    periodId: null,
+    institutionId: null,
+    officerId: null,
+  });
+  const quarters = data.obligations.filter((obligation) =>
+    scope.includes(obligation.institutionId),
+  ).length;
   return {
     schemaVersion: 'cpi-export-1',
     simulation: true,
@@ -486,6 +499,18 @@ export function consolidated(
     profileName: data.profile.name,
     released,
     unreleased,
+    ...consolidatedSummary(released, unreleased, history),
+    coverage: [
+      ...metrics,
+      metric(
+        'closed-nonresponse',
+        'Closed without submission',
+        'Institution-quarters closed without submission ÷ all institution-quarters',
+        backlog.closedNonresponse,
+        quarters,
+      ),
+    ],
+    weights: data.profile.weights,
   };
 }
 
@@ -765,6 +790,12 @@ export function oversight(
     return {
       periodId: period.id,
       periodLabel: period.label,
+      status: quarterReportingStatus(period, data.businessTime),
+      submissionDeadline: period.submissionDeadline,
+      expected: quarter.length,
+      received: quarter.filter(
+        (obligation) => obligation.currentRevision !== null,
+      ).length,
       due: dueHere.length,
       submitted: dueHere.filter(
         (obligation) => obligation.currentRevision !== null,
