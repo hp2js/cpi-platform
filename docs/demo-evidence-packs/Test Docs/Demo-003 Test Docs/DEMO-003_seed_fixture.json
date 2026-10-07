@@ -1,0 +1,452 @@
+{
+  "schema_version": "demo-fixture-1",
+  "simulation": true,
+  "institution_id": "DEMO-003",
+  "name": "Demo County Licensing Office",
+  "scoring_profile": "Hackathon Mock v1",
+  "principal_scenario": "PRD Section 17.1 / AT11 / Example E: Q1 report submitted 2 days late with explicit timeliness flag; achievement unaffected; Q2-Q4 on time; annual 100.00 with Q1 late flag retained",
+  "assigned_officer": "Officer A",
+  "baseline_status": "LIVE BASELINE - officer activates each quarter's milestones before the quarter opens; corresponds to DCLO/CPC/CRMP/01/2026 v1.0 (approved 19 June 2026)",
+  "foundations": {
+    "procedures": {
+      "fraction": 1,
+      "max_points": 10
+    },
+    "risk_assessment": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "mitigation_plan": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "foundation_deadline": "2026-09-30",
+    "submitted": "2026-09-21"
+  },
+  "quarters": {
+    "Q1": {
+      "due_by": "30 September 2026",
+      "submission_deadline": "15 October 2026",
+      "report_date": "16 October 2026",
+      "submitted_at": "2026-10-17T11:20:00+03:00",
+      "on_time": false,
+      "days_late": 2,
+      "timeliness_flag": "LATE - penalty not configured in demo",
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Inspection schedule published and followed",
+          "completion_condition": "The schedule was published and at least 90% of inspections followed it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/04/Q1/2026; MIN. IAO/04/Q1/2026"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-02",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training delivered to the staff named in the plan (Annex A) by quarter end.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q1/2026; MIN. IAO/05/Q1/2026"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting (Q1)",
+          "completion_condition": "CPC meeting held within the quarter, chaired by the Accounting Officer with a trained senior IAO as Secretary; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/CPC/MIN/Q1/2026 attendance page and signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting (Q1)",
+          "completion_condition": "IAO Committee meeting held within the quarter; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/IAO/MIN/Q1/2026 attendance page and signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    },
+    "Q2": {
+      "due_by": "31 December 2026",
+      "submission_deadline": "15 January 2027",
+      "report_date": "8 January 2027",
+      "submitted_at": "2027-01-12T10:05:00+03:00",
+      "on_time": true,
+      "days_late": 0,
+      "timeliness_flag": "ON TIME",
+      "milestones": [
+        {
+          "milestone_id": "M-05",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Q2 inspection schedule published and followed",
+          "completion_condition": "The Q2 schedule was published by 1 October 2026 and at least 90% of inspections scheduled up to 11 December 2026 followed it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/04/Q2/2026; MIN. IAO/04/Q2/2026"
+        },
+        {
+          "milestone_id": "M-06",
+          "activity_id": "A-03",
+          "risk_id": "R-02",
+          "description": "Cashless penalty notices in use",
+          "completion_condition": "From 1 November 2026, every penalty notice issued up to 11 December 2026 was payable only through the county cashless platform, and no cash penalty was collected at premises.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q2/2026; MIN. IAO/05/Q2/2026"
+        },
+        {
+          "milestone_id": "M-07",
+          "activity_id": "A-05",
+          "risk_id": "R-04",
+          "description": "Approval declarations in use",
+          "completion_condition": "The declaration was added to the approval form by 31 October 2026 and 100% of licence approvals made from 1 November to 11 December 2026 carry a completed declaration; every recusal is recorded.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q2/2026; MIN. IAO/06/Q2/2026"
+        },
+        {
+          "milestone_id": "M-08",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting (Q2)",
+          "completion_condition": "CPC meeting held within the quarter, chaired by the Accounting Officer with a trained senior IAO as Secretary; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/CPC/MIN/Q2/2026 attendance page and signature page"
+        },
+        {
+          "milestone_id": "M-09",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting (Q2)",
+          "completion_condition": "IAO Committee meeting held within the quarter; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/IAO/MIN/Q2/2026 attendance page and signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    },
+    "Q3": {
+      "due_by": "31 March 2027",
+      "submission_deadline": "15 April 2027",
+      "report_date": "7 April 2027",
+      "submitted_at": "2027-04-09T14:30:00+03:00",
+      "on_time": true,
+      "days_late": 0,
+      "timeliness_flag": "ON TIME",
+      "milestones": [
+        {
+          "milestone_id": "M-10",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Q3 inspection schedule published and followed",
+          "completion_condition": "The Q3 schedule was published by 1 January 2027 and at least 90% of inspections scheduled up to 12 March 2027 followed it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/04/Q3/2027; MIN. IAO/04/Q3/2027"
+        },
+        {
+          "milestone_id": "M-11",
+          "activity_id": "A-04",
+          "risk_id": "R-03",
+          "description": "Online application register live",
+          "completion_condition": "The online application register was live by 31 January 2027 and at least 80% of new applications received from 1 February to 12 March 2027 were submitted online.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q3/2027; MIN. IAO/05/Q3/2027"
+        },
+        {
+          "milestone_id": "M-12",
+          "activity_id": "A-06",
+          "risk_id": "R-05",
+          "description": "Daily revenue reconciliation",
+          "completion_condition": "Bank reconciliation of licence revenue was completed for every working day from 4 January to 12 March 2027.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q3/2027; MIN. IAO/06/Q3/2027"
+        },
+        {
+          "milestone_id": "M-13",
+          "activity_id": "A-07",
+          "risk_id": "R-06",
+          "description": "Procurement plan published; declarations collected",
+          "completion_condition": "The FY 2026/2027 procurement plan was published on the website by 31 January 2027, and every evaluation committee member for evaluations held from 1 February to 12 March 2027 signed a declaration before evaluation.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/07/Q3/2027; MIN. IAO/07/Q3/2027"
+        },
+        {
+          "milestone_id": "M-14",
+          "activity_id": "A-08",
+          "risk_id": "R-07",
+          "description": "Recruitment panel declarations",
+          "completion_condition": "Every panel member in recruitments shortlisted from 1 January to 12 March 2027 signed a declaration before shortlisting, and every recusal was minuted.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/08/Q3/2027; MIN. IAO/08/Q3/2027"
+        },
+        {
+          "milestone_id": "M-15",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting (Q3)",
+          "completion_condition": "CPC meeting held within the quarter, chaired by the Accounting Officer with a trained senior IAO as Secretary; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/CPC/MIN/Q3/2027 attendance page and signature page"
+        },
+        {
+          "milestone_id": "M-16",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting (Q3)",
+          "completion_condition": "IAO Committee meeting held within the quarter; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/IAO/MIN/Q3/2027 attendance page and signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    },
+    "Q4": {
+      "due_by": "30 June 2027",
+      "submission_deadline": "15 July 2027",
+      "report_date": "6 July 2027",
+      "submitted_at": "2027-07-08T09:40:00+03:00",
+      "on_time": true,
+      "days_late": 0,
+      "timeliness_flag": "ON TIME",
+      "milestones": [
+        {
+          "milestone_id": "M-17",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Q4 inspection schedule published and followed",
+          "completion_condition": "The Q4 schedule was published by 1 April 2027 and at least 90% of inspections scheduled up to 11 June 2027 followed it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/04/Q4/2027; MIN. IAO/04/Q4/2027"
+        },
+        {
+          "milestone_id": "M-18",
+          "activity_id": "A-09",
+          "risk_id": "R-08",
+          "description": "Shared accounts removed; access logs reviewed",
+          "completion_condition": "All shared accounts on the licensing database were disabled by 30 April 2027, and an access-log review covering 1 April to 31 May 2027 was completed by 11 June 2027.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q4/2027; MIN. IAO/05/Q4/2027"
+        },
+        {
+          "milestone_id": "M-19",
+          "activity_id": "A-10",
+          "risk_id": "R-09",
+          "description": "Work tickets linked to inspections",
+          "completion_condition": "The revised work ticket was in use from 3 May 2027, and 100% of field trips from 3 May to 11 June 2027 matched a scheduled inspection or a written authorisation.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q4/2027; MIN. IAO/06/Q4/2027"
+        },
+        {
+          "milestone_id": "M-20",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting (Q4)",
+          "completion_condition": "CPC meeting held within the quarter, chaired by the Accounting Officer with a trained senior IAO as Secretary; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/CPC/MIN/Q4/2027 attendance page and signature page"
+        },
+        {
+          "milestone_id": "M-21",
+          "activity_id": null,
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting (Q4)",
+          "completion_condition": "IAO Committee meeting held within the quarter; minutes duly signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DCLO/IAO/MIN/Q4/2027 attendance page and signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    }
+  },
+  "expected_annual": {
+    "formula": "10P+15R+15M+60*(I1+I2+I3+I4)/4",
+    "provisional_annual": 100.0,
+    "implementation_average": 1.0,
+    "annual_score": 100.0,
+    "late_obligations": [
+      "Q1"
+    ],
+    "on_time_reporting": "3/4",
+    "penalty_applied": false
+  },
+  "evidence": [
+    {
+      "file": "01_Foundations/DEMO-003_F1_Procedures_Prevention_of_Bribery_and_Corruption_v1.0.pdf",
+      "category": "procedure",
+      "period": null,
+      "simulated_upload_at": "2026-09-21T15:00:00+03:00",
+      "bytes": 12172,
+      "sha256": "2a2648ea814ff9c71b653e74b84dc307e08b4b09c68adb00d03f60888de16efa"
+    },
+    {
+      "file": "01_Foundations/DEMO-003_F2_Bribery_and_Corruption_Risk_Assessment_Report_FY2026-27.pdf",
+      "category": "risk_assessment",
+      "period": null,
+      "simulated_upload_at": "2026-09-21T15:00:00+03:00",
+      "bytes": 12710,
+      "sha256": "ef6b3b38c1a88b70dcbebcbc1b4a9df4844b45de054c63b5af46bef408f6dac6"
+    },
+    {
+      "file": "01_Foundations/DEMO-003_F3_Anti-Bribery_and_Corruption_Mitigation_Plan_FY2026-27.pdf",
+      "category": "mitigation_plan",
+      "period": null,
+      "simulated_upload_at": "2026-09-21T15:00:00+03:00",
+      "bytes": 18698,
+      "sha256": "fc4f40ed7c438abbffc59d6b94b7658ef1d7ab4f78154fddcf68ea3f29a7bc9c"
+    },
+    {
+      "file": "02_Q1/DEMO-003_Q1_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-17T11:20:00+03:00",
+      "bytes": 9633,
+      "sha256": "514aa6f876ebe2bf973cf054f9e0c0a5f5246a2c522a2ab99b0be4defa976c00"
+    },
+    {
+      "file": "02_Q1/DEMO-003_Q1_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-17T11:20:00+03:00",
+      "bytes": 7714,
+      "sha256": "a9622dae113fc476d1461b2557f8c8fb5542db2cfbdbffcaba16a6f5caec9337"
+    },
+    {
+      "file": "02_Q1/DEMO-003_Q1_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-17T11:20:00+03:00",
+      "bytes": 9818,
+      "sha256": "4e972712ffa2e53b51b9bfdb705c670a964824b0d35a62e39b2bafe0dbb7e53a"
+    },
+    {
+      "file": "03_Q2/DEMO-003_Q2_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:05:00+03:00",
+      "bytes": 8689,
+      "sha256": "3f0826f4c2d8138681d63900bf76166ddeb2a9ef23a7d63a8b428415ab17ce24"
+    },
+    {
+      "file": "03_Q2/DEMO-003_Q2_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:05:00+03:00",
+      "bytes": 8544,
+      "sha256": "339e8f798d4166e041ff808a9e4a6c36df3bfbc2e6cd23fc801f1c7168956577"
+    },
+    {
+      "file": "03_Q2/DEMO-003_Q2_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:05:00+03:00",
+      "bytes": 9531,
+      "sha256": "67b97f93962aceda4f3a5dc0cacecbc153888cfcbcbbb7df7541c8dc10af0a6e"
+    },
+    {
+      "file": "04_Q3/DEMO-003_Q3_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T14:30:00+03:00",
+      "bytes": 9118,
+      "sha256": "9603f98c8e5fc5d51fb116e43e6704b665c53a4d0419138e6152c5fcac8175db"
+    },
+    {
+      "file": "04_Q3/DEMO-003_Q3_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T14:30:00+03:00",
+      "bytes": 8949,
+      "sha256": "c697a3e9f72dae233fc888d3eb8d532fe692212eb27cac6154422a4320317877"
+    },
+    {
+      "file": "04_Q3/DEMO-003_Q3_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T14:30:00+03:00",
+      "bytes": 9875,
+      "sha256": "ca331fe0af53c6331f87d48ee9dba4b3f8de193355984c91534b0c1bca063684"
+    },
+    {
+      "file": "05_Q4/DEMO-003_Q4_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T09:40:00+03:00",
+      "bytes": 8673,
+      "sha256": "560815a496f7a2a9139f4365501d035fa8a1ffee7a7b7b7fae1b3ad2b98fb5b0"
+    },
+    {
+      "file": "05_Q4/DEMO-003_Q4_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T09:40:00+03:00",
+      "bytes": 8310,
+      "sha256": "292a427dcebcfac506af14038bb8e5976982835de1e139f0f0ee257d275dd257"
+    },
+    {
+      "file": "05_Q4/DEMO-003_Q4_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T09:40:00+03:00",
+      "bytes": 9262,
+      "sha256": "2491259f9348ea14143f4ed902eeddd641f56152ecb8d815da0eaa32f312380c"
+    }
+  ]
+}

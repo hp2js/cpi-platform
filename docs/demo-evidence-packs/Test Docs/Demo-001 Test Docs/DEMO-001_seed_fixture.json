@@ -1,0 +1,375 @@
+{
+  "schema_version": "demo-fixture-1",
+  "simulation": true,
+  "institution_id": "DEMO-001",
+  "name": "Demo Appointments Service Agency",
+  "scoring_profile": "Hackathon Mock v1",
+  "principal_scenario": "Full foundation readiness and implementation trajectory - annual Example A (AT16)",
+  "assigned_officer": "Officer A",
+  "baseline_status": "SEEDED HISTORICAL BASELINE - officer confirms correspondence to DASA/ABC/CRMP/2026-27/v1.0",
+  "foundations": {
+    "procedures": {
+      "fraction": 1,
+      "max_points": 10
+    },
+    "risk_assessment": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "mitigation_plan": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "foundation_deadline": "2026-09-30",
+    "submitted": "2026-09-29"
+  },
+  "quarters": {
+    "Q1": {
+      "due_by": "30 September 2026",
+      "submission_deadline": "15 October 2026",
+      "report_date": "9 October 2026",
+      "on_time": true,
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Allocation register operational and exception review completed",
+          "completion_condition": "The controlled allocation register is in use for all allocations in the quarter and an exception review of the register was completed by quarter end.",
+          "weight": 1,
+          "claimed_completed": false,
+          "expected_reviewed": false,
+          "evidence_passage": "MIN. CPC/05/Q1/2026-27; MIN. IAO/03/Q1/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training on the Procedures delivered to the staff cohort named in the Plan for that quarter by quarter end. [Cohort A]",
+          "weight": 1,
+          "claimed_completed": false,
+          "expected_reviewed": false,
+          "evidence_passage": "MIN. CPC/06/Q1/2026-27; MIN. IAO/04/Q1/2026-27"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/CPC/MIN/Q1/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/IAO/MIN/Q1/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 0.5,
+      "reviewed_I": 0.5,
+      "readiness_snapshot": 70.0
+    },
+    "Q2": {
+      "due_by": "31 December 2026",
+      "submission_deadline": "15 January 2027",
+      "report_date": "14 January 2027",
+      "on_time": true,
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Allocation register operational and exception review completed",
+          "completion_condition": "The controlled allocation register is in use for all allocations in the quarter and an exception review of the register was completed by quarter end.",
+          "weight": 1,
+          "claimed_completed": false,
+          "expected_reviewed": false,
+          "evidence_passage": "MIN. CPC/05/Q2/2026-27; MIN. IAO/03/Q2/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training on the Procedures delivered to the staff cohort named in the Plan for that quarter by quarter end. [Cohort B]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q2/2026-27; MIN. IAO/04/Q2/2026-27"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/CPC/MIN/Q2/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/IAO/MIN/Q2/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 0.75,
+      "reviewed_I": 0.75,
+      "readiness_snapshot": 85.0
+    },
+    "Q3": {
+      "due_by": "31 March 2027",
+      "submission_deadline": "15 April 2027",
+      "report_date": "8 April 2027",
+      "on_time": true,
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Allocation register operational and exception review completed",
+          "completion_condition": "The controlled allocation register is in use for all allocations in the quarter and an exception review of the register was completed by quarter end.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q3/2026-27; MIN. IAO/03/Q3/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training on the Procedures delivered to the staff cohort named in the Plan for that quarter by quarter end. [Cohort C]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q3/2026-27; MIN. IAO/04/Q3/2026-27"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/CPC/MIN/Q3/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/IAO/MIN/Q3/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "readiness_snapshot": 100.0
+    },
+    "Q4": {
+      "due_by": "30 June 2027",
+      "submission_deadline": "15 July 2027",
+      "report_date": "9 July 2027",
+      "on_time": true,
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Allocation register operational and exception review completed",
+          "completion_condition": "The controlled allocation register is in use for all allocations in the quarter and an exception review of the register was completed by quarter end.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q4/2026-27; MIN. IAO/03/Q4/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training on the Procedures delivered to the staff cohort named in the Plan for that quarter by quarter end. [Cohort D]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q4/2026-27; MIN. IAO/04/Q4/2026-27"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained IAO Chair as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/CPC/MIN/Q4/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DASA/IAO/MIN/Q4/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "readiness_snapshot": 100.0
+    }
+  },
+  "expected_annual": {
+    "formula": "10P+15R+15M+60*(I1+I2+I3+I4)/4",
+    "implementation_average": 0.8125,
+    "annual_score": 88.75
+  },
+  "evidence": [
+    {
+      "file": "01_Foundations/DEMO-001_F1_Procedures_Prevention_of_Bribery_and_Corruption_v1.0.pdf",
+      "category": "procedure",
+      "period": null,
+      "simulated_upload_at": "2026-09-29T14:00:00+03:00",
+      "bytes": 10626,
+      "sha256": "e166b419451a96a6c9bab5c8ece85c3d7532abfae6ca5b7e922e8c0c21ffda9b"
+    },
+    {
+      "file": "01_Foundations/DEMO-001_F2_Bribery_and_Corruption_Risk_Assessment_Report_FY2026-27.pdf",
+      "category": "risk_assessment",
+      "period": null,
+      "simulated_upload_at": "2026-09-29T14:00:00+03:00",
+      "bytes": 12931,
+      "sha256": "8a77b237fccbc1431ca18f63b8f758a689fe647b998e1d5ca7d7ffa0e79ca42c"
+    },
+    {
+      "file": "01_Foundations/DEMO-001_F3_Anti-Bribery_and_Corruption_Mitigation_Plan_FY2026-27.pdf",
+      "category": "mitigation_plan",
+      "period": null,
+      "simulated_upload_at": "2026-09-29T14:00:00+03:00",
+      "bytes": 12503,
+      "sha256": "ea23a19fcf69419f642dea81ccb3f3f182811d66448bec7502e42284d6ed5b4b"
+    },
+    {
+      "file": "02_Q1/DEMO-001_Q1_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-09T11:00:00+03:00",
+      "bytes": 9512,
+      "sha256": "4c1d746080c6901f476630c5f63f92ce27cc2722b51670a31f001b694b62f96b"
+    },
+    {
+      "file": "02_Q1/DEMO-001_Q1_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-09T11:00:00+03:00",
+      "bytes": 7690,
+      "sha256": "77b0304495f9084ac6c42b1459755f7256282500487860b265c8789f16fb3e66"
+    },
+    {
+      "file": "02_Q1/DEMO-001_Q1_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-09T11:00:00+03:00",
+      "bytes": 9839,
+      "sha256": "7f172692b596005b6d3531b0e30b79d7a4a46e52506d383d6a55c780e2fe13c0"
+    },
+    {
+      "file": "03_Q2/DEMO-001_Q2_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-14T11:00:00+03:00",
+      "bytes": 9693,
+      "sha256": "c57f13a85edb1165cf34a3c114b461a38c470977cf0b7b765c55786030249fcf"
+    },
+    {
+      "file": "03_Q2/DEMO-001_Q2_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-14T11:00:00+03:00",
+      "bytes": 8176,
+      "sha256": "0394e2fc405445d06c69c7adff65ea53fae8687ad5ddadb2d981154e2d52e38e"
+    },
+    {
+      "file": "03_Q2/DEMO-001_Q2_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-14T11:00:00+03:00",
+      "bytes": 10599,
+      "sha256": "491a6b704babab967395188f5823b5d0f81340f57cba8ac9177344cd80979d0f"
+    },
+    {
+      "file": "04_Q3/DEMO-001_Q3_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-08T11:00:00+03:00",
+      "bytes": 8958,
+      "sha256": "53c36b8b6f1d8d0932a5beac8b2b50abeaffcc3d488576e30bae26186d09385b"
+    },
+    {
+      "file": "04_Q3/DEMO-001_Q3_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-08T11:00:00+03:00",
+      "bytes": 7858,
+      "sha256": "2413ecc3575b44cd0791017f8f129d24853e3031672398f652d30d855df2b4c8"
+    },
+    {
+      "file": "04_Q3/DEMO-001_Q3_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-08T11:00:00+03:00",
+      "bytes": 10033,
+      "sha256": "acf119be4e0d55731a6348b39bbae51c11b635c1b943c68d06018ffc353e836a"
+    },
+    {
+      "file": "05_Q4/DEMO-001_Q4_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-09T11:00:00+03:00",
+      "bytes": 9210,
+      "sha256": "860fe1989ad2ecb06794c7abcece8a6abd6ca1c5b2a5d71a41ee6d8e0e3ed366"
+    },
+    {
+      "file": "05_Q4/DEMO-001_Q4_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-09T11:00:00+03:00",
+      "bytes": 7826,
+      "sha256": "047e6bc00def669a4ab9c8dce7971573afd359a2b7f01878bbbd180a967b16e4"
+    },
+    {
+      "file": "05_Q4/DEMO-001_Q4_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-09T11:00:00+03:00",
+      "bytes": 9963,
+      "sha256": "4e0ce66aeb8105e361c1d6d63fec8aa5f03c6febfed06d6a0e0a9b4ce3cfc808"
+    }
+  ]
+}

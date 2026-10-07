@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-// HP2-11: writes docs/acceptance/hp2-11-scoring-worksheet.md from the built fixtures, or with
+// HP2-11: writes docs/acceptance/scoring-worksheet.md from the built fixtures, or with
 // --check fails when the committed worksheet is stale. It also enforces that the independent
 // worksheet and the catalogue import nothing but each other (no engine, API, mock or seed).
 const source = new URL(
@@ -24,7 +24,7 @@ for (const file of ['worksheet.ts', 'catalogue.ts']) {
 const { renderWorksheet } =
   await import('../packages/contracts/dist/scoring-fixtures/report.js');
 const target = new URL(
-  '../docs/acceptance/hp2-11-scoring-worksheet.md',
+  '../docs/acceptance/scoring-worksheet.md',
   import.meta.url,
 );
 const rendered = renderWorksheet();
@@ -37,9 +37,9 @@ if (process.argv.includes('--check')) {
   }
   assert.ok(
     committed === rendered,
-    'docs/acceptance/hp2-11-scoring-worksheet.md is stale: run `pnpm worksheet`',
+    'docs/acceptance/scoring-worksheet.md is stale: run `pnpm worksheet`',
   );
-  console.log('HP2-11 scoring worksheet is up to date');
+  console.log('Scoring worksheet is up to date');
 } else {
   writeFileSync(target, rendered);
   console.log(`Wrote ${target.pathname}`);

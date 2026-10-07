@@ -1,0 +1,483 @@
+{
+  "schema_version": "demo-fixture-1",
+  "simulation": true,
+  "institution_id": "DEMO-004",
+  "name": "Demo Revenue Collection Agency",
+  "assigned_officer": "Officer A",
+  "scoring_profile": "Hackathon Mock v1",
+  "principal_scenario": "PRD 17.1: unsupported completion claim reduced by officer review. Q1 claims 4/4; M-01 (write-off compliance) unsupported; reviewed 3/4; annual 96.25",
+  "baseline_status": "SEEDED HISTORICAL BASELINE - officer confirms correspondence to DRCA/ABC/CRMP/2026-27/v1.0 Section 3.0",
+  "foundations": {
+    "procedures": {
+      "fraction": 1,
+      "max_points": 10
+    },
+    "risk_assessment": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "mitigation_plan": {
+      "fraction": 1,
+      "max_points": 15
+    },
+    "foundation_deadline": "2026-09-30",
+    "submitted": "2026-09-25"
+  },
+  "training_cohorts": {
+    "A": {
+      "due_quarter": "Q1",
+      "unit": "Debt Management; Revenue Assessment; Finance (write-off ledger and refunds); Taxpayer Services and Compliance & Enforcement (HQ)",
+      "staff": [
+        "DRCA/STF/0412",
+        "DRCA/STF/0418",
+        "DRCA/STF/0431",
+        "DRCA/STF/0437",
+        "DRCA/STF/0502",
+        "DRCA/STF/0509",
+        "DRCA/STF/0515",
+        "DRCA/STF/0523",
+        "DRCA/STF/0604",
+        "DRCA/STF/0611",
+        "DRCA/STF/0715",
+        "DRCA/STF/0722",
+        "DRCA/STF/0803",
+        "DRCA/STF/0810"
+      ]
+    },
+    "B": {
+      "due_quarter": "Q2",
+      "unit": "Regional offices: compliance and taxpayer services officers (Western, Coast, Rift Valley, Central)",
+      "staff": [
+        "DRCA/STF/0921",
+        "DRCA/STF/0922",
+        "DRCA/STF/0923",
+        "DRCA/STF/0924",
+        "DRCA/STF/0925",
+        "DRCA/STF/0926",
+        "DRCA/STF/0927",
+        "DRCA/STF/0928",
+        "DRCA/STF/0929",
+        "DRCA/STF/0930",
+        "DRCA/STF/0931",
+        "DRCA/STF/0932"
+      ]
+    },
+    "C": {
+      "due_quarter": "Q3",
+      "unit": "Supply Chain, Human Resource and ICT (privileged-access holders)",
+      "staff": [
+        "DRCA/STF/1104",
+        "DRCA/STF/1105",
+        "DRCA/STF/1106",
+        "DRCA/STF/1107",
+        "DRCA/STF/1203",
+        "DRCA/STF/1204",
+        "DRCA/STF/1205",
+        "DRCA/STF/1302",
+        "DRCA/STF/1303",
+        "DRCA/STF/1304"
+      ]
+    },
+    "D": {
+      "due_quarter": "Q4",
+      "unit": "Finance (payments), Legal Services, Internal Audit and staff recruited in FY2026/2027",
+      "staff": [
+        "DRCA/STF/0615",
+        "DRCA/STF/0616",
+        "DRCA/STF/0617",
+        "DRCA/STF/0618",
+        "DRCA/STF/1402",
+        "DRCA/STF/1403",
+        "DRCA/STF/1501",
+        "DRCA/STF/1502",
+        "DRCA/STF/1611",
+        "DRCA/STF/1612"
+      ]
+    }
+  },
+  "quarters": {
+    "Q1": {
+      "due_by": "30 September 2026",
+      "submission_deadline": "15 October 2026",
+      "report_date": "6 October 2026",
+      "on_time": true,
+      "cohort": "A",
+      "iao_meeting": "28 September 2026",
+      "cpc_meeting": "29 September 2026",
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Write-off authority matrix approved and applied",
+          "completion_condition": "The matrix was approved and write-offs this quarter comply with it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": false,
+          "evidence_passage": "MIN. CPC/05/Q1/2026-27; MIN. IAO/03/Q1/2026-27",
+          "expected_review": {
+            "decision": "rejected",
+            "reason": "MIN. CPC/05/Q1 and MIN. IAO/03/Q1 support approval of the matrix on 5 Aug 2026 but record that the compliance check of the 17 Q1 write-offs had not been carried out; compliance with the matrix is not substantiated.",
+            "evidence_suitability": {
+              "institution_match": "Pass",
+              "period_match": "Pass",
+              "relevance": "Pass",
+              "signature_presence": "Pass",
+              "readability": "Pass"
+            },
+            "clarification": {
+              "criterion": "Q1 M-01",
+              "requested_evidence": "Evidence that all write-offs processed in Q1 complied with the Write-off Authority Matrix",
+              "response": "none within 7-day window",
+              "closure": "after response deadline and evaluation cutoff 2027-07-31; M-01 = 0 with reason"
+            },
+            "later_information": "MIN. CPC/03/Q2/2026-27 reports the late Q1 check (21 Oct 2026): 15 of 17 complied. Corrective progress only; confirms the Q1 condition was not met; no re-review to 1."
+          }
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01, R-02, R-04",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort A]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q1/2026-27; MIN. IAO/04/Q1/2026-27 and Annex 1"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained Senior IAO as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/CPC/MIN/Q1/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/IAO/MIN/Q1/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 0.75,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 85.0
+    },
+    "Q2": {
+      "due_by": "31 December 2026",
+      "submission_deadline": "15 January 2027",
+      "report_date": "12 January 2027",
+      "on_time": true,
+      "cohort": "B",
+      "iao_meeting": "14 December 2026",
+      "cpc_meeting": "17 December 2026",
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Write-off authority matrix approved and applied",
+          "completion_condition": "The matrix was approved and write-offs this quarter comply with it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q2/2026-27; MIN. IAO/03/Q2/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01, R-02, R-04",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort B]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q2/2026-27; MIN. IAO/04/Q2/2026-27 and Annex 1"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained Senior IAO as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/CPC/MIN/Q2/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/IAO/MIN/Q2/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    },
+    "Q3": {
+      "due_by": "31 March 2027",
+      "submission_deadline": "15 April 2027",
+      "report_date": "9 April 2027",
+      "on_time": true,
+      "cohort": "C",
+      "iao_meeting": "15 March 2027",
+      "cpc_meeting": "18 March 2027",
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Write-off authority matrix approved and applied",
+          "completion_condition": "The matrix was approved and write-offs this quarter comply with it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q3/2026-27; MIN. IAO/03/Q3/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01, R-02, R-04",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort C]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q3/2026-27; MIN. IAO/04/Q3/2026-27 and Annex 1"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained Senior IAO as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/CPC/MIN/Q3/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/IAO/MIN/Q3/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    },
+    "Q4": {
+      "due_by": "30 June 2027",
+      "submission_deadline": "15 July 2027",
+      "report_date": "8 July 2027",
+      "on_time": true,
+      "cohort": "D",
+      "iao_meeting": "14 June 2027",
+      "cpc_meeting": "17 June 2027",
+      "milestones": [
+        {
+          "milestone_id": "M-01",
+          "activity_id": "A-01",
+          "risk_id": "R-01",
+          "description": "Write-off authority matrix approved and applied",
+          "completion_condition": "The matrix was approved and write-offs this quarter comply with it.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/05/Q4/2026-27; MIN. IAO/03/Q4/2026-27"
+        },
+        {
+          "milestone_id": "M-02",
+          "activity_id": "A-02",
+          "risk_id": "R-01, R-02, R-04",
+          "description": "Staff trained on the corruption prevention procedure",
+          "completion_condition": "Training delivered to the staff named in the plan by quarter end. [Cohort D]",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "MIN. CPC/06/Q4/2026-27; MIN. IAO/04/Q4/2026-27 and Annex 1"
+        },
+        {
+          "milestone_id": "M-03",
+          "activity_id": "A-03",
+          "risk_id": "ALL",
+          "description": "Quarterly CPC meeting held",
+          "completion_condition": "CPC met in the quarter, chaired by the Accounting Officer with the trained Senior IAO as Secretary; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/CPC/MIN/Q4/2026-27 signature page"
+        },
+        {
+          "milestone_id": "M-04",
+          "activity_id": "A-04",
+          "risk_id": "ALL",
+          "description": "Quarterly IAO Committee meeting held",
+          "completion_condition": "IAO Committee met in the quarter before the CPC meeting; minutes signed.",
+          "weight": 1,
+          "claimed_completed": true,
+          "expected_reviewed": true,
+          "evidence_passage": "DRCA/IAO/MIN/Q4/2026-27 signature page"
+        }
+      ],
+      "provisional_I": 1.0,
+      "reviewed_I": 1.0,
+      "provisional_snapshot": 100.0,
+      "reviewed_snapshot": 100.0
+    }
+  },
+  "expected_annual": {
+    "formula": "10P+15R+15M+60*(I1+I2+I3+I4)/4",
+    "provisional_annual": 100.0,
+    "implementation_average": 0.9375,
+    "annual_score": 96.25,
+    "q1_contribution": 11.25
+  },
+  "evidence": [
+    {
+      "file": "01_Foundations/DEMO-004_F1_Procedures_Prevention_of_Bribery_and_Corruption_v1.0.pdf",
+      "category": "procedure",
+      "period": null,
+      "simulated_upload_at": "2026-09-25T14:00:00+03:00",
+      "bytes": 9933,
+      "sha256": "0a5ff4305b11949849cd7bbff7869f2ce3534eece9c77049b5f037a826c1cb50"
+    },
+    {
+      "file": "01_Foundations/DEMO-004_F2_Bribery_and_Corruption_Risk_Assessment_Report_FY2026-27.pdf",
+      "category": "risk_assessment",
+      "period": null,
+      "simulated_upload_at": "2026-09-25T14:00:00+03:00",
+      "bytes": 8664,
+      "sha256": "e984162dbef2231d97cf7b1c01be65b6a823c1f9b7988ea366bc6e3aff20eead"
+    },
+    {
+      "file": "01_Foundations/DEMO-004_F3_Anti-Bribery_and_Corruption_Mitigation_Plan_FY2026-27.pdf",
+      "category": "mitigation_plan",
+      "period": null,
+      "simulated_upload_at": "2026-09-25T14:00:00+03:00",
+      "bytes": 11213,
+      "sha256": "406adfe6b5ef17cf9cdb7f5538412b1fd4b1cbf6d4e8224ccacafd62744ea91c"
+    },
+    {
+      "file": "02_Q1/DEMO-004_Q1_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-06T10:30:00+03:00",
+      "bytes": 10836,
+      "sha256": "309a10532cecaefe7059cfdbdf3a946c893ee6b71d44ea25d07e4c936f26fc20"
+    },
+    {
+      "file": "02_Q1/DEMO-004_Q1_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-06T10:30:00+03:00",
+      "bytes": 7980,
+      "sha256": "f2d33f8ae20fa501f898d693caae8893e0db07acfc6e5484f89e52bdd3310ff6"
+    },
+    {
+      "file": "02_Q1/DEMO-004_Q1_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q1",
+      "simulated_upload_at": "2026-10-06T10:30:00+03:00",
+      "bytes": 8654,
+      "sha256": "457584d220d8060ff147cfd9a5ce4037dd293376a4591f4f8f3f46286621b9d9"
+    },
+    {
+      "file": "03_Q2/DEMO-004_Q2_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:30:00+03:00",
+      "bytes": 10566,
+      "sha256": "7f8175cfc8c3733c01827173cccbb61f0c2482bd2e168d7938c2b771b861cc83"
+    },
+    {
+      "file": "03_Q2/DEMO-004_Q2_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:30:00+03:00",
+      "bytes": 7878,
+      "sha256": "3bc65cd039a13bc27313123b1d0ae15ccbca3f2699e72bc8357d834c37f2a66f"
+    },
+    {
+      "file": "03_Q2/DEMO-004_Q2_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q2",
+      "simulated_upload_at": "2027-01-12T10:30:00+03:00",
+      "bytes": 9926,
+      "sha256": "f98f4b375e90d952795cac215b4a4c45bd9adc919f9439be520ac383d6c0cf0e"
+    },
+    {
+      "file": "04_Q3/DEMO-004_Q3_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T10:30:00+03:00",
+      "bytes": 8572,
+      "sha256": "bf8474a8a5c710f2e3029d6df647d58e48a4c61d510cda919026ac35357eff92"
+    },
+    {
+      "file": "04_Q3/DEMO-004_Q3_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T10:30:00+03:00",
+      "bytes": 7745,
+      "sha256": "bc05b122508334bf82bcc19ad3c11e428f4121c538bce5145e45677e1942bb91"
+    },
+    {
+      "file": "04_Q3/DEMO-004_Q3_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q3",
+      "simulated_upload_at": "2027-04-09T10:30:00+03:00",
+      "bytes": 8487,
+      "sha256": "c906e6cc8edb716ecf9a2f3f0782c7f2cd266861622e5f9e19796eeb1470f776"
+    },
+    {
+      "file": "05_Q4/DEMO-004_Q4_CPC_Minutes_Signed.pdf",
+      "category": "cpc_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T10:30:00+03:00",
+      "bytes": 8529,
+      "sha256": "28c05f1006a89efdf6bceeacd4481c28c7458ecb4a8524dd709960c9ec306cad"
+    },
+    {
+      "file": "05_Q4/DEMO-004_Q4_IAO_Committee_Minutes_Signed.pdf",
+      "category": "iao_minutes",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T10:30:00+03:00",
+      "bytes": 7767,
+      "sha256": "532ca9e79287bd70691d009c5b9864c3a56ab94ab01d4666be28e75d48e7bd55"
+    },
+    {
+      "file": "05_Q4/DEMO-004_Q4_Implementation_Progress_Report_AppendixV.pdf",
+      "category": "progress_report",
+      "period": "Q4",
+      "simulated_upload_at": "2027-07-08T10:30:00+03:00",
+      "bytes": 8496,
+      "sha256": "29c116c46e948d450fac22cf684c68eb520968b8adfd562841b663a131ea6b49"
+    }
+  ]
+}
