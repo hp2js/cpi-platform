@@ -46,7 +46,8 @@ resource "azurerm_monitor_action_group" "main" {
   resource_group_name = local.rg
   short_name          = substr("cpi${var.environment}", 0, 12)
   dynamic "email_receiver" {
-    for_each = var.alert_emails
+    # Each item without surrounding brackets, quotes or spaces, so both forms of the value work.
+    for_each = compact([for email in split(",", var.alert_emails) : trim(email, "[]\" ")])
     content {
       name                    = "email-${email_receiver.key}"
       email_address           = email_receiver.value

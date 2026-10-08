@@ -29,9 +29,12 @@ variable "location" {
   type    = string
   default = "southafricanorth"
 }
-variable "github_repository" {
+# The repository's OIDC subject prefix: it uses GitHub's immutable subjects (owner and
+# repository IDs, so trust survives a rename). Read it with
+# `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` (sub_claim_prefix).
+variable "github_subject_prefix" {
   type    = string
-  default = "hp2js/cpi-platform"
+  default = "repo:hp2js@332971126/cpi-platform@1387461516"
 }
 variable "environments" {
   type    = set(string)
@@ -49,7 +52,7 @@ locals {
   suffix = substr(sha1(data.azurerm_subscription.current.id), 0, 6)
   tags   = { product = "cpi-platform", managed_by = "terraform", stack = "bootstrap" }
   oidc   = "https://token.actions.githubusercontent.com"
-  repo   = "repo:${var.github_repository}"
+  repo   = var.github_subject_prefix
   # GitHub environment names; prod deploys need a reviewer's approval in GitHub.
   github_environment = { staging = "staging", prod = "production" }
 }

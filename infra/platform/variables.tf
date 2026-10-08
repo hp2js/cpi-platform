@@ -30,8 +30,9 @@ variable "email_from" {
   default = "CPI Platform <onboarding@resend.dev>"
 }
 variable "alert_emails" {
-  type    = list(string)
-  default = []
+  type        = string
+  default     = ""
+  description = "Who alerts email: comma-separated addresses (a JSON list like [\"a@b.org\"] also works)."
 }
 variable "high_availability" {
   type        = bool

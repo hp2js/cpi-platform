@@ -52,11 +52,23 @@ All logs ─► Log Analytics ─► alerts (action group), workbook dashboard, 
    | `AZURE_CLIENT_ID_DEPLOY_STAGING`, `AZURE_CLIENT_ID_DEPLOY_PROD` | `github_client_ids["deploy-staging"]`, `["deploy-prod"]`                 |
    | `AZURE_CLIENT_ID_PLAN_PR`, `AZURE_CLIENT_ID_DRIFT`              | `github_client_ids["plan-pr"]`, `["drift"]`                              |
    | `ADMIN_EMAIL_PROD`                                              | The first production administrator (required: prod is not in demo mode). |
-   | `ALERT_EMAILS_STAGING`, `ALERT_EMAILS_PROD`                     | JSON list, e.g. `["ops@example.org"]`.                                   |
+   | `ALERT_EMAILS_STAGING`, `ALERT_EMAILS_PROD`                     | Comma-separated addresses, e.g. `ops@example.org,lead@example.org`.      |
 
 3. **GitHub environments:** `staging`, and `production` with required reviewers and deployment branches limited to `main`. The OIDC identities trust exactly these names.
 4. **Branch ruleset on `main`:** require pull requests and the **Secure-PR gate** status check (see [security.md](security.md#making-it-required)).
 5. **Push to `main`.** The first run pushes the images to GitHub Container Registry as private packages, so staging cannot pull them yet: an `hp2js` organization admin opens Packages → `cpi-platform/api` and `cpi-platform/web` → Package settings → **Change visibility → Public** (once), then re-runs the workflow. Afterwards, `az keyvault secret set --vault-name <kv> --name resend-api-key --value …` if account emails should leave the in-app sink.
+
+### Setup pitfalls
+
+What went wrong on the first deployment, and the fix:
+
+| Symptom                                                                    | Cause                                                                           | Fix                                                                                                                                          |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Plan staging" skipped on pull requests; drift and production sign-in fail | Variables created as **environment** variables of `staging`                     | Create them as **repository** variables; an environment variable also overrides a repository one inside that environment's jobs              |
+| `AADSTS700213: No matching federated identity record`                      | The repository uses immutable OIDC subjects (`repo:<owner>@<id>/<repo>@<id>:…`) | `github_subject_prefix` in `infra/bootstrap` must equal `sub_claim_prefix` from `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` |
+| Environment jobs refused by Azure                                          | GitHub environment named other than `staging` / `production`                    | Rename it: the names are part of the trusted subject                                                                                         |
+| Staging cannot pull images on the first deploy                             | GHCR packages start private                                                     | Make `cpi-platform/api` and `cpi-platform/web` public, then re-run the workflow                                                              |
+| `Dependency review is not supported on this repository`                    | Dependency graph off                                                            | Settings → Advanced Security → enable Dependency graph and Dependabot alerts                                                                 |
 
 ## Deploying
 
