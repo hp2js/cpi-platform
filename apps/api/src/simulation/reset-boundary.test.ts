@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { expect, it } from 'vitest';
-import { disposableDatabase, loadConfig } from '../config';
+import { demoBlock, disposableDatabase, loadConfig } from '../config';
 import { DemoEnvironmentGuard } from './demo-environment.guard';
 
 const config = (database: string, demo = 'true') =>
@@ -33,4 +33,10 @@ it('refuses to reset or script the year outside the demo database', () => {
     }),
   );
   expect(guard('cpi_demo').canActivate()).toBe(true);
+});
+
+it('names why the simulation controls are off, for the administrator', () => {
+  expect(demoBlock(config('cpi_demo', 'false'))).toBe('demo_only');
+  expect(demoBlock(config('cpi_local'))).toBe('not_demo_database');
+  expect(demoBlock(config('cpi_demo'))).toBeNull();
 });

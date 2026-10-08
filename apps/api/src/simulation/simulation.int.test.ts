@@ -426,9 +426,10 @@ describe.skipIf(!integration)(
           expect((await client.post(path, body)).status).toBe(403);
       }
       expect(await records()).toEqual(before);
-      expect((await admin.json<SimulationState>('/simulation')).controls).toBe(
-        true,
-      );
+      expect(await admin.json<SimulationState>('/simulation')).toMatchObject({
+        controls: true,
+        blockedBy: null,
+      });
     });
 
     it('starts a new run only after a write in progress commits, and records it (HP2-42)', async () => {

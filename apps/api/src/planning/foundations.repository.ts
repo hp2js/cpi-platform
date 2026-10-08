@@ -65,6 +65,23 @@ export class FoundationsRepository {
     return version;
   }
 
+  /** Every version of one indicator, for finding the one effective at the cutoff. */
+  versionsOf(
+    institutionId: string,
+    kind: FoundationKind,
+    db: Db = this.db,
+  ): Promise<FoundationVersionRow[]> {
+    return db
+      .select()
+      .from(foundationVersions)
+      .where(
+        and(
+          eq(foundationVersions.institutionId, institutionId),
+          eq(foundationVersions.kind, kind),
+        ),
+      );
+  }
+
   async evidenceSha256(id: string, db: Db = this.db) {
     const [existing] = await db
       .select({ sha256: evidence.sha256 })

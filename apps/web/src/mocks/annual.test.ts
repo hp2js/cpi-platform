@@ -1,6 +1,9 @@
 // @vitest-environment node
 import {
   annualOverviewSchema,
+  exportColumns,
+  exportPayloadSchema,
+  parseCsv,
   inboxSchema,
   institutionResultsSchema,
   oversightSchema,
@@ -11,7 +14,7 @@ import {
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { request } from '@/lib/api';
+import { apiUrl, request } from '@/lib/api';
 import { signInAs } from '@/test/render-app';
 import { getDb } from './db';
 
@@ -191,6 +194,133 @@ describe('scripted demonstration year (PRD §17)', () => {
         [1, 'superseded'],
       ]);
       expect(results.results[0]?.correctionReason).toMatch(/exception review/);
+    },
+  );
+
+  it(
+    'exports cpi-export-2 rows that trace back to their source decisions (FR13, FR16, §12.3)',
+    { timeout: 60_000 },
+    async () => {
+      await runYear();
+      await request('/api/annual/publish', annualOverviewSchema, {
+        method: 'POST',
+        json: { institutionIds: ['DEMO-001'] },
+      });
+      const payload = await request(
+        '/api/annual/report.json',
+        exportPayloadSchema,
+      );
+      const rows = payload.rows.filter(
+        (row) => row.institution_id === 'DEMO-001',
+      );
+      expect(rows.map((row) => row.indicator_id)).toEqual([
+        'annual_total',
+        'procedures',
+        'risk_assessment',
+        'mitigation_plan',
+        'implementation',
+        'implementation',
+        'implementation',
+        'implementation',
+      ]);
+      expect(rows[0]).toMatchObject({
+        release_status: 'released',
+        institution_name: expect.any(String),
+        maximum_points: '100.00',
+        earned_points: '88.75',
+        simulation: true,
+        scoring_profile_version: 1,
+        publication_version: 1,
+        missing_data_status: 'complete',
+      });
+
+      // Follow the Q1 row back to the decisions and submission it was scored from.
+      const db = getDb();
+      const q1 = rows.find((row) => row.period_id === 'FY2026-27-Q1')!;
+      const decisions = db.decisions.filter((decision) =>
+        q1.decision_ids.includes(decision.id),
+      );
+      expect(decisions.length).toBeGreaterThan(0);
+      expect(decisions).toHaveLength(q1.decision_ids.length);
+      expect(
+        decisions.every(
+          (decision) =>
+            decision.submissionId === q1.submission_id &&
+            decision.supersededAt === null,
+        ),
+      ).toBe(true);
+      const accepted = decisions.filter(
+        (decision) => decision.outcome === 'accepted',
+      ).length;
+      expect(q1.rule_explanation).toContain(
+        `${accepted}/${decisions.length} milestones accepted`,
+      );
+      expect(
+        db.submissions.find((submission) => submission.id === q1.submission_id),
+      ).toMatchObject({
+        revision: q1.submission_revision,
+        formVersionId: q1.form_version,
+      });
+      expect(q1.reviewer_ref).toMatch(/^officer-/);
+      expect(q1.reviewed_at_utc).toMatch(/Z$/);
+      expect(typeof q1.late).toBe('boolean');
+      const procedures = rows.find((row) => row.indicator_id === 'procedures')!;
+      expect(
+        db.foundationReviews.some(
+          (review) => review.id === procedures.decision_ids[0],
+        ),
+      ).toBe(true);
+
+      // Unreleased institutions are listed with their reasons and no numbers (AT18).
+      const unreleased = payload.rows.filter(
+        (row) => row.release_status === 'unreleased',
+      );
+      expect(unreleased.map((row) => row.institution_id)).toEqual([
+        'DEMO-002',
+        'DEMO-003',
+        'DEMO-004',
+        'DEMO-005',
+        'DEMO-006',
+        'DEMO-007',
+        'DEMO-008',
+      ]);
+      expect(
+        unreleased.every(
+          (row) =>
+            row.earned_points === null &&
+            row.maximum_points === null &&
+            row.rule_explanation.length > 0,
+        ),
+      ).toBe(true);
+
+      // The CSV carries the same rows, column for column.
+      const csv = parseCsv(
+        await (await fetch(apiUrl('/api/annual/report.csv'))).text(),
+      );
+      expect(csv[0]).toEqual(exportColumns);
+      expect(csv).toHaveLength(payload.rows.length + 1);
+      expect(csv[1]![exportColumns.indexOf('earned_points')]).toBe('88.75');
+      expect(
+        db.audit.filter((event) => event.action === 'export.download'),
+      ).toHaveLength(2);
+
+      // An institution exports only its own released result (AT19).
+      await signInAs('focal-demo-001');
+      const own = await request(
+        '/api/results/export.json',
+        exportPayloadSchema,
+      );
+      expect(
+        own.rows.every(
+          (row) =>
+            row.institution_id === 'DEMO-001' &&
+            row.release_status === 'released',
+        ),
+      ).toBe(true);
+      await signInAs('focal-demo-002');
+      await expect(
+        request('/api/results/export.json', z.unknown()),
+      ).rejects.toMatchObject({ status: 404, code: 'not_published' });
     },
   );
 

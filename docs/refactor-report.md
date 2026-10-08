@@ -1,6 +1,6 @@
 # API refactor report (Phase 4)
 
-Branch `feature/backend-cleanup`, from `13f6a8c` to HEAD: 17 commits, one per step, each verified with lint, typecheck, unit tests, the full integration suite, the Nest DI metadata check, and `drizzle-kit generate` (no schema change every time). The audit and the decisions behind this work are in `REFACTOR_AUDIT.md`.
+Branch `feature/backend-cleanup`, from `13f6a8c` to HEAD: 17 commits, one per step, each verified with lint, typecheck, unit tests, the full integration suite, the Nest DI metadata check, and `drizzle-kit generate` (no schema change every time). The audit and the decisions behind this work are in [the refactor audit](refactor-audit.md).
 
 ## What changed, per module
 
@@ -86,4 +86,4 @@ Branch `feature/backend-cleanup`, from `13f6a8c` to HEAD: 17 commits, one per st
 - [x] `drizzle-kit generate`: no new migration
 - [x] Build, lint and all tests pass (`pnpm check`, integration suite)
 - [~] API contract verified by the integration suite; e2e not run (tech debt 5)
-- [x] `REFACTOR_AUDIT.md` and `REFACTOR_REPORT.md` written
+- [x] `docs/refactor-audit.md` and `docs/refactor-report.md` written

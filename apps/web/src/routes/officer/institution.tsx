@@ -24,6 +24,7 @@ import { invalidateEvents } from '@/features/events/queries';
 import {
   foundationKeys,
   foundationsQuery,
+  recordUnsupported,
   reviewFoundation,
 } from '@/features/foundations/queries';
 import { VersionList } from '@/features/foundations/version-list';
@@ -463,20 +464,17 @@ function Amendments({ plan }: { plan: Plan }) {
 function FoundationReview({
   institutionId,
   indicator,
+  version: active,
+  existing,
 }: {
   institutionId: string;
   indicator: FoundationIndicator;
+  version: FoundationIndicator['versions'][number];
+  existing: FoundationIndicator['review'];
 }) {
   const queryClient = useQueryClient();
-  const active = indicator.versions.find(
-    (version) => version.status === 'active',
-  );
-  const existing =
-    indicator.review && indicator.review.versionId === active?.id
-      ? indicator.review.checks
-      : undefined;
   const [checks, setChecks] = useState(
-    existing ??
+    existing?.checks ??
       indicator.checks.map(() => ({
         outcome: '' as 'pass' | 'fail' | '',
         passage: '',
@@ -486,7 +484,7 @@ function FoundationReview({
   const mutation = useMutation({
     mutationFn: () =>
       reviewFoundation(institutionId, indicator.kind, {
-        versionId: active!.id,
+        versionId: active.id,
         checks: checks.map((check) => ({
           outcome: check.outcome as 'pass' | 'fail',
           passage: check.passage,
@@ -501,17 +499,11 @@ function FoundationReview({
     setChecks((current) =>
       current.map((check, i) => (i === index ? { ...check, ...patch } : check)),
     );
-  if (!active)
-    return (
-      <p className="text-sm">
-        No active version: no current credit can be given for this indicator.
-      </p>
-    );
   return (
     <div className="grid gap-3">
       {indicator.checks.map((label, index) => {
         const check = checks[index]!;
-        const id = `${indicator.kind}-${index}`;
+        const id = `${active.id}-${index}`;
         return (
           <fieldset
             key={label}
@@ -602,6 +594,147 @@ function FoundationReview({
   );
 }
 
+function ActiveReview({
+  institutionId,
+  indicator,
+}: {
+  institutionId: string;
+  indicator: FoundationIndicator;
+}) {
+  const active = indicator.versions.find(
+    (version) => version.status === 'active',
+  );
+  if (!active)
+    return (
+      <p className="text-sm">
+        No active version: no current credit can be given for this indicator.
+      </p>
+    );
+  return (
+    <FoundationReview
+      key={active.id}
+      institutionId={institutionId}
+      indicator={indicator}
+      version={active}
+      existing={indicator.review}
+    />
+  );
+}
+
+/**
+ * The annual result uses the version effective at the evaluation cutoff (AT28). When it is not
+ * the active one it is reviewed here; when no valid version covers the cutoff, the officer
+ * records an explicit unsupported disposition instead of a silent zero.
+ */
+function CutoffDisposition({
+  institutionId,
+  indicator,
+}: {
+  institutionId: string;
+  indicator: FoundationIndicator;
+}) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
+  const unsupported = useMutation({
+    mutationFn: () =>
+      recordUnsupported(institutionId, indicator.kind, reason.trim()),
+    onSuccess: (next) =>
+      queryClient.setQueryData(foundationKeys.all(institutionId), next),
+  });
+  const { atCutoff, cutoffReview } = indicator;
+  const active = indicator.versions.find(
+    (version) => version.status === 'active',
+  );
+  if (atCutoff.status === 'conflict')
+    return (
+      <p className="text-sm">
+        <TriangleAlert aria-hidden="true" className="mr-1 inline size-4" />
+        Versions{' '}
+        {indicator.versions
+          .filter((version) => atCutoff.versionIds.includes(version.id))
+          .map((version) => version.version)
+          .join(' and ')}{' '}
+        have overlapping effective dates at the evaluation cutoff. The annual
+        result stays pending until the institution corrects the dates.
+      </p>
+    );
+  if (atCutoff.status === 'applicable') {
+    if (atCutoff.versionId === active?.id) return null;
+    const version = indicator.versions.find(
+      (candidate) => candidate.id === atCutoff.versionId,
+    )!;
+    return (
+      <section
+        aria-labelledby={`cutoff-${indicator.kind}`}
+        className="grid gap-3 rounded-md border bg-base-lightest p-4"
+      >
+        <h4 id={`cutoff-${indicator.kind}`} className="font-bold">
+          Version {version.version}, effective at the evaluation cutoff
+        </h4>
+        <p className="text-sm text-base-dark">
+          A later version takes effect after the cutoff, so the annual result
+          uses this one. Its review does not change current credit.
+        </p>
+        <FoundationReview
+          key={version.id}
+          institutionId={institutionId}
+          indicator={indicator}
+          version={version}
+          existing={cutoffReview}
+        />
+      </section>
+    );
+  }
+  const reasonId = `unsupported-${indicator.kind}`;
+  return (
+    <section
+      aria-labelledby={`${reasonId}-heading`}
+      className="grid gap-3 rounded-md border bg-base-lightest p-4"
+    >
+      <h4 id={`${reasonId}-heading`} className="font-bold">
+        No valid version at the evaluation cutoff
+      </h4>
+      {cutoffReview ? (
+        <p className="text-sm">
+          Recorded as unsupported (0 of 4) by {cutoffReview.reviewedBy},{' '}
+          {formatDateTime(cutoffReview.reviewedAt)}:{' '}
+          {cutoffReview.checks[0]?.reason}
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-base-dark">
+            The annual result stays pending until you record a disposition. Once
+            the cutoff and any extension have passed with no valid replacement,
+            record that the checks are unsupported.
+          </p>
+          <div className="grid gap-1">
+            <Label htmlFor={reasonId}>Reason</Label>
+            <Textarea
+              id={reasonId}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          {unsupported.isError && (
+            <p role="alert" className="text-sm text-error-dark">
+              {unsupported.error.message}
+            </p>
+          )}
+          <div>
+            <Button
+              variant="outline"
+              disabled={reason.trim().length < 10 || unsupported.isPending}
+              onClick={() => unsupported.mutate()}
+            >
+              Record as unsupported (0 of 4)
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function Foundations({ institutionId }: { institutionId: string }) {
   const foundations = useQuery(foundationsQuery(institutionId));
   return (
@@ -649,12 +782,11 @@ function Foundations({ institutionId }: { institutionId: string }) {
                 </div>
               </dl>
               <VersionList indicator={indicator} />
-              <FoundationReview
-                key={
-                  indicator.versions.find(
-                    (version) => version.status === 'active',
-                  )?.id ?? 'none'
-                }
+              <ActiveReview
+                institutionId={institutionId}
+                indicator={indicator}
+              />
+              <CutoffDisposition
                 institutionId={institutionId}
                 indicator={indicator}
               />

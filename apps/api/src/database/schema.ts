@@ -514,9 +514,8 @@ export const foundationReviews = pgTable('foundation_reviews', {
     .notNull()
     .references(() => institutions.id),
   kind: text().$type<FoundationKind>().notNull(),
-  versionId: text()
-    .notNull()
-    .references(() => foundationVersions.id),
+  /** Null for an unsupported disposition: no valid version covered the cutoff (AT28). */
+  versionId: text().references(() => foundationVersions.id),
   checks: jsonb()
     .$type<{ outcome: 'pass' | 'fail'; passage: string; reason: string }[]>()
     .notNull(),

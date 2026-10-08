@@ -11,6 +11,7 @@ import {
 import type { Response } from 'express';
 import {
   correctionRequestSchema,
+  exportCsv,
   extensionRequestSchema,
   publishRequestSchema,
   type AnnualEvaluation,
@@ -19,6 +20,7 @@ import {
   type InstitutionResults,
   type Oversight,
   type CorrectionRequest,
+  type ExportPayload,
   type ExtensionRequest,
   type PublishRequest,
 } from '@cpi/contracts';
@@ -30,11 +32,21 @@ import {
 } from '../http/validation.pipe';
 import { AnnualService } from './annual.service';
 
-/** Marks the response as a CSV download named `name`. */
-const csvDownload = (response: Response, name: string) =>
-  response
-    .type('text/csv; charset=utf-8')
-    .setHeader('Content-Disposition', `attachment; filename="${name}"`);
+/** Sends the export as an attachment named `name` in `format`. */
+function download(
+  response: Response,
+  name: string,
+  format: 'csv' | 'json',
+  payload: ExportPayload,
+) {
+  response.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${name}.${format}"`,
+  );
+  if (format === 'json') return payload;
+  response.type('text/csv; charset=utf-8');
+  return exportCsv(payload);
+}
 
 /** Annual evaluation, publication and corrections (PRD §7.4, §7.6, FR12–FR13, FR16). */
 @Controller()
@@ -114,15 +126,32 @@ export class AnnualController {
     return this.annual.report(user);
   }
 
+  /** The versioned export (PRD §12.3) as CSV or JSON; the two carry the same rows. */
   @Get('annual/report.csv')
   @Roles('supervisor', 'administrator')
-  async reportCsv(
+  reportCsv(
     @CurrentUser() user: User,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<string> {
-    const csv = await this.annual.reportCsv(user);
-    csvDownload(response, 'cpi-consolidated-results.csv');
-    return csv;
+  ) {
+    return this.reportExport(user, response, 'csv');
+  }
+
+  @Get('annual/report.json')
+  @Roles('supervisor', 'administrator')
+  reportJson(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.reportExport(user, response, 'json');
+  }
+
+  private async reportExport(
+    user: User,
+    response: Response,
+    format: 'csv' | 'json',
+  ) {
+    const payload = await this.annual.reportExport(user, format);
+    return download(response, 'cpi-consolidated-results', format, payload);
   }
 
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */
@@ -134,13 +163,34 @@ export class AnnualController {
 
   @Get('results/export.csv')
   @Roles('institution')
-  async resultsCsv(
+  resultsCsv(
     @CurrentUser() user: User,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<string> {
-    const csv = await this.annual.resultsCsv(user);
-    csvDownload(response, `cpi-result-${user.institutionId}.csv`);
-    return csv;
+  ) {
+    return this.resultsExport(user, response, 'csv');
+  }
+
+  @Get('results/export.json')
+  @Roles('institution')
+  resultsJson(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.resultsExport(user, response, 'json');
+  }
+
+  private async resultsExport(
+    user: User,
+    response: Response,
+    format: 'csv' | 'json',
+  ) {
+    const payload = await this.annual.resultsExport(user, format);
+    return download(
+      response,
+      `cpi-result-${user.institutionId}`,
+      format,
+      payload,
+    );
   }
 
   /** The body is validated by the service after scope and assignment checks. */

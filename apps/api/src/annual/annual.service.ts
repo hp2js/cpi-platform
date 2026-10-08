@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   closeNonresponseRequestSchema,
-  toCsv,
+  type ExportPayload,
   type AnnualEvaluation,
   type AnnualOverview,
   type ConsolidatedReport,
@@ -25,8 +25,7 @@ import {
   consolidated,
   cutoffPassed,
   evaluate,
-  exportHeader,
-  exportRows,
+  exportOf,
   loadAnnualData,
   overview,
   oversight,
@@ -303,13 +302,14 @@ export class AnnualService {
     return consolidated(await loadAnnualData(this.db, scope), scope);
   }
 
-  async reportCsv(user: User): Promise<string> {
+  /** The consolidated export within the caller's scope; every download is audited. */
+  async reportExport(user: User, format: 'csv' | 'json') {
     const scope = await readableInstitutionIds(this.db, user);
     const data = await loadAnnualData(this.db, scope);
-    return toCsv(
-      exportHeader,
-      exportRows(data.cycle.id, consolidated(data, scope).released),
-    );
+    const report = consolidated(data, scope);
+    const payload = exportOf(data, report.released, report.unreleased);
+    await this.auditExport(user, 'consolidated', format, payload);
+    return payload;
   }
 
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */
@@ -328,7 +328,8 @@ export class AnnualService {
     };
   }
 
-  async resultsCsv(user: User): Promise<string> {
+  /** Institution: its own current released result only (AT18, AT19); audited. */
+  async resultsExport(user: User, format: 'csv' | 'json') {
     const data = await loadAnnualData(this.db, [user.institutionId ?? '']);
     const results = data.publications
       .filter(
@@ -343,7 +344,27 @@ export class AnnualService {
         'There is no published result to export yet.',
         'not_published',
       );
-    return toCsv(exportHeader, exportRows(data.cycle.id, results));
+    const payload = exportOf(data, results, []);
+    await this.auditExport(user, user.institutionId!, format, payload);
+    return payload;
+  }
+
+  private auditExport(
+    user: User,
+    scope: string,
+    format: 'csv' | 'json',
+    payload: ExportPayload,
+  ) {
+    return write(this.db, (tx, businessTime) =>
+      this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'export.download',
+        { type: 'export', id: scope, version: payload.schemaVersion },
+        `${format.toUpperCase()}, ${payload.rows.length} rows`,
+      ),
+    );
   }
 
   closeNonresponse(

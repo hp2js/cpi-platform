@@ -76,4 +76,17 @@ export class FoundationsController {
   ): Promise<Foundations> {
     return this.foundations.review(user, institutionId, kind, body);
   }
+
+  /** No valid document at the cutoff: an explicit 0 of 4 with a reason (AT28). */
+  @Post('institutions/:institutionId/foundations/:kind/unsupported')
+  @HttpCode(200)
+  @Roles('officer', 'supervisor', 'administrator')
+  unsupported(
+    @CurrentUser() user: User,
+    @Param('institutionId') institutionId: string,
+    @Param('kind') kind: string,
+    @Body() body: unknown,
+  ): Promise<Foundations> {
+    return this.foundations.unsupported(user, institutionId, kind, body);
+  }
 }

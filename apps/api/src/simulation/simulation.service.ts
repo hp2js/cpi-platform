@@ -5,7 +5,7 @@ import {
   type SimulationState,
 } from '@cpi/contracts';
 import type { User } from '../auth/sessions';
-import { CONFIG, demoEnvironment, type AppConfig } from '../config';
+import { CONFIG, demoBlock, type AppConfig } from '../config';
 import { DB, write, type Database, type Db } from '../database/db';
 import { loadFixtures, seedOptions } from '../database/fixtures';
 import { currentState } from '../database/state';
@@ -129,7 +129,8 @@ export class SimulationService {
         current.runId,
         db,
       ),
-      controls: demoEnvironment(this.config),
+      controls: demoBlock(this.config) === null,
+      blockedBy: demoBlock(this.config),
     };
   }
 }

@@ -1323,7 +1323,7 @@ export const defects: DefectRecord[] = [];
 
 /** Points the reviewers should settle; not failures of an executed fixture. */
 export const openQuestions: string[] = [
-  'The API and the mock score the foundation version whose status is `active`, while PRD §10.3 asks for the version effective at the original cutoff. They agree for SF-16 and SF-17, but would differ if a replacement recorded before evaluation took effect only after the cutoff. Confirm whether that case can arise, and add a fixture if it can.',
-  'With a foundation withdrawn and no valid replacement, PRD §10.3 says the final fraction reflects the deficiency (0/4); the implementation shows the foundation as not reviewed, so the annual result stays pending. Confirm the intended disposition path.',
+  'The API and the mock now score the foundation version effective at the original cutoff, and the officer can review it after a future-effective successor is recorded (tested in `annual.int.test.ts` and `safeguards.test.ts`, AT28). Confirm that this matches the organizer’s reading of PRD §10.3.',
+  'With a foundation withdrawn and no valid version at the cutoff, the result stays pending until the officer records an explicit unsupported disposition (0/4 with a reason), allowed only after the cutoff and any extension. Confirm this disposition path.',
   'Workflow states (publication blocked, closure refused before the cutoff, amendment and inflated-proposal refusal) are executed by the integration and mock tests each fixture lists, not by the worksheet runner. Retest those when the fixture or the rule changes.',
 ];

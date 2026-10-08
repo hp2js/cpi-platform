@@ -13,6 +13,10 @@ export function ResultsPage() {
     mutationFn: () =>
       downloadExport('/api/results/export.csv', 'cpi-annual-result.csv'),
   });
+  const exportJson = useMutation({
+    mutationFn: () =>
+      downloadExport('/api/results/export.json', 'cpi-annual-result.json'),
+  });
   const current = results.data?.results.find(
     (result) => result.status === 'current',
   );
@@ -35,6 +39,14 @@ export function ResultsPage() {
               >
                 <Download aria-hidden="true" />
                 Export CSV
+              </Button>
+              <Button
+                variant="plain"
+                onClick={() => exportJson.mutate()}
+                disabled={exportJson.isPending}
+              >
+                <Download aria-hidden="true" />
+                Export JSON
               </Button>
             </>
           )

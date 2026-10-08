@@ -62,3 +62,14 @@ export const reviewFoundation = (
     method: 'PUT',
     json: review,
   });
+
+/** No valid document at the cutoff: an explicit 0 of 4 with a reason (AT28). */
+export const recordUnsupported = (
+  institutionId: string,
+  kind: FoundationKind,
+  reason: string,
+) =>
+  request(`${path(institutionId)}/${kind}/unsupported`, foundationsSchema, {
+    method: 'POST',
+    json: { reason },
+  });

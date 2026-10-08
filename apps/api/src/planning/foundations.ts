@@ -2,6 +2,8 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import {
   foundationKindSchema,
   points,
+  reviewAtCutoff,
+  versionAtCutoff,
   type ComponentScore,
   type FoundationKind,
   type Foundations,
@@ -31,6 +33,13 @@ const calculated = (maxPoints: number, numerator: number): ComponentScore => ({
   fraction: { numerator, denominator: 4 },
   maxPoints,
   points: points(maxPoints, { numerator, denominator: 4 }),
+});
+
+const toReview = (review: typeof foundationReviews.$inferSelect) => ({
+  versionId: review.versionId,
+  checks: review.checks,
+  reviewedBy: review.reviewedBy,
+  reviewedAt: review.reviewedAt,
 });
 
 /**
@@ -72,11 +81,15 @@ export async function foundationsFor(
     indicators: foundationKindSchema.options.map((kind) => {
       const versions = versionRows.filter((version) => version.kind === kind);
       const active = versions.find((version) => version.status === 'active');
-      // The latest review counts; earlier ones stay as history.
-      const review = reviewRows.find((candidate) => candidate.kind === kind);
+      const reviews = reviewRows.filter((candidate) => candidate.kind === kind);
+      // The latest review of the active version gives current credit; a review of a superseded
+      // or withdrawn version cannot (AT28). Earlier reviews stay as history.
+      const review = active
+        ? reviews.find((candidate) => candidate.versionId === active.id)
+        : undefined;
+      const atCutoff = versionAtCutoff(versions, cycle.evaluationCutoff);
+      const cutoffReview = reviewAtCutoff(reviews, atCutoff);
       const maxPoints = profile.weights[weightKey[kind]];
-      // A review of a superseded or withdrawn version cannot supply current credit (AT28).
-      const reviewCurrent = review && active && review.versionId === active.id;
       return {
         kind,
         label: foundationLabels[kind],
@@ -99,14 +112,9 @@ export async function foundationsFor(
           claimedChecks: version.claimedChecks,
           withdrawnReason: version.withdrawnReason,
         })),
-        review: review
-          ? {
-              versionId: review.versionId,
-              checks: review.checks,
-              reviewedBy: review.reviewedBy,
-              reviewedAt: review.reviewedAt,
-            }
-          : null,
+        review: review ? toReview(review) : null,
+        atCutoff,
+        cutoffReview: cutoffReview ? toReview(cutoffReview) : null,
         provisional: internal
           ? calculated(
               maxPoints,
@@ -114,7 +122,7 @@ export async function foundationsFor(
             )
           : null,
         reviewed: internal
-          ? reviewCurrent
+          ? review
             ? calculated(
                 maxPoints,
                 review.checks.filter((check) => check.outcome === 'pass')

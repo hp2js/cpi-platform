@@ -1,5 +1,5 @@
 import { test, expect, type Page } from './test';
-import { midYear, passSuitability, signInAs } from './support';
+import { api, midYear, passSuitability, signInAs } from './support';
 
 test.skip(
   process.env.CPI_PRODUCTION === 'true',
@@ -42,7 +42,7 @@ test('sign in, skip navigation and complete part of a report without a mouse', a
   page,
 }) => {
   await midYear(page);
-  await page.evaluate(() => fetch('/api/session', { method: 'DELETE' }));
+  await api(page, '/api/session', { method: 'DELETE' });
   await page.goto('/sign-in');
   await expect(
     page.getByRole('heading', { name: 'Sign in', exact: true }),

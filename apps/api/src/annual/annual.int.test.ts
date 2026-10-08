@@ -1,16 +1,31 @@
-import type {
-  AnnualEvaluation,
-  AnnualOverview,
-  ConsolidatedReport,
-  Foundations,
-  InstitutionResults,
-  Oversight,
-  ReviewQueueItem,
+import {
+  exportColumns,
+  exportPayloadSchema,
+  parseCsv,
+  type AnnualEvaluation,
+  type AnnualOverview,
+  type ConsolidatedReport,
+  type Foundations,
+  type InstitutionResults,
+  type Oversight,
+  type ReviewQueueItem,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { systemState } from '../database/schema';
+import { eq, inArray } from 'drizzle-orm';
+import {
+  auditEvents,
+  decisions,
+  foundationReviews,
+  submissions,
+  systemState,
+} from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
-import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
+import {
+  completeDraft,
+  pdf,
+  publishSeedForm,
+  submitDraft,
+} from '../test/journeys';
 
 /** Ported from apps/web/src/mocks/acceptance.test.ts and annual.test.ts (AT14, AT15, AT18–AT20). */
 describe.skipIf(!integration)('annual evaluation and publication', () => {
@@ -235,5 +250,242 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       ),
     ).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003', 'DEMO-004']);
     expect((await officer.json<ReviewQueueItem[]>('/reviews')).length).toBe(0);
+  });
+
+  it('exports cpi-export-2 rows that trace back to their source decisions (FR13, FR16, §12.3)', async () => {
+    expect((await admin.post('/simulation/scenario')).status).toBe(200);
+    expect(
+      (await admin.post('/annual/publish', { institutionIds: ['DEMO-001'] }))
+        .status,
+    ).toBe(200);
+    const json = await admin.request('/annual/report.json');
+    expect(json.headers.get('content-disposition')).toBe(
+      'attachment; filename="cpi-consolidated-results.json"',
+    );
+    const payload = exportPayloadSchema.parse(json.body);
+    const rows = payload.rows.filter(
+      (row) => row.institution_id === 'DEMO-001',
+    );
+    expect(rows[0]).toMatchObject({
+      indicator_id: 'annual_total',
+      release_status: 'released',
+      maximum_points: '100.00',
+      earned_points: '88.75',
+      simulation: true,
+      scoring_profile_version: 1,
+      publication_version: 1,
+    });
+
+    // Follow the Q1 row back to the persisted decisions and submission (FR16).
+    const q1 = rows.find((row) => row.period_id === 'FY2026-27-Q1')!;
+    const traced = await api.db
+      .select()
+      .from(decisions)
+      .where(inArray(decisions.id, q1.decision_ids));
+    expect(traced.length).toBeGreaterThan(0);
+    expect(traced).toHaveLength(q1.decision_ids.length);
+    expect(
+      traced.every(
+        (decision) =>
+          decision.submissionId === q1.submission_id &&
+          decision.supersededAt === null,
+      ),
+    ).toBe(true);
+    const accepted = traced.filter((d) => d.outcome === 'accepted').length;
+    expect(q1.rule_explanation).toContain(
+      `${accepted}/${traced.length} milestones accepted`,
+    );
+    const [submission] = await api.db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.id, q1.submission_id!));
+    expect(submission).toMatchObject({
+      revision: q1.submission_revision,
+      formVersionId: q1.form_version,
+    });
+    expect(q1.reviewer_ref).toMatch(/^officer-/);
+    const procedures = rows.find((row) => row.indicator_id === 'procedures')!;
+    const [review] = await api.db
+      .select()
+      .from(foundationReviews)
+      .where(eq(foundationReviews.id, Number(procedures.decision_ids[0])));
+    expect(review).toMatchObject({
+      institutionId: 'DEMO-001',
+      kind: 'procedures',
+    });
+
+    // Unreleased institutions carry reasons and no numbers (AT18).
+    const unreleased = payload.rows.filter(
+      (row) => row.release_status === 'unreleased',
+    );
+    expect(unreleased).toHaveLength(7);
+    expect(unreleased.every((row) => row.earned_points === null)).toBe(true);
+
+    // The CSV carries the same rows, column for column.
+    const csv = parseCsv(
+      String((await admin.request('/annual/report.csv')).body),
+    );
+    expect(csv[0]).toEqual(exportColumns);
+    expect(csv).toHaveLength(payload.rows.length + 1);
+    expect(
+      await api.db
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.action, 'export.download')),
+    ).toHaveLength(2);
+
+    // An institution exports only its own released result (AT19).
+    const focal = await api.client().signIn('focal-demo-001');
+    const own = exportPayloadSchema.parse(
+      (await focal.request('/results/export.json')).body,
+    );
+    expect(own.rows.every((row) => row.institution_id === 'DEMO-001')).toBe(
+      true,
+    );
+    const other = await api.client().signIn('focal-demo-002');
+    expect((await other.request('/results/export.json')).status).toBe(404);
+  }, 120_000);
+
+  it('scores the foundation version effective at the cutoff, and a withdrawn one only through an explicit unsupported disposition (AT28)', async () => {
+    const focal = await api.client().signIn('focal-demo-008');
+    const officer = await api.client().signIn('officer-b');
+    const pass = { outcome: 'pass', passage: 'Section 1', reason: '' };
+    const indicator = (foundations: Foundations, kind: string) =>
+      foundations.indicators.find((candidate) => candidate.kind === kind)!;
+    const before = await officer.json<Foundations>(
+      '/institutions/DEMO-008/foundations',
+    );
+    const original = indicator(before, 'procedures').versions[0]!;
+    // Officer reviews the mitigation plan, then the institution withdraws it.
+    const mitigation = indicator(before, 'mitigation_plan').versions[0]!;
+    await officer.put(
+      '/institutions/DEMO-008/foundations/mitigation_plan/review',
+      {
+        versionId: mitigation.id,
+        checks: [pass, pass, pass, pass],
+      },
+    );
+    expect(
+      (
+        await focal.post(`/foundation-versions/${mitigation.id}/withdraw`, {
+          reason: 'Adopted in error; a new plan is being drafted.',
+        })
+      ).status,
+    ).toBe(200);
+
+    // A replacement recorded now takes effect only after the cutoff.
+    expect(
+      (
+        await focal.upload(
+          '/institutions/DEMO-008/foundations',
+          { name: 'procedures-v2.pdf', bytes: pdf('procedures v2') },
+          {
+            kind: 'procedures',
+            approvalReference: 'Board resolution 12 Jun 2027',
+            effectiveFrom: '2027-09-01',
+            claimedChecks: JSON.stringify([true, true, true, true]),
+          },
+        )
+      ).status,
+    ).toBe(201);
+    // Not before the cutoff: the institution can still adopt a valid replacement.
+    expect(
+      await officer.post(
+        '/institutions/DEMO-008/foundations/mitigation_plan/unsupported',
+        { reason: 'The plan was withdrawn and no replacement was adopted.' },
+      ),
+    ).toMatchObject({ status: 409, body: { code: 'cutoff_not_passed' } });
+    const officer2 = await readyDemo8();
+    const withSuccessor = await officer2.json<Foundations>(
+      '/institutions/DEMO-008/foundations',
+    );
+    expect(indicator(withSuccessor, 'procedures').atCutoff).toEqual({
+      status: 'applicable',
+      versionId: original.id,
+    });
+    expect(indicator(withSuccessor, 'mitigation_plan').atCutoff).toEqual({
+      status: 'none',
+    });
+
+    // The superseded version effective at the cutoff can still be reviewed; the withdrawn one cannot.
+    const failed = {
+      outcome: 'fail',
+      passage: '',
+      reason: 'No approval details are recorded.',
+    };
+    const reviewed = await officer2.put(
+      '/institutions/DEMO-008/foundations/procedures/review',
+      { versionId: original.id, checks: [pass, pass, pass, failed] },
+    );
+    expect(reviewed.status).toBe(200);
+    expect(
+      indicator(reviewed.body as Foundations, 'procedures').cutoffReview,
+    ).toMatchObject({ versionId: original.id });
+    expect(
+      await officer2.put(
+        '/institutions/DEMO-008/foundations/mitigation_plan/review',
+        { versionId: mitigation.id, checks: [pass, pass, pass, pass] },
+      ),
+    ).toMatchObject({ status: 409, body: { code: 'not_active' } });
+
+    // The withdrawn plan's earlier 4/4 gives no credit: pending until an explicit disposition.
+    const pending = demo(
+      await admin.json<AnnualOverview>('/annual'),
+      'DEMO-008',
+    );
+    expect(pending.total).toMatchObject({
+      status: 'pending',
+      reasons: [
+        'Mitigation plan has no valid version at the cutoff: record an unsupported disposition or a valid replacement',
+      ],
+    });
+    expect(
+      await officer2.post(
+        '/institutions/DEMO-008/foundations/procedures/unsupported',
+        { reason: 'No valid procedures document at the cutoff.' },
+      ),
+    ).toMatchObject({ status: 409, body: { code: 'version_at_cutoff' } });
+    expect(
+      await officer2.post(
+        '/institutions/DEMO-008/foundations/mitigation_plan/unsupported',
+        { reason: 'short' },
+      ),
+    ).toMatchObject({ status: 422, body: { code: 'reason_required' } });
+    const disposed = await officer2.post(
+      '/institutions/DEMO-008/foundations/mitigation_plan/unsupported',
+      { reason: 'The plan was withdrawn and no replacement was adopted.' },
+    );
+    expect(disposed.status).toBe(200);
+    expect(
+      indicator(disposed.body as Foundations, 'mitigation_plan').cutoffReview,
+    ).toMatchObject({ versionId: null, reviewedBy: expect.any(String) });
+
+    // Procedures 10 × 3/4 + risk 15 + mitigation 0; every quarter closed: 22.50.
+    const final = demo(await admin.json<AnnualOverview>('/annual'), 'DEMO-008');
+    expect(final.total).toMatchObject({
+      status: 'calculated',
+      points: '22.50',
+      foundationPoints: '22.50',
+    });
+    expect(
+      final.foundations.map((foundation) => [
+        foundation.kind,
+        foundation.versionId,
+        foundation.score.status === 'calculated' && foundation.score.points,
+      ]),
+    ).toEqual([
+      ['procedures', original.id, '7.50'],
+      ['risk_assessment', expect.any(String), '15.00'],
+      ['mitigation_plan', null, '0.00'],
+    ]);
+    // History is kept: the earlier review of the withdrawn plan is still recorded.
+    expect(
+      (
+        await api.db
+          .select()
+          .from(foundationReviews)
+          .where(eq(foundationReviews.institutionId, 'DEMO-008'))
+      ).filter((review) => review.kind === 'mitigation_plan'),
+    ).toHaveLength(2);
   });
 });

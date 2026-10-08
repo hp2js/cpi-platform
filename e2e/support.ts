@@ -8,13 +8,25 @@ export async function openApp(page: Page) {
   ).toBeVisible();
 }
 
-/** Calls the mock API from inside the page, so the service worker handles it. */
+/**
+ * Stops the test unless `status` is a success, naming the step, the status and the error code,
+ * so a refused setup step fails here instead of on an unrelated locator later.
+ */
+export function ensureOk(step: string, status: number, body: unknown) {
+  if (status >= 200 && status < 300) return;
+  const { code, message } = (body ?? {}) as { code?: string; message?: string };
+  throw new Error(
+    `${step} was refused: ${status} ${code ?? '(no error code)'}${message ? ` — ${message}` : ''}`,
+  );
+}
+
+/** Calls the API from inside the page, so the service worker handles it; fails on any error. */
 export async function api<T = unknown>(
   page: Page,
   path: string,
   init?: { method?: string; json?: unknown; headers?: Record<string, string> },
 ) {
-  return page.evaluate(
+  const { status, body } = await page.evaluate(
     async ([url, options]) => {
       const response = await fetch(url, {
         method: options?.method ?? 'GET',
@@ -27,12 +39,19 @@ export async function api<T = unknown>(
             ? undefined
             : JSON.stringify(options.json),
       });
-      return (
-        response.status === 204 ? null : await response.json()
-      ) as unknown;
+      const text = await response.text();
+      let body: unknown = text || null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        // Not JSON, e.g. a proxy error page; kept as text for the failure message.
+      }
+      return { status: response.status, body };
     },
     [path, init] as const,
-  ) as Promise<T>;
+  );
+  ensureOk(`${init?.method ?? 'GET'} ${path}`, status, body);
+  return body as T;
 }
 
 export async function signInAs(page: Page, accountId: string) {
@@ -51,41 +70,48 @@ export async function reset(page: Page) {
   await api(page, '/api/__mock/reset', { method: 'POST' });
 }
 
-async function uploadPdf(
+export async function uploadPdf(
   page: Page,
   obligationId: string,
   name: string,
   category: string,
 ) {
-  return page.evaluate(
-    async ([id, fileName, kind]) => {
-      const body = new FormData();
-      body.append(
-        'file',
-        new File(
-          [
-            new Uint8Array([
-              0x25,
-              0x50,
-              0x44,
-              0x46,
-              0x2d,
-              ...new TextEncoder().encode(`${fileName}\n%%EOF\n`),
-            ]),
-          ],
-          fileName,
-        ),
-      );
-      body.append('category', kind);
-      return (
-        await fetch(`/api/obligations/${encodeURIComponent(id)}/evidence`, {
-          method: 'POST',
-          body,
-        })
-      ).json() as Promise<{ id: string }>;
-    },
-    [obligationId, name, category] as const,
-  );
+  return page
+    .evaluate(
+      async ([id, fileName, kind]) => {
+        const body = new FormData();
+        body.append(
+          'file',
+          new File(
+            [
+              new Uint8Array([
+                0x25,
+                0x50,
+                0x44,
+                0x46,
+                0x2d,
+                ...new TextEncoder().encode(`${fileName}\n%%EOF\n`),
+              ]),
+            ],
+            fileName,
+          ),
+        );
+        body.append('category', kind);
+        const response = await fetch(
+          `/api/obligations/${encodeURIComponent(id)}/evidence`,
+          { method: 'POST', body },
+        );
+        return {
+          status: response.status,
+          body: (await response.json()) as { id: string },
+        };
+      },
+      [obligationId, name, category] as const,
+    )
+    .then(({ status, body }) => {
+      ensureOk(`Uploading ${name} to ${obligationId}`, status, body);
+      return body;
+    });
 }
 
 /** Submits a complete Q1 report for an institution through the mock API. */
@@ -161,8 +187,16 @@ export async function midYear(page: Page) {
     page,
     '/api/reviews?status=open',
   );
-  const demo2 = queue.find((item) => item.institutionId === 'DEMO-002')!;
-  await api(page, `/api/reviews/${demo2.submissionId}/clarifications`, {
+  const submission = (institutionId: string) => {
+    const item = queue.find((entry) => entry.institutionId === institutionId);
+    if (!item)
+      throw new Error(
+        `Mid-year setup did not reach its state: no open review for ${institutionId}`,
+      );
+    return item.submissionId;
+  };
+  const demo2 = submission('DEMO-002');
+  await api(page, `/api/reviews/${demo2}/clarifications`, {
     method: 'POST',
     json: {
       revision: 1,
@@ -175,32 +209,31 @@ export async function midYear(page: Page) {
       ],
     },
   });
-  return {
-    review: queue.find((item) => item.institutionId === 'DEMO-001')!
-      .submissionId,
-  };
+  return { review: submission('DEMO-001') };
 }
 
-/** Runs the scripted year and publishes every result. */
+const demoInstitutions = Array.from(
+  { length: 8 },
+  (_, index) => `DEMO-00${index + 1}`,
+);
+
+/** Runs the scripted year and publishes every result, then confirms all eight are released. */
 export async function publishedYear(page: Page) {
   await reset(page);
   await signInAs(page, 'administrator');
   await api(page, '/api/simulation/scenario', { method: 'POST' });
-  await api(page, '/api/annual/publish', {
+  const overview = await api<{
+    cutoffPassed: boolean;
+    institutions: { institutionId: string; publication: unknown }[];
+  }>(page, '/api/annual/publish', {
     method: 'POST',
-    json: {
-      institutionIds: [
-        'DEMO-001',
-        'DEMO-002',
-        'DEMO-003',
-        'DEMO-004',
-        'DEMO-005',
-        'DEMO-006',
-        'DEMO-007',
-        'DEMO-008',
-      ],
-    },
+    json: { institutionIds: demoInstitutions },
   });
+  const published = overview.institutions.filter((i) => i.publication).length;
+  if (!overview.cutoffPassed || published !== demoInstitutions.length)
+    throw new Error(
+      `Published-year setup did not reach its state: cutoff passed ${overview.cutoffPassed}, ${published} of ${demoInstitutions.length} results published`,
+    );
 }
 
 /** The officer records that every unchecked file passes its suitability checks (AT30). */

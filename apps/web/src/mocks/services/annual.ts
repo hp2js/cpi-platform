@@ -1,4 +1,7 @@
 import {
+  reviewAtCutoff,
+  versionAtCutoff,
+  type VersionAtCutoff,
   type AnnualEvaluation,
   type ComponentScore,
   type FoundationKind,
@@ -75,12 +78,18 @@ function quarterDisposition(
     rejected: [] as QuarterDisposition['rejected'],
     planSize: milestones.length,
     note: null as string | null,
+    submissionId: submission?.id ?? null,
+    formVersionId: submission?.formVersionId ?? null,
+    decisionIds: [] as string[],
+    reviewerId: null as string | null,
+    reviewedAt: submission?.finalizedAt ?? null,
   };
   if (obligation.state === 'closed_without_submission') {
     const closure = db.closures.find(
       (candidate) => candidate.obligationId === obligation.id,
     );
     base.reviewedBy = closure?.by ?? null;
+    base.reviewedAt = closure?.at ?? null;
     base.note = closure ? `Closed without submission: ${closure.reason}` : null;
     // An explicit officer disposition of zero, recorded after the cutoff (§10.5).
     return {
@@ -129,6 +138,7 @@ function quarterDisposition(
           status: 'finalized',
           implementation: score.fraction,
           rejected,
+          decisionIds: decisions.map((decision) => decision.id),
         },
         fraction: rational(
           score.fraction.numerator,
@@ -157,18 +167,22 @@ function foundationOutcome(
   maxPoints: number,
 ) {
   const db = getDb();
-  const active = db.foundationVersions.find(
-    (version) =>
-      version.institutionId === institutionId &&
-      version.kind === kind &&
-      version.status === 'active',
+  // The version effective at the cutoff counts, never a withdrawn one (§10.3, AT28).
+  const atCutoff = versionAtCutoff(
+    db.foundationVersions.filter(
+      (version) =>
+        version.institutionId === institutionId && version.kind === kind,
+    ),
+    db.cycle.evaluationCutoff,
   );
-  const review = db.foundationReviews.find(
-    (candidate) =>
-      candidate.institutionId === institutionId && candidate.kind === kind,
+  // Its latest review (stored newest first), or the unsupported disposition.
+  const current = reviewAtCutoff(
+    db.foundationReviews.filter(
+      (candidate) =>
+        candidate.institutionId === institutionId && candidate.kind === kind,
+    ),
+    atCutoff,
   );
-  const current =
-    review && active && review.versionId === active.id ? review : undefined;
   const score: ComponentScore = current
     ? (() => {
         const passed = current.checks.filter(
@@ -186,11 +200,16 @@ function foundationOutcome(
       })()
     : { status: 'pending', maxPoints, reason: 'foundation_not_reviewed' };
   return {
+    atCutoff,
     outcome: {
       kind,
       label: kindLabel[kind],
       score,
-      versionId: active?.id ?? null,
+      versionId: atCutoff.status === 'applicable' ? atCutoff.versionId : null,
+      reviewId: current?.id ?? null,
+      reviewedBy: current?.reviewedBy ?? null,
+      reviewerId: null,
+      reviewedAt: current?.reviewedAt ?? null,
       failedChecks: current
         ? current.checks.flatMap((check, index) =>
             check.outcome === 'fail'
@@ -213,6 +232,16 @@ function foundationOutcome(
       : null,
   };
 }
+
+/** Actors are stored by display name, as in the API; this finds the account behind one. */
+const accountId = (displayName: string | null) =>
+  getDb().users.find((user) => user.displayName === displayName)?.id ?? null;
+
+const pendingReason: Record<VersionAtCutoff['status'], string> = {
+  applicable: 'not reviewed on the version effective at the cutoff',
+  none: 'has no valid version at the cutoff: record an unsupported disposition or a valid replacement',
+  conflict: 'has versions with overlapping effective dates at the cutoff',
+};
 
 const statusReason: Record<QuarterDisposition['status'], string> = {
   finalized: '',
@@ -247,7 +276,7 @@ export function evaluate(institutionId: string): AnnualEvaluation {
       .filter((foundation) => foundation.fraction === null)
       .map(
         (foundation) =>
-          `${foundation.outcome.label} not reviewed on its active version`,
+          `${foundation.outcome.label} ${pendingReason[foundation.atCutoff.status]}`,
       ),
   ];
   let total: AnnualEvaluation['total'];
@@ -303,9 +332,21 @@ export function evaluate(institutionId: string): AnnualEvaluation {
     officerName:
       db.users.find((user) => user.id === officer?.officerId)?.displayName ??
       'Unassigned',
-    quarters: quarters.map((quarter) => quarter.disposition),
-    foundations: foundations.map((foundation) => foundation.outcome),
+    quarters: quarters.map(({ disposition }) => ({
+      ...disposition,
+      reviewerId: accountId(disposition.reviewedBy),
+    })),
+    foundations: foundations.map(({ outcome }) => ({
+      ...outcome,
+      reviewerId: accountId(outcome.reviewedBy),
+    })),
     weights: { ...activeWeights() },
+    scoringProfile: {
+      id: activeProfile().id,
+      name: activeProfile().name,
+      version: activeProfile().version,
+      simulation: activeProfile().simulation,
+    },
     total,
     releasable: total.status === 'calculated' && holds.length === 0,
     extension: extension

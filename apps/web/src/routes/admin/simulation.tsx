@@ -1,4 +1,4 @@
-import type { ScenarioResult } from '@cpi/contracts';
+import type { ScenarioResult, SimulationState } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CircleCheck, Clock, FastForward, Play, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
@@ -25,6 +25,14 @@ import {
   simulationQuery,
 } from '@/features/simulation/queries';
 import { formatDateTime } from '@/lib/dates';
+
+/** Why the controls are off, with the fix, so the administrator is not left with an API error. */
+const blocked: Record<NonNullable<SimulationState['blockedBy']>, string> = {
+  demo_only:
+    'Why: demo mode is off, so this deployment is treated as holding real records. Fix: only on a demonstration deployment, set DEMO_MODE=true and restart the API.',
+  not_demo_database:
+    'Why: the API is not using the dedicated demo database. Fix: point POSTGRES_DB and DATABASE_URL at a database whose name ends in _demo (for example cpi_demo) and restart the API.',
+};
 
 function Confirm({
   trigger,
@@ -131,11 +139,18 @@ export function SimulationPage() {
                   </dd>
                 </dl>
                 {!state.controls && (
-                  <p className="text-sm">
-                    Business time follows the real clock in this environment.
-                    Advancing it, starting a new run and the scripted year are
-                    available only in the isolated demonstration environment.
-                  </p>
+                  <Alert>
+                    <AlertTitle>Simulation controls are off</AlertTitle>
+                    <AlertDescription>
+                      <p>
+                        Business time follows the real clock in this
+                        environment. Advancing it, starting a new run and the
+                        scripted year are available only in the isolated
+                        demonstration environment.
+                      </p>
+                      {state.blockedBy && <p>{blocked[state.blockedBy]}</p>}
+                    </AlertDescription>
+                  </Alert>
                 )}
                 {state.controls && (
                   <div className="flex flex-wrap gap-2">

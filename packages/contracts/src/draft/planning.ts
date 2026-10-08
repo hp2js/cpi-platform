@@ -352,18 +352,26 @@ export const foundationCheckResultSchema = z.object({
   reason: z.string().max(2000),
 });
 export const foundationReviewSchema = z.object({
-  versionId: z.string(),
+  /** Null for an unsupported disposition: no valid version covered the cutoff (AT28). */
+  versionId: z.string().nullable(),
   checks: z.array(foundationCheckResultSchema).length(4),
   reviewedBy: z.string(),
   reviewedAt: instantSchema,
 });
 export type FoundationReview = z.infer<typeof foundationReviewSchema>;
-export const foundationReviewRequestSchema = foundationReviewSchema.pick({
-  versionId: true,
-  checks: true,
+export const foundationReviewRequestSchema = z.object({
+  versionId: z.string(),
+  checks: z.array(foundationCheckResultSchema).length(4),
 });
 export type FoundationReviewRequest = z.infer<
   typeof foundationReviewRequestSchema
+>;
+/** Records that no valid document supports the checks at the cutoff: 0 of 4, with a reason. */
+export const foundationUnsupportedRequestSchema = z.object({
+  reason: z.string().trim().min(10).max(2000),
+});
+export type FoundationUnsupportedRequest = z.infer<
+  typeof foundationUnsupportedRequestSchema
 >;
 
 export const foundationIndicatorSchema = z.object({
@@ -375,7 +383,19 @@ export const foundationIndicatorSchema = z.object({
   /** `prerequisite` under a profile that shows procedures without points. */
   mode: z.enum(['scored', 'prerequisite']),
   versions: z.array(foundationVersionSchema),
+  /** The latest review of the active version, which gives current credit. */
   review: foundationReviewSchema.nullable(),
+  /** The version effective at the evaluation cutoff, which the annual result uses (AT28). */
+  atCutoff: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('applicable'), versionId: z.string() }),
+    z.object({ status: z.literal('none') }),
+    z.object({
+      status: z.literal('conflict'),
+      versionIds: z.array(z.string()),
+    }),
+  ]),
+  /** The latest review of that version, or the unsupported disposition when none applies. */
+  cutoffReview: foundationReviewSchema.nullable(),
   /** Internal only: omitted (null) for institution users before publication. */
   provisional: componentScoreSchema.nullable(),
   reviewed: componentScoreSchema.nullable(),

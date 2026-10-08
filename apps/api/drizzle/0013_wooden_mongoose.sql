@@ -1,0 +1,1 @@
+ALTER TABLE "foundation_reviews" ALTER COLUMN "version_id" DROP NOT NULL;
