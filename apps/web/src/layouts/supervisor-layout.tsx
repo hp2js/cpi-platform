@@ -25,11 +25,18 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import {
+  NavSections,
+  SkipLink,
+  useMeasuredHeight,
+  type NavSection,
+} from './shared';
 
+// In the order a supervisor oversees the year: see the picture, follow institutions' reporting,
+// balance the officers' work, then confirm the year-end results. The rules are for reference.
 const sections = [
   {
-    heading: 'Oversight',
+    heading: 'Overview',
     items: [
       {
         to: '/supervisor',
@@ -37,6 +44,11 @@ const sections = [
         icon: LayoutDashboard,
         exact: true,
       },
+    ],
+  },
+  {
+    heading: 'Reporting',
+    items: [
       {
         to: '/supervisor/institutions',
         label: 'Institutions',
@@ -54,14 +66,17 @@ const sections = [
     ],
   },
   {
-    heading: 'Rules & results',
+    heading: 'Year end',
     items: [
-      { to: '/supervisor/rules', label: 'Rules in use', icon: Scale },
       { to: '/supervisor/annual', label: 'Annual readiness', icon: Award },
       { to: '/supervisor/reports', label: 'Reports', icon: FileText },
     ],
   },
-] as const satisfies readonly { heading: string; items: readonly NavItem[] }[];
+  {
+    heading: 'Reference',
+    items: [{ to: '/supervisor/rules', label: 'Rules in use', icon: Scale }],
+  },
+] as const satisfies readonly NavSection[];
 
 function SupervisorRail({ onNavigate }: { onNavigate?: () => void }) {
   return (
@@ -74,18 +89,11 @@ function SupervisorRail({ onNavigate }: { onNavigate?: () => void }) {
       >
         <Brand />
       </Link>
-      <nav aria-label="Supervisor" className="grid gap-5">
-        {sections.map((section) => (
-          <div key={section.heading}>
-            <p className="px-3 text-xs font-bold tracking-wide text-base-dark uppercase">
-              {section.heading}
-            </p>
-            <div className="mt-2">
-              <NavList items={section.items} onNavigate={onNavigate} />
-            </div>
-          </div>
-        ))}
-      </nav>
+      <NavSections
+        label="Supervisor"
+        sections={sections}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

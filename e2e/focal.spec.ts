@@ -94,16 +94,20 @@ test('the rail lists sections with attention badges and the year’s quarters, a
   await midYear(page);
   await visit(page, 'focal-demo-002', '/institution');
   const nav = page.getByRole('navigation', { name: 'Institution' }).first();
-  // The desktop rail: the four sections, then the institution page and the inbox.
+  // The desktop rail follows the year: prepare, report each quarter, then results. The inbox
+  // is in the header.
   await expect(nav.getByRole('link')).toHaveText([
     'Home',
-    /^Reports1 needing attention$/,
     'Plan & documents',
-    'Results',
     'Our institution',
-    'Inbox',
+    /^Reports1 needing attention$/,
+    /^Q1/,
+    /^Q2/,
+    /^Q3/,
+    /^Q4/,
+    'Results',
   ]);
-  // The year's quarters sit below, each with its state in words and a link to its report.
+  // The year's quarters sit under Reports, each with its state in words and a link to its report.
   const quarters = page.getByRole('region', { name: 'FY 2026/27 quarters' });
   await expect(quarters.getByRole('link', { name: /^Q1/ })).toContainText(
     'Clarification requested',

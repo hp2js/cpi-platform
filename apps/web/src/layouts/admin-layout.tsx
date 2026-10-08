@@ -29,59 +29,69 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import {
+  NavSections,
+  SkipLink,
+  useMeasuredHeight,
+  type NavSection,
+} from './shared';
 
+// In the order an administrator runs a cycle: set it up, bring people in, run the year, then
+// publish the results.
 const sections = [
   {
     heading: 'Overview',
     items: [{ to: '/admin', label: 'Console', icon: Gauge, exact: true }],
   },
   {
-    heading: 'Setup',
+    heading: '1 · Set up the cycle',
     items: [
       {
         to: '/admin/calendar',
         label: 'Reporting calendar',
         icon: CalendarDays,
       },
+      {
+        to: '/admin/profiles',
+        label: 'Scoring profiles',
+        icon: SlidersHorizontal,
+      },
+      { to: '/admin/risk-scale', label: 'Risk rating scale', icon: Ruler },
+      { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
+    ],
+  },
+  {
+    heading: '2 · People',
+    items: [
       { to: '/admin/institutions', label: 'Institutions', icon: Building2 },
       { to: '/admin/users', label: 'Users', icon: UserRound },
       { to: '/admin/assignments', label: 'Assignments', icon: Users },
     ],
   },
   {
-    heading: 'Forms & scoring',
+    heading: '3 · Run the year',
     items: [
-      {
-        to: '/admin/profiles',
-        label: 'Scoring profiles',
-        icon: SlidersHorizontal,
-      },
-      { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
-      { to: '/admin/risk-scale', label: 'Risk rating scale', icon: Ruler },
-    ],
-  },
-  {
-    heading: 'Publication',
-    items: [
-      { to: '/admin/annual', label: 'Annual evaluation', icon: Award },
-      { to: '/admin/report-identity', label: 'Report identity', icon: Stamp },
-    ],
-  },
-  {
-    heading: 'Operations',
-    items: [
+      { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
+      { to: '/admin/notifications', label: 'Notifications', icon: Mail },
       {
         to: '/admin/simulation',
         label: 'Simulation clock',
         icon: CalendarClock,
       },
-      { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
-      { to: '/admin/notifications', label: 'Notifications', icon: Mail },
-      { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
     ],
   },
-] as const satisfies readonly { heading: string; items: readonly NavItem[] }[];
+  {
+    heading: '4 · Publish',
+    items: [
+      { to: '/admin/report-identity', label: 'Report identity', icon: Stamp },
+      { to: '/admin/annual', label: 'Annual evaluation', icon: Award },
+    ],
+  },
+  {
+    heading: 'Accountability',
+    items: [{ to: '/admin/audit', label: 'Audit log', icon: ScrollText }],
+  },
+] as const satisfies readonly NavSection[];
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
@@ -97,22 +107,12 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
       >
         <Brand tone="dark" />
       </Link>
-      <nav aria-label="Administration" className="grid gap-5">
-        {sections.map((section) => (
-          <div key={section.heading}>
-            <p className="px-3 text-xs font-bold tracking-wide text-white uppercase">
-              {section.heading}
-            </p>
-            <div className="mt-2">
-              <NavList
-                items={section.items}
-                tone="dark"
-                onNavigate={onNavigate}
-              />
-            </div>
-          </div>
-        ))}
-      </nav>
+      <NavSections
+        label="Administration"
+        sections={sections}
+        tone="dark"
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

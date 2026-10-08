@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImageUp, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PreviewSwitch } from '@/components/preview-switch';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import { sampleEvaluation } from '@/features/report-identity/sample';
 import { useUnsavedWork } from '@/features/session/unsaved-work';
 import { isApiError } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
+import { usePresence } from '@/lib/use-presence';
+import { cn } from '@/lib/utils';
 
 const editable = (identity: ReportIdentity): ReportIdentityUpdate => ({
   organizationName: identity.organizationName,
@@ -179,6 +182,8 @@ function IdentityEditor({
     },
   });
   const errors = isApiError(save.error) ? save.error.fieldErrors : {};
+  const [showPreview, setShowPreview] = useState(true);
+  const panel = usePresence(showPreview);
   const ratio = /^#[0-9a-f]{6}$/i.test(draft.accentColor)
     ? contrastOnWhite(draft.accentColor)
     : null;
@@ -193,264 +198,297 @@ function IdentityEditor({
       .join(' ') || undefined;
 
   return (
-    <div className="grid items-start gap-6 desktop:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <form
-        className="grid gap-5 rounded-lg border bg-white p-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          save.mutate();
-        }}
-        aria-label="Report identity"
-      >
-        <Field
-          id="identity-organizationName"
-          label="Issuing organization"
-          hint="Shown as the issuer on every report. An official body (for example EACC) can be named only with a recorded authorization."
-          error={errors.organizationName}
-        >
-          <Input
-            id="identity-organizationName"
-            value={draft.organizationName}
-            aria-invalid={Boolean(errors.organizationName)}
-            aria-describedby={describedBy('identity-organizationName', true)}
-            onChange={(event) => set({ organizationName: event.target.value })}
-          />
-        </Field>
-        <Field
-          id="identity-reportTitle"
-          label="Report title"
-          hint="The cycle is added after it, e.g. “… · FY 2026/27”."
-          error={errors.reportTitle}
-        >
-          <Input
-            id="identity-reportTitle"
-            value={draft.reportTitle}
-            aria-invalid={Boolean(errors.reportTitle)}
-            aria-describedby={describedBy('identity-reportTitle', true)}
-            onChange={(event) => set({ reportTitle: event.target.value })}
-          />
-        </Field>
-        <Field
-          id="identity-accentColor"
-          label="Accent colour"
-          hint="Used for the title and rules. It must reach 4.5:1 contrast on white; status is never shown by colour alone."
-          error={errors.accentColor}
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="color"
-              aria-label="Pick the accent colour"
-              value={
-                /^#[0-9a-f]{6}$/i.test(draft.accentColor)
-                  ? draft.accentColor
-                  : '#530b61'
-              }
-              onChange={(event) =>
-                set({ accentColor: event.target.value.toUpperCase() })
-              }
-              className="h-touch w-16 cursor-pointer rounded-md border"
-            />
-            <Input
-              id="identity-accentColor"
-              value={draft.accentColor}
-              className="w-32 font-mono"
-              aria-invalid={Boolean(errors.accentColor)}
-              aria-describedby={describedBy('identity-accentColor', true)}
-              onChange={(event) => set({ accentColor: event.target.value })}
-            />
-            {ratio !== null && (
-              <span className="text-sm">
-                Contrast {ratio.toFixed(1)}:1{' '}
-                {ratio >= 4.5 ? '(passes)' : '(too light: choose darker)'}
-              </span>
-            )}
-          </div>
-        </Field>
-        <Field
-          id="identity-foreword"
-          label="Foreword (optional)"
-          error={errors.foreword}
-        >
-          <Textarea
-            id="identity-foreword"
-            value={draft.foreword}
-            rows={4}
-            onChange={(event) => set({ foreword: event.target.value })}
-          />
-        </Field>
-        <Field
-          id="identity-contact"
-          label="Contact details (optional)"
-          error={errors.contact}
-        >
-          <Input
-            id="identity-contact"
-            value={draft.contact}
-            onChange={(event) => set({ contact: event.target.value })}
-          />
-        </Field>
-        <Field
-          id="identity-footer"
-          label="Footer or disclaimer (optional)"
-          error={errors.footer}
-        >
-          <Input
-            id="identity-footer"
-            value={draft.footer}
-            onChange={(event) => set({ footer: event.target.value })}
-          />
-        </Field>
-        <fieldset className="grid gap-3">
-          <legend className="text-sm font-bold">Signatory (optional)</legend>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="identity-signatory"
-              checked={draft.signatory !== null}
-              onCheckedChange={(checked) =>
-                set({
-                  signatory: checked === true ? { name: '', title: '' } : null,
-                })
-              }
-            />
-            <Label htmlFor="identity-signatory" className="font-normal">
-              Sign the report
-            </Label>
-          </div>
-          {draft.signatory && (
-            <div className="grid gap-3 tablet:grid-cols-2">
-              <Field
-                id="identity-signatory-name"
-                label="Signatory name"
-                error={errors['signatory.name']}
-              >
-                <Input
-                  id="identity-signatory-name"
-                  value={draft.signatory.name}
-                  onChange={(event) =>
-                    set({
-                      signatory: {
-                        ...draft.signatory!,
-                        name: event.target.value,
-                      },
-                    })
-                  }
-                />
-              </Field>
-              <Field
-                id="identity-signatory-title"
-                label="Signatory title"
-                error={errors['signatory.title']}
-              >
-                <Input
-                  id="identity-signatory-title"
-                  value={draft.signatory.title}
-                  onChange={(event) =>
-                    set({
-                      signatory: {
-                        ...draft.signatory!,
-                        title: event.target.value,
-                      },
-                    })
-                  }
-                />
-              </Field>
-            </div>
-          )}
-        </fieldset>
-        <Field
-          id="identity-authorization"
-          label="Authorization to issue in an official body's name (optional)"
-          hint="Only when an official body has authorized this deployment to publish in its name: record the reference here. The simulation marking stays on every report regardless."
-          error={errors.authorization}
-        >
-          <Textarea
-            id="identity-authorization"
-            value={draft.authorization ?? ''}
-            rows={2}
-            aria-describedby={describedBy('identity-authorization', true)}
-            onChange={(event) =>
-              set({ authorization: event.target.value || null })
-            }
-          />
-        </Field>
-        {save.isError && (
-          <p role="alert" className="text-sm font-bold text-error-dark">
-            {save.error.message}
-          </p>
+    <div className="@container grid gap-4">
+      <div className="flex justify-end">
+        <PreviewSwitch
+          shown={showPreview}
+          onChange={setShowPreview}
+          controls={panel.mounted ? 'identity-preview' : undefined}
+        />
+      </div>
+      {/* The preview slides in beside the settings, which narrow to make room. */}
+      <div
+        className={cn(
+          'grid items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-300 ease-out desktop:grid-cols-[minmax(0,1fr)_minmax(0,0fr)]',
+          panel.shown &&
+            'desktop:gap-x-6 desktop:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]',
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={!dirty || save.isPending}>
-            <Save aria-hidden="true" />
-            Save identity
-          </Button>
-          <span className="text-sm text-base-dark" aria-live="polite">
-            {save.isPending
-              ? 'Saving…'
-              : dirty
-                ? 'Unsaved changes: the preview shows them.'
-                : 'Saved.'}
-          </span>
-        </div>
-        <div className="grid gap-4 border-t pt-4">
-          <ImageField
-            slot="logo"
-            label="Logo"
-            hint="PNG or JPEG without transparency, up to 300 KB and 1200 × 1200 px. Saved straight away."
-            identity={identity}
-            onChange={imageChanged}
-          />
-          {(draft.signatory ?? identity.signatory) && (
+      >
+        <form
+          className="grid gap-5 rounded-lg border bg-white p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+          aria-label="Report identity"
+        >
+          <Field
+            id="identity-organizationName"
+            label="Issuing organization"
+            hint="Shown as the issuer on every report. An official body (for example EACC) can be named only with a recorded authorization."
+            error={errors.organizationName}
+          >
+            <Input
+              id="identity-organizationName"
+              value={draft.organizationName}
+              aria-invalid={Boolean(errors.organizationName)}
+              aria-describedby={describedBy('identity-organizationName', true)}
+              onChange={(event) =>
+                set({ organizationName: event.target.value })
+              }
+            />
+          </Field>
+          <Field
+            id="identity-reportTitle"
+            label="Report title"
+            hint="The cycle is added after it, e.g. “… · FY 2026/27”."
+            error={errors.reportTitle}
+          >
+            <Input
+              id="identity-reportTitle"
+              value={draft.reportTitle}
+              aria-invalid={Boolean(errors.reportTitle)}
+              aria-describedby={describedBy('identity-reportTitle', true)}
+              onChange={(event) => set({ reportTitle: event.target.value })}
+            />
+          </Field>
+          <Field
+            id="identity-accentColor"
+            label="Accent colour"
+            hint="Used for the title and rules. It must reach 4.5:1 contrast on white; status is never shown by colour alone."
+            error={errors.accentColor}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="color"
+                aria-label="Pick the accent colour"
+                value={
+                  /^#[0-9a-f]{6}$/i.test(draft.accentColor)
+                    ? draft.accentColor
+                    : '#530b61'
+                }
+                onChange={(event) =>
+                  set({ accentColor: event.target.value.toUpperCase() })
+                }
+                className="h-touch w-16 cursor-pointer rounded-md border"
+              />
+              <Input
+                id="identity-accentColor"
+                value={draft.accentColor}
+                className="w-32 font-mono"
+                aria-invalid={Boolean(errors.accentColor)}
+                aria-describedby={describedBy('identity-accentColor', true)}
+                onChange={(event) => set({ accentColor: event.target.value })}
+              />
+              {ratio !== null && (
+                <span className="text-sm">
+                  Contrast {ratio.toFixed(1)}:1{' '}
+                  {ratio >= 4.5 ? '(passes)' : '(too light: choose darker)'}
+                </span>
+              )}
+            </div>
+          </Field>
+          <Field
+            id="identity-foreword"
+            label="Foreword (optional)"
+            error={errors.foreword}
+          >
+            <Textarea
+              id="identity-foreword"
+              value={draft.foreword}
+              rows={4}
+              onChange={(event) => set({ foreword: event.target.value })}
+            />
+          </Field>
+          <Field
+            id="identity-contact"
+            label="Contact details (optional)"
+            error={errors.contact}
+          >
+            <Input
+              id="identity-contact"
+              value={draft.contact}
+              onChange={(event) => set({ contact: event.target.value })}
+            />
+          </Field>
+          <Field
+            id="identity-footer"
+            label="Footer or disclaimer (optional)"
+            error={errors.footer}
+          >
+            <Input
+              id="identity-footer"
+              value={draft.footer}
+              onChange={(event) => set({ footer: event.target.value })}
+            />
+          </Field>
+          <fieldset className="grid gap-3">
+            <legend className="text-sm font-bold">Signatory (optional)</legend>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="identity-signatory"
+                checked={draft.signatory !== null}
+                onCheckedChange={(checked) =>
+                  set({
+                    signatory:
+                      checked === true ? { name: '', title: '' } : null,
+                  })
+                }
+              />
+              <Label htmlFor="identity-signatory" className="font-normal">
+                Sign the report
+              </Label>
+            </div>
+            {draft.signatory && (
+              <div className="grid gap-3 tablet:grid-cols-2">
+                <Field
+                  id="identity-signatory-name"
+                  label="Signatory name"
+                  error={errors['signatory.name']}
+                >
+                  <Input
+                    id="identity-signatory-name"
+                    value={draft.signatory.name}
+                    onChange={(event) =>
+                      set({
+                        signatory: {
+                          ...draft.signatory!,
+                          name: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  id="identity-signatory-title"
+                  label="Signatory title"
+                  error={errors['signatory.title']}
+                >
+                  <Input
+                    id="identity-signatory-title"
+                    value={draft.signatory.title}
+                    onChange={(event) =>
+                      set({
+                        signatory: {
+                          ...draft.signatory!,
+                          title: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+            )}
+          </fieldset>
+          <Field
+            id="identity-authorization"
+            label="Authorization to issue in an official body's name (optional)"
+            hint="Only when an official body has authorized this deployment to publish in its name: record the reference here. The simulation marking stays on every report regardless."
+            error={errors.authorization}
+          >
+            <Textarea
+              id="identity-authorization"
+              value={draft.authorization ?? ''}
+              rows={2}
+              aria-describedby={describedBy('identity-authorization', true)}
+              onChange={(event) =>
+                set({ authorization: event.target.value || null })
+              }
+            />
+          </Field>
+          {save.isError && (
+            <p role="alert" className="text-sm font-bold text-error-dark">
+              {save.error.message}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={!dirty || save.isPending}>
+              <Save aria-hidden="true" />
+              Save identity
+            </Button>
+            <span className="text-sm text-base-dark" aria-live="polite">
+              {save.isPending
+                ? 'Saving…'
+                : dirty
+                  ? 'Unsaved changes: the preview shows them.'
+                  : 'Saved.'}
+            </span>
+          </div>
+          <div className="grid gap-4 border-t pt-4">
             <ImageField
-              slot="signature"
-              label="Signature image"
-              hint="Optional, shown above the signatory's name. Same limits as the logo."
+              slot="logo"
+              label="Logo"
+              hint="PNG or JPEG without transparency, up to 300 KB and 1200 × 1200 px. Saved straight away."
               identity={identity}
               onChange={imageChanged}
             />
+            {(draft.signatory ?? identity.signatory) && (
+              <ImageField
+                slot="signature"
+                label="Signature image"
+                hint="Optional, shown above the signatory's name. Same limits as the logo."
+                identity={identity}
+                onChange={imageChanged}
+              />
+            )}
+          </div>
+          {changes.length > 0 && (
+            <details className="border-t pt-4 text-sm">
+              <summary className="cursor-pointer font-bold">
+                Change history ({changes.length})
+              </summary>
+              <ul className="mt-2 grid gap-1">
+                {changes.map((change) => (
+                  <li key={`${change.at}-${change.summary}`}>
+                    {formatDateTime(change.at)}, {change.by}: {change.summary}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
-        </div>
-        {changes.length > 0 && (
-          <details className="border-t pt-4 text-sm">
-            <summary className="cursor-pointer font-bold">
-              Change history ({changes.length})
-            </summary>
-            <ul className="mt-2 grid gap-1">
-              {changes.map((change) => (
-                <li key={`${change.at}-${change.summary}`}>
-                  {formatDateTime(change.at)}, {change.by}: {change.summary}
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </form>
+        </form>
 
-      <section
-        aria-labelledby="identity-preview-heading"
-        className="grid gap-4 rounded-lg border bg-base-lightest p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+1rem)]"
-      >
-        <div>
-          <h2 id="identity-preview-heading" className="font-bold">
-            Preview with sample data
-          </h2>
-          <p className="text-sm text-base-dark">
-            A fictional institution&rsquo;s cover and result page, as on screen
-            and in print. Published reports keep the identity they were
-            published with.
-          </p>
-        </div>
-        <ReportCover
-          identity={preview}
-          cycleLabel={cycle.data?.label ?? 'FY 2026/27'}
-          subject={`${sampleEvaluation.institutionId} · ${sampleEvaluation.institutionName}`}
-        />
-        <AnnualResultView
-          evaluation={sampleEvaluation}
-          profileName="Hackathon Mock v1"
-          simulation
-        />
-        <ReportSignoff identity={preview} />
-      </section>
+        {panel.mounted && (
+          // Clipped and at its final width, so it slides in rather than reflowing as it grows.
+          <div
+            id="identity-preview"
+            inert={!panel.shown}
+            className={cn(
+              'min-w-0 self-stretch transition-[opacity,translate] duration-300 ease-out desktop:overflow-x-clip',
+              panel.shown
+                ? 'translate-x-0 opacity-100'
+                : 'translate-y-2 opacity-0 desktop:translate-x-8 desktop:translate-y-0',
+            )}
+          >
+            <section
+              aria-labelledby="identity-preview-heading"
+              className="grid gap-4 rounded-lg border bg-base-lightest p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+1rem)] desktop:w-[calc((100cqw-1.5rem)/2)]"
+            >
+              <div>
+                <h2 id="identity-preview-heading" className="font-bold">
+                  Preview with sample data
+                </h2>
+                <p className="text-sm text-base-dark">
+                  A fictional institution&rsquo;s cover and result page, as on
+                  screen and in print. Published reports keep the identity they
+                  were published with.
+                </p>
+              </div>
+              <ReportCover
+                identity={preview}
+                cycleLabel={cycle.data?.label ?? 'FY 2026/27'}
+                subject={`${sampleEvaluation.institutionId} · ${sampleEvaluation.institutionName}`}
+              />
+              <AnnualResultView
+                evaluation={sampleEvaluation}
+                profileName="Hackathon Mock v1"
+                simulation
+              />
+              <ReportSignoff identity={preview} />
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -34,7 +34,6 @@ import {
   FolderInput,
   ListTree,
   Lock,
-  PanelRight,
   Plus,
   Save,
   Trash2,
@@ -49,6 +48,7 @@ import {
   useState,
 } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PreviewSwitch } from '@/components/preview-switch';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -106,6 +106,7 @@ import { profilesQuery } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
 import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
+import { usePresence } from '@/lib/use-presence';
 import { cn } from '@/lib/utils';
 import { SelectField } from '@/components/select-field';
 import { questionTypeLabels } from '@/features/forms/labels';
@@ -488,6 +489,7 @@ function DraftEditor({
   const [setupOpen, setSetupOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const preview = usePresence(showPreview);
   const [phoneWidth, setPhoneWidth] = useState(false);
   const [target, setTarget] = useState<string | null>(null);
   const toggle = (questionId: string) =>
@@ -832,14 +834,12 @@ function DraftEditor({
                       </nav>
                     </PopoverContent>
                   </Popover>
-                  <Button
-                    variant="outline"
-                    aria-pressed={showPreview}
-                    onClick={() => setShowPreview((shown) => !shown)}
-                  >
-                    <PanelRight aria-hidden="true" />
-                    Institution preview
-                  </Button>
+                  <PreviewSwitch
+                    label="Institution preview"
+                    shown={showPreview}
+                    onChange={setShowPreview}
+                    controls={preview.mounted ? 'form-preview' : undefined}
+                  />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -1040,7 +1040,17 @@ function DraftEditor({
               )}
 
               <div className="@container">
-                <div className="grid items-start gap-6 @tablet-lg:grid-cols-[minmax(0,1fr)_var(--container-mobile-lg)]">
+                {/*
+                  The preview slides in beside the editor and the editor narrows to make room; when
+                  it is hidden the editor takes the whole width (HP2-73).
+                */}
+                <div
+                  className={cn(
+                    'grid items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-300 ease-out @tablet-lg:grid-cols-[minmax(0,1fr)_0rem]',
+                    preview.shown &&
+                      'gap-x-6 @tablet-lg:grid-cols-[minmax(0,1fr)_var(--container-mobile-lg)]',
+                  )}
+                >
                   <div className="@container grid min-w-0 gap-4">
                     <section
                       aria-labelledby="checks-heading"
@@ -1434,37 +1444,50 @@ function DraftEditor({
                       </Button>
                     </div>
                   </div>
-                  {showPreview && (
-                    <section
-                      aria-labelledby="preview-heading"
-                      className="grid gap-3 rounded-lg border bg-base-lightest p-4 @tablet-lg:sticky @tablet-lg:top-[calc(var(--sticky-top)+5.5rem)] @tablet-lg:max-h-[calc(100dvh-var(--sticky-top)-7rem)] @tablet-lg:overflow-y-auto"
+                  {preview.mounted && (
+                    // Stretched to the row, so the panel inside can stay in view while scrolling;
+                    // clipped, so the panel slides in from the edge rather than squeezing.
+                    <div
+                      id="form-preview"
+                      inert={!preview.shown}
+                      className={cn(
+                        'min-w-0 self-stretch transition-[opacity,translate] duration-300 ease-out @tablet-lg:overflow-x-clip',
+                        preview.shown
+                          ? 'translate-x-0 opacity-100'
+                          : 'translate-y-2 opacity-0 @tablet-lg:translate-x-8 @tablet-lg:translate-y-0',
+                      )}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 id="preview-heading" className="font-bold">
-                          Institution preview
-                        </h2>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          aria-pressed={phoneWidth}
-                          onClick={() => setPhoneWidth((phone) => !phone)}
-                        >
-                          Phone width
-                        </Button>
-                      </div>
-                      <div
-                        className={cn(
-                          'w-full',
-                          phoneWidth &&
-                            'mx-auto max-w-phone rounded-lg border bg-white p-3',
-                        )}
+                      <section
+                        aria-labelledby="preview-heading"
+                        className="grid gap-3 rounded-lg border bg-base-lightest p-4 @tablet-lg:w-(--container-mobile-lg) @tablet-lg:sticky @tablet-lg:top-[calc(var(--sticky-top)+5.5rem)] @tablet-lg:max-h-[calc(100dvh-var(--sticky-top)-7rem)] @tablet-lg:overflow-y-auto"
                       >
-                        <Preview
-                          key={previewShape(values.sections)}
-                          form={{ ...form, ...values }}
-                        />
-                      </div>
-                    </section>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h2 id="preview-heading" className="font-bold">
+                            Institution preview
+                          </h2>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-pressed={phoneWidth}
+                            onClick={() => setPhoneWidth((phone) => !phone)}
+                          >
+                            Phone width
+                          </Button>
+                        </div>
+                        <div
+                          className={cn(
+                            'w-full',
+                            phoneWidth &&
+                              'mx-auto max-w-phone rounded-lg border bg-white p-3',
+                          )}
+                        >
+                          <Preview
+                            key={previewShape(values.sections)}
+                            form={{ ...form, ...values }}
+                          />
+                        </div>
+                      </section>
+                    </div>
                   )}
                 </div>
               </div>
