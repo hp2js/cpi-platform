@@ -38,6 +38,10 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # A provider major (azurerm 5) renames and requires arguments; migrate it deliberately.
+      - dependency-name: hashicorp/azurerm
+        update-types: ['version-update:semver-major']
   - package-ecosystem: docker
     directory: /infra/floci
     schedule:

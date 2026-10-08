@@ -44,7 +44,7 @@ jobs:
       TF_VAR_api_image: ${{ inputs.api_image }}
       TF_VAR_web_image: ${{ inputs.web_image }}
       TF_VAR_admin_email: ${{ vars[format('ADMIN_EMAIL_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
-      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] || '[]' }}
+      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
       # Inputs reach scripts as variables, never spliced into script text.
       ENVIRONMENT: ${{ inputs.environment }}
       TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}
@@ -59,7 +59,8 @@ jobs:
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: v3.1.3
-      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - id: login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -76,7 +77,8 @@ jobs:
           terraform apply -input=false -no-color tfplan
           echo "portal_url=$(terraform output -raw portal_url)" >> "$GITHUB_OUTPUT"
           { echo "### Terraform ($ENVIRONMENT)"; echo '```'; grep -E '^(Plan:|No changes)' plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-      - if: always()
+      # Close whenever the run signed in, even if Terraform failed after opening it.
+      - if: always() && steps.login.outcome == 'success'
         run: scripts/vault-firewall.sh close "rg-cpi-$ENVIRONMENT"
       - name: Release
         run: scripts/release.sh "$ENVIRONMENT" "$TF_VAR_api_image" "$TF_VAR_web_image"
