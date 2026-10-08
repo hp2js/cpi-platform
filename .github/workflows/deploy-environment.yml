@@ -44,7 +44,7 @@ jobs:
       TF_VAR_api_image: ${{ inputs.api_image }}
       TF_VAR_web_image: ${{ inputs.web_image }}
       TF_VAR_admin_email: ${{ vars[format('ADMIN_EMAIL_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
-      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] || '[]' }}
+      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
       # Inputs reach scripts as variables, never spliced into script text.
       ENVIRONMENT: ${{ inputs.environment }}
       TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}

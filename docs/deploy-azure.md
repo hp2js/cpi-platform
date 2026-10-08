@@ -52,7 +52,7 @@ All logs ─► Log Analytics ─► alerts (action group), workbook dashboard, 
    | `AZURE_CLIENT_ID_DEPLOY_STAGING`, `AZURE_CLIENT_ID_DEPLOY_PROD` | `github_client_ids["deploy-staging"]`, `["deploy-prod"]`                 |
    | `AZURE_CLIENT_ID_PLAN_PR`, `AZURE_CLIENT_ID_DRIFT`              | `github_client_ids["plan-pr"]`, `["drift"]`                              |
    | `ADMIN_EMAIL_PROD`                                              | The first production administrator (required: prod is not in demo mode). |
-   | `ALERT_EMAILS_STAGING`, `ALERT_EMAILS_PROD`                     | JSON list, e.g. `["ops@example.org"]`.                                   |
+   | `ALERT_EMAILS_STAGING`, `ALERT_EMAILS_PROD`                     | Comma-separated addresses, e.g. `ops@example.org,lead@example.org`.      |
 
 3. **GitHub environments:** `staging`, and `production` with required reviewers and deployment branches limited to `main`. The OIDC identities trust exactly these names.
 4. **Branch ruleset on `main`:** require pull requests and the **Secure-PR gate** status check (see [security.md](security.md#making-it-required)).

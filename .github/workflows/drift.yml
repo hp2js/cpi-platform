@@ -33,7 +33,7 @@ jobs:
       TF_VAR_api_image: unused
       TF_VAR_web_image: unused
       TF_VAR_admin_email: ${{ vars[format('ADMIN_EMAIL_{0}', matrix.environment == 'prod' && 'PROD' || 'STAGING')] }}
-      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', matrix.environment == 'prod' && 'PROD' || 'STAGING')] || '[]' }}
+      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', matrix.environment == 'prod' && 'PROD' || 'STAGING')] }}
       GH_TOKEN: ${{ github.token }}
       TITLE: 'Drift: ${{ matrix.environment }}'
     steps:
