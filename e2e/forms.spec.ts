@@ -61,7 +61,8 @@ test(
     ).toBeVisible();
     await expect(preview.getByLabel('Staff trained')).toBeVisible();
     await scan(page);
-    await page.getByRole('button', { name: 'Save draft' }).click();
+    // The draft saves itself once editing pauses (HP2-73).
+    await expect(page.getByText(/^Saved /)).toBeVisible();
     const changes = page.getByRole('region', {
       name: 'Changes from version 1',
     });
@@ -203,10 +204,8 @@ test('problems show at their field as they are typed, and publishing previews an
   await label.fill(original);
   await title.fill('Quarterly progress report');
   await expect(checks).toContainText('No issues');
-  await expect(
-    page.getByRole('button', { name: 'Publish version 2' }),
-  ).toBeDisabled();
-  await page.getByRole('button', { name: 'Save draft' }).click();
+  // Publication waits until the edits have saved themselves (HP2-73).
+  await expect(page.getByText(/^Saved /)).toBeVisible();
 
   // The confirmation says which periods move, who reports on it and who is told.
   await page.getByRole('button', { name: 'Publish version 2' }).click();

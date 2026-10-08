@@ -34,8 +34,9 @@ export function AccessibilityPage() {
           </Link>
           <h1 className="mt-4 text-2xl font-bold">Accessibility statement</h1>
           <p className="mt-2 text-base-dark">
-            For the corruption prevention reporting platform, a simulation with
-            fictional institutions and data. Last reviewed {REVIEWED}.
+            For CPI (Corruption Prevention Indicator) on Adili Online, a
+            simulation with fictional institutions and data. Last reviewed{' '}
+            {REVIEWED}.
           </p>
         </div>
 

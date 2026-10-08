@@ -572,7 +572,8 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
       </section>
       <SheetContent
         side="right"
-        className="w-full gap-0 outline-none tablet:max-w-mobile-lg"
+        // The header and the password stay put; only the list of accounts scrolls.
+        className="w-full gap-0 overflow-hidden outline-none tablet:max-w-mobile-lg"
         // Start on the sheet itself: no keyboard popping up on phones, and Tab reaches the list.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -617,7 +618,8 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
             </nav>
           )}
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto">
+        {/* Relative, so visually hidden text inside is clipped here, not by the whole sheet. */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-6 p-5">
             {mutation.isError && (
               <Alert variant="destructive">
@@ -648,7 +650,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
           </div>
         </div>
         {config.demoPassword && (
-          <div className="grid gap-2 border-t bg-base-lightest p-5 text-sm">
+          <div className="grid shrink-0 gap-2 border-t bg-base-lightest p-5 text-sm">
             <p>
               <span className="font-bold">Prefer the sign-in form?</span>{' '}
               <span className="text-base-dark">
