@@ -238,6 +238,22 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       'The Q2 closure reason needs restating.',
     );
 
+    // Staff read every version in full too, within their scope (HP2-68).
+    const supervisor = await api.client().signIn('supervisor');
+    const staffView = await supervisor.json<InstitutionResults>(
+      '/institutions/DEMO-008/results',
+    );
+    expect(
+      staffView.results.map((result) => [result.version, result.status]),
+    ).toEqual([
+      [2, 'current'],
+      [1, 'superseded'],
+    ]);
+    expect(staffView.results[1]!.evaluation.quarters).toHaveLength(4);
+    expect((await focal.request('/institutions/DEMO-008/results')).status).toBe(
+      403,
+    );
+
     const report = await admin.json<ConsolidatedReport>('/annual/report');
     expect(report.released.map((result) => result.institutionId)).toEqual([
       'DEMO-008',

@@ -157,6 +157,16 @@ export class AnnualController {
     pdfDownload(response, await this.annual.resultPdf(user, id));
   }
 
+  /** Every published version of one institution's result, for staff in scope (HP2-68). */
+  @Get('institutions/:institutionId/results')
+  @Roles('officer', 'supervisor', 'administrator')
+  institutionResults(
+    @CurrentUser() user: User,
+    @Param('institutionId') institutionId: string,
+  ): Promise<InstitutionResults> {
+    return this.annual.institutionResults(user, institutionId);
+  }
+
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */
   @Get('results')
   @Roles('institution')

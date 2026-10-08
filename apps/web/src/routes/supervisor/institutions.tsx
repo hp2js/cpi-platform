@@ -28,6 +28,7 @@ import {
 } from '@/features/directory/queries';
 import { oversightQuery } from '@/features/oversight/queries';
 import { Trends } from '@/features/oversight/trends';
+import { InstitutionPublishedResults } from '@/features/annual/published-results';
 import { BaselineStatus } from '@/features/planning/baseline-view';
 import { planQuery } from '@/features/planning/queries';
 import { reviewQueueQuery } from '@/features/review/queries';
@@ -365,6 +366,7 @@ export function SupervisorInstitutionPage() {
             )}
           </QueryView>
           <Baselines institutionId={data.id} />
+          <InstitutionPublishedResults institutionId={data.id} />
         </div>
       )}
     </QueryView>

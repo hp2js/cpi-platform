@@ -403,6 +403,30 @@ export class AnnualService {
     );
   }
 
+  /**
+   * Every published version of one institution's result, for staff in scope (HP2-68): the
+   * current one first, then each earlier one as it was published. Out of scope is not found.
+   */
+  async institutionResults(
+    user: User,
+    institutionId: string,
+  ): Promise<InstitutionResults> {
+    const scope = await readableInstitutionIds(this.db, user);
+    if (!scope.includes(institutionId)) throw notFound();
+    const data = await loadAnnualData(this.db, [institutionId]);
+    const results = data.publications
+      .filter((publication) => publication.institutionId === institutionId)
+      .map((publication) => toPublished(data, publication))
+      .reverse();
+    return {
+      released: results.length > 0,
+      message: results.length
+        ? 'Published results are shown below.'
+        : 'Nothing has been published for this institution yet.',
+      results,
+    };
+  }
+
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */
   async results(user: User): Promise<InstitutionResults> {
     const data = await loadAnnualData(this.db, [user.institutionId ?? '']);

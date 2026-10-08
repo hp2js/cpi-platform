@@ -196,4 +196,32 @@ test('a published result is corrected only through a case and keeps its history 
   await expect(
     page.getByText(/correction: Later evidence shows/),
   ).toBeVisible();
+
+  // The earlier version stays readable in full, with what the correction changed (HP2-68).
+  const changes = page.getByRole('region', {
+    name: 'What changed from version 1',
+  });
+  await expect(changes).toContainText(
+    'Annual result: 100.00 / 100 → 96.25 / 100',
+  );
+  await expect(changes).toContainText(/Q4: 15\.00 .* → 11\.25/);
+  await expect(
+    page.getByText(/^Superseded by version 2 on .*: Later evidence shows/),
+  ).toBeVisible();
+  await page.getByText('Read version 1 in full').click();
+  await expect(page.getByRole('region', { name: 'Report cover' })).toHaveCount(
+    2,
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download PDF of version 1' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('CPI-FY2026-27-DEMO-008-v1.pdf');
+
+  // Supervisors read every version on the institution's page.
+  await as(page, 'supervisor', '/supervisor/institutions/DEMO-008');
+  const published = page.getByRole('region', { name: 'Published results' });
+  await expect(
+    published.getByRole('heading', { name: 'Version 1 (superseded)' }),
+  ).toBeVisible();
 });

@@ -162,3 +162,69 @@ export function consolidatedSummary(
       })),
   };
 }
+
+/** One difference between two published versions of an institution's result (HP2-68). */
+export interface ResultChange {
+  item: string;
+  before: string;
+  after: string;
+}
+
+/**
+ * What a correction changed: the total, each foundation and each quarter whose result differs,
+ * with the points before and after. Shared so every screen and document says the same.
+ */
+export function compareResults(
+  earlier: PublishedResult,
+  later: PublishedResult,
+): ResultChange[] {
+  const changes: ResultChange[] = [];
+  const total = (result: PublishedResult) =>
+    result.evaluation.total.status === 'calculated'
+      ? `${result.evaluation.total.points} / 100`
+      : 'Pending';
+  if (total(earlier) !== total(later))
+    changes.push({
+      item: 'Annual result',
+      before: total(earlier),
+      after: total(later),
+    });
+  for (const foundation of later.evaluation.foundations) {
+    const before = earlier.evaluation.foundations.find(
+      (candidate) => candidate.kind === foundation.kind,
+    );
+    const value = (score: (typeof foundation)['score'] | undefined) =>
+      !score
+        ? '—'
+        : score.status === 'calculated'
+          ? `${score.points} / ${score.maxPoints}`
+          : 'Pending';
+    if (value(before?.score) !== value(foundation.score))
+      changes.push({
+        item: foundation.label,
+        before: value(before?.score),
+        after: value(foundation.score),
+      });
+  }
+  const quarterMax = later.evaluation.weights.implementation / 4;
+  const quarterValue = (
+    quarter: PublishedResult['evaluation']['quarters'][number] | undefined,
+  ) =>
+    !quarter
+      ? '—'
+      : quarter.implementation
+        ? `${points(quarterMax, quarter.implementation)} (${quarter.implementation.numerator} of ${quarter.implementation.denominator} milestones)`
+        : 'Pending';
+  for (const quarter of later.evaluation.quarters) {
+    const before = earlier.evaluation.quarters.find(
+      (candidate) => candidate.periodId === quarter.periodId,
+    );
+    if (quarterValue(before) !== quarterValue(quarter))
+      changes.push({
+        item: quarter.periodLabel,
+        before: quarterValue(before),
+        after: quarterValue(quarter),
+      });
+  }
+  return changes;
+}

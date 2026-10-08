@@ -13,6 +13,9 @@ export const annualKeys = {
   overview: ['annual'] as const,
   report: ['annual', 'report'] as const,
   results: ['results'] as const,
+  /** Under `annual`, so a publication refreshes it with the overview. */
+  institution: (institutionId: string) =>
+    ['annual', 'institution', institutionId] as const,
 };
 
 export const annualQuery = queryOptions({
@@ -30,6 +33,18 @@ export const resultsQuery = queryOptions({
   queryFn: ({ signal }) =>
     request('/api/results', institutionResultsSchema, { signal }),
 });
+
+/** Every published version of one institution's result, for staff in scope (HP2-68). */
+export const institutionResultsQuery = (institutionId: string) =>
+  queryOptions({
+    queryKey: annualKeys.institution(institutionId),
+    queryFn: ({ signal }) =>
+      request(
+        `/api/institutions/${encodeURIComponent(institutionId)}/results`,
+        institutionResultsSchema,
+        { signal },
+      ),
+  });
 
 export const publishResults = (institutionIds: string[]) =>
   request('/api/annual/publish', annualOverviewSchema, {

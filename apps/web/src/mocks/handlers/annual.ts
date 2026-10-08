@@ -627,6 +627,27 @@ export const annualHandlers = [
   }),
 
   // Institution: only its own released results; nothing numerical before release (AT18, AT19).
+  /** Every published version of one institution's result, for staff in scope (HP2-68). */
+  http.get('/api/institutions/:institutionId/results', async ({ params }) => {
+    await networkDelay();
+    const user = requireRole('officer', 'supervisor', 'administrator');
+    const institutionId = String(params.institutionId);
+    if (!readableInstitutionIds(user).includes(institutionId))
+      return notFound();
+    const results = getDb()
+      .publications.filter(
+        (publication) => publication.institutionId === institutionId,
+      )
+      .map(toPublished)
+      .reverse();
+    return HttpResponse.json({
+      released: results.length > 0,
+      message: results.length
+        ? 'Published results are shown below.'
+        : 'Nothing has been published for this institution yet.',
+      results,
+    });
+  }),
   http.get('/api/results', async () => {
     await networkDelay();
     const user = requireRole('institution');
