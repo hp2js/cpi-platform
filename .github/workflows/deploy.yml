@@ -151,7 +151,9 @@ jobs:
       - name: High-risk DAST alerts block promotion
         run: node scripts/sarif-gate.mjs security/reports/zap.sarif --summary "$GITHUB_STEP_SUMMARY"
 
+  # Opt-in: set the repository variable PRODUCTION_ENABLED=true once production should exist.
   production:
+    if: vars.PRODUCTION_ENABLED == 'true'
     needs: [build, dast]
     permissions:
       contents: read
