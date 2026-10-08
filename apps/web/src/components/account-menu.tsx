@@ -2,6 +2,7 @@ import type { Session } from '@cpi/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
+  Accessibility,
   Building2,
   ChevronDown,
   FlaskConical,
@@ -109,6 +110,12 @@ export function AccountMenu({
             Our institution
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem
+          onSelect={() => void navigate({ to: '/accessibility' })}
+        >
+          <Accessibility aria-hidden="true" />
+          Accessibility statement
+        </DropdownMenuItem>
         {import.meta.env.DEV && (
           // Development builds: the dev controls live here on phones, clear of the content.
           <DropdownMenuItem

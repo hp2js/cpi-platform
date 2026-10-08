@@ -102,6 +102,14 @@ const forbiddenRoute = createRoute({
   path: 'forbidden',
   component: ForbiddenPage,
 });
+const accessibilityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'accessibility',
+  component: lazyRouteComponent(
+    () => import('@/routes/accessibility'),
+    'AccessibilityPage',
+  ),
+});
 const sessionExpiredRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'session-expired',
@@ -557,6 +565,7 @@ export const routeTree = rootRoute.addChildren([
   choosePasswordRoute,
   forbiddenRoute,
   sessionExpiredRoute,
+  accessibilityRoute,
   authedRoute.addChildren([
     institutionRoute.addChildren([
       institutionHomeRoute,

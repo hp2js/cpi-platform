@@ -21,8 +21,6 @@ test(
       .getByRole('button', { name: /^Focal person, DEMO-001/ })
       .click();
     await expect(page).toHaveURL(/\/institution/);
-    await expect(
-      page.getByRole('heading', { level: 1 }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   },
 );

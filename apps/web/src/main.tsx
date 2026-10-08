@@ -24,6 +24,7 @@ const publicPaths = new Set([
   '/set-password',
   '/session-expired',
   '/forbidden',
+  '/accessibility',
 ]);
 const queryClient = makeQueryClient((code) => {
   if (publicPaths.has(router.state.location.pathname)) return;

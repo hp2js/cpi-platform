@@ -45,12 +45,11 @@ export function AccessibilityPage() {
           </h2>
           <p>
             We aim to meet the Web Content Accessibility Guidelines (WCAG) 2.2
-            at level AA. The platform is{' '}
-            <strong>partially conformant</strong>: the checks below pass, but
-            it has not yet been audited by an independent, qualified assessor
-            or tested with people who use assistive technology. We do not claim
-            full conformance until that audit is done and its findings are
-            fixed.
+            at level AA. The platform is <strong>partially conformant</strong>:
+            the checks below pass, but it has not yet been audited by an
+            independent, qualified assessor or tested with people who use
+            assistive technology. We do not claim full conformance until that
+            audit is done and its findings are fixed.
           </p>
         </section>
 
@@ -64,8 +63,8 @@ export function AccessibilityPage() {
               screens for all four roles, with no violations allowed.
             </li>
             <li>
-              Keyboard use: every action reachable, visible focus, focus kept
-              in dialogs and returned when they close.
+              Keyboard use: every action reachable, visible focus, focus kept in
+              dialogs and returned when they close.
             </li>
             <li>
               Phone width (390 pixels) without sideways scrolling, and larger
@@ -107,9 +106,7 @@ export function AccessibilityPage() {
               Uploaded evidence files are shown as provided; their own
               accessibility depends on the institution that made them.
             </li>
-            <li>
-              The interface is in English only. Kiswahili is planned.
-            </li>
+            <li>The interface is in English only. Kiswahili is planned.</li>
           </ul>
         </section>
 
@@ -118,8 +115,8 @@ export function AccessibilityPage() {
             Supported browsers
           </h2>
           <p>
-            The current versions of Chrome, Edge, Firefox and Safari, on
-            desktop and on phones (Safari on iPhone, Chrome on Android).
+            The current versions of Chrome, Edge, Firefox and Safari, on desktop
+            and on phones (Safari on iPhone, Chrome on Android).
           </p>
         </section>
 

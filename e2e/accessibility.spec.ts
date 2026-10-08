@@ -68,6 +68,12 @@ test('public pages', async ({ page }) => {
     page.getByRole('heading', { name: 'This link cannot be used' }),
   ).toBeVisible();
   await scan(page, 'set-password (invalid link)');
+  await page.goto('/accessibility');
+  await expect(
+    page.getByRole('heading', { name: 'Accessibility statement' }),
+  ).toBeVisible();
+  await expect(page.getByText('partially conformant')).toBeVisible();
+  await scan(page, 'accessibility statement');
   await page.goto('/forbidden');
   await scan(page, 'forbidden');
   await page.goto('/session-expired');

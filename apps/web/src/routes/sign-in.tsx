@@ -716,6 +716,14 @@ export function SignInPage() {
           </p>
         </section>
         {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
+        <p className="text-center text-sm">
+          <Link
+            to="/accessibility"
+            className="text-primary underline underline-offset-4"
+          >
+            Accessibility statement
+          </Link>
+        </p>
       </main>
     </div>
   );
