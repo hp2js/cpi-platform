@@ -58,6 +58,18 @@ All logs ─► Log Analytics ─► alerts (action group), workbook dashboard, 
 4. **Branch ruleset on `main`:** require pull requests and the **Secure-PR gate** status check (see [security.md](security.md#making-it-required)).
 5. **Push to `main`.** The first run pushes the images to GitHub Container Registry as private packages, so staging cannot pull them yet: an `hp2js` organization admin opens Packages → `cpi-platform/api` and `cpi-platform/web` → Package settings → **Change visibility → Public** (once), then re-runs the workflow. Afterwards, `az keyvault secret set --vault-name <kv> --name resend-api-key --value …` if account emails should leave the in-app sink.
 
+### Setup pitfalls
+
+What went wrong on the first deployment, and the fix:
+
+| Symptom                                                                    | Cause                                                                           | Fix                                                                                                                                          |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Plan staging" skipped on pull requests; drift and production sign-in fail | Variables created as **environment** variables of `staging`                     | Create them as **repository** variables; an environment variable also overrides a repository one inside that environment's jobs              |
+| `AADSTS700213: No matching federated identity record`                      | The repository uses immutable OIDC subjects (`repo:<owner>@<id>/<repo>@<id>:…`) | `github_subject_prefix` in `infra/bootstrap` must equal `sub_claim_prefix` from `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` |
+| Environment jobs refused by Azure                                          | GitHub environment named other than `staging` / `production`                    | Rename it: the names are part of the trusted subject                                                                                         |
+| Staging cannot pull images on the first deploy                             | GHCR packages start private                                                     | Make `cpi-platform/api` and `cpi-platform/web` public, then re-run the workflow                                                              |
+| `Dependency review is not supported on this repository`                    | Dependency graph off                                                            | Settings → Advanced Security → enable Dependency graph and Dependabot alerts                                                                 |
+
 ## Deploying
 
 `deploy.yml` on every push to `main`: build both images once → push to GitHub Container Registry (`ghcr.io/hp2js/cpi-platform/{api,web}`, public like the repository, pushed with the job's own `GITHUB_TOKEN`) → Trivy (fixable high/critical CVEs and secrets block) → Cosign keyless signature + attested CycloneDX SBOM → **staging** (Terraform apply, release job, new revisions, readiness) → **DAST** (ZAP baseline against staging; high-risk alerts block) → **production** after approval, with the _same digests_, re-verified against this workflow's signing identity before anything moves.
