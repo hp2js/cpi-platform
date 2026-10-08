@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1143.0",
+    "@azure/identity": "4.13.3",
+    "@azure/storage-blob": "12.34.0",
     "@cpi/contracts": "workspace:*",
     "@nestjs/common": "12.1.0",
     "@nestjs/core": "12.1.0",

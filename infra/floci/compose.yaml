@@ -1,0 +1,26 @@
+# Local Azure: `pnpm infra:local` applies infra/bootstrap and infra/platform to floci-az, so the
+# Terraform is exercised end to end before it reaches a real subscription. Nothing here is
+# used in Azure.
+name: cpi-floci
+services:
+  floci-az:
+    image: floci/floci-az:0.13.0@sha256:3a71953fbc0940aa33bbc1c5e88211a320b66812c0840831a9f8558d3d3521c5
+    environment:
+      FLOCI_AZ_TLS_ENABLED: 'true'
+      FLOCI_AZ_HOSTNAME: floci-az
+    ports: ['127.0.0.1:4577:4577']
+    # floci-az runs real PostgreSQL and Redis containers behind the emulated services.
+    volumes: ['/var/run/docker.sock:/var/run/docker.sock']
+  terraform:
+    build: .
+    depends_on: [floci-az]
+    working_dir: /infra
+    volumes:
+      - ..:/infra:ro
+      - terraform-plugins:/root/.terraform.d/plugin-cache
+    environment:
+      TF_PLUGIN_CACHE_DIR: /root/.terraform.d/plugin-cache
+      TF_IN_AUTOMATION: '1'
+    entrypoint: ['/bin/bash', '/infra/floci/apply.sh']
+volumes:
+  terraform-plugins:

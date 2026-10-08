@@ -1,0 +1,85 @@
+# Daily drift detection: a read-only plan (no lock, no apply) of each environment against
+# what main declares. Any difference (a portal edit, an expired setting, an unapplied change)
+# opens or updates a "Drift: <env>" issue; a clean plan closes it.
+name: Drift
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Production is checked only once it is enabled (see deploy.yml).
+        environment: ${{ fromJSON(vars.PRODUCTION_ENABLED == 'true' && '["staging", "prod"]' || '["staging"]') }}
+    env:
+      ARM_USE_OIDC: 'true'
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_DRIFT }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Images are moved by deployments, outside Terraform (ignore_changes), so any value works.
+      TF_VAR_api_image: unused
+      TF_VAR_web_image: unused
+      TF_VAR_admin_email: ${{ vars[format('ADMIN_EMAIL_{0}', matrix.environment == 'prod' && 'PROD' || 'STAGING')] }}
+      TF_VAR_alert_emails: ${{ vars[format('ALERT_EMAILS_{0}', matrix.environment == 'prod' && 'PROD' || 'STAGING')] }}
+      GH_TOKEN: ${{ github.token }}
+      TITLE: 'Drift: ${{ matrix.environment }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false
+      - id: login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_DRIFT }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: scripts/vault-firewall.sh open rg-cpi-${{ matrix.environment }}
+      - name: Plan
+        id: plan
+        working-directory: infra/platform
+        run: |
+          terraform init -input=false -lockfile=readonly \
+            -backend-config=envs/${{ matrix.environment }}.backend.hcl \
+            -backend-config=storage_account_name=${{ vars.TFSTATE_ACCOUNT }}
+          set +e
+          terraform plan -input=false -lock=false -no-color -detailed-exitcode \
+            -var-file=envs/${{ matrix.environment }}.tfvars > plan.txt
+          code=$?
+          set -e
+          cat plan.txt
+          [ $code -ne 1 ] || exit 1
+          echo "drift=$([ $code -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - if: always() && steps.login.outcome == 'success'
+        run: scripts/vault-firewall.sh close rg-cpi-${{ matrix.environment }}
+      - name: Report
+        working-directory: infra/platform
+        run: |
+          issue=$(gh issue list --state open --label drift --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ "${{ steps.plan.outputs.drift }}" = true ]; then
+            body=$(printf 'Run: %s\n\n```\n%s\n```\n' "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              "$(sed -n '/Terraform will perform\|Objects have changed/,$p' plan.txt | head -c 60000)")
+            gh label create drift --color B60205 --description "Infrastructure differs from main" --force
+            if [ -n "$issue" ]; then gh issue comment "$issue" --body "$body"
+            else gh issue create --title "$TITLE" --label drift --body "$body"; fi
+            echo "::warning::$TITLE: see the drift issue"
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "No drift on $(date -u +%F)."
+          fi
