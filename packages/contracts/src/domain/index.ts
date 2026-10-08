@@ -12,3 +12,4 @@ export * from './annual.js';
 export * from './identity.js';
 export * from './report-pdf.js';
 export * from './report-document.js';
+export * from './brand-images.js';

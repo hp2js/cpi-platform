@@ -15,13 +15,13 @@ test('an administrator brands the annual report with a live preview; published r
   // Published under the fictional default identity.
   await visit(page, 'focal-demo-001', '/institution/results');
   const cover = page.getByRole('region', { name: 'Report cover' }).first();
-  await expect(cover).toContainText(
-    'Demonstration Oversight Office (fictional)',
-  );
+  await expect(cover).toContainText('Adili Online');
   await expect(cover).toContainText('DEMO-001 · ');
   await expect(
     page
-      .getByText('Fictional demonstration. Not an official EACC publication.')
+      .getByText(
+        'Simulation with fictional institutions and data. Not an official EACC publication.',
+      )
       .first(),
   ).toBeVisible();
 
@@ -48,6 +48,9 @@ test('an administrator brands the annual report with a live preview; published r
     .fill('#1B4D3E');
 
   // An official name needs a recorded authorization.
+  await page
+    .getByLabel("Authorization to issue in an official body's name (optional)")
+    .fill('');
   await page.getByLabel('Report title').fill('EACC Annual Assessment');
   await page.getByRole('button', { name: 'Save identity' }).click();
   await expect(
@@ -73,7 +76,7 @@ test('an administrator brands the annual report with a live preview; published r
   await visit(page, 'focal-demo-001', '/institution/results');
   await expect(
     page.getByRole('region', { name: 'Report cover' }).first(),
-  ).toContainText('Demonstration Oversight Office (fictional)');
+  ).toContainText('Adili Online');
   await expect(page.getByText('A. Example')).toHaveCount(0);
   // The simulation marking is always there, whatever the branding.
   await expect(

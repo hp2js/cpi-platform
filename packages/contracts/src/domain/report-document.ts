@@ -66,7 +66,8 @@ function feedback(quarter: QuarterDisposition) {
   for (const item of quarter.rejected)
     parts.push(`${item.code} not accepted: ${item.reason}`);
   if (quarter.note) parts.push(quarter.note);
-  return parts.join('. ');
+  // Reasons usually end in a full stop already; one separator, never two.
+  return parts.map((part) => part.trim().replace(/\.+$/, '')).join('. ') + '.';
 }
 
 /** The method and limitations, as on screen. */

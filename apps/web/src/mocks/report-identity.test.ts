@@ -69,7 +69,13 @@ describe('report identity (HP2-65)', () => {
       '/api/settings/report-identity',
       reportIdentitySettingsSchema,
     );
-    expect(identity.organizationName).toMatch(/fictional/);
+    // The demonstration's issuer is Adili, with the organizers' authorization recorded.
+    expect(identity).toMatchObject({
+      organizationName: 'Adili Online',
+      authorization: expect.stringMatching(/supplied by the Adili V3/),
+      logo: { id: 'builtin-adili-logo', mimeType: 'image/jpeg' },
+      footer: expect.stringMatching(/Not an official EACC publication/),
+    });
     await expect(
       save({ ...fields(identity), accentColor: '#FFDD00' }),
     ).rejects.toMatchObject({
@@ -77,7 +83,11 @@ describe('report identity (HP2-65)', () => {
       fieldErrors: { accentColor: expect.stringMatching(/contrast/) },
     });
     await expect(
-      save({ ...fields(identity), organizationName: 'EACC' }),
+      save({
+        ...fields(identity),
+        organizationName: 'EACC',
+        authorization: null,
+      }),
     ).rejects.toMatchObject({
       fieldErrors: { organizationName: expect.stringMatching(/authorization/) },
     });

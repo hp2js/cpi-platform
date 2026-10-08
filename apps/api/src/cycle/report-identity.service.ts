@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  builtinReportImage,
   defaultReportIdentity,
   inspectReportImage,
   reportIdentityIssues,
@@ -189,6 +190,10 @@ export class ReportIdentityService {
 
   /** An image's bytes, for any signed-in reader of a report that shows it. */
   async image(id: string) {
+    // The default Adili logo ships with the code rather than object storage.
+    const builtin = builtinReportImage(id);
+    if (builtin)
+      return { bytes: Buffer.from(builtin.bytes), mimeType: builtin.mimeType };
     const row = await this.repository.image(id);
     if (!row) throw notFound();
     const bytes = await this.objects.get(

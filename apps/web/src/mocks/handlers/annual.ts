@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import {
+  builtinReportImage,
   consolidatedReportDocument,
   consolidatedSummary,
   institutionReportDocument,
@@ -49,7 +50,8 @@ function cutoffPassed() {
 async function imagesFor(identity: ReportIdentity): Promise<ReportImages> {
   const load = async (image: ReportIdentity['logo']) => {
     if (!image) return undefined;
-    const bytes = await loadFile(image.sha256);
+    const bytes =
+      builtinReportImage(image.id)?.bytes ?? (await loadFile(image.sha256));
     return bytes
       ? {
           bytes,

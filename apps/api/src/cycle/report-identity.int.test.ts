@@ -70,7 +70,17 @@ describe.skipIf(!integration)('report identity (HP2-65)', () => {
     const { identity } = await admin.json<ReportIdentitySettings>(
       '/settings/report-identity',
     );
-    expect(identity.organizationName).toMatch(/fictional/);
+    expect(identity).toMatchObject({
+      organizationName: 'Adili Online',
+      authorization: expect.stringMatching(/supplied by the Adili V3/),
+      logo: { id: 'builtin-adili-logo' },
+    });
+    // The built-in logo is served like an uploaded one.
+    const builtin = await admin.request(
+      '/report-identity/images/builtin-adili-logo',
+    );
+    expect(builtin.status).toBe(200);
+    expect(builtin.headers.get('content-type')).toBe('image/jpeg');
     expect(identity.footer).toMatch(/Not an official EACC publication/);
 
     expect(await update(identity, { accentColor: '#FFDD00' })).toMatchObject({
@@ -80,6 +90,7 @@ describe.skipIf(!integration)('report identity (HP2-65)', () => {
     expect(
       await update(identity, {
         organizationName: 'Ethics and Anti-Corruption Commission',
+        authorization: null,
       }),
     ).toMatchObject({
       status: 422,

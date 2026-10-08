@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import {
+  builtinReportImage,
   defaultReportIdentity,
   inspectReportImage,
   reportIdentityIssues,
@@ -56,6 +57,11 @@ export const reportIdentityHandlers = [
   http.get('/api/report-identity/images/:imageId', async ({ params }) => {
     await networkDelay();
     requireUser();
+    const builtin = builtinReportImage(String(params.imageId));
+    if (builtin)
+      return new HttpResponse(builtin.bytes.slice().buffer, {
+        headers: { 'Content-Type': builtin.mimeType },
+      });
     const image = getDb().reportImages.find(
       (candidate) => candidate.id === params.imageId,
     );

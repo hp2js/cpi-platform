@@ -4,24 +4,38 @@ import type {
   ReportIdentityUpdate,
   ReportImage,
 } from '../draft/index.js';
+import { builtinReportImages } from './brand-images.js';
 
 /*
  * Report identity rules (HP2-65), shared by the API and the mock: safe defaults, colour
  * contrast, the official-name guard and the image limits.
  */
 
-/** Clearly fictional, neutral branding for the demonstration. */
+/**
+ * The demonstration's report identity: Adili Online, with the logo supplied by the Adili V3
+ * challenge organizers for this submission, recorded as the authorization. The data stays
+ * fictional and the simulation marking and EACC disclaimer stay on every report.
+ */
 export const defaultReportIdentity: ReportIdentity = {
-  organizationName: 'Demonstration Oversight Office (fictional)',
+  organizationName: 'Adili Online',
   reportTitle: 'Annual Corruption Prevention Assessment',
-  accentColor: '#530B61',
+  accentColor: '#520A61',
   foreword:
-    'This report sets out each institution’s implementation of its corruption prevention plan for the year, measured against its own accepted plan. It is a demonstration with fictional institutions and data.',
-  contact: 'reports@oversight.example',
-  footer: 'Fictional demonstration. Not an official EACC publication.',
+    'This report sets out each institution’s implementation of its corruption prevention plan for the year, measured against its own accepted plan. It is a simulation with fictional institutions and data.',
+  contact: 'reports@adili.example',
+  footer:
+    'Simulation with fictional institutions and data. Not an official EACC publication.',
   signatory: null,
-  authorization: null,
-  logo: null,
+  authorization:
+    'Adili marks supplied by the Adili V3 challenge organizers for use in this submission.',
+  logo: {
+    id: builtinReportImages['builtin-adili-logo'].id,
+    mimeType: builtinReportImages['builtin-adili-logo'].mimeType,
+    sizeBytes: builtinReportImages['builtin-adili-logo'].sizeBytes,
+    width: builtinReportImages['builtin-adili-logo'].width,
+    height: builtinReportImages['builtin-adili-logo'].height,
+    sha256: builtinReportImages['builtin-adili-logo'].sha256,
+  },
   signature: null,
 };
 
