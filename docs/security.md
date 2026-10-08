@@ -14,7 +14,7 @@ Every pull request runs `.github/workflows/security.yml`. Each scanner writes **
 | IaC       | Checkov 3.3.19, TFLint 0.64 + azurerm ruleset, Trivy config 0.74  | `checkov`, `tflint`, `trivy-config` | PRs, `main`, weekly                   |
 | IaC       | `terraform fmt`/`validate`; staging plan via OIDC                 | (check)                             | PRs                                   |
 | Container | Trivy image (vulnerabilities, secrets) + CycloneDX SBOM           | `trivy-image-*`, `release-image-*`  | PRs (scan); CD (scan, sign, attest)   |
-| DAST      | ZAP 2.17.0 baseline (passive)                                     | `zap-staging`                       | CD, against staging before production |
+| DAST      | ZAP 2.17.0 baseline (passive)                                     | (run summary, evidence artifact)    | CD, against staging before production |
 
 ## Merge policy
 
