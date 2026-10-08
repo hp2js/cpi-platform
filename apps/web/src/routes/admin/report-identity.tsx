@@ -1,5 +1,6 @@
 import {
   contrastOnWhite,
+  reportImageIn,
   type ReportIdentity,
   type ReportIdentitySettings,
   type ReportIdentityUpdate,
@@ -97,7 +98,7 @@ function ImageField({
     mutationFn: () => removeReportImage(slot),
     onSuccess: onChange,
   });
-  const image = identity[slot];
+  const image = reportImageIn(identity, slot);
   const id = `identity-${slot}`;
   return (
     <div className="grid gap-2">

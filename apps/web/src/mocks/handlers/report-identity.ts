@@ -3,6 +3,8 @@ import {
   builtinReportImage,
   defaultReportIdentity,
   inspectReportImage,
+  reportImageIn,
+  reportImageSlotLabel,
   reportIdentityIssues,
   reportIdentityUpdateSchema,
   reportImageSlotSchema,
@@ -45,8 +47,6 @@ function record(db: MockDb, user: MockUser, summary: string) {
     summary,
   );
 }
-
-const slotLabel = { logo: 'logo', signature: 'signature image' } as const;
 
 export const reportIdentityHandlers = [
   http.get('/api/report-identity', async () => {
@@ -148,7 +148,7 @@ export const reportIdentityHandlers = [
         record(
           db,
           user,
-          `New ${slotLabel[slot.data]} (${inspected.width} × ${inspected.height})`,
+          `New ${reportImageSlotLabel(slot.data)} (${inspected.width} × ${inspected.height})`,
         );
       });
       return HttpResponse.json(settings());
@@ -163,9 +163,9 @@ export const reportIdentityHandlers = [
       if (!slot.success) return notFound();
       commit((db) => {
         const before = reportIdentityOf(db);
-        if (!before[slot.data]) return;
+        if (!reportImageIn(before, slot.data)) return;
         db.reportIdentity = { ...before, [slot.data]: null };
-        record(db, user, `Removed ${slotLabel[slot.data]}`);
+        record(db, user, `Removed ${reportImageSlotLabel(slot.data)}`);
       });
       return HttpResponse.json(settings());
     },

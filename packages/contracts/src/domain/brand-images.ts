@@ -407,11 +407,10 @@ export const builtinReportImages = {
 
 /** A built-in image's bytes, or undefined when the ID is not built in. */
 export function builtinReportImage(id: string) {
-  const image = builtinReportImages[id as keyof typeof builtinReportImages];
+  const image = new Map(Object.entries(builtinReportImages)).get(id);
   if (!image) return undefined;
-  const binary = atob(image.base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1)
-    bytes[index] = binary.charCodeAt(index);
+  const bytes = Uint8Array.from(atob(image.base64), (character) =>
+    character.charCodeAt(0),
+  );
   return { bytes, mimeType: image.mimeType };
 }

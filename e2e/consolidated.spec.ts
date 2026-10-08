@@ -39,9 +39,11 @@ test('the consolidated report opens with the method, coverage and a summary of e
     ['DEMO-004', '96.25'],
   ])
     await expect(
-      summary.getByRole('row', { name: new RegExp(id) }),
+      summary.getByRole('row').filter({ hasText: id }),
     ).toContainText(points);
-  await expect(summary.getByRole('row', { name: /DEMO-005/ })).toContainText('0.00 (closed)');
+  await expect(summary.getByRole('row', { name: /DEMO-005/ })).toContainText(
+    '0.00 (closed)',
+  );
 
   const publication = page.getByRole('region', { name: 'Publication' });
   await expect(publication).toContainText(/8 institutions/);

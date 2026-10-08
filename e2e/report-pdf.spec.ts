@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import { publishedYear, visit } from './support';
 
@@ -12,11 +11,14 @@ async function download(page: Page, button: string | RegExp) {
     page.waitForEvent('download'),
     page.getByRole('button', { name: button }).first().click(),
   ]);
-  const path = await file.path();
-  const text = readFileSync(path).toString('latin1');
-  if (process.env.SHOTS_DIR)
-    await file.saveAs(`${process.env.SHOTS_DIR}/${file.suggestedFilename()}`);
-  return { name: file.suggestedFilename(), text };
+  // Read the download as a stream: no file path is built from variables.
+  const chunks: Buffer[] = [];
+  for await (const chunk of await file.createReadStream())
+    chunks.push(Buffer.from(chunk as Buffer));
+  return {
+    name: file.suggestedFilename(),
+    text: Buffer.concat(chunks).toString('latin1'),
+  };
 }
 
 test('institutions and oversight download the annual report as a document (HP2-64)', async ({

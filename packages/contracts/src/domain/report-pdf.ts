@@ -107,25 +107,30 @@ const BOLD = [
 ];
 
 /** Typographic characters WinAnsi has outside Latin-1, and their byte codes. */
-const WIN_ANSI: Record<string, number> = {
-  '–': 0x96, // en dash
-  '—': 0x97, // em dash
-  '‘': 0x91,
-  '’': 0x92,
-  '“': 0x93,
-  '”': 0x94,
-  '•': 0x95, // bullet
-  '…': 0x85, // ellipsis
-};
-const REPLACEMENTS: Record<string, string> = { '→': '->', ' ': ' ' };
+const WIN_ANSI = new Map<string, number>(
+  Object.entries({
+    '–': 0x96, // en dash
+    '—': 0x97, // em dash
+    '‘': 0x91,
+    '’': 0x92,
+    '“': 0x93,
+    '”': 0x94,
+    '•': 0x95, // bullet
+    '…': 0x85, // ellipsis
+  }),
+);
+const REPLACEMENTS = new Map([
+  ['\u2192', '->'],
+  ['\u00a0', ' '],
+]);
 
 /** Text as WinAnsi byte codes; characters it cannot show become `?`. */
 function encode(text: string): number[] {
   const codes: number[] = [];
   for (const raw of text) {
-    const character = REPLACEMENTS[raw] ?? raw;
+    const character = REPLACEMENTS.get(raw) ?? raw;
     for (const part of character) {
-      const mapped = WIN_ANSI[part];
+      const mapped = WIN_ANSI.get(part);
       const code = part.codePointAt(0)!;
       if (mapped !== undefined) codes.push(mapped);
       else
@@ -143,7 +148,7 @@ function width(text: string, size: number, bold: boolean) {
   const table = bold ? BOLD : REGULAR;
   let total = 0;
   for (const code of encode(text))
-    total += code >= 32 && code <= 126 ? table[code - 32]! : 556;
+    total += code >= 32 && code <= 126 ? (table.at(code - 32) ?? 556) : 556;
   return (total * size) / 1000;
 }
 
@@ -249,7 +254,7 @@ export function renderPdf(document: PdfDocument): Uint8Array {
   ) => {
     const element: StructElement = { type, page, mcid, children: [] };
     parent.children.push(element);
-    pageMcids[page]!.push(element);
+    pageMcids.at(page)!.push(element);
     const ops = [
       `/${type} <</MCID ${mcid}>> BDC`,
       'BT',
@@ -263,7 +268,7 @@ export function renderPdf(document: PdfDocument): Uint8Array {
       ops.push(`${literal(line)} Tj`);
     });
     ops.push('ET', 'EMC');
-    pages[page]!.push(ops.join('\n'));
+    pages.at(page)!.push(ops.join('\n'));
     mcid += 1;
     return element;
   };
@@ -283,10 +288,12 @@ export function renderPdf(document: PdfDocument): Uint8Array {
         children: [],
       };
       root.children.push(element);
-      pageMcids[page]!.push(element);
-      pages[page]!.push(
-        `/Figure <</MCID ${mcid}>> BDC\nq ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${MARGIN.left} ${(y - height).toFixed(2)} cm /${name} Do Q\nEMC`,
-      );
+      pageMcids.at(page)!.push(element);
+      pages
+        .at(page)!
+        .push(
+          `/Figure <</MCID ${mcid}>> BDC\nq ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${MARGIN.left} ${(y - height).toFixed(2)} cm /${name} Do Q\nEMC`,
+        );
       mcid += 1;
       y -= height + 8;
       continue;
@@ -351,7 +358,7 @@ export function renderPdf(document: PdfDocument): Uint8Array {
     root.children.push(table);
     const cellLines = (cells: string[], bold: boolean) =>
       cells.map((cell, index) =>
-        wrap(cell, size, bold, columns[index]! - padding * 2),
+        wrap(cell, size, bold, columns.at(index)! - padding * 2),
       );
     const drawRow = (cells: string[], header: boolean) => {
       const lines = cellLines(cells, header);
@@ -361,9 +368,11 @@ export function renderPdf(document: PdfDocument): Uint8Array {
       table.children.push(row);
       let x = MARGIN.left;
       if (header)
-        pages[page]!.push(
-          `/Artifact BMC\n0.94 0.94 0.94 rg\n${MARGIN.left} ${(y - height).toFixed(2)} ${TEXT_WIDTH.toFixed(2)} ${height.toFixed(2)} re f\nEMC`,
-        );
+        pages
+          .at(page)!
+          .push(
+            `/Artifact BMC\n0.94 0.94 0.94 rg\n${MARGIN.left} ${(y - height).toFixed(2)} ${TEXT_WIDTH.toFixed(2)} ${height.toFixed(2)} re f\nEMC`,
+          );
       lines.forEach((cell, index) => {
         const saved = y;
         y -= padding;
@@ -378,11 +387,13 @@ export function renderPdf(document: PdfDocument): Uint8Array {
           row,
         );
         y = saved;
-        x += columns[index]!;
+        x += columns.at(index)!;
       });
-      pages[page]!.push(
-        `/Artifact BMC\n0.75 0.75 0.75 RG 0.5 w\n${MARGIN.left} ${(y - height).toFixed(2)} m ${(MARGIN.left + TEXT_WIDTH).toFixed(2)} ${(y - height).toFixed(2)} l S\nEMC`,
-      );
+      pages
+        .at(page)!
+        .push(
+          `/Artifact BMC\n0.75 0.75 0.75 RG 0.5 w\n${MARGIN.left} ${(y - height).toFixed(2)} m ${(MARGIN.left + TEXT_WIDTH).toFixed(2)} ${(y - height).toFixed(2)} l S\nEMC`,
+        );
       y -= height;
     };
     const headerHeight =
@@ -439,7 +450,7 @@ export function renderPdf(document: PdfDocument): Uint8Array {
       'ET',
       'EMC',
     ];
-    pages[index] = [...header, ...content, ...footer];
+    pages.splice(index, 1, [...header, ...content, ...footer]);
   });
 
   // Objects: 1 catalog, 2 pages, 3–4 fonts, 5 info, 6 struct tree root, 7 parent tree, then
@@ -547,8 +558,5 @@ export function renderPdf(document: PdfDocument): Uint8Array {
   for (const offset of offsets)
     out += `${String(offset).padStart(10, '0')} 00000 n \n`;
   out += `trailer\n<< /Size ${objects.length + 1} /Root ${catalog} 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  const bytes = new Uint8Array(out.length);
-  for (let index = 0; index < out.length; index += 1)
-    bytes[index] = out.charCodeAt(index) & 0xff;
-  return bytes;
+  return Uint8Array.from(out, (character) => character.charCodeAt(0) & 0xff);
 }

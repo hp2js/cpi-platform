@@ -3,6 +3,7 @@ import type {
   ReportIdentity,
   ReportIdentityUpdate,
   ReportImage,
+  ReportImageSlot,
 } from '../draft/index.js';
 import { builtinReportImages } from './brand-images.js';
 
@@ -71,10 +72,14 @@ export function reportIdentityIssues(
       message: `This colour has a contrast of ${ratio.toFixed(1)}:1 on white; headings need at least 4.5:1. Choose a darker colour.`,
     });
   // The issuer is named by the organization and the title; a disclaimer may mention EACC.
-  for (const field of ['organizationName', 'reportTitle'] as const)
-    if (OFFICIAL.test(update[field]) && !update.authorization?.trim())
+  const issuer = [
+    ['organizationName', update.organizationName],
+    ['reportTitle', update.reportTitle],
+  ] as const;
+  for (const [path, value] of issuer)
+    if (OFFICIAL.test(value) && !update.authorization?.trim())
       issues.push({
-        path: field,
+        path,
         message:
           'This names an official body. Record the authorization to issue in its name first, or use a neutral name.',
       });
@@ -103,10 +108,13 @@ export function inspectReportImage(bytes: Uint8Array):
     | { mimeType: ReportImage['mimeType']; width: number; height: number }
     | undefined;
   const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (bytes.length > 33 && png.every((byte, index) => bytes[index] === byte)) {
-    const colourType = bytes[25]!;
-    const bitDepth = bytes[24]!;
-    const interlace = bytes[28]!;
+  if (
+    bytes.length > 33 &&
+    png.every((byte, index) => bytes.at(index) === byte)
+  ) {
+    const colourType = bytes.at(25);
+    const bitDepth = bytes.at(24);
+    const interlace = bytes.at(28);
     if (
       bitDepth !== 8 ||
       (colourType !== 0 && colourType !== 2) ||
@@ -120,11 +128,11 @@ export function inspectReportImage(bytes: Uint8Array):
       width: view.getUint32(16),
       height: view.getUint32(20),
     };
-  } else if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+  } else if (bytes.at(0) === 0xff && bytes.at(1) === 0xd8) {
     // Walk the JPEG segments to the frame header for its size.
     let at = 2;
-    while (at + 9 < bytes.length && bytes[at] === 0xff) {
-      const marker = bytes[at + 1]!;
+    while (at + 9 < bytes.length && bytes.at(at) === 0xff) {
+      const marker = bytes.at(at + 1) ?? 0;
       const length = view.getUint16(at + 2);
       if (marker >= 0xc0 && marker <= 0xc3) {
         result = {
@@ -151,20 +159,26 @@ export function summarizeIdentityChange(
   before: ReportIdentity,
   after: ReportIdentityUpdate,
 ) {
-  const labels: Record<keyof ReportIdentityUpdate, string> = {
-    organizationName: 'organization name',
-    reportTitle: 'report title',
-    accentColor: 'accent colour',
-    foreword: 'foreword',
-    contact: 'contact details',
-    footer: 'footer',
-    signatory: 'signatory',
-    authorization: 'authorization',
-  };
-  const changed = (
-    Object.keys(labels) as (keyof ReportIdentityUpdate)[]
-  ).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
-  return changed.length
-    ? `Changed ${changed.map((key) => labels[key]).join(', ')}`
-    : 'No changes';
+  const fields: [string, unknown, unknown][] = [
+    ['organization name', before.organizationName, after.organizationName],
+    ['report title', before.reportTitle, after.reportTitle],
+    ['accent colour', before.accentColor, after.accentColor],
+    ['foreword', before.foreword, after.foreword],
+    ['contact details', before.contact, after.contact],
+    ['footer', before.footer, after.footer],
+    ['signatory', before.signatory, after.signatory],
+    ['authorization', before.authorization, after.authorization],
+  ];
+  const changed = fields
+    .filter(([, was, is]) => JSON.stringify(was) !== JSON.stringify(is))
+    .map(([label]) => label);
+  return changed.length ? `Changed ${changed.join(', ')}` : 'No changes';
 }
+
+/** The image in a slot, and the slot's name in words. */
+export const reportImageIn = (
+  identity: ReportIdentity,
+  slot: ReportImageSlot,
+) => (slot === 'logo' ? identity.logo : identity.signature);
+export const reportImageSlotLabel = (slot: ReportImageSlot) =>
+  slot === 'logo' ? 'logo' : 'signature image';

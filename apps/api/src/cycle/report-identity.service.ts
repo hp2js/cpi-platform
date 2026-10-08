@@ -4,6 +4,8 @@ import {
   builtinReportImage,
   defaultReportIdentity,
   inspectReportImage,
+  reportImageIn,
+  reportImageSlotLabel,
   reportIdentityIssues,
   summarizeIdentityChange,
   type ReportIdentity,
@@ -32,11 +34,6 @@ export async function reportIdentityOf(db: Db): Promise<ReportIdentity> {
   const { cycle } = await currentState(db);
   return cycle.reportIdentity ?? defaultReportIdentity;
 }
-
-const slotLabel: Record<ReportImageSlot, string> = {
-  logo: 'logo',
-  signature: 'signature image',
-};
 
 /**
  * Who issues the annual report and how it is branded (HP2-65). Images go to object storage;
@@ -136,7 +133,7 @@ export class ReportIdentityService {
           user,
           businessTime,
           cycle.id,
-          `New ${slotLabel[slot]} (${inspected.width} × ${inspected.height})`,
+          `New ${reportImageSlotLabel(slot)} (${inspected.width} × ${inspected.height})`,
         );
         return this.settingsOf(tx);
       });
@@ -152,7 +149,7 @@ export class ReportIdentityService {
     return write(this.db, async (tx, businessTime) => {
       const { cycle } = await currentState(tx);
       const before = cycle.reportIdentity ?? defaultReportIdentity;
-      if (!before[slot]) return this.settingsOf(tx);
+      if (!reportImageIn(before, slot)) return this.settingsOf(tx);
       await this.repository.setIdentity(
         cycle.id,
         { ...before, [slot]: null },
@@ -163,7 +160,7 @@ export class ReportIdentityService {
         user,
         businessTime,
         cycle.id,
-        `Removed ${slotLabel[slot]}`,
+        `Removed ${reportImageSlotLabel(slot)}`,
       );
       return this.settingsOf(tx);
     });

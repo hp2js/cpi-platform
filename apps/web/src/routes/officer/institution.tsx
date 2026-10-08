@@ -35,9 +35,8 @@ import {
 } from '@/features/planning/baseline-view';
 import {
   EQUAL_WEIGHTS_NOTE,
-  checkKeys,
-  checkLabels,
-  failedCheckLabels,
+  checkItems,
+  failedCheckItems,
   latestBaselines,
   riskCoverage,
 } from '@/features/planning/labels';
@@ -102,6 +101,11 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
   const uncovered = coverage.risks.filter((item) => item.milestones === 0);
   const large = baseline.milestones.length > 6;
   const allChecked = Object.values(checks).every(Boolean);
+  const confirmed = new Set(
+    Object.entries(checks)
+      .filter(([, value]) => value)
+      .map(([key]) => key),
+  );
   return (
     <div className="grid gap-4 rounded-md border bg-white p-4">
       <h4 className="font-bold">Approve or return this proposal</h4>
@@ -192,11 +196,11 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
           <>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-bold">Confirm each check</legend>
-              {checkKeys.map((key) => (
+              {checkItems.map(([key, label]) => (
                 <div key={key} className="flex items-start gap-2">
                   <Checkbox
                     id={`${baseline.id}-${key}`}
-                    checked={checks[key]}
+                    checked={confirmed.has(key)}
                     onCheckedChange={(checked) =>
                       setChecks((current) => ({
                         ...current,
@@ -209,7 +213,7 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
                     htmlFor={`${baseline.id}-${key}`}
                     className="leading-snug font-normal"
                   >
-                    {checkLabels[key]}
+                    {label}
                   </Label>
                 </div>
               ))}
@@ -255,7 +259,7 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
               <legend className="text-sm font-bold">
                 Which checks are not met?
               </legend>
-              {checkKeys.map((key) => (
+              {failedCheckItems.map(([key, label]) => (
                 <div key={key} className="flex items-start gap-2">
                   <Checkbox
                     id={`${baseline.id}-failed-${key}`}
@@ -273,7 +277,7 @@ function ApprovalPanel({ plan, baseline }: { plan: Plan; baseline: Baseline }) {
                     htmlFor={`${baseline.id}-failed-${key}`}
                     className="leading-snug font-normal"
                   >
-                    {failedCheckLabels[key]}
+                    {label}
                   </Label>
                 </div>
               ))}
