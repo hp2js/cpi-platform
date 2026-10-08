@@ -31,6 +31,7 @@ import {
 import { useSession } from '@/features/session/use-session';
 import {
   NavSections,
+  RailBrand,
   SkipLink,
   useMeasuredHeight,
   type NavSection,
@@ -97,17 +98,16 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div
       data-surface="dark"
-      className="flex min-h-full flex-col gap-6 bg-primary p-4 text-white"
+      className="flex h-full min-h-0 flex-col bg-primary text-white"
     >
-      <Link
+      <RailBrand
         to="/admin"
-        activeOptions={{ exact: true }}
-        onClick={onNavigate}
-        aria-label="Administration console"
-      >
-        <Brand tone="dark" />
-      </Link>
+        label="Administration console"
+        tone="dark"
+        onNavigate={onNavigate}
+      />
       <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         label="Administration"
         sections={sections}
         tone="dark"
@@ -135,7 +135,7 @@ export function AdminLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto bg-primary desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden bg-primary desktop:block"
         >
           <AdminSidebar />
         </aside>
@@ -161,7 +161,7 @@ export function AdminLayout() {
                 <SheetContent
                   side="left"
                   data-surface="dark"
-                  className="w-72 border-0 bg-primary p-0 text-white"
+                  className="w-72 overflow-hidden border-0 bg-primary p-0 text-white"
                 >
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SheetDescription className="sr-only">

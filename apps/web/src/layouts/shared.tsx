@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { Brand } from '@/components/brand';
 import type { LucideIcon } from 'lucide-react';
 import {
   useId,
@@ -46,7 +47,9 @@ export function NavSections({
   tone = 'light',
   onNavigate,
   counts,
+  className,
 }: {
+  className?: string;
   label: string;
   sections: readonly NavSection[];
   tone?: 'light' | 'dark';
@@ -55,7 +58,7 @@ export function NavSections({
 }) {
   const id = useId();
   return (
-    <nav aria-label={label} className="grid gap-5">
+    <nav aria-label={label} className={cn('grid gap-5', className)}>
       {sections.map((section, index) => (
         <div
           key={section.heading}
@@ -83,6 +86,41 @@ export function NavSections({
         </div>
       ))}
     </nav>
+  );
+}
+
+/**
+ * The rail's logo: fixed at the top while only the links below it scroll (their scroll bar
+ * starts under it), and exactly as tall as the header beside it (`--header-h`), so their lower
+ * edges line up.
+ */
+export function RailBrand({
+  to,
+  label,
+  tone = 'light',
+  onNavigate,
+}: {
+  to: ComponentProps<typeof Link>['to'];
+  label: string;
+  tone?: 'light' | 'dark';
+  onNavigate?: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex min-h-(--header-h) shrink-0 items-center border-b px-4',
+        tone === 'dark' ? 'border-white/25 bg-primary' : 'bg-white',
+      )}
+    >
+      <Link
+        to={to}
+        activeOptions={{ exact: true }}
+        onClick={onNavigate}
+        aria-label={label}
+      >
+        <Brand tone={tone} />
+      </Link>
+    </div>
   );
 }
 

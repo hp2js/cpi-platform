@@ -18,6 +18,7 @@ import { useSession } from '@/features/session/use-session';
 import {
   AttentionBadge,
   NavSections,
+  RailBrand,
   SkipLink,
   useMeasuredHeight,
   type NavItem,
@@ -175,15 +176,10 @@ function InstitutionRail({
   counts: Partial<Record<string, number>>;
 }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 p-4">
-      <Link
-        to="/institution"
-        activeOptions={{ exact: true }}
-        aria-label="Institution home"
-      >
-        <Brand />
-      </Link>
+    <div className="flex h-full min-h-0 flex-col">
+      <RailBrand to="/institution" label="Institution home" />
       <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         label="Institution"
         counts={counts}
         sections={[
@@ -221,7 +217,7 @@ export function InstitutionLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden border-r bg-white desktop:block"
         >
           <InstitutionRail institutionId={institutionId} counts={attention} />
         </aside>

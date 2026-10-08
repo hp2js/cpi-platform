@@ -27,6 +27,7 @@ import {
 import { useSession } from '@/features/session/use-session';
 import {
   NavSections,
+  RailBrand,
   SkipLink,
   useMeasuredHeight,
   type NavSection,
@@ -80,16 +81,14 @@ const sections = [
 
 function SupervisorRail({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 p-4">
-      <Link
+    <div className="flex h-full min-h-0 flex-col">
+      <RailBrand
         to="/supervisor"
-        activeOptions={{ exact: true }}
-        onClick={onNavigate}
-        aria-label="Supervisor overview"
-      >
-        <Brand />
-      </Link>
+        label="Supervisor overview"
+        onNavigate={onNavigate}
+      />
       <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         label="Supervisor"
         sections={sections}
         onNavigate={onNavigate}
@@ -117,7 +116,7 @@ export function SupervisorLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden border-r bg-white desktop:block"
         >
           <SupervisorRail />
         </aside>
@@ -140,7 +139,7 @@ export function SupervisorLayout() {
                     <span className="sr-only">Open navigation</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-72 overflow-hidden p-0">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SheetDescription className="sr-only">
                     Supervisor sections
