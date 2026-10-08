@@ -65,38 +65,6 @@
   },
   {
     "tool": "checkov",
-    "ruleId": "CKV_AZURE_139",
-    "path": "infra/bootstrap/main.tf",
-    "reason": "Registry is pushed to by GitHub-hosted runners; admin user and anonymous pull are disabled, Entra RBAC only. Closes with self-hosted runners.",
-    "owner": "platform",
-    "expires": "2027-04-08"
-  },
-  {
-    "tool": "checkov",
-    "ruleId": "CKV_AZURE_164",
-    "path": "infra/bootstrap/main.tf",
-    "reason": "Docker Content Trust is replaced by Sigstore Cosign: every image is signed keylessly in CD and verified against this repository's workflow identity before promotion and rollback.",
-    "owner": "platform",
-    "expires": "2027-04-08"
-  },
-  {
-    "tool": "checkov",
-    "ruleId": "CKV_AZURE_166",
-    "path": "infra/bootstrap/main.tf",
-    "reason": "ACR quarantine is replaced by the CD gate: Trivy scans each image before it is signed, and only signed digests deploy.",
-    "owner": "platform",
-    "expires": "2027-04-08"
-  },
-  {
-    "tool": "checkov",
-    "ruleId": "CKV_AZURE_165",
-    "path": "infra/bootstrap/main.tf",
-    "reason": "Single-region service (South Africa North, zone-redundant registry); images are rebuildable from git.",
-    "owner": "platform",
-    "expires": "2027-04-08"
-  },
-  {
-    "tool": "checkov",
     "ruleId": "CKV2_AZURE_1",
     "path": "infra/",
     "reason": "Storage uses Microsoft-managed keys with infrastructure (double) encryption. Customer-managed keys add a Key Vault key lifecycle with no requirement for it yet; revisit if a data-protection assessment requires CMK.",

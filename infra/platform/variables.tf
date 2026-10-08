@@ -9,13 +9,9 @@ variable "address_space" {
   type        = string
   description = "VNet /16; each environment takes its own so they can be peered later."
 }
-variable "acr_login_server" {
-  type        = string
-  description = "Shared registry from the bootstrap stack (ACR_LOGIN_SERVER)."
-}
 variable "api_image" {
   type        = string
-  description = "Image (by digest) used when the API app is first created; deployments then move it, outside Terraform."
+  description = "Image (ghcr.io/…@sha256:…) used when the API app is first created; deployments then move it, outside Terraform."
 }
 variable "web_image" {
   type        = string

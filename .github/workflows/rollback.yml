@@ -47,9 +47,6 @@ jobs:
           client-id: ${{ vars[format('AZURE_CLIENT_ID_DEPLOY_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - run: az acr login --name "$ACR_NAME"
-        env:
-          ACR_NAME: ${{ vars.ACR_NAME }}
       - name: Choose images
         id: images
         env:

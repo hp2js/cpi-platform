@@ -189,7 +189,6 @@ jobs:
             -backend-config=storage_account_name=${{ vars.TFSTATE_ACCOUNT }}
           terraform plan -input=false -lock=false -refresh=false -no-color \
             -var-file=envs/staging.tfvars \
-            -var acr_login_server=${{ vars.ACR_LOGIN_SERVER }} \
             -var api_image=unused -var web_image=unused | tee plan.txt
           { echo '### Terraform plan (staging)'; echo '```'; grep -E '^(Plan:|No changes)' plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

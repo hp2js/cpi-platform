@@ -1,7 +1,8 @@
 # Container Apps: the public web app (Caddy: static files, proxies /api), the internal API and
 # the release job that migrates and seeds once per deployment. Terraform creates them with the
 # first images; .github/workflows/deploy.yml then moves them to each release's signed digest,
-# so image changes are ignored here (rollback: .github/workflows/rollback.yml).
+# so image changes are ignored here (rollback: .github/workflows/rollback.yml). Images are
+# public in GitHub Container Registry, so apps pull them without registry credentials.
 locals {
   api_app     = "ca-${local.name}-api"
   identity_id = data.azurerm_user_assigned_identity.app.id
@@ -59,10 +60,6 @@ resource "azurerm_container_app" "web" {
     type         = "UserAssigned"
     identity_ids = [local.identity_id]
   }
-  registry {
-    server   = var.acr_login_server
-    identity = local.identity_id
-  }
   ingress {
     external_enabled = true
     target_port      = 8080
@@ -115,10 +112,6 @@ resource "azurerm_container_app" "api" {
   identity {
     type         = "UserAssigned"
     identity_ids = [local.identity_id]
-  }
-  registry {
-    server   = var.acr_login_server
-    identity = local.identity_id
   }
   dynamic "secret" {
     for_each = local.secrets
@@ -207,10 +200,6 @@ resource "azurerm_container_app_job" "release" {
   identity {
     type         = "UserAssigned"
     identity_ids = [local.identity_id]
-  }
-  registry {
-    server   = var.acr_login_server
-    identity = local.identity_id
   }
   dynamic "secret" {
     for_each = local.secrets

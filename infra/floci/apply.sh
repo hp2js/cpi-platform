@@ -39,9 +39,8 @@ run bootstrap \
 # Images are created by digest only; nothing runs them in floci-az.
 digest=sha256:$(printf '0%.0s' {1..64})
 run platform -var-file=/infra/platform/envs/staging.tfvars \
-  -var acr_login_server=crcpilocal.azurecr.io \
-  -var "api_image=crcpilocal.azurecr.io/cpi-api@$digest" \
-  -var "web_image=crcpilocal.azurecr.io/cpi-web@$digest" \
+  -var "api_image=ghcr.io/hp2js/cpi-platform/api@$digest" \
+  -var "web_image=ghcr.io/hp2js/cpi-platform/web@$digest" \
   -target=azurerm_key_vault_secret.database_url \
   -target=azurerm_key_vault_secret.resend_api_key \
   -target=azurerm_postgresql_flexible_server_database.main \

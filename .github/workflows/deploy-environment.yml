@@ -41,7 +41,6 @@ jobs:
       ARM_CLIENT_ID: ${{ vars[format('AZURE_CLIENT_ID_DEPLOY_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      TF_VAR_acr_login_server: ${{ vars.ACR_LOGIN_SERVER }}
       TF_VAR_api_image: ${{ inputs.api_image }}
       TF_VAR_web_image: ${{ inputs.web_image }}
       TF_VAR_admin_email: ${{ vars[format('ADMIN_EMAIL_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
@@ -49,7 +48,6 @@ jobs:
       # Inputs reach scripts as variables, never spliced into script text.
       ENVIRONMENT: ${{ inputs.environment }}
       TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}
-      ACR_NAME: ${{ vars.ACR_NAME }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,7 +64,6 @@ jobs:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - run: az acr login --name "$ACR_NAME"
       - run: scripts/vault-firewall.sh open "rg-cpi-$ENVIRONMENT"
       - name: Terraform apply
         id: terraform

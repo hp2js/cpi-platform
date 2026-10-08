@@ -1,6 +1,7 @@
 # One-time, per-subscription foundation, applied by a person with Owner rights (see
-# docs/deploy-azure.md): Terraform state, the shared image registry, the environments'
-# resource groups and the GitHub OIDC identities. Everything else is in ../platform.
+# docs/deploy-azure.md): Terraform state, the environments' resource groups, the apps'
+# identities and the GitHub OIDC identities. Everything else is in ../platform. Images live
+# in GitHub Container Registry (public, like the repository), so there is no Azure registry.
 terraform {
   required_version = "1.16.1"
   required_providers {
@@ -15,7 +16,12 @@ terraform {
 }
 
 provider "azurerm" {
-  features {}
+  features {
+    storage {
+      # Shared keys are off; configure storage through the management plane only.
+      data_plane_available = false
+    }
+  }
   storage_use_azuread = true
 }
 
@@ -99,30 +105,18 @@ resource "azurerm_storage_container" "state" {
   storage_account_id = azurerm_storage_account.state.id
 }
 
+# Whoever applies bootstrap reads and writes its state (Owner has no blob data access).
+resource "azurerm_role_assignment" "operator_state" {
+  scope                = azurerm_storage_account.state.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
 resource "azurerm_management_lock" "state" {
   name       = "protect-terraform-state"
   scope      = azurerm_storage_account.state.id
   lock_level = "CanNotDelete"
   notes      = "Terraform state; every version is kept for audit and rollback."
-}
-
-# --- Shared registry: an image is built once and the same digest is promoted to prod --------
-# Premium: zone-redundant, dedicated data endpoints and untagged-manifest retention. Public
-# network access stays on for GitHub-hosted runners (Entra auth only, no admin user).
-resource "azurerm_container_registry" "shared" {
-  name                     = "crcpi${local.suffix}"
-  resource_group_name      = azurerm_resource_group.shared.name
-  location                 = var.location
-  sku                      = "Premium"
-  admin_enabled            = false
-  anonymous_pull_enabled   = false
-  zone_redundancy_enabled  = true
-  data_endpoint_enabled    = true
-  retention_policy_in_days = 30
-  tags                     = local.tags
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # --- Audit: subscription activity log (who changed what, from where) ------------------------
@@ -228,36 +222,14 @@ resource "azurerm_role_assignment" "deploy_state" {
   principal_id         = azurerm_user_assigned_identity.github["deploy-${each.key}"].principal_id
 }
 
-# Only staging builds and pushes; prod pulls the digest staging verified.
-resource "azurerm_role_assignment" "push" {
-  scope                = azurerm_container_registry.shared.id
-  role_definition_name = "AcrPush"
-  principal_id         = azurerm_user_assigned_identity.github["deploy-staging"].principal_id
-}
-
-# Prod's deployer reads the registry to verify signatures before promoting a digest.
-resource "azurerm_role_assignment" "pull" {
-  scope                = azurerm_container_registry.shared.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.github["deploy-prod"].principal_id
-}
-
-# The identity each environment's apps run as. It lives in the environment's group (the
-# platform stack grants it Key Vault and storage there); pulling from the shared registry is
-# granted here, where the registry is.
+# The identity each environment's apps run as. It lives in the environment's group, created
+# here so it exists before the platform stack grants it Key Vault and storage access.
 resource "azurerm_user_assigned_identity" "app" {
   for_each            = var.environments
   name                = "id-cpi-${each.key}"
   resource_group_name = azurerm_resource_group.env[each.key].name
   location            = var.location
   tags                = merge(local.tags, { environment = each.key })
-}
-
-resource "azurerm_role_assignment" "app_pull" {
-  for_each             = var.environments
-  scope                = azurerm_container_registry.shared.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.app[each.key].principal_id
 }
 
 resource "azurerm_role_assignment" "reader" {
@@ -283,8 +255,6 @@ output "github_variables" {
   value = {
     AZURE_TENANT_ID       = data.azurerm_client_config.current.tenant_id
     AZURE_SUBSCRIPTION_ID = data.azurerm_client_config.current.subscription_id
-    ACR_NAME              = azurerm_container_registry.shared.name
-    ACR_LOGIN_SERVER      = azurerm_container_registry.shared.login_server
     TFSTATE_ACCOUNT       = azurerm_storage_account.state.name
     TFSTATE_RG            = azurerm_resource_group.shared.name
   }
@@ -292,7 +262,4 @@ output "github_variables" {
 output "github_client_ids" {
   description = "AZURE_CLIENT_ID per workflow identity."
   value       = { for name, identity in azurerm_user_assigned_identity.github : name => identity.client_id }
-}
-output "acr_id" {
-  value = azurerm_container_registry.shared.id
 }
