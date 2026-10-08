@@ -5,7 +5,9 @@ import type {
   Draft,
   EvidenceItem,
   EvidenceSuitability,
+  FinancialYearChange,
   OversightComment,
+  Period,
   ReassignmentSuggestion,
   FormVersion,
   InstitutionRecord,
@@ -181,6 +183,20 @@ export interface MockDb {
   reportIdentityChanges: { at: string; by: string; summary: string }[];
   /** Report logos and signatures; the bytes are kept by SHA-256 like evidence files. */
   reportImages: (ReportImage & { uploadedAt: string; uploadedBy: string })[];
+  /** The next financial year, planned ahead (HP2-100); apart from `cycle`, which is active. */
+  plannedYears: {
+    id: string;
+    label: string;
+    startsOn: string;
+    foundationDeadline: string;
+    evaluationCutoff: string;
+    profileId: string;
+    periods: Period[];
+    revision: number;
+    plannedAt: string;
+    plannedBy: string;
+  }[];
+  yearChanges: FinancialYearChange[];
   corrections: {
     id: string;
     institutionId: string;
@@ -285,10 +301,11 @@ export interface MockDelivery {
  * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
  * 20: the report identity, its change log and images; the identity kept with each release.
+ * 21: planned financial years and their change log.
  */
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '20:ad4ce8f9';
+export const SCHEMA_SHAPE = '21:5553e345';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -366,6 +383,8 @@ function seed(): MockDb {
     reportIdentity: null,
     reportIdentityChanges: [],
     reportImages: [],
+    plannedYears: [],
+    yearChanges: [],
     publications: [],
     corrections: [],
     evidence: foundations.evidence,

@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   ClipboardCheck,
   FileText,
   Gauge,
@@ -47,6 +48,11 @@ const sections = [
   {
     heading: '1 · Set up the cycle',
     items: [
+      {
+        to: '/admin/financial-years',
+        label: 'Financial years',
+        icon: CalendarRange,
+      },
       {
         to: '/admin/calendar',
         label: 'Reporting calendar',

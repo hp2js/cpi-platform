@@ -11,10 +11,18 @@ import { ReportIdentityService } from './report-identity.service';
 import { SettingsController } from './settings.controller';
 import { SettingsRepository } from './settings.repository';
 import { SettingsService } from './settings.service';
+import { YearsController } from './years.controller';
+import { YearsRepository } from './years.repository';
+import { YearsService } from './years.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [FormsController, SettingsController, ReportIdentityController],
+  controllers: [
+    FormsController,
+    SettingsController,
+    ReportIdentityController,
+    YearsController,
+  ],
   providers: [
     FormsService,
     FormsRepository,
@@ -24,6 +32,8 @@ import { SettingsService } from './settings.service';
     PeopleRepository,
     ReportIdentityService,
     ReportIdentityRepository,
+    YearsService,
+    YearsRepository,
   ],
   exports: [SettingsRepository, ReportIdentityService],
 })

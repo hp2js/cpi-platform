@@ -29,6 +29,7 @@ import type {
   FormSection,
   IndicatorWeights,
   Milestone,
+  Period,
   ProfileChecklists,
   Receipt,
   ReportAnswers,
@@ -265,6 +266,35 @@ export const periods = pgTable('periods', {
   startsOn: date().notNull(),
   endsOn: date().notNull(),
   submissionDeadline: instant().notNull(),
+});
+
+/**
+ * The next financial year, planned ahead (HP2-100). Kept apart from `cycles` and `periods` so
+ * planning it never touches the active year's deadlines, reports or scores.
+ */
+export const plannedYears = pgTable('planned_years', {
+  id: text().primaryKey(),
+  label: text().notNull(),
+  startsOn: date().notNull(),
+  foundationDeadline: instant().notNull(),
+  evaluationCutoff: instant().notNull(),
+  profileId: text()
+    .notNull()
+    .references(() => scoringProfiles.id),
+  periods: jsonb().$type<Period[]>().notNull(),
+  revision: integer().notNull().default(0),
+  plannedAt: instant().notNull(),
+  plannedBy: text().notNull(),
+});
+
+/** Every change to the financial years, with its reason (HP2-100). */
+export const financialYearChanges = pgTable('financial_year_changes', {
+  id: serial().primaryKey(),
+  at: instant().notNull(),
+  by: text().notNull(),
+  yearId: text().notNull(),
+  summary: text().notNull(),
+  reason: text().notNull(),
 });
 
 export const calendarChanges = pgTable('calendar_changes', {

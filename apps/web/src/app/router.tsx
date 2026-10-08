@@ -461,6 +461,11 @@ const adminRiskScaleRoute = createRoute({
   path: 'risk-scale',
   component: page(() => import('@/routes/admin/risk-scale'), 'RiskScalePage'),
 });
+const adminYearsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'financial-years',
+  component: page(() => import('@/routes/admin/years'), 'YearsPage'),
+});
 const adminCalendarRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'calendar',
@@ -613,6 +618,7 @@ export const routeTree = rootRoute.addChildren([
       adminAnnualRoute,
       adminReportIdentityRoute,
       adminAssignmentsRoute,
+      adminYearsRoute,
       adminCalendarRoute,
       adminRiskScaleRoute,
       adminInstitutionsRoute,
