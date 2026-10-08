@@ -1,9 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Download, Printer } from 'lucide-react';
+import { Download, FileDown, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
-import { downloadExport, resultsQuery } from '@/features/annual/queries';
+import {
+  downloadDocument,
+  downloadExport,
+  resultsQuery,
+} from '@/features/annual/queries';
 import { cycleQuery, institutionQuery } from '@/features/directory/queries';
 import {
   ReportCover,
@@ -19,6 +23,12 @@ export function ResultsPage() {
   // Whose result this is: the page names the institution, which a printout needs.
   const institution = useQuery(institutionQuery(institutionId));
   const cycle = useQuery(cycleQuery);
+  const pdf = useMutation({
+    mutationFn: (publicationId: string) =>
+      downloadDocument(
+        `/api/publications/${encodeURIComponent(publicationId)}/report.pdf`,
+      ),
+  });
   const exportCsv = useMutation({
     mutationFn: () =>
       downloadExport('/api/results/export.csv', 'cpi-annual-result.csv'),
@@ -92,6 +102,21 @@ export function ResultsPage() {
                       {result.correctionReason &&
                         ` · correction: ${result.correctionReason}`}
                     </p>
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      className="mt-1"
+                      data-print-hide
+                      onClick={() => pdf.mutate(result.id)}
+                      disabled={pdf.isPending}
+                    >
+                      <FileDown aria-hidden="true" />
+                      Download PDF
+                      <span className="sr-only">
+                        {' '}
+                        of version {result.version}
+                      </span>
+                    </Button>
                   </div>
                   {result.status === 'current' ? (
                     <>
@@ -124,6 +149,11 @@ export function ResultsPage() {
           )
         }
       </QueryView>
+      {pdf.isError && (
+        <p role="alert" className="text-sm text-error-dark">
+          The document could not be downloaded. Try again.
+        </p>
+      )}
       {exportCsv.isError && (
         <p role="alert" className="text-sm text-error-dark">
           {exportCsv.error.message}

@@ -36,6 +36,18 @@ const csvDownload = (response: Response, name: string) =>
     .type('text/csv; charset=utf-8')
     .setHeader('Content-Disposition', `attachment; filename="${name}"`);
 
+/** Sends a generated report document as a download. */
+const pdfDownload = (
+  response: Response,
+  file: { bytes: Uint8Array; fileName: string },
+) =>
+  response
+    .setHeader('Cache-Control', 'private, no-store')
+    .setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+    .setHeader('Content-Length', String(file.bytes.byteLength))
+    .type('application/pdf')
+    .send(Buffer.from(file.bytes));
+
 /** Annual evaluation, publication and corrections (PRD §7.4, §7.6, FR12–FR13, FR16). */
 @Controller()
 export class AnnualController {
@@ -123,6 +135,26 @@ export class AnnualController {
     const csv = await this.annual.reportCsv(user);
     csvDownload(response, 'cpi-consolidated-results.csv');
     return csv;
+  }
+
+  /** The consolidated report as a document (HP2-64). */
+  @Get('annual/report.pdf')
+  @Roles('supervisor', 'administrator')
+  async reportPdf(
+    @CurrentUser() user: User,
+    @Res() response: Response,
+  ): Promise<void> {
+    pdfDownload(response, await this.annual.reportPdf(user));
+  }
+
+  /** One published version's report as a document; scoped like the results (HP2-64). */
+  @Get('publications/:publicationId/report.pdf')
+  async resultPdf(
+    @CurrentUser() user: User,
+    @Param('publicationId') id: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    pdfDownload(response, await this.annual.resultPdf(user, id));
   }
 
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */

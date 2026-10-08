@@ -7,7 +7,7 @@ import {
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { request } from '@/lib/api';
+import { fetchFile, request } from '@/lib/api';
 
 export const annualKeys = {
   overview: ['annual'] as const,
@@ -79,3 +79,16 @@ export const recordExtension = (extension: ExtensionRequest) =>
     method: 'POST',
     json: extension,
   });
+
+/** Downloads a generated report document under the name the server gave it (HP2-64). */
+export async function downloadDocument(path: `/api/${string}`) {
+  const file = await fetchFile(path, {
+    headers: { Accept: 'application/pdf' },
+  });
+  const url = URL.createObjectURL(file.blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.fileName ?? 'cpi-annual-report.pdf';
+  link.click();
+  URL.revokeObjectURL(url);
+}

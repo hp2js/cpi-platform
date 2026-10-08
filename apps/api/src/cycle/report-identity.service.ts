@@ -9,6 +9,7 @@ import {
   type ReportIdentitySettings,
   type ReportIdentityUpdate,
   type ReportImageSlot,
+  type ReportImages,
 } from '@cpi/contracts';
 import type { User } from '../auth/sessions';
 import {
@@ -165,6 +166,25 @@ export class ReportIdentityService {
       );
       return this.settingsOf(tx);
     });
+  }
+
+  /** The identity's logo and signature, for a report document (HP2-64). */
+  async imagesFor(identity: ReportIdentity): Promise<ReportImages> {
+    const load = async (image: ReportIdentity['logo']) => {
+      if (!image) return undefined;
+      const { bytes } = await this.image(image.id);
+      return {
+        bytes: new Uint8Array(bytes),
+        mimeType: image.mimeType,
+        width: image.width,
+        height: image.height,
+      };
+    };
+    const [logo, signature] = await Promise.all([
+      load(identity.logo),
+      load(identity.signature),
+    ]);
+    return { logo, signature };
   }
 
   /** An image's bytes, for any signed-in reader of a report that shows it. */

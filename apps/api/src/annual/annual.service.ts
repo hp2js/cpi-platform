@@ -1,14 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   closeNonresponseRequestSchema,
+  consolidatedReportDocument,
+  institutionReportDocument,
+  renderPdf,
   toCsv,
   type AnnualEvaluation,
   type AnnualOverview,
   type ConsolidatedReport,
-  type InstitutionResults,
-  type Oversight,
   type CorrectionRequest,
   type ExtensionRequest,
+  type InstitutionResults,
+  type Oversight,
   type PublishRequest,
 } from '@cpi/contracts';
 import type { QueryFilters } from '../http/validation.pipe';
@@ -16,7 +19,10 @@ import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database, type Db } from '../database/db';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
-import { reportIdentityOf } from '../cycle/report-identity.service';
+import {
+  ReportIdentityService,
+  reportIdentityOf,
+} from '../cycle/report-identity.service';
 import { ApiError, notFound } from '../http/api-error';
 import { effectiveCutoff } from '../review/clarifications';
 import { obligationById } from '../reporting/report';
@@ -41,7 +47,87 @@ export class AnnualService {
     @Inject(DB) private readonly db: Database,
     private readonly repository: AnnualRepository,
     private readonly events: Events,
+    private readonly identity: ReportIdentityService,
   ) {}
+
+  /**
+   * One published version's annual report as a PDF (HP2-64), generated from the release itself.
+   * An institution gets only its own; staff only within their scope. Downloads are audited.
+   */
+  async resultPdf(user: User, publicationId: string) {
+    const scope = await readableInstitutionIds(this.db, user);
+    const data = await loadAnnualData(this.db, scope);
+    const publication = data.publications.find(
+      (candidate) =>
+        candidate.id === publicationId &&
+        scope.includes(candidate.institutionId),
+    );
+    if (!publication) throw notFound();
+    const result = toPublished(data, publication);
+    const next = data.publications.find(
+      (candidate) => candidate.id === publication.supersededBy,
+    );
+    const generated = institutionReportDocument(result, {
+      cycleLabel: data.cycle.label,
+      generatedAt: data.businessTime,
+      images: await this.identity.imagesFor(result.identity),
+      supersededBy: next
+        ? {
+            version: next.version,
+            publishedAt: next.publishedAt,
+            reason: next.correctionReason,
+          }
+        : null,
+    });
+    await this.audited(
+      user,
+      { type: 'publication', id: publication.id, version: publication.version },
+      `Downloaded ${generated.fileName}`,
+    );
+    return {
+      bytes: renderPdf(generated.document),
+      fileName: generated.fileName,
+    };
+  }
+
+  /** The consolidated report as a PDF, for supervisors and administrators (HP2-64). */
+  async reportPdf(user: User) {
+    const scope = await readableInstitutionIds(this.db, user);
+    const data = await loadAnnualData(this.db, scope);
+    const report = consolidated(data, scope);
+    const identity =
+      report.released.at(-1)?.identity ?? (await this.identity.current());
+    const generated = consolidatedReportDocument(report, identity, {
+      generatedAt: data.businessTime,
+      images: await this.identity.imagesFor(identity),
+    });
+    await this.audited(
+      user,
+      { type: 'publication', id: report.batches.at(-1)?.batchId ?? 'none' },
+      `Downloaded ${generated.fileName}`,
+    );
+    return {
+      bytes: renderPdf(generated.document),
+      fileName: generated.fileName,
+    };
+  }
+
+  private audited(
+    user: User,
+    object: { type: string; id: string; version?: number },
+    summary: string,
+  ) {
+    return write(this.db, (tx, businessTime) =>
+      this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'report.download',
+        object,
+        summary,
+      ),
+    );
+  }
 
   private async overviewFor(db: Db, user: User): Promise<AnnualOverview> {
     const readable = await readableInstitutionIds(db, user);

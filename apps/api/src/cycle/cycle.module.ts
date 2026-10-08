@@ -25,6 +25,6 @@ import { SettingsService } from './settings.service';
     ReportIdentityService,
     ReportIdentityRepository,
   ],
-  exports: [SettingsRepository],
+  exports: [SettingsRepository, ReportIdentityService],
 })
 export class CycleModule {}

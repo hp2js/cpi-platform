@@ -9,7 +9,8 @@ import type {
   ReviewQueueItem,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { systemState } from '../database/schema';
+import { eq } from 'drizzle-orm';
+import { auditEvents, systemState } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -107,6 +108,48 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
         { reason: 'No report was received for this quarter.' },
       ),
     ).toMatchObject({ status: 409, body: { code: 'cutoff_not_passed' } });
+  });
+
+  it('downloads published reports as documents, in scope, audited (HP2-64)', async () => {
+    await readyDemo8();
+    const focal = await api.client().signIn('focal-demo-008');
+    expect(
+      (await focal.request('/publications/pub-0001/report.pdf')).status,
+    ).toBe(404); // Nothing before publication (AT18).
+    await admin.post('/annual/publish', { institutionIds: ['DEMO-008'] });
+    const { results } = await focal.json<InstitutionResults>('/results');
+    const download = await focal.request(
+      `/publications/${results[0]!.id}/report.pdf`,
+    );
+    expect(download.status).toBe(200);
+    expect(download.headers.get('content-type')).toBe('application/pdf');
+    expect(download.headers.get('content-disposition')).toBe(
+      'attachment; filename="CPI-FY2026-27-DEMO-008-v1.pdf"',
+    );
+    expect(String(download.body).startsWith('%PDF-1.7')).toBe(true);
+    // Another institution's report is not found for this institution.
+    const other = await api.client().signIn('focal-demo-001');
+    expect(
+      (await other.request(`/publications/${results[0]!.id}/report.pdf`))
+        .status,
+    ).toBe(404);
+    const supervisor = await api.client().signIn('supervisor');
+    const consolidatedPdf = await supervisor.request('/annual/report.pdf');
+    expect(consolidatedPdf.status).toBe(200);
+    expect(consolidatedPdf.headers.get('content-disposition')).toMatch(
+      /filename="CPI-FY2026-27-consolidated-batch-\d+\.pdf"/,
+    );
+    expect((await focal.request('/annual/report.pdf')).status).toBe(403);
+    const audits = await api.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.action, 'report.download'));
+    expect(audits.map((event) => event.summary)).toEqual(
+      expect.arrayContaining([
+        'Downloaded CPI-FY2026-27-DEMO-008-v1.pdf',
+        expect.stringMatching(/^Downloaded CPI-FY2026-27-consolidated-batch-/),
+      ]),
+    );
   });
 
   it('releases a result, withholds numbers before release, and corrects through a case (AT15, AT18–AT20)', async () => {

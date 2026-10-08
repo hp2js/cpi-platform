@@ -9,7 +9,7 @@ import {
 } from '@cpi/contracts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { request } from '@/lib/api';
+import { fetchFile, request } from '@/lib/api';
 import { signInAs } from '@/test/render-app';
 import { getDb } from './db';
 
@@ -146,6 +146,23 @@ describe('report identity (HP2-65)', () => {
         (await request('/api/report-identity', reportIdentitySchema))
           .reportTitle,
       ).toBe('A later title');
+
+      // The document keeps the published identity and is scoped to the institution (HP2-64).
+      const file = await fetchFile(
+        `/api/publications/${results.results[0]!.id}/report.pdf`,
+      );
+      expect(file.fileName).toBe('CPI-FY2026-27-DEMO-004-v1.pdf');
+      expect(file.mimeType).toBe('application/pdf');
+      const pdf = new TextDecoder('latin1').decode(
+        new Uint8Array(await file.blob.arrayBuffer()),
+      );
+      expect(pdf.startsWith('%PDF-1.7')).toBe(true);
+      expect(pdf).toContain('/Subtype /Image'); // the logo
+      expect(pdf).toContain('(Annual Corruption Prevention Assessment');
+      await signInAs('focal-demo-001');
+      await expect(
+        fetchFile(`/api/publications/${results.results[0]!.id}/report.pdf`),
+      ).rejects.toMatchObject({ status: 404 });
     },
   );
 });

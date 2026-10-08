@@ -1,6 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import {
+  consolidatedReportDocument,
   consolidatedSummary,
+  institutionReportDocument,
+  renderPdf,
+  type ReportIdentity,
+  type ReportImages,
   defaultReportIdentity,
   closeNonresponseRequestSchema,
   correctionRequestSchema,
@@ -28,7 +33,8 @@ import {
   assignedInstitutionIds,
   readableInstitutionIds,
 } from '../services/scope';
-import { requireRole } from '../services/session';
+import { requireRole, requireUser } from '../services/session';
+import { loadFile } from '../services/files';
 import { activeWeights, profileLabel } from '../services/profiles';
 import type { MockUser } from '@cpi/contracts/fixtures';
 import { oversightFor } from './oversight';
@@ -38,6 +44,51 @@ function cutoffPassed() {
   const db = getDb();
   return Date.parse(db.businessTime) > Date.parse(db.cycle.evaluationCutoff);
 }
+
+/** The identity's logo and signature bytes, for a report document (HP2-64). */
+async function imagesFor(identity: ReportIdentity): Promise<ReportImages> {
+  const load = async (image: ReportIdentity['logo']) => {
+    if (!image) return undefined;
+    const bytes = await loadFile(image.sha256);
+    return bytes
+      ? {
+          bytes,
+          mimeType: image.mimeType,
+          width: image.width,
+          height: image.height,
+        }
+      : undefined;
+  };
+  return {
+    logo: await load(identity.logo),
+    signature: await load(identity.signature),
+  };
+}
+
+function downloaded(
+  user: MockUser,
+  id: string,
+  version: number | null,
+  fileName: string,
+) {
+  commit((db) =>
+    audit(
+      db,
+      user,
+      'report.download',
+      { type: 'publication', id, version },
+      `Downloaded ${fileName}`,
+    ),
+  );
+}
+
+const pdfResponse = (bytes: Uint8Array, fileName: string) =>
+  new HttpResponse(bytes.slice().buffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+    },
+  });
 
 function toPublished(publication: MockPublication): PublishedResult {
   const db = getDb();
@@ -509,6 +560,58 @@ export const annualHandlers = [
     const user = requireRole('supervisor', 'administrator');
     return HttpResponse.json(consolidated(user, readableInstitutionIds(user)));
   }),
+  /** The consolidated report as a document (HP2-64). */
+  http.get('/api/annual/report.pdf', async () => {
+    await networkDelay();
+    const user = requireRole('supervisor', 'administrator');
+    const db = getDb();
+    const report = consolidated(user, readableInstitutionIds(user));
+    const identity = report.released.at(-1)?.identity ?? reportIdentityOf(db);
+    const generated = consolidatedReportDocument(report, identity, {
+      generatedAt: db.businessTime,
+      images: await imagesFor(identity),
+    });
+    downloaded(
+      user,
+      report.batches.at(-1)?.batchId ?? 'none',
+      null,
+      generated.fileName,
+    );
+    return pdfResponse(renderPdf(generated.document), generated.fileName);
+  }),
+  /** One published version's report as a document, scoped like the results (HP2-64). */
+  http.get(
+    '/api/publications/:publicationId/report.pdf',
+    async ({ params }) => {
+      await networkDelay();
+      const user = requireUser();
+      const db = getDb();
+      const publication = db.publications.find(
+        (candidate) =>
+          candidate.id === params.publicationId &&
+          readableInstitutionIds(user).includes(candidate.institutionId),
+      );
+      if (!publication) return notFound();
+      const result = toPublished(publication);
+      const next = db.publications.find(
+        (candidate) => candidate.id === publication.supersededBy,
+      );
+      const generated = institutionReportDocument(result, {
+        cycleLabel: db.cycle.label,
+        generatedAt: db.businessTime,
+        images: await imagesFor(result.identity),
+        supersededBy: next
+          ? {
+              version: next.version,
+              publishedAt: next.publishedAt,
+              reason: next.correctionReason,
+            }
+          : null,
+      });
+      downloaded(user, publication.id, publication.version, generated.fileName);
+      return pdfResponse(renderPdf(generated.document), generated.fileName);
+    },
+  ),
   http.get('/api/annual/report.csv', async () => {
     await networkDelay();
     const user = requireRole('supervisor', 'administrator');

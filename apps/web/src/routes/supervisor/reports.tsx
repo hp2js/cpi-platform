@@ -3,7 +3,7 @@ import type {
   ConsolidatedSummaryRow,
 } from '@cpi/contracts';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Download, Printer } from 'lucide-react';
+import { Download, FileDown, Printer } from 'lucide-react';
 import {
   ListPager,
   ListSearch,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import {
   consolidatedReportQuery,
+  downloadDocument,
   downloadExport,
 } from '@/features/annual/queries';
 import { AnnualResultView } from '@/features/annual/result-view';
@@ -344,6 +345,9 @@ export function ReportsPage() {
   const report = useQuery(consolidatedReportQuery);
   // The latest release's identity; before any release, the identity in force (HP2-65).
   const current = useQuery(reportIdentityQuery);
+  const pdf = useMutation({
+    mutationFn: () => downloadDocument('/api/annual/report.pdf'),
+  });
   const csv = useMutation({
     mutationFn: () =>
       downloadExport('/api/annual/report.csv', 'cpi-consolidated-results.csv'),
@@ -370,6 +374,14 @@ export function ReportsPage() {
         screenOnlyDescription
         actions={
           <>
+            <Button
+              variant="plain"
+              onClick={() => pdf.mutate()}
+              disabled={pdf.isPending}
+            >
+              <FileDown aria-hidden="true" />
+              Download PDF
+            </Button>
             <Button variant="plain" onClick={() => window.print()}>
               <Printer aria-hidden="true" />
               Print
@@ -427,6 +439,11 @@ export function ReportsPage() {
           </div>
         )}
       </QueryView>
+      {pdf.isError && (
+        <p role="alert" className="text-sm text-error-dark">
+          The document could not be downloaded. Try again.
+        </p>
+      )}
       {csv.isError && (
         <p role="alert" className="text-sm text-error-dark">
           {csv.error.message}

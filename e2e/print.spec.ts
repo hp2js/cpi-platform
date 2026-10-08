@@ -56,7 +56,12 @@ test('printed annual results keep every column, reason and the simulation markin
   await expect(
     page.getByText(/exception review is not recorded in the minutes/i).first(),
   ).toBeVisible();
-  await expect(page.getByText(/DEMO-001 · /)).toBeVisible();
+  // The report cover names the institution and the issuer (HP2-65).
+  const cover = page.getByRole('region', { name: 'Report cover' });
+  await expect(cover).toContainText('DEMO-001 · ');
+  await expect(cover).toContainText(
+    'Demonstration Oversight Office (fictional)',
+  );
   expect(await pdfPages(page)).toBeLessThanOrEqual(2);
 
   // The consolidated report: method, coverage and summary first, then one institution per page.

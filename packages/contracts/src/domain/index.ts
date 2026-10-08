@@ -10,3 +10,5 @@ export * from './pdf.js';
 export * from './uploads.js';
 export * from './annual.js';
 export * from './identity.js';
+export * from './report-pdf.js';
+export * from './report-document.js';
