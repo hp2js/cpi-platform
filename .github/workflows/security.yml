@@ -206,11 +206,6 @@ jobs:
     needs: [scan, images, gitleaks-regression, dependency-review, terraform]
     runs-on: ubuntu-latest
     steps:
-      - name: Every scanner ran
-        # Skipped is allowed (dependency review runs on pull requests only); failed is not.
-        run: |
-          echo '${{ toJSON(needs) }}' |
-            jq -e 'to_entries | map(select(.value.result != "success" and .value.result != "skipped")) | if length > 0 then (map(.key + ": " + .value.result) | join("\n") | halt_error) else true end'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -223,6 +218,7 @@ jobs:
           path: security/reports
           merge-multiple: true
       - name: Apply the merge policy
+        if: always()
         run: node scripts/sarif-gate.mjs security/reports/*.sarif --summary "$GITHUB_STEP_SUMMARY" | tee security/reports/gate.md
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -232,3 +228,10 @@ jobs:
             security/reports/
             security/exceptions.json
           retention-days: 90
+      # Last, so the evidence above is uploaded even when a scanner job failed.
+      - name: Every scanner ran
+        if: always()
+        # Skipped is allowed (dependency review runs on pull requests only); failed is not.
+        run: |
+          echo '${{ toJSON(needs) }}' |
+            jq -e 'to_entries | map(select(.value.result != "success" and .value.result != "skipped")) | if length > 0 then (map(.key + ": " + .value.result) | join("\n") | halt_error) else true end'
