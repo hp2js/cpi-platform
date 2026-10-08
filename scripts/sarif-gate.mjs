@@ -7,8 +7,11 @@
 // Usage: node scripts/sarif-gate.mjs <file.sarif>... [--summary <out.md>]
 //        node scripts/sarif-gate.mjs --suppress-accepted <file.sarif>...
 //   marks results covered by an unexpired exception as suppressed (with its reason) in place,
-//   before upload, so GitHub code scanning shows them as dismissed instead of open alerts.
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+//   which the evidence keeps, and writes a copy without them to upload/<file> for code
+//   scanning: GitHub raises alerts for suppressed results too, and its checks would fail on
+//   risks already accepted here.
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 
 const args = process.argv.slice(2);
 const suppressOnly = args[0] === '--suppress-accepted';
@@ -89,7 +92,16 @@ for (const file of args) {
       });
     }
   }
-  if (suppressOnly) writeFileSync(file, JSON.stringify(sarif));
+  if (suppressOnly) {
+    writeFileSync(file, JSON.stringify(sarif));
+    for (const run of sarif.runs ?? [])
+      run.results = (run.results ?? []).filter(
+        (result) => !result.suppressions?.some((s) => s.kind === 'external'),
+      );
+    const upload = join(dirname(file), 'upload');
+    mkdirSync(upload, { recursive: true });
+    writeFileSync(join(upload, basename(file)), JSON.stringify(sarif));
+  }
 }
 if (suppressOnly) process.exit(0);
 

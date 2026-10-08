@@ -96,12 +96,12 @@ jobs:
       - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         if: always()
         with:
-          sarif_file: security/reports/trivy-image-api.sarif
+          sarif_file: security/reports/upload/trivy-image-api.sarif
           category: release-image-api
       - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         if: always()
         with:
-          sarif_file: security/reports/trivy-image-web.sarif
+          sarif_file: security/reports/upload/trivy-image-web.sarif
           category: release-image-web
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -144,7 +144,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         if: always()
         with:
-          sarif_file: security/reports/zap.sarif
+          sarif_file: security/reports/upload/zap.sarif
           category: zap-staging
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

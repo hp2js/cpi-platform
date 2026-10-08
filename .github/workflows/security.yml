@@ -69,13 +69,14 @@ jobs:
           # within the PR still blocks until history is rewritten.
           GITLEAKS_LOG_OPTS: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '--all' }}
           GITHUB_TOKEN: ${{ github.token }}
-      # Accepted risks (security/exceptions.json) are uploaded as dismissed, with their reason,
-      # so code scanning's own checks fail only on what the gate would block.
+      # Accepted risks (security/exceptions.json) stay in the evidence SARIF, marked suppressed
+      # with their reason, and are left out of the code-scanning upload (upload/), so code
+      # scanning's own checks fail only on what the gate would block.
       - run: node scripts/sarif-gate.mjs --suppress-accepted security/reports/${{ matrix.tool }}.sarif
       - if: env.UPLOAD_SARIF == 'true'
         uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
-          sarif_file: security/reports/${{ matrix.tool }}.sarif
+          sarif_file: security/reports/upload/${{ matrix.tool }}.sarif
           category: ${{ matrix.tool }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -117,7 +118,7 @@ jobs:
       - if: env.UPLOAD_SARIF == 'true'
         uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
-          sarif_file: security/reports/trivy-image-cpi-${{ matrix.app }}.sarif
+          sarif_file: security/reports/upload/trivy-image-cpi-${{ matrix.app }}.sarif
           category: trivy-image-${{ matrix.app }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
