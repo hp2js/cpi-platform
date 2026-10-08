@@ -17,18 +17,28 @@ Everything here is synthetic. The institution, people, staff numbers, signatures
 | 02_Q1 … 05_Q4 | DEMO-003_Qn_CPC_Minutes_Signed.pdf | Signed CPC minutes | with that quarter's report |
 | 02_Q1 … 05_Q4 | DEMO-003_Qn_IAO_Committee_Minutes_Signed.pdf | Signed IAO minutes | with that quarter's report |
 
-All 12 foundation checks are accepted, giving 40 points. `DEMO-003_seed_fixture.json` holds the baseline, the claimed and expected reviewed decisions, the timeliness fields (`submitted_at`, `on_time`, `days_late`) and the SHA-256 hash of each file.
+All 12 foundation checks are accepted, giving 40 points. `DEMO-003_seed_fixture.json` holds the baseline (including each milestone's evidence expectation), the claimed and expected reviewed decisions, the timeliness fields (`submitted_at`, `on_time`, `days_late`) and the SHA-256 hash of each file.
+
+## Plan structure (F2 and F3)
+
+| Risk | Score | Activity | Scored milestones |
+|---|---|---|---|
+| R-01 Discretionary licence inspections | 4 × 5 = 20 | A-01 Publish an inspection schedule (Q1 adherence; Q2–Q4 exception review) | M-01, M-05, M-09, M-13 |
+| R-01 | | A-02 Train staff in affected functions (Q1) | M-02 |
+| R-02 Weak oversight of procurement approvals | 3 × 5 = 15 | A-03 Spot-check procurement approvals (Q2–Q4) | M-06, M-10, M-14 |
+| R-03 to R-08 | 12 or lower | Monitoring only in FY 2026/27; reassessed for FY 2027/28 | — |
+| All identified risks | | Committee obligation, added to every quarter | M-03/04, M-07/08, M-11/12, M-15/16 |
 
 ## Quarterly baseline: claims versus review
 
-Every milestone ID in this pack is unique across the year (M-01 to M-21). The plan's activities fall due in different quarters, so the denominator differs by quarter.
+| Quarter | Inspection schedule (A-01) | Procurement spot-check (A-03) | CPC | IAO | Provisional I | Reviewed I | Timeliness |
+|---|---|---|---|---|---|---|---|
+| Q1 | M-01 published 1 Jul; 49/52 = 94.2% · M-02 training 14/14 | — | M-03 24 Sep | M-04 22 Sep | 4/4 | 1.00 | **Late, 2 days** |
+| Q2 | M-05 review 4 Dec: 3 deviations, 1 exception recorded | M-06 12 sampled; 2 exceptions recorded | M-07 17 Dec | M-08 14 Dec | 4/4 | 1.00 | On time |
+| Q3 | M-09 review 5 Mar: 0 exceptions; Q2 finding closed | M-10 10 sampled (the minimum); 1 exception | M-11 18 Mar | M-12 16 Mar | 4/4 | 1.00 | On time |
+| Q4 | M-13 review 4 Jun: 0 exceptions | M-14 14 sampled; 0 exceptions; Q3 finding closed | M-15 17 Jun | M-16 15 Jun | 4/4 | 1.00 | On time |
 
-| Quarter | Milestones | Provisional I | Reviewed I | Timeliness |
-|---|---|---|---|---|
-| Q1 | M-01 schedule 94.2% · M-02 training 14/14 · M-03 CPC 24 Sep · M-04 IAO 22 Sep | 4/4 = 1.00 | 1.00 | **Late, 2 days** |
-| Q2 | M-05 schedule 93.1% · M-06 cashless 37/37 · M-07 COI declarations 214/214 · M-08 CPC 17 Dec · M-09 IAO 14 Dec | 5/5 = 1.00 | 1.00 | On time |
-| Q3 | M-10 schedule 92.7% · M-11 online 85.2% · M-12 reconciliation 50/50 · M-13 procurement 15/15 · M-14 recruitment 5/5 · M-15 CPC 18 Mar · M-16 IAO 16 Mar | 7/7 = 1.00 | 1.00 | On time |
-| Q4 | M-17 schedule 93.3% · M-18 access control · M-19 work tickets 84/84 · M-20 CPC 17 Jun · M-21 IAO 15 Jun | 5/5 = 1.00 | 1.00 | On time |
+The exception-review and spot-check milestones are met once the review or check is completed and its findings recorded. A finding of exceptions does not make the milestone incomplete. The officer should accept M-05, M-06 and M-10 even though they record exceptions. M-10 tests the boundary of "at least ten", with exactly 10 sampled. Spot-check findings are tabulated in the CPC minutes, as the baseline's evidence expectation requires; the IAO minutes repeat them.
 
 ## The Q1 late submission (demo walkthrough)
 
@@ -42,8 +52,8 @@ For the optional AT11 boundary check, a rehearsal run should classify 15 Oct 23:
 
 ## Notes
 
-The Q2 CPC minutes record the corrective action taken after Q1: a written alternate signatory and an earlier internal draft date. In Q3, an anonymous report is recorded without any details. This is context only; it is not a finding and has no effect on scoring.
+The Q2 CPC minutes record the corrective action taken after the late Q1 report: a written alternate signatory. In Q3, an anonymous report is recorded without any details. This is context only; it is not a finding and has no effect on scoring.
 
-Each quarter is submitted with only the progress report and the two sets of signed minutes. Supporting records named in the minutes, such as inspection schedules, registers and review reports, are clarification-only.
+Each quarter is submitted with only the progress report and the two sets of signed minutes. The exception review reports (DCLO/IA/EXR/…) and spot-check working papers (DCLO/CPC/SPC/…) are clarification-only.
 
-Period-based conditions have measurement windows that close before that quarter's IAO meeting, on 11 Dec, 12 Mar and 11 Jun. The plan was approved on 19 Jun 2026, so every quarter's baseline is activated live before the quarter opens, and no SEEDED HISTORICAL BASELINE is needed.
+Every quarter's baseline is approved before the quarter opens. The plan was approved on 19 Jun 2026, so no SEEDED HISTORICAL BASELINE is needed.

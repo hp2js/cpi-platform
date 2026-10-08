@@ -41,6 +41,17 @@ const schema = z
       .regex(/^evidence\/(?:[a-zA-Z0-9_-]+\/)*$/)
       .default('evidence/'),
     /**
+     * `azure` stores files in Azure Blob Storage: S3_BUCKET names the container and S3_PREFIX
+     * the namespace, and the S3_* endpoint and keys are unused.
+     */
+    STORAGE_BACKEND: z.enum(['s3', 'azure']).default('s3'),
+    /** Blob service URL, e.g. https://account.blob.core.windows.net; signs in with managed identity. */
+    AZURE_STORAGE_BLOB_URL: z.url().optional(),
+    /** Client ID of the user-assigned managed identity the API runs as. */
+    AZURE_CLIENT_ID: z.string().optional(),
+    /** Development storage (floci-az, Azurite) only; takes the place of the URL and identity. */
+    AZURE_STORAGE_CONNECTION_STRING: z.string().optional(),
+    /**
      * Demonstration deployment: lists the fictional accounts for one-click sign-in. Turn off
      * (DEMO_MODE=false) anywhere real people sign in.
      */
@@ -121,7 +132,17 @@ const schema = z
   .refine((config) => config.DEMO_MODE || config.ADMIN_EMAIL, {
     path: ['ADMIN_EMAIL'],
     message: 'Required when DEMO_MODE=false',
-  });
+  })
+  .refine(
+    (config) =>
+      config.STORAGE_BACKEND !== 'azure' ||
+      config.AZURE_STORAGE_BLOB_URL ||
+      config.AZURE_STORAGE_CONNECTION_STRING,
+    {
+      path: ['AZURE_STORAGE_BLOB_URL'],
+      message: 'Required when STORAGE_BACKEND=azure',
+    },
+  );
 export type AppConfig = z.infer<typeof schema>;
 
 /**

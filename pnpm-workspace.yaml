@@ -2,6 +2,13 @@ packages:
   - apps/*
   - packages/*
 
+# Supply-chain guards: resolve only versions published at least 7 days ago (most malicious
+# releases are pulled sooner), refuse a version with weaker publishing provenance than its
+# predecessor, and refuse git/tarball URLs deep in the tree.
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
+
 # msw's postinstall only copies its worker; apps/web generates it explicitly (see docs/frontend.md).
 ignoredBuiltDependencies:
   - msw
@@ -10,3 +17,11 @@ onlyBuiltDependencies:
   - '@nestjs/core'
   - esbuild
   - msw
+
+# Security fixes for transitive dev/build dependencies, ahead of their parents (OSV-Scanner,
+# secure-PR gate). Remove an entry once the parent's own range includes the fix.
+overrides:
+  'undici@>=7.0.0 <8.0.0': 7.30.0
+  'source-map-js@<1.2.2': 1.2.2
+  'basic-ftp@<6.2.1': 6.2.1
+  'shell-quote@>=1.8.4 <1.11.0': 1.11.0
