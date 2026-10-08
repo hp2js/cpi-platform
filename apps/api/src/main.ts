@@ -22,6 +22,9 @@ async function bootstrap() {
       app.get(Infrastructure).database,
       seedOptions(config, app.get(Mailer)),
     );
+  // A deployment's release job migrates and seeds once, before the API replicas start;
+  // queued emails stay in the outbox for the API's delivery worker.
+  if (process.argv.includes('--setup-only')) return app.close();
   await app.listen(config.API_PORT, '0.0.0.0');
 }
 bootstrap().catch((error: unknown) => {

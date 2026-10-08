@@ -1,0 +1,40 @@
+# ZAP automation plan: passive baseline of the portal and the API's public surface. Safe for
+# any environment: it spiders and inspects responses and sends no attack payloads.
+# Run: scripts/security-scan.sh zap <url>
+env:
+  contexts:
+    - name: cpi
+      urls: ['${ZAP_TARGET}']
+      includePaths: ['${ZAP_TARGET}.*']
+  parameters:
+    failOnError: true
+    progressToStdout: true
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+  # The SPA renders client-side, so the API endpoints a visitor reaches are requested directly.
+  - type: requestor
+    requests:
+      - url: '${ZAP_TARGET}/'
+      - url: '${ZAP_TARGET}/api/health/live'
+      - url: '${ZAP_TARGET}/api/health/ready'
+      - url: '${ZAP_TARGET}/api/auth/config'
+      - url: '${ZAP_TARGET}/api/session'
+      - url: '${ZAP_TARGET}/does-not-exist'
+  - type: spider
+    parameters:
+      maxDuration: 2
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+  - type: report
+    parameters:
+      template: sarif-json
+      reportDir: /zap/wrk
+      reportFile: zap.sarif
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk
+      reportFile: zap.html

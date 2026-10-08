@@ -9,3 +9,14 @@ coverage/
 playwright-report/
 test-results/
 artifacts/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/floci/.work/
+
+# Security scanner output (CI keeps it as workflow artifacts and code-scanning alerts)
+security/reports/
+.cache/

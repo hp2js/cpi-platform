@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
+import security from 'eslint-plugin-security';
 export default tseslint.config(
   {
     ignores: [
@@ -16,6 +17,9 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  // Only for the secure-PR gate (scripts/security-scan.sh eslint), whose SARIF reports these
+  // warnings for triage; everyday lint output stays free of them.
+  ...(process.env.ESLINT_SECURITY ? [security.configs.recommended] : []),
   {
     files: ['apps/**/*.ts', 'apps/**/*.tsx', 'packages/**/*.ts', 'e2e/**/*.ts'],
     languageOptions: {
