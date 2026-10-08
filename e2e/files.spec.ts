@@ -28,7 +28,7 @@ async function download(page: Page, dialog: ReturnType<Page['getByRole']>) {
   return file.suggestedFilename();
 }
 
-test('an institution previews and downloads its own Word, Excel and image files, also after a reload', async ({
+test('an institution previews and downloads its own Word, Excel and image files, also after a reload', { tag: '@core' }, async ({
   page,
 }) => {
   await reset(page);
@@ -97,7 +97,7 @@ test('an institution previews and downloads its own Word, Excel and image files,
   await expect(dialog.getByText(/Demonstration copy/)).toBeHidden();
 });
 
-test('an officer opens the foundation documents they review', async ({
+test('an officer opens the foundation documents they review', { tag: '@core' }, async ({
   page,
 }) => {
   await reset(page);

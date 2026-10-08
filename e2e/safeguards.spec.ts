@@ -123,7 +123,7 @@ async function submitQ1(page: Page) {
   });
 }
 
-test('clarification, revised submission, re-review and carry-forward (AT09, AT27)', async ({
+test('clarification, revised submission, re-review and carry-forward (AT09, AT27)', { tag: '@core' }, async ({
   page,
 }) => {
   test.setTimeout(120_000);

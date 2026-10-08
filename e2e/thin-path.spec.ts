@@ -21,7 +21,7 @@ async function signIn(page: Page, role: string, account: RegExp) {
   await expect(page).not.toHaveURL(/sign-in/);
 }
 
-test('publish, report, submit, review and finalize one quarter', async ({
+test('publish, report, submit, review and finalize one quarter', { tag: '@core' }, async ({
   page,
 }) => {
   test.setTimeout(120_000);

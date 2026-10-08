@@ -12,5 +12,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The core journeys (tagged @core) also run in Firefox and WebKit, Safari's engine (HP2-95).
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, grep: /@core/ },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] }, grep: /@core/ },
+  ],
 });

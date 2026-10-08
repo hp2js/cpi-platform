@@ -21,7 +21,7 @@ async function download(page: Page, button: string | RegExp) {
   };
 }
 
-test('institutions and oversight download the annual report as a document (HP2-64)', async ({
+test('institutions and oversight download the annual report as a document (HP2-64)', { tag: '@core' }, async ({
   page,
 }) => {
   test.setTimeout(180_000);

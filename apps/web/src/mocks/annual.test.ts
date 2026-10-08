@@ -1,6 +1,7 @@
 // @vitest-environment node
 import {
   annualOverviewSchema,
+  compareResults,
   inboxSchema,
   institutionResultsSchema,
   consolidatedReportSchema,
@@ -231,6 +232,27 @@ describe('scripted demonstration year (PRD §17)', () => {
         [1, 'superseded'],
       ]);
       expect(results.results[0]?.correctionReason).toMatch(/exception review/);
+
+      // Staff read every version, and what the correction changed (HP2-68).
+      await signInAs('supervisor');
+      const staff = await request(
+        '/api/institutions/DEMO-008/results',
+        institutionResultsSchema,
+      );
+      expect(staff.results.map((result) => result.version)).toEqual([2, 1]);
+      expect(compareResults(staff.results[1]!, staff.results[0]!)).toEqual(
+        expect.arrayContaining([
+          {
+            item: 'Annual result',
+            before: '100.00 / 100',
+            after: '96.25 / 100',
+          },
+        ]),
+      );
+      await signInAs('focal-demo-008');
+      await expect(
+        request('/api/institutions/DEMO-008/results', institutionResultsSchema),
+      ).rejects.toMatchObject({ status: 403 });
     },
   );
 

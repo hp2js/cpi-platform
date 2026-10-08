@@ -19,7 +19,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # Chromium runs every journey; Firefox and WebKit (Safari's engine) run the core ones.
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm format:check
       - run: pnpm check
       - name: Lint Dockerfiles

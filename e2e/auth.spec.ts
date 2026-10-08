@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }) => {
   await signOut(page);
 });
 
-test('email and password sign-in, with one message for any mistake', async ({
+test('email and password sign-in, with one message for any mistake', { tag: '@core' }, async ({
   page,
 }) => {
   await submitPassword(page, 'officer.a@example.invalid', 'not-it');

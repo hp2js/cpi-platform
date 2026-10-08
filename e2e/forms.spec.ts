@@ -24,7 +24,7 @@ async function addQuestion(page: Page, section: Locator, type: string) {
   return section.locator(':scope > ol > li').last();
 }
 
-test('an administrator adds repeated rows and limits, sees the changes, publishes, and institutions answer within the limits (FR03)', async ({
+test('an administrator adds repeated rows and limits, sees the changes, publishes, and institutions answer within the limits (FR03)', { tag: '@core' }, async ({
   page,
   context,
 }) => {
