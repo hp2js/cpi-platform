@@ -35,16 +35,21 @@
     "release:dry": "release-it --dry-run --ci",
     "storage:migrate": "pnpm --filter @cpi/api storage:migrate",
     "storage:gc": "pnpm --filter @cpi/api storage:gc",
-    "user:invite-admin": "pnpm --filter @cpi/api user:invite-admin"
+    "user:invite-admin": "pnpm --filter @cpi/api user:invite-admin",
+    "infra:local": "docker compose -f infra/floci/compose.yaml up -d floci-az && docker compose -f infra/floci/compose.yaml run --rm --build terraform",
+    "infra:local:down": "docker compose -f infra/floci/compose.yaml down",
+    "security:scan": "scripts/security-scan.sh all && node scripts/sarif-gate.mjs security/reports/*.sarif"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
+    "@microsoft/eslint-formatter-sarif": "3.1.0",
     "@playwright/test": "1.63.0",
     "@release-it/conventional-changelog": "12.0.2",
     "@types/node": "24.13.6",
     "eslint": "10.11.0",
     "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-security": "4.2.0",
     "globals": "17.12.0",
     "prettier": "3.9.9",
     "release-it": "21.1.0",

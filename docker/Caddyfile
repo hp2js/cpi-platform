@@ -12,6 +12,15 @@
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		X-Frame-Options DENY
+		# Scripts only from this origin (pdf.js may compile WebAssembly); workers from /assets
+		# or blob:; inline styles for the sandboxed document preview, which inherits this policy.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: data:; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+	}
+	# Static responses get HSTS too; the API already sends it. Browsers ignore it over plain
+	# HTTP (local) and enforce it behind Azure's TLS ingress.
+	header {
+		defer
+		?Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
 
 	handle /healthz {
@@ -20,7 +29,10 @@
 
 	@api path /api /api/*
 	handle @api {
-		reverse_proxy api:3001 {
+		# Azure Container Apps sets API_UPSTREAM to the API app's internal URL; its ingress
+		# routes by Host, so the upstream's own host is sent instead of the browser's.
+		reverse_proxy {$API_UPSTREAM:api:3001} {
+			header_up Host {http.reverse_proxy.upstream.host}
 			transport http {
 				dial_timeout 3s
 				response_header_timeout 10s

@@ -17,6 +17,7 @@ import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { CONFIG, type AppConfig } from '../config';
 import { ApiError } from '../http/api-error';
 import { MAX_FILE_BYTES } from '../reporting/rules';
+import { AzureBlobs } from './azure-blobs';
 
 export const storageUnavailable = () =>
   new ApiError(
@@ -35,8 +36,10 @@ export type ObjectLocation = { bucket: string; objectKey: string };
 @Injectable()
 export class Objects implements OnApplicationShutdown {
   readonly client: S3Client;
+  private readonly azure?: AzureBlobs;
   private readonly logger = new Logger('ObjectStorage');
   constructor(@Inject(CONFIG) readonly config: AppConfig) {
+    if (config.STORAGE_BACKEND === 'azure') this.azure = new AzureBlobs(config);
     this.client = new S3Client({
       endpoint: config.S3_ENDPOINT,
       region: config.S3_REGION,
@@ -59,6 +62,7 @@ export class Objects implements OnApplicationShutdown {
     };
   }
   async ready() {
+    if (this.azure) return this.azure.ready();
     await this.client.send(
       new HeadBucketCommand({ Bucket: this.config.S3_BUCKET }),
       { abortSignal: AbortSignal.timeout(1500) },
@@ -68,6 +72,8 @@ export class Objects implements OnApplicationShutdown {
     // One SHA-256 serves as the server-verified transport checksum (it also stops the SDK adding CRC32) and the metadata digest.
     const sha256 = createHash('sha256').update(bytes).digest();
     try {
+      if (this.azure)
+        return await this.azure.put(location, bytes, mimeType, sha256);
       await this.client.send(
         new PutObjectCommand({
           Bucket: location.bucket,
@@ -90,23 +96,11 @@ export class Objects implements OnApplicationShutdown {
     expected: { sizeBytes: number; sha256: string },
   ): Promise<Buffer> {
     try {
-      const response = await this.client.send(
-        new GetObjectCommand({
-          Bucket: location.bucket,
-          Key: location.objectKey,
-        }),
-        { abortSignal: AbortSignal.timeout(15_000) },
-      );
-      if (
-        !response.Body ||
-        response.ContentLength !== expected.sizeBytes ||
-        expected.sizeBytes > MAX_FILE_BYTES
-      ) {
-        if (response.Body && 'destroy' in response.Body)
-          response.Body.destroy();
+      if (expected.sizeBytes > MAX_FILE_BYTES)
         throw new Error('Invalid length');
-      }
-      const bytes = Buffer.from(await response.Body.transformToByteArray());
+      const bytes = this.azure
+        ? await this.azure.get(location, expected.sizeBytes)
+        : await this.getS3(location, expected.sizeBytes);
       if (
         bytes.length !== expected.sizeBytes ||
         createHash('sha256').update(bytes).digest('hex') !== expected.sha256
@@ -118,7 +112,22 @@ export class Objects implements OnApplicationShutdown {
       throw storageMissing();
     }
   }
+  private async getS3(location: ObjectLocation, sizeBytes: number) {
+    const response = await this.client.send(
+      new GetObjectCommand({
+        Bucket: location.bucket,
+        Key: location.objectKey,
+      }),
+      { abortSignal: AbortSignal.timeout(15_000) },
+    );
+    if (!response.Body || response.ContentLength !== sizeBytes) {
+      if (response.Body && 'destroy' in response.Body) response.Body.destroy();
+      throw new Error('Invalid length');
+    }
+    return Buffer.from(await response.Body.transformToByteArray());
+  }
   async remove(location: ObjectLocation) {
+    if (this.azure) return this.azure.remove(location);
     await this.client.send(
       new DeleteObjectCommand({
         Bucket: location.bucket,
@@ -128,6 +137,7 @@ export class Objects implements OnApplicationShutdown {
     );
   }
   async *list() {
+    if (this.azure) return yield* this.azure.list();
     let token: string | undefined;
     do {
       const result = await this.client.send(

@@ -4,6 +4,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -11,10 +13,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker
     directory: /docker
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       # Node follows the LTS line pinned in package.json engines, .nvmrc and CI; a major
       # move changes all of them together, so Dependabot proposes only 24.x updates.
@@ -24,3 +30,23 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: terraform
+    directories: [/infra/bootstrap, /infra/platform]
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: docker
+    directory: /infra/floci
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: docker-compose
+    directory: /infra/floci
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

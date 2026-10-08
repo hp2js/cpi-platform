@@ -1,0 +1,162 @@
+[
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_DOCKER_2",
+    "path": "",
+    "reason": "No HEALTHCHECK in images: Azure Container Apps (infra/platform/apps.tf) and compose.yaml define liveness/readiness probes, which is where the orchestrator acts on them.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_DOCKER_4",
+    "path": "docker/minio.Dockerfile",
+    "reason": "Local-only MinIO build: ADD fetches pinned source releases with --checksum verification (never deployed; Azure uses Blob Storage).",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_DOCKER_3",
+    "path": "infra/floci/Dockerfile",
+    "reason": "Local floci-az runner must run as root to trust the emulator's CA and map *.vault.azure.net in /etc/hosts; never built in CI or deployed.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "semgrep oss",
+    "ruleId": "dockerfile.security.missing-user-entrypoint.missing-user-entrypoint",
+    "path": "infra/floci/Dockerfile",
+    "reason": "Same as CKV_DOCKER_3 for infra/floci/Dockerfile.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "trivy",
+    "ruleId": "DS-0002",
+    "path": "infra/floci/Dockerfile",
+    "reason": "Same as CKV_DOCKER_3 for infra/floci/Dockerfile.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_59",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "Terraform state account is reached by GitHub-hosted runners; shared keys are disabled so access is Entra RBAC only, and access is audited. Closes with self-hosted runners in a VNet (private endpoint).",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV2_AZURE_33",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "As CKV_AZURE_59: no private endpoint for the state account until runners are self-hosted in a VNet.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "trivy",
+    "ruleId": "AZU-0012",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "As CKV_AZURE_59: the state account's network default is Allow for GitHub-hosted runners; Entra-only auth.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_139",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "Registry is pushed to by GitHub-hosted runners; admin user and anonymous pull are disabled, Entra RBAC only. Closes with self-hosted runners.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_164",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "Docker Content Trust is replaced by Sigstore Cosign: every image is signed keylessly in CD and verified against this repository's workflow identity before promotion and rollback.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_166",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "ACR quarantine is replaced by the CD gate: Trivy scans each image before it is signed, and only signed digests deploy.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_165",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "Single-region service (South Africa North, zone-redundant registry); images are rebuildable from git.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV2_AZURE_1",
+    "path": "infra/",
+    "reason": "Storage uses Microsoft-managed keys with infrastructure (double) encryption. Customer-managed keys add a Key Vault key lifecycle with no requirement for it yet; revisit if a data-protection assessment requires CMK.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_33",
+    "path": "infra/",
+    "reason": "Queue-service logging: neither storage account uses queues. Blob audit logs go to Log Analytics through diagnostic settings.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV2_AZURE_21",
+    "path": "infra/",
+    "reason": "False positive: blob logging is configured on the account's blobServices/default diagnostic setting (audit category group), which this check does not link to the container.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_43",
+    "path": "infra/bootstrap/main.tf",
+    "reason": "False positive: the name is built from a subscription hash (stcpitfstate + 6 hex), which the check cannot evaluate; it is valid.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_189",
+    "path": "infra/platform/main.tf",
+    "reason": "Key Vault public endpoint denies all traffic except the deploying runner during a run (scripts/vault-firewall.sh); apps use the private endpoint. Closes with self-hosted runners.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_AZURE_41",
+    "path": "infra/platform/main.tf",
+    "reason": "Connection-string secrets have no expiry date because an expiry would stop the app, not rotate it; rotation is database_password_version (write-only, never in state).",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV2_AZURE_57",
+    "path": "infra/platform/main.tf",
+    "reason": "False positive: PostgreSQL uses VNet integration (delegated subnet, private DNS, public access disabled), which is private without a private endpoint.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  },
+  {
+    "tool": "checkov",
+    "ruleId": "CKV_GHA_7",
+    "path": ".github/workflows/rollback.yml",
+    "reason": "Rollback takes the environment and optional image digests as inputs by design. It builds nothing, and scripts/release.sh refuses any image without a Cosign signature from deploy.yml on main.",
+    "owner": "platform",
+    "expires": "2027-04-08"
+  }
+]

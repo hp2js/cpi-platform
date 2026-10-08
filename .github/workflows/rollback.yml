@@ -1,0 +1,74 @@
+# Puts an environment back on earlier signed images, without migrations (they are forward-only
+# and kept backward compatible). With no images given, it takes the newest earlier images the
+# apps ran. Infrastructure rolls back by reverting the Terraform commit (deploy.yml applies it);
+# every state version is kept in the versioned state container.
+name: Rollback
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, prod]
+        required: true
+      api_image:
+        description: API image by digest (empty = the one before the current)
+        type: string
+      web_image:
+        description: Web image by digest (empty = the one before the current)
+        type: string
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.environment == 'prod' && 'production' || inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars[format('AZURE_CLIENT_ID_DEPLOY_{0}', inputs.environment == 'prod' && 'PROD' || 'STAGING')] }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name "$ACR_NAME"
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+      - name: Choose images
+        id: images
+        env:
+          API: ${{ inputs.api_image }}
+          WEB: ${{ inputs.web_image }}
+        run: |
+          # Newest image an app ran before its current one (revisions are kept for this).
+          previous() {
+            az containerapp revision list --resource-group "rg-cpi-$ENVIRONMENT" --name "ca-cpi-$ENVIRONMENT-$1" --all \
+              --query "reverse(sort_by(@, &properties.createdTime))[].properties.template.containers[0].image" --output tsv |
+              awk 'NR == 1 { current = $0 } $0 != current { print; exit }'
+          }
+          api=${API:-$(previous api)}
+          web=${WEB:-$(previous web)}
+          [ -n "$api" ] && [ -n "$web" ] || { echo "No earlier images to roll back to" >&2; exit 1; }
+          { echo "### Rollback $ENVIRONMENT"; echo "- API: \`$api\`"; echo "- Web: \`$web\`"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+      - run: scripts/release.sh "$ENVIRONMENT" "$API" "$WEB" --no-migrate
+        env:
+          API: ${{ steps.images.outputs.api }}
+          WEB: ${{ steps.images.outputs.web }}

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS development
+FROM node:24.21.0-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66 AS development
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 # pnpm version matches "packageManager" in package.json.
@@ -23,7 +23,7 @@ RUN pnpm --filter @cpi/contracts build
 FROM development AS build
 RUN pnpm --filter @cpi/web build
 
-FROM caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b AS production
+FROM caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f AS production
 # Listening on 8080 needs no capabilities; removing the file capability lets the
 # container run with every capability dropped.
 RUN addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app \
