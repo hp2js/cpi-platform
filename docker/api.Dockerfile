@@ -21,9 +21,12 @@ COPY --chown=node:node . .
 RUN pnpm --filter @cpi/contracts build
 
 FROM development AS build
+# The release-age guard applies when versions are resolved; this re-checks the lockfile the
+# frozen install above already accepted, so it is off here.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1000,gid=1000 \
     pnpm --filter @cpi/api build \
-    && pnpm --filter @cpi/api deploy --legacy --prod --store-dir /pnpm/store /home/node/release
+    && pnpm --filter @cpi/api deploy --legacy --prod --config.minimum-release-age=0 \
+       --store-dir /pnpm/store /home/node/release
 
 FROM node:24.21.0-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66 AS production
 ENV NODE_ENV=production

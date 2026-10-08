@@ -84,6 +84,7 @@ jobs:
         run: |
           scripts/security-scan.sh trivy-image "$API"
           scripts/security-scan.sh trivy-image "$WEB"
+          node scripts/sarif-gate.mjs --suppress-accepted security/reports/trivy-image-*.sarif
           node scripts/sarif-gate.mjs security/reports/trivy-image-*.sarif --summary "$GITHUB_STEP_SUMMARY"
           for image in "$API" "$WEB"; do
             name=$(basename "${image%%@*}")
@@ -135,7 +136,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
-      - run: scripts/security-scan.sh zap "$PORTAL_URL"
+      - run: |
+          scripts/security-scan.sh zap "$PORTAL_URL"
+          node scripts/sarif-gate.mjs --suppress-accepted security/reports/zap.sarif
         env:
           PORTAL_URL: ${{ needs.staging.outputs.portal_url }}
       - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1

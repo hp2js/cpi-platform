@@ -6,10 +6,6 @@ packages:
 # releases are pulled sooner), refuse a version with weaker publishing provenance than its
 # predecessor, and refuse git/tarball URLs deep in the tree.
 minimumReleaseAge: 10080
-# Type declarations carry no runtime code (and install scripts are off by default), and
-# `pnpm deploy` re-checks the lockfile's fresh @types/node against the age gate.
-minimumReleaseAgeExclude:
-  - '@types/*'
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 

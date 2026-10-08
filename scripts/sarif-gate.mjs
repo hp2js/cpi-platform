@@ -5,9 +5,14 @@
 // Accepted risks live in security/exceptions.json with a reason, an owner and an expiry date;
 // an expired exception blocks again, so every acceptance is revisited.
 // Usage: node scripts/sarif-gate.mjs <file.sarif>... [--summary <out.md>]
+//        node scripts/sarif-gate.mjs --suppress-accepted <file.sarif>...
+//   marks results covered by an unexpired exception as suppressed (with its reason) in place,
+//   before upload, so GitHub code scanning shows them as dismissed instead of open alerts.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const args = process.argv.slice(2);
+const suppressOnly = args[0] === '--suppress-accepted';
+if (suppressOnly) args.shift();
 const summaryAt = args.indexOf('--summary');
 const summaryPath = summaryAt >= 0 ? args.splice(summaryAt, 2)[1] : undefined;
 const exceptionsPath = new URL('../security/exceptions.json', import.meta.url);
@@ -28,7 +33,14 @@ for (const file of args) {
         .map((rule) => [rule.id, rule]),
     );
     for (const result of run.results ?? []) {
-      if (result.suppressions?.some((s) => s.status !== 'rejected')) continue;
+      // In-source suppressions (nosemgrep, eslint-disable) are skipped; external ones are ours
+      // (--suppress-accepted) and still show as accepted below.
+      if (
+        result.suppressions?.some(
+          (s) => s.kind !== 'external' && s.status !== 'rejected',
+        )
+      )
+        continue;
       const rule = rules.get(result.ruleId) ?? {};
       const level =
         result.level ?? rule.defaultConfiguration?.level ?? 'warning';
@@ -48,6 +60,17 @@ for (const file of args) {
           e.ruleId === result.ruleId &&
           (!e.path || path.startsWith(e.path)),
       );
+      if (suppressOnly) {
+        if (exception && exception.expires >= today)
+          result.suppressions = [
+            {
+              kind: 'external',
+              status: 'accepted',
+              justification: `${exception.reason} (owner: ${exception.owner}, expires ${exception.expires}; security/exceptions.json)`,
+            },
+          ];
+        continue;
+      }
       const status = !blocking
         ? 'report'
         : !exception
@@ -66,7 +89,9 @@ for (const file of args) {
       });
     }
   }
+  if (suppressOnly) writeFileSync(file, JSON.stringify(sarif));
 }
+if (suppressOnly) process.exit(0);
 
 const blocked = rows.filter((row) => row.status.startsWith('BLOCK'));
 const counts = Object.entries(

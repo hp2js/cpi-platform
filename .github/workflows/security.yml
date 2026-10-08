@@ -56,11 +56,10 @@ jobs:
           persist-credentials: false
       - if: matrix.tool == 'eslint'
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - if: matrix.tool == 'eslint'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          cache: ${{ matrix.tool == 'eslint' && 'pnpm' || '' }}
       - if: matrix.tool == 'eslint'
         run: pnpm install --frozen-lockfile && pnpm --filter @cpi/contracts build
       - name: Scan
@@ -70,6 +69,9 @@ jobs:
           # within the PR still blocks until history is rewritten.
           GITLEAKS_LOG_OPTS: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '--all' }}
           GITHUB_TOKEN: ${{ github.token }}
+      # Accepted risks (security/exceptions.json) are uploaded as dismissed, with their reason,
+      # so code scanning's own checks fail only on what the gate would block.
+      - run: node scripts/sarif-gate.mjs --suppress-accepted security/reports/${{ matrix.tool }}.sarif
       - if: env.UPLOAD_SARIF == 'true'
         uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
@@ -96,6 +98,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -106,7 +111,9 @@ jobs:
           load: true
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
-      - run: scripts/security-scan.sh trivy-image cpi-${{ matrix.app }}:scan
+      - run: |
+          scripts/security-scan.sh trivy-image cpi-${{ matrix.app }}:scan
+          node scripts/sarif-gate.mjs --suppress-accepted security/reports/trivy-image-cpi-${{ matrix.app }}.sarif
       - if: env.UPLOAD_SARIF == 'true'
         uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
