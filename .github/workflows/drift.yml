@@ -44,7 +44,8 @@ jobs:
         with:
           terraform_version: 1.16.1
           terraform_wrapper: false
-      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - id: login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID_DRIFT }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -65,7 +66,7 @@ jobs:
           cat plan.txt
           [ $code -ne 1 ] || exit 1
           echo "drift=$([ $code -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - if: always()
+      - if: always() && steps.login.outcome == 'success'
         run: scripts/vault-firewall.sh close rg-cpi-${{ matrix.environment }}
       - name: Report
         working-directory: infra/platform
