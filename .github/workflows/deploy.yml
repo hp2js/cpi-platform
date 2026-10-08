@@ -126,9 +126,10 @@ jobs:
     needs: staging
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # No code-scanning upload: it only accepts findings in repository files, and DAST findings
+    # are URLs. The SARIF is kept as evidence and the gate's table goes to the run summary.
     permissions:
       contents: read
-      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -141,11 +142,6 @@ jobs:
           node scripts/sarif-gate.mjs --suppress-accepted security/reports/zap.sarif
         env:
           PORTAL_URL: ${{ needs.staging.outputs.portal_url }}
-      - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
-        if: always()
-        with:
-          sarif_file: security/reports/upload/zap.sarif
-          category: zap-staging
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -155,7 +151,9 @@ jobs:
       - name: High-risk DAST alerts block promotion
         run: node scripts/sarif-gate.mjs security/reports/zap.sarif --summary "$GITHUB_STEP_SUMMARY"
 
+  # Opt-in: set the repository variable PRODUCTION_ENABLED=true once production should exist.
   production:
+    if: vars.PRODUCTION_ENABLED == 'true'
     needs: [build, dast]
     permissions:
       contents: read

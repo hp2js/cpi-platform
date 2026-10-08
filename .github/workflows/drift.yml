@@ -23,7 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [staging, prod]
+        # Production is checked only once it is enabled (see deploy.yml).
+        environment: ${{ fromJSON(vars.PRODUCTION_ENABLED == 'true' && '["staging", "prod"]' || '["staging"]') }}
     env:
       ARM_USE_OIDC: 'true'
       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_DRIFT }}

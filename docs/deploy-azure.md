@@ -55,6 +55,7 @@ All logs ─► Log Analytics ─► alerts (action group), workbook dashboard, 
    | `ALERT_EMAILS_STAGING`, `ALERT_EMAILS_PROD`                     | Comma-separated addresses, e.g. `ops@example.org,lead@example.org`.      |
 
 3. **GitHub environments:** `staging`, and `production` with required reviewers and deployment branches limited to `main`. The OIDC identities trust exactly these names.
+   Production is opt-in: until the repository variable `PRODUCTION_ENABLED` is `true`, deployments stop after staging and drift checks staging only.
 4. **Branch ruleset on `main`:** require pull requests and the **Secure-PR gate** status check (see [security.md](security.md#making-it-required)).
 5. **Push to `main`.** The first run pushes the images to GitHub Container Registry as private packages, so staging cannot pull them yet: an `hp2js` organization admin opens Packages → `cpi-platform/api` and `cpi-platform/web` → Package settings → **Change visibility → Public** (once), then re-runs the workflow. Afterwards, `az keyvault secret set --vault-name <kv> --name resend-api-key --value …` if account emails should leave the in-app sink.
 
