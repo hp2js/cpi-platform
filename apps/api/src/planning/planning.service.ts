@@ -4,10 +4,17 @@ import {
   amendmentRequestSchema,
   approveBaselineRequestSchema,
   confirmSeedRequestSchema,
+  planningWorkFor,
+  planningWorkSummary,
   returnBaselineRequestSchema,
   type Baseline,
+  type PlanningWork,
 } from '@cpi/contracts';
-import { assignedInstitutionIds, canReadInstitution } from '../auth/scope';
+import {
+  assignedInstitutionIds,
+  canReadInstitution,
+  readableInstitutionIds,
+} from '../auth/scope';
 import type { User } from '../auth/sessions';
 import {
   DB,
@@ -18,6 +25,7 @@ import {
   type Tx,
 } from '../database/db';
 import { currentState } from '../database/state';
+import { foundationsFor } from './foundations';
 import { periodLocked, planFor, toBaseline, type BaselineRow } from './plans';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
@@ -121,6 +129,38 @@ export class PlanningService {
     if (!(await canReadInstitution(this.db, user, institutionId)))
       throw notFound();
     return planFor(this.db, user, institutionId);
+  }
+
+  /**
+   * Plan work waiting on officers in the caller's scope, most urgent first, with counts per
+   * officer (HP2-52): proposals, seeded baselines and amendments to confirm, documents to review.
+   */
+  async work(user: User): Promise<PlanningWork> {
+    const [ids, { state }] = await Promise.all([
+      readableInstitutionIds(this.db, user),
+      currentState(this.db),
+    ]);
+    const items = await Promise.all(
+      ids.map(async (institutionId) => {
+        const [plan, foundations, [officer]] = await Promise.all([
+          planFor(this.db, user, institutionId),
+          foundationsFor(this.db, institutionId, true),
+          assignedOfficers(this.db, institutionId),
+        ]);
+        return planningWorkFor(
+          {
+            institutionId,
+            institutionName: plan.institutionName,
+            officerId: officer?.id ?? null,
+            officerName: officer?.displayName ?? null,
+          },
+          plan,
+          foundations,
+          state.businessTime,
+        );
+      }),
+    );
+    return planningWorkSummary(items.flat());
   }
 
   approve(user: User, id: string, body: unknown) {

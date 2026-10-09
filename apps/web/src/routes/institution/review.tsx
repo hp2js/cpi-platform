@@ -18,6 +18,7 @@ import {
 import { useRef } from 'react';
 import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
+import { ReportUnavailable } from '@/features/reporting/unavailable';
 import { ErrorSummary } from '@/components/error-summary';
 import { answerChanges } from '@/features/reporting/changes';
 import {
@@ -678,7 +679,11 @@ export function ReviewSubmitPage() {
     periodId,
   );
   const bundle = useQuery(reportQuery(obligationId));
-  const completeness = useQuery(completenessQuery(obligationId));
+  // The completion check needs a saved draft; there is nothing to check before one exists.
+  const completeness = useQuery({
+    ...completenessQuery(obligationId),
+    enabled: Boolean(bundle.data?.editable && bundle.data.draft),
+  });
   const institution = useQuery(
     institutionQuery(session.user.institutionId ?? ''),
   );
@@ -706,15 +711,15 @@ export function ReviewSubmitPage() {
       <Glossary />
       <QueryView query={bundle} label="report">
         {(data) =>
-          !data.editable || !data.draft ? (
+          !data.editable ? (
+            <ReportUnavailable bundle={data} />
+          ) : !data.draft ? (
             <Alert>
-              <AlertTitle>
-                {data.editable
-                  ? 'Save your draft first'
-                  : 'This report cannot be submitted now'}
-              </AlertTitle>
+              <AlertTitle>Save your draft first</AlertTitle>
               <AlertDescription>
-                Return to the report to continue.
+                Nothing has been saved for {data.period.label} yet. Return to
+                the report, answer what you can and save, then come back to
+                review and submit.
               </AlertDescription>
             </Alert>
           ) : (

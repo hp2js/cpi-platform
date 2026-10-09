@@ -129,6 +129,8 @@ test('dialogs trap focus and return it on Escape; the account menu works from th
   await signInAs(page, 'administrator');
   await page.goto('/admin/forms/form-v2');
   const publish = page.getByRole('button', { name: /Publish version 2/ });
+  // Enabled once the server has checked the draft.
+  await expect(publish).toBeEnabled();
   await publish.focus();
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('alertdialog');

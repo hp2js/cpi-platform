@@ -1,5 +1,7 @@
 import { asc, desc, inArray } from 'drizzle-orm';
 import {
+  queueTiming,
+  reopenEligibility,
   scoreSummary,
   type Decision,
   type EvidenceLookupItem,
@@ -273,6 +275,23 @@ export function queueItem(
     firstSubmittedAt: obligation.firstSubmittedAt ?? receipt.receivedAt,
     decisionsRecorded: decided.length,
     decisionsRequired: milestonesOf(data, submission).length,
+    finalizedAt: submission.finalizedAt,
+    ...queueTiming({
+      receivedAt: receipt.receivedAt,
+      firstSubmittedAt: obligation.firstSubmittedAt ?? receipt.receivedAt,
+      finalizedAt: submission.finalizedAt,
+      reopenedAt:
+        data.reopenings
+          .filter((reopening) => reopening.submissionId === submission.id)
+          .at(-1)?.at ?? null,
+      clarificationRequestedAt:
+        data.clarifications.find(
+          (clarification) =>
+            clarification.submissionId === submission.id &&
+            clarification.status === 'open',
+        )?.requestedAt ?? null,
+      now: data.businessTime,
+    }),
   };
 }
 
@@ -356,7 +375,39 @@ export async function reviewBundle(
     reopenings: data.reopenings
       .filter((reopening) => reopening.obligationId === obligation.id)
       .map(({ reason, by, at }) => ({ reason, by, at })),
+    reopen: reopenOf(data, submission),
   };
+}
+
+/** Whether this review can be reopened now, from publication and correction cases (HP2-51). */
+export function reopenOf(data: ReviewData, submission: SubmissionRow) {
+  const obligation = obligationOf(data, submission);
+  const correction = data.corrections.find(
+    (candidate) =>
+      candidate.institutionId === obligation.institutionId &&
+      candidate.closedAt === null,
+  );
+  return reopenEligibility({
+    finalized: submission.finalizedAt !== null,
+    current: obligation.currentRevision === submission.revision,
+    periodId: obligation.periodId,
+    periodLabel: periodOf(data, obligation.periodId).label,
+    institutionId: obligation.institutionId,
+    published: data.publications.some(
+      (publication) =>
+        publication.institutionId === obligation.institutionId &&
+        publication.supersededBy === null,
+    ),
+    correction: correction
+      ? {
+          periodId: correction.periodId,
+          periodLabel: periodOf(data, correction.periodId).label,
+          reason: correction.reason,
+          openedBy: correction.openedBy,
+          openedAt: correction.openedAt,
+        }
+      : null,
+  });
 }
 
 /** Reviewed credit needs a cited file whose suitability checks found no deficiency (AT30). */

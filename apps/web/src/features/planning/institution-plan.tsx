@@ -383,7 +383,7 @@ function QuarterBaseline({
           )}
         </span>
       </header>
-      {baseline && <BaselineNotes baseline={baseline} />}
+      {baseline && <BaselineNotes baseline={baseline} audience="institution" />}
       {open ? (
         <>
           {proposal.status === 'proposed' && proposal.changedSinceProposal && (

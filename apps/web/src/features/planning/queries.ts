@@ -3,6 +3,7 @@ import {
   planImportPreviewSchema,
   planImportResultSchema,
   planSchema,
+  planningWorkSchema,
   type ActivityRequest,
   type AmendmentRequest,
   type BaselineCheck,
@@ -17,7 +18,15 @@ import { request } from '@/lib/api';
 
 export const planKeys = {
   plan: (institutionId: string) => ['plan', institutionId] as const,
+  work: ['planning', 'work'] as const,
 };
+
+/** Plan work waiting on officers in the caller's scope, with counts (HP2-52). */
+export const planningWorkQuery = queryOptions({
+  queryKey: planKeys.work,
+  queryFn: ({ signal }) =>
+    request('/api/planning/work', planningWorkSchema, { signal }),
+});
 
 export const planQuery = (institutionId: string) =>
   queryOptions({
@@ -149,6 +158,7 @@ export async function invalidatePlan(
 ) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: planKeys.plan(institutionId) }),
+    queryClient.invalidateQueries({ queryKey: planKeys.work }),
     queryClient.invalidateQueries({ queryKey: ['reports'] }),
     queryClient.invalidateQueries({ queryKey: ['reviews'] }),
   ]);

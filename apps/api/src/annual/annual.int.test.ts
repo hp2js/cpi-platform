@@ -5,10 +5,12 @@ import type {
   Foundations,
   InstitutionResults,
   Oversight,
+  ReportBundle,
   ReviewQueueItem,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { systemState } from '../database/schema';
+import { eq } from 'drizzle-orm';
+import { auditEvents, systemState } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import { completeDraft, publishSeedForm, submitDraft } from '../test/journeys';
 
@@ -75,6 +77,26 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
     ).toMatchObject({ status: 422, body: { code: 'not_releasable' } });
   });
 
+  it('tells the institution what was recorded for a quarter closed without submission (HP2-47)', async () => {
+    await readyDemo8();
+    const focal = await api.client().signIn('focal-demo-008');
+    const report = () =>
+      focal.json<ReportBundle>(
+        `/obligations/${encodeURIComponent('DEMO-008:FY2026-27-Q1')}/report`,
+      );
+    expect(await report()).toMatchObject({
+      editable: false,
+      resultPublished: false,
+      closure: {
+        reason: 'No report was received for this quarter.',
+        by: 'Prevention Officer B',
+        at: '2027-08-01T09:00:00+03:00',
+      },
+    });
+    await admin.post('/annual/publish', { institutionIds: ['DEMO-008'] });
+    expect((await report()).resultPublished).toBe(true);
+  });
+
   it('publishes only after the cutoff', async () => {
     expect(
       await admin.post('/annual/publish', { institutionIds: ['DEMO-008'] }),
@@ -86,6 +108,48 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
         { reason: 'No report was received for this quarter.' },
       ),
     ).toMatchObject({ status: 409, body: { code: 'cutoff_not_passed' } });
+  });
+
+  it('downloads published reports as documents, in scope, audited (HP2-64)', async () => {
+    await readyDemo8();
+    const focal = await api.client().signIn('focal-demo-008');
+    expect(
+      (await focal.request('/publications/pub-0001/report.pdf')).status,
+    ).toBe(404); // Nothing before publication (AT18).
+    await admin.post('/annual/publish', { institutionIds: ['DEMO-008'] });
+    const { results } = await focal.json<InstitutionResults>('/results');
+    const download = await focal.request(
+      `/publications/${results[0]!.id}/report.pdf`,
+    );
+    expect(download.status).toBe(200);
+    expect(download.headers.get('content-type')).toBe('application/pdf');
+    expect(download.headers.get('content-disposition')).toBe(
+      'attachment; filename="CPI-FY2026-27-DEMO-008-v1.pdf"',
+    );
+    expect(String(download.body).startsWith('%PDF-1.7')).toBe(true);
+    // Another institution's report is not found for this institution.
+    const other = await api.client().signIn('focal-demo-001');
+    expect(
+      (await other.request(`/publications/${results[0]!.id}/report.pdf`))
+        .status,
+    ).toBe(404);
+    const supervisor = await api.client().signIn('supervisor');
+    const consolidatedPdf = await supervisor.request('/annual/report.pdf');
+    expect(consolidatedPdf.status).toBe(200);
+    expect(consolidatedPdf.headers.get('content-disposition')).toMatch(
+      /filename="CPI-FY2026-27-consolidated-batch-\d+\.pdf"/,
+    );
+    expect((await focal.request('/annual/report.pdf')).status).toBe(403);
+    const audits = await api.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.action, 'report.download'));
+    expect(audits.map((event) => event.summary)).toEqual(
+      expect.arrayContaining([
+        'Downloaded CPI-FY2026-27-DEMO-008-v1.pdf',
+        expect.stringMatching(/^Downloaded CPI-FY2026-27-consolidated-batch-/),
+      ]),
+    );
   });
 
   it('releases a result, withholds numbers before release, and corrects through a case (AT15, AT18–AT20)', async () => {
@@ -174,11 +238,61 @@ describe.skipIf(!integration)('annual evaluation and publication', () => {
       'The Q2 closure reason needs restating.',
     );
 
+    // Staff read every version in full too, within their scope (HP2-68).
+    const supervisor = await api.client().signIn('supervisor');
+    const staffView = await supervisor.json<InstitutionResults>(
+      '/institutions/DEMO-008/results',
+    );
+    expect(
+      staffView.results.map((result) => [result.version, result.status]),
+    ).toEqual([
+      [2, 'current'],
+      [1, 'superseded'],
+    ]);
+    expect(staffView.results[1]!.evaluation.quarters).toHaveLength(4);
+    expect((await focal.request('/institutions/DEMO-008/results')).status).toBe(
+      403,
+    );
+
     const report = await admin.json<ConsolidatedReport>('/annual/report');
     expect(report.released.map((result) => result.institutionId)).toEqual([
       'DEMO-008',
     ]);
     expect(report.unreleased).toHaveLength(7);
+
+    // The year at a glance (HP2-66): every institution, coverage, batches and corrections.
+    expect(report.summary.map((row) => row.institutionId)).toEqual([
+      'DEMO-001',
+      'DEMO-002',
+      'DEMO-003',
+      'DEMO-004',
+      'DEMO-005',
+      'DEMO-006',
+      'DEMO-007',
+      'DEMO-008',
+    ]);
+    expect(report.summary.at(-1)).toMatchObject({
+      released: true,
+      version: 2,
+      points: '40.00',
+      lateQuarters: 0,
+    });
+    expect(report.summary[0]).toMatchObject({ released: false, points: null });
+    expect(report.batches).toHaveLength(2);
+    expect(report.corrections).toEqual([
+      expect.objectContaining({
+        institutionId: 'DEMO-008',
+        fromVersion: 1,
+        toVersion: 2,
+        reason: 'The Q2 closure reason needs restating.',
+      }),
+    ]);
+    expect(
+      report.coverage.find((metric) => metric.id === 'release-coverage'),
+    ).toMatchObject({ numerator: 1, denominator: 8 });
+    expect(
+      report.coverage.find((metric) => metric.id === 'closed-nonresponse'),
+    ).toMatchObject({ numerator: 4, denominator: 32 });
   });
 
   it('records extensions after the cutoff that hold release until they end (AT29)', async () => {

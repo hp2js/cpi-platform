@@ -1,14 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   closeNonresponseRequestSchema,
+  consolidatedReportDocument,
+  institutionReportDocument,
+  renderPdf,
   toCsv,
   type AnnualEvaluation,
   type AnnualOverview,
   type ConsolidatedReport,
-  type InstitutionResults,
-  type Oversight,
   type CorrectionRequest,
   type ExtensionRequest,
+  type InstitutionResults,
+  type Oversight,
   type PublishRequest,
 } from '@cpi/contracts';
 import type { QueryFilters } from '../http/validation.pipe';
@@ -16,6 +19,10 @@ import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { DB, nextId, write, type Database, type Db } from '../database/db';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
+import {
+  ReportIdentityService,
+  reportIdentityOf,
+} from '../cycle/report-identity.service';
 import { ApiError, notFound } from '../http/api-error';
 import { effectiveCutoff } from '../review/clarifications';
 import { obligationById } from '../reporting/report';
@@ -40,7 +47,100 @@ export class AnnualService {
     @Inject(DB) private readonly db: Database,
     private readonly repository: AnnualRepository,
     private readonly events: Events,
+    private readonly identity: ReportIdentityService,
   ) {}
+
+  /**
+   * One published version's annual report as a PDF (HP2-64), generated from the release itself.
+   * An institution gets only its own; staff only within their scope. Downloads are audited.
+   */
+  async resultPdf(user: User, publicationId: string) {
+    const scope = await readableInstitutionIds(this.db, user);
+    const data = await loadAnnualData(this.db, scope);
+    const publication = data.publications.find(
+      (candidate) =>
+        candidate.id === publicationId &&
+        scope.includes(candidate.institutionId),
+    );
+    // A closed year's release is read from its archive, under that year's name (HP2-100).
+    const archived = publication
+      ? undefined
+      : await this.repository.archived(publicationId);
+    if (
+      !publication &&
+      !scope.includes(archived?.publication.institutionId ?? '')
+    )
+      throw notFound();
+    const release = publication ?? archived!.publication;
+    const result = toPublished(data, release);
+    const next = publication
+      ? data.publications.find(
+          (candidate) => candidate.id === publication.supersededBy,
+        )
+      : release.supersededBy
+        ? (await this.repository.archived(release.supersededBy))?.publication
+        : undefined;
+    const generated = institutionReportDocument(result, {
+      cycleLabel: archived?.yearLabel ?? data.cycle.label,
+      generatedAt: data.businessTime,
+      images: await this.identity.imagesFor(result.identity),
+      supersededBy: next
+        ? {
+            version: next.version,
+            publishedAt: next.publishedAt,
+            reason: next.correctionReason,
+          }
+        : null,
+    });
+    await this.audited(
+      user,
+      { type: 'publication', id: release.id, version: release.version },
+      `Downloaded ${generated.fileName}`,
+    );
+    return {
+      bytes: renderPdf(generated.document),
+      fileName: generated.fileName,
+    };
+  }
+
+  /** The consolidated report as a PDF, for supervisors and administrators (HP2-64). */
+  async reportPdf(user: User) {
+    const scope = await readableInstitutionIds(this.db, user);
+    const data = await loadAnnualData(this.db, scope);
+    const report = consolidated(data, scope);
+    const identity =
+      report.released.at(-1)?.identity ?? (await this.identity.current());
+    const generated = consolidatedReportDocument(report, identity, {
+      generatedAt: data.businessTime,
+      images: await this.identity.imagesFor(identity),
+    });
+    await this.audited(
+      user,
+      { type: 'publication', id: report.batches.at(-1)?.batchId ?? 'none' },
+      `Downloaded ${generated.fileName}`,
+    );
+    return {
+      bytes: renderPdf(generated.document),
+      fileName: generated.fileName,
+    };
+  }
+
+  private audited(
+    user: User,
+    object: { type: string; id: string; version?: number },
+    summary: string,
+  ) {
+    return write(this.db, (tx, businessTime) =>
+      this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'report.download',
+        object,
+        summary,
+      ),
+    );
+  }
 
   private async overviewFor(db: Db, user: User): Promise<AnnualOverview> {
     const readable = await readableInstitutionIds(db, user);
@@ -101,6 +201,9 @@ export class AnnualService {
           'correction_required',
         );
       const batchId = await nextId(tx, 'batch');
+      // Each release keeps the report identity in force now; a correction is a new version
+      // released under the identity in force at that time (HP2-65).
+      const identity = await reportIdentityOf(tx);
       for (const evaluation of evaluations) {
         const previous = evaluation.publication;
         const correction = evaluation.correction;
@@ -130,6 +233,7 @@ export class AnnualService {
               evaluation.total.status === 'calculated'
                 ? evaluation.total.points
                 : '',
+            identity,
           },
           previous?.id,
           tx,
@@ -310,6 +414,30 @@ export class AnnualService {
       exportHeader,
       exportRows(data.cycle.id, consolidated(data, scope).released),
     );
+  }
+
+  /**
+   * Every published version of one institution's result, for staff in scope (HP2-68): the
+   * current one first, then each earlier one as it was published. Out of scope is not found.
+   */
+  async institutionResults(
+    user: User,
+    institutionId: string,
+  ): Promise<InstitutionResults> {
+    const scope = await readableInstitutionIds(this.db, user);
+    if (!scope.includes(institutionId)) throw notFound();
+    const data = await loadAnnualData(this.db, [institutionId]);
+    const results = data.publications
+      .filter((publication) => publication.institutionId === institutionId)
+      .map((publication) => toPublished(data, publication))
+      .reverse();
+    return {
+      released: results.length > 0,
+      message: results.length
+        ? 'Published results are shown below.'
+        : 'Nothing has been published for this institution yet.',
+      results,
+    };
   }
 
   /** Institution: only its own released results; nothing numerical before release (AT18, AT19). */

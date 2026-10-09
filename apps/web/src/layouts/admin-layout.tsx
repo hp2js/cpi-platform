@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   ClipboardCheck,
   FileText,
   Gauge,
@@ -12,6 +13,7 @@ import {
   Ruler,
   ScrollText,
   SlidersHorizontal,
+  Stamp,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -28,87 +30,95 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import {
+  NavSections,
+  RailBrand,
+  SkipLink,
+  useMeasuredHeight,
+  type NavSection,
+} from './shared';
 
+// In the order an administrator runs a cycle: set it up, bring people in, run the year, then
+// publish the results.
 const sections = [
   {
     heading: 'Overview',
     items: [{ to: '/admin', label: 'Console', icon: Gauge, exact: true }],
   },
   {
-    heading: 'Setup',
+    heading: '1 · Set up the cycle',
     items: [
+      {
+        to: '/admin/financial-years',
+        label: 'Financial years',
+        icon: CalendarRange,
+      },
       {
         to: '/admin/calendar',
         label: 'Reporting calendar',
         icon: CalendarDays,
       },
+      {
+        to: '/admin/profiles',
+        label: 'Scoring profiles',
+        icon: SlidersHorizontal,
+      },
+      { to: '/admin/risk-scale', label: 'Risk rating scale', icon: Ruler },
+      { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
+    ],
+  },
+  {
+    heading: '2 · People',
+    items: [
       { to: '/admin/institutions', label: 'Institutions', icon: Building2 },
       { to: '/admin/users', label: 'Users', icon: UserRound },
       { to: '/admin/assignments', label: 'Assignments', icon: Users },
     ],
   },
   {
-    heading: 'Forms & scoring',
+    heading: '3 · Run the year',
     items: [
-      {
-        to: '/admin/profiles',
-        label: 'Scoring profiles',
-        icon: SlidersHorizontal,
-      },
-      { to: '/admin/forms', label: 'Reporting forms', icon: FileText },
-      { to: '/admin/risk-scale', label: 'Risk rating scale', icon: Ruler },
-    ],
-  },
-  {
-    heading: 'Publication',
-    items: [{ to: '/admin/annual', label: 'Annual evaluation', icon: Award }],
-  },
-  {
-    heading: 'Operations',
-    items: [
+      { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
+      { to: '/admin/notifications', label: 'Notifications', icon: Mail },
       {
         to: '/admin/simulation',
         label: 'Simulation clock',
         icon: CalendarClock,
       },
-      { to: '/admin/reviews', label: 'Reviews', icon: ClipboardCheck },
-      { to: '/admin/notifications', label: 'Notifications', icon: Mail },
-      { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
     ],
   },
-] as const satisfies readonly { heading: string; items: readonly NavItem[] }[];
+  {
+    heading: '4 · Publish',
+    items: [
+      { to: '/admin/report-identity', label: 'Report identity', icon: Stamp },
+      { to: '/admin/annual', label: 'Annual evaluation', icon: Award },
+    ],
+  },
+  {
+    heading: 'Accountability',
+    items: [{ to: '/admin/audit', label: 'Audit log', icon: ScrollText }],
+  },
+] as const satisfies readonly NavSection[];
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div
       data-surface="dark"
-      className="flex min-h-full flex-col gap-6 bg-primary p-4 text-white"
+      className="flex h-full min-h-0 flex-col bg-primary text-white"
     >
-      <Link
+      <RailBrand
         to="/admin"
-        activeOptions={{ exact: true }}
-        onClick={onNavigate}
-        aria-label="Administration console"
-      >
-        <Brand tone="dark" />
-      </Link>
-      <nav aria-label="Administration" className="grid gap-5">
-        {sections.map((section) => (
-          <div key={section.heading}>
-            <p className="px-3 text-xs font-bold tracking-wide text-white uppercase">
-              {section.heading}
-            </p>
-            <div className="mt-2">
-              <NavList
-                items={section.items}
-                tone="dark"
-                onNavigate={onNavigate}
-              />
-            </div>
-          </div>
-        ))}
-      </nav>
+        label="Administration console"
+        tone="dark"
+        onNavigate={onNavigate}
+      />
+      <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+        label="Administration"
+        sections={sections}
+        tone="dark"
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }
@@ -131,13 +141,14 @@ export function AdminLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto bg-primary desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden bg-primary desktop:block"
         >
           <AdminSidebar />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
@@ -156,7 +167,7 @@ export function AdminLayout() {
                 <SheetContent
                   side="left"
                   data-surface="dark"
-                  className="w-72 border-0 bg-primary p-0 text-white"
+                  className="w-72 overflow-hidden border-0 bg-primary p-0 text-white"
                 >
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SheetDescription className="sr-only">

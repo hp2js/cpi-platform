@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { calendarDateSchema, instantSchema } from './common.js';
+import { calendarDateSchema, instantSchema, roleSchema } from './common.js';
 
 /** Response types the constrained editor supports (FR03). No free-form executable rules. */
 export const questionTypeSchema = z.enum([
@@ -163,6 +163,60 @@ export const formValidationSchema = z.object({
   issues: z.array(formIssueSchema),
 });
 export type FormValidation = z.infer<typeof formValidationSchema>;
+
+/** The editable part of a draft, checked before it is saved (`POST /api/forms/:id/check`). */
+export const formCheckRequestSchema = formVersionSchema.pick({
+  title: true,
+  periodIds: true,
+  sections: true,
+});
+export type FormCheckRequest = z.infer<typeof formCheckRequestSchema>;
+
+/**
+ * What publishing a draft would do to one period: move it from its current version, give it
+ * its first version, leave it on the version it has, or (blocked) try to move a period that has
+ * started reporting.
+ */
+export const formPeriodImpactSchema = z.object({
+  periodId: z.string(),
+  label: z.string(),
+  outcome: z.enum(['moves', 'assigned', 'keeps', 'locked']),
+  currentVersion: z.number().int().positive().nullable(),
+  nextVersion: z.number().int().positive().nullable(),
+});
+export type FormPeriodImpact = z.infer<typeof formPeriodImpactSchema>;
+
+/** The publication impact preview (FR03): periods, institutions and who is told. */
+export const formImpactSchema = z.object({
+  periods: z.array(formPeriodImpactSchema),
+  /** Institutions with a reporting obligation in a period that moves to, or is given, this version. */
+  institutions: z.number().int().nonnegative(),
+  /** Active users notified on publication, per role. */
+  recipients: z.array(
+    z.object({ role: roleSchema, count: z.number().int().nonnegative() }),
+  ),
+  /** The first publication locks the cycle's scoring profile (PRD §7.1). */
+  locksProfile: z.boolean(),
+});
+export type FormImpact = z.infer<typeof formImpactSchema>;
+
+/** Live publication checks for a draft as edited, with its changes and impact. */
+export const formCheckSchema = formValidationSchema.extend({
+  changes: z.array(formChangeSchema),
+  impact: formImpactSchema,
+});
+export type FormCheck = z.infer<typeof formCheckSchema>;
+
+/**
+ * Whether a new version can be started now (`GET /api/forms/creation`). A version needs at
+ * least one period that has not started reporting; `reason` explains a refusal.
+ */
+export const formCreationSchema = z.object({
+  allowed: z.boolean(),
+  reason: z.string().nullable(),
+  assignablePeriods: z.array(z.object({ id: z.string(), label: z.string() })),
+});
+export type FormCreation = z.infer<typeof formCreationSchema>;
 
 /** Discarding an unpublished draft version needs a reason, kept in the audit log. */
 export const formDiscardSchema = z.object({

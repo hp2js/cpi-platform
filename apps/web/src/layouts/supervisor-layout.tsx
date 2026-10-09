@@ -25,11 +25,19 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import {
+  NavSections,
+  RailBrand,
+  SkipLink,
+  useMeasuredHeight,
+  type NavSection,
+} from './shared';
 
+// In the order a supervisor oversees the year: see the picture, follow institutions' reporting,
+// balance the officers' work, then confirm the year-end results. The rules are for reference.
 const sections = [
   {
-    heading: 'Oversight',
+    heading: 'Overview',
     items: [
       {
         to: '/supervisor',
@@ -37,6 +45,11 @@ const sections = [
         icon: LayoutDashboard,
         exact: true,
       },
+    ],
+  },
+  {
+    heading: 'Reporting',
+    items: [
       {
         to: '/supervisor/institutions',
         label: 'Institutions',
@@ -54,38 +67,32 @@ const sections = [
     ],
   },
   {
-    heading: 'Rules & results',
+    heading: 'Year end',
     items: [
-      { to: '/supervisor/rules', label: 'Rules in use', icon: Scale },
       { to: '/supervisor/annual', label: 'Annual readiness', icon: Award },
       { to: '/supervisor/reports', label: 'Reports', icon: FileText },
     ],
   },
-] as const satisfies readonly { heading: string; items: readonly NavItem[] }[];
+  {
+    heading: 'Reference',
+    items: [{ to: '/supervisor/rules', label: 'Rules in use', icon: Scale }],
+  },
+] as const satisfies readonly NavSection[];
 
 function SupervisorRail({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 p-4">
-      <Link
+    <div className="flex h-full min-h-0 flex-col">
+      <RailBrand
         to="/supervisor"
-        activeOptions={{ exact: true }}
-        onClick={onNavigate}
-        aria-label="Supervisor overview"
-      >
-        <Brand />
-      </Link>
-      <nav aria-label="Supervisor" className="grid gap-5">
-        {sections.map((section) => (
-          <div key={section.heading}>
-            <p className="px-3 text-xs font-bold tracking-wide text-base-dark uppercase">
-              {section.heading}
-            </p>
-            <div className="mt-2">
-              <NavList items={section.items} onNavigate={onNavigate} />
-            </div>
-          </div>
-        ))}
-      </nav>
+        label="Supervisor overview"
+        onNavigate={onNavigate}
+      />
+      <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+        label="Supervisor"
+        sections={sections}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }
@@ -109,13 +116,14 @@ export function SupervisorLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden border-r bg-white desktop:block"
         >
           <SupervisorRail />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
@@ -131,7 +139,7 @@ export function SupervisorLayout() {
                     <span className="sr-only">Open navigation</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-72 overflow-hidden p-0">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SheetDescription className="sr-only">
                     Supervisor sections

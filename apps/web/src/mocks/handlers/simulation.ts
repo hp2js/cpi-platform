@@ -4,6 +4,7 @@ import {
   assignmentChangeRequestSchema,
   type SimulationState,
 } from '@cpi/contracts';
+import { cycle as seededCycle } from '@cpi/contracts/fixtures';
 import { commit, getDb, resetDb } from '../db';
 import { advanceTo, boundaryState } from '../services/clock';
 import { audit } from '../services/events';
@@ -101,6 +102,14 @@ export const simulationHandlers = [
 
   http.post('/api/simulation/scenario', async () => {
     requireRole('administrator');
+    // The script replays the seeded year; after a new year opens it would not fit (HP2-100).
+    const active = getDb().cycle;
+    if (active.id !== seededCycle.id)
+      return apiError(
+        409,
+        `The scripted year replays ${seededCycle.label}, but ${active.label} is the active year. Start a new simulation run first.`,
+        'scenario_needs_new_run',
+      );
     try {
       const result = await runScenario();
       return HttpResponse.json(result);

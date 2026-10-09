@@ -51,7 +51,7 @@ pnpm format           # format source and docs
 pnpm format:check     # CI formatting check
 pnpm test:smoke       # running Docker stack: outages, recovery, DB persistence
 pnpm test:integration # running Docker services: API tests against a `_test` database
-pnpm test:e2e         # running dev stack: browser tests (Playwright)
+pnpm test:e2e         # running dev stack: browser tests (Playwright; core journeys also in Firefox and WebKit)
 pnpm test:e2e:prod    # running `docker:prod` stack: adds web-server checks
 pnpm docker:up        # rebuild and start the development stack
 pnpm docker:dev       # development stack with automatic rebuilds
@@ -138,10 +138,14 @@ docs                     Contributor guides
 - **Native dependency builds are allowlisted** in `pnpm-workspace.yaml`.
 - **CI mirrors local checks.** On failure, Compose logs and Playwright traces are uploaded as the `failure-diagnostics` artifact.
 
+## Supported browsers
+
+The current versions of Chrome, Edge, Firefox and Safari, on desktop and on phones (Safari on iPhone, Chrome on Android), at widths down to 390 px. Every journey is tested automatically in Chromium; the core journeys (sign-in and demonstration accounts, draft, upload and submit, officer review and the file viewer, clarification, annual results with print and download, and form publishing) also run in Firefox and WebKit, Safari's engine. Printing to PDF from the test suite is Chromium-only; other engines check the print layout.
+
 ## Troubleshooting
 
 - **Engine mismatch:** run `nvm use`.
-- **Browsers missing for e2e:** run `pnpm exec playwright install chromium`.
+- **Browsers missing for e2e:** run `pnpm exec playwright install chromium firefox webkit`. Run one engine with `pnpm test:e2e --project=chromium`.
 - **Port occupied:** check `docker compose ps` and other local processes, and stop only the conflicting service you own. Ports are fixed in the Compose and Vite configuration.
 - **Readiness fails (503):** readiness requires PostgreSQL, Redis and the configured S3 bucket; liveness only checks that the API process responds. Inspect `docker compose logs api postgres redis minio minio-init`. The API logs `dependency.failure` events with a sanitized error code. Every API response carries an `X-Request-ID` that matches its log entry.
 - **Changes not reflected in Docker:** rerun `pnpm docker:up`.

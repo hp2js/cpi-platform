@@ -19,6 +19,16 @@ export const failedCheckLabels: Record<BaselineCheck, string> = {
 
 export const checkKeys = Object.keys(checkLabels) as BaselineCheck[];
 
+/** The checks with their labels, in order, for the approve and return forms. */
+export const checkItems = Object.entries(checkLabels) as [
+  BaselineCheck,
+  string,
+][];
+export const failedCheckItems = Object.entries(failedCheckLabels) as [
+  BaselineCheck,
+  string,
+][];
+
 export function latestBaselines(plan: Plan) {
   const byPeriod = new Map<string, Plan['baselines'][number]>();
   for (const baseline of plan.baselines) {

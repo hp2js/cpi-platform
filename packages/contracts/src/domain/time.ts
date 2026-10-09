@@ -31,3 +31,65 @@ export function responseDueAt(
     shiftDays(localDate(start), counting.clarificationDays, counting),
   );
 }
+
+/** Whole elapsed days between two instants, never negative. */
+export function wholeDays(from: string, to: string) {
+  return Math.max(
+    0,
+    Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000),
+  );
+}
+
+/**
+ * Review queue timing (HP2-48), shared by the API and the mock. Open work waits on the officer
+ * from receipt or the latest reopening, or on the institution while a clarification is open;
+ * finalized work does not wait, and its case age stops at finalization.
+ */
+export function queueTiming(input: {
+  receivedAt: string;
+  firstSubmittedAt: string;
+  finalizedAt: string | null;
+  /** The latest reopening of this revision, if any. */
+  reopenedAt: string | null;
+  /** When the open clarification on this revision was requested, if one is open. */
+  clarificationRequestedAt: string | null;
+  now: string;
+}) {
+  const { finalizedAt, now } = input;
+  if (finalizedAt)
+    return {
+      waiting: null,
+      caseDays: wholeDays(input.firstSubmittedAt, finalizedAt),
+    };
+  const officerSince =
+    input.reopenedAt &&
+    Date.parse(input.reopenedAt) > Date.parse(input.receivedAt)
+      ? input.reopenedAt
+      : input.receivedAt;
+  const waiting = input.clarificationRequestedAt
+    ? {
+        on: 'institution' as const,
+        since: input.clarificationRequestedAt,
+        days: wholeDays(input.clarificationRequestedAt, now),
+      }
+    : {
+        on: 'officer' as const,
+        since: officerSince,
+        days: wholeDays(officerSince, now),
+      };
+  return { waiting, caseDays: wholeDays(input.firstSubmittedAt, now) };
+}
+
+/**
+ * Where a quarter's reporting stands at `now` (HP2-55): it opens once the quarter has ended
+ * (end of its last day, EAT) and is due once the submission deadline has passed.
+ */
+export function quarterReportingStatus(
+  period: { endsOn: string; submissionDeadline: string },
+  now: string,
+): 'not_open' | 'open' | 'due' {
+  const at = Date.parse(now);
+  if (Date.parse(period.submissionDeadline) < at) return 'due';
+  if (Date.parse(`${period.endsOn}T23:59:59+03:00`) < at) return 'open';
+  return 'not_open';
+}

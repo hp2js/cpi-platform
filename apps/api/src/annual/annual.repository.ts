@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DB, type Database, type Db } from '../database/db';
 import {
+  archivedPublications,
+  closedYears,
   closures,
   corrections,
   extensions,
@@ -17,6 +19,19 @@ type NewClosure = typeof closures.$inferInsert;
 @Injectable()
 export class AnnualRepository {
   constructor(@Inject(DB) private readonly db: Database) {}
+
+  /** A closed year's release (HP2-100), with the year's name. */
+  async archived(id: string, db: Db = this.db) {
+    const [row] = await db
+      .select({
+        publication: archivedPublications,
+        yearLabel: closedYears.label,
+      })
+      .from(archivedPublications)
+      .innerJoin(closedYears, eq(closedYears.id, archivedPublications.yearId))
+      .where(eq(archivedPublications.id, id));
+    return row;
+  }
 
   /** Records a release; the earlier one stays accessible as superseded (§7.4, AT20). */
   async publish(

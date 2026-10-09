@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { cycle as seededCycle } from '@cpi/contracts/fixtures';
 import {
   advanceRequestSchema,
   type ScenarioResult,
@@ -101,6 +102,14 @@ export class SimulationService {
   }
 
   async scenario(): Promise<ScenarioResult> {
+    // The script replays the seeded year; after a new year opens it would not fit (HP2-100).
+    const { cycle } = await currentState(this.db);
+    if (cycle.id !== seededCycle.id)
+      throw new ApiError(
+        409,
+        `The scripted year replays ${seededCycle.label}, but ${cycle.label} is the active year. Start a new simulation run first.`,
+        'scenario_needs_new_run',
+      );
     try {
       return await runScenario(
         this.db,

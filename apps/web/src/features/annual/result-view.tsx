@@ -53,7 +53,8 @@ function foundationResult(score: Evaluation['foundations'][number]['score']) {
         : `Prerequisite not met: ${score.fraction.numerator} of ${score.fraction.denominator} checks (no points)`
       : 'Prerequisite: pending review';
   return score.status === 'calculated'
-    ? `${score.points} / ${score.maxPoints}`
+    ? // Non-breaking spaces keep "10.00 / 10" on one line when the column is narrow.
+      `${score.points}\u00a0/\u00a0${score.maxPoints}`
     : `Pending (max ${score.maxPoints})`;
 }
 
@@ -62,16 +63,19 @@ export function AnnualResultView({
   evaluation,
   profileName,
   simulation,
+  methodNote = true,
 }: {
   evaluation: Evaluation;
   profileName: string;
   simulation: boolean;
+  /** Off where the method is stated once for many results (the consolidated report). */
+  methodNote?: boolean;
 }) {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6 print:gap-3">
       <section
         aria-labelledby={`total-${evaluation.institutionId}`}
-        className="rounded-lg border bg-white p-5"
+        className="rounded-lg border bg-white p-5 print:p-3"
       >
         <h3 id={`total-${evaluation.institutionId}`} className="font-bold">
           Annual result
@@ -100,13 +104,15 @@ export function AnnualResultView({
             </ul>
           </div>
         )}
-        <p className="mt-3 text-xs text-base-dark">
-          {profileName}
-          {simulation && ' · simulation profile, not official EACC scoring'}.
-          Late reporting is shown separately; no late penalty is applied in this
-          demonstration. Scores measure performance against each institution’s
-          own accepted plan, not equal prevention impact.
-        </p>
+        {methodNote && (
+          <p className="mt-3 text-xs text-base-dark">
+            {profileName}
+            {simulation && ' · simulation profile, not official EACC scoring'}.
+            Late reporting is shown separately; no late penalty is applied in
+            this demonstration. Scores measure performance against each
+            institution’s own accepted plan, not equal prevention impact.
+          </p>
+        )}
       </section>
 
       <div className="overflow-x-auto rounded-lg border bg-white">

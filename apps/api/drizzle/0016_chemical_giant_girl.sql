@@ -1,0 +1,1 @@
+ALTER TABLE "cycles" ADD COLUMN "opened_at" timestamp with time zone;

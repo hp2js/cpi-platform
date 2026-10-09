@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FlaskConical, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppRouter } from '@/app/router';
+import { OPEN_DEV_CONTROLS } from '@/components/account-menu';
 import { Button } from '@/components/ui/button';
 import { awaitBeforeRequest } from '@/lib/api';
 import {
@@ -33,6 +34,12 @@ export function DevToolbar({
   const name = live ? 'Dev controls' : 'Mock API';
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // On phones the toolbar opens from the account menu instead of floating over content.
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_DEV_CONTROLS, show);
+    return () => window.removeEventListener(OPEN_DEV_CONTROLS, show);
+  }, []);
   const [latency, setLatency] = useState<LatencyMode>(getLatencyMode);
   const [busy, setBusy] = useState(false);
 
@@ -93,7 +100,7 @@ export function DevToolbar({
         type="button"
         variant="outline"
         size="sm"
-        className="fixed right-3 bottom-24 z-50 shadow-2 tablet:bottom-3"
+        className="fixed right-3 bottom-3 z-50 hidden shadow-2 tablet:inline-flex"
         onClick={() => setOpen(true)}
       >
         <FlaskConical aria-hidden="true" />

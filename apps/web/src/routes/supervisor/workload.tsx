@@ -12,9 +12,13 @@ import {
 } from '@/components/ui/table';
 import { FinalizedComparison } from '@/features/oversight/comparison';
 import { oversightQuery } from '@/features/oversight/queries';
+import { planningWorkQuery } from '@/features/planning/queries';
 
 export function WorkloadPage() {
   const oversight = useQuery(oversightQuery({}));
+  const work = useQuery(planningWorkQuery);
+  const planWork = (officerId: string) =>
+    work.data?.byOfficer.find((row) => row.officerId === officerId);
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -30,7 +34,7 @@ export function WorkloadPage() {
                 Officer workload
               </h2>
               <div className="overflow-x-auto rounded-lg border bg-white">
-                <Table className="min-w-[44rem]">
+                <Table className="min-w-[52rem]">
                   <TableCaption className="sr-only">
                     Open and completed review work per officer
                   </TableCaption>
@@ -38,7 +42,12 @@ export function WorkloadPage() {
                     <TableRow>
                       <TableHead scope="col">Officer</TableHead>
                       <TableHead scope="col">Institutions</TableHead>
-                      <TableHead scope="col">Awaiting officer</TableHead>
+                      <TableHead scope="col">
+                        Submissions awaiting officer
+                      </TableHead>
+                      <TableHead scope="col">
+                        Plans and documents awaiting officer
+                      </TableHead>
                       <TableHead scope="col">Awaiting institution</TableHead>
                       <TableHead scope="col">Oldest waiting review</TableHead>
                       <TableHead scope="col">Finalized</TableHead>
@@ -53,6 +62,16 @@ export function WorkloadPage() {
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {row.awaitingOfficer}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {work.data === undefined
+                            ? '…'
+                            : (planWork(row.officerId)?.items ?? 0)}
+                          {(planWork(row.officerId)?.flagged ?? 0) > 0 && (
+                            <span className="block text-xs font-bold text-error-dark">
+                              {planWork(row.officerId)!.flagged} urgent
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {row.awaitingInstitution}
