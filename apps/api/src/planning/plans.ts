@@ -152,7 +152,11 @@ export async function proposalsFor(
       return {
         periodId: period.id,
         periodLabel: period.label,
-        dueAt: proposalDueAt(period, data.cycle.dayCounting),
+        dueAt: proposalDueAt(
+          period,
+          data.cycle.dayCounting,
+          data.cycle.openedAt,
+        ),
         startsAt: periodStartsAt(period),
         status: baseline?.status ?? 'not_proposed',
         locked: await periodLocked(

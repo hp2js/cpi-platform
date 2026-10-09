@@ -10,7 +10,6 @@ import {
 } from '@/components/list-controls';
 import { ObligationStatus, flagLabel } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -29,6 +28,8 @@ import {
 } from '@/features/directory/queries';
 import { oversightQuery } from '@/features/oversight/queries';
 import { Trends } from '@/features/oversight/trends';
+import { InstitutionPublishedResults } from '@/features/annual/published-results';
+import { BaselineStatus } from '@/features/planning/baseline-view';
 import { planQuery } from '@/features/planning/queries';
 import { reviewQueueQuery } from '@/features/review/queries';
 import {
@@ -269,19 +270,7 @@ function Baselines({ institutionId }: { institutionId: string }) {
                   className="grid gap-1 rounded-lg border bg-white p-3 text-sm"
                 >
                   <span className="font-bold">{baseline.periodLabel}</span>
-                  <span>
-                    <Badge
-                      variant={
-                        baseline.status === 'approved' ? 'outline' : 'secondary'
-                      }
-                    >
-                      {baseline.status === 'approved'
-                        ? 'Approved'
-                        : baseline.status === 'returned'
-                          ? 'Returned'
-                          : 'Awaiting approval'}
-                    </Badge>
-                  </span>
+                  <BaselineStatus baseline={baseline} />
                   <span className="text-base-dark">
                     {baseline.milestones.length} milestones · version{' '}
                     {baseline.version}
@@ -377,6 +366,7 @@ export function SupervisorInstitutionPage() {
             )}
           </QueryView>
           <Baselines institutionId={data.id} />
+          <InstitutionPublishedResults institutionId={data.id} />
         </div>
       )}
     </QueryView>

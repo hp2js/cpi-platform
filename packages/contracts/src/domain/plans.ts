@@ -4,8 +4,12 @@ import type {
   DayCounting,
   Milestone,
   Period,
+  Foundations,
+  Plan,
   PlanImportPreview,
   PlannedMilestone,
+  PlanningWork,
+  PlanningWorkItem,
 } from '../index.js';
 import {
   activityRequestSchema,
@@ -18,16 +22,28 @@ import {
 } from '../draft/planning.js';
 import { committee, committeeCodes } from '../fixtures/baselines.js';
 import { parseCsv } from './csv.js';
-import { endOfDay, shiftDays } from './days.js';
+import { endOfDay, localDate, shiftDays } from './days.js';
 
 /*
  * Institution plan rules shared by the API and the development mock (FR04): when proposals
  * are due, what a proposal holds, and the plan CSV import.
  */
 
-/** Proposals are due the configured number of counted days before the quarter starts. */
-export function proposalDueAt(period: Period, rule: DayCounting) {
-  return endOfDay(shiftDays(period.startsOn, -rule.proposalLeadDays, rule));
+/**
+ * Proposals are due the configured number of counted days before the quarter starts. In a year
+ * opened after that date (HP2-100), nobody could have proposed in time, so the institution gets
+ * the same lead time from the day the year opened instead of starting late.
+ */
+export function proposalDueAt(
+  period: Period,
+  rule: DayCounting,
+  openedAt: string | null = null,
+) {
+  const due = endOfDay(
+    shiftDays(period.startsOn, -rule.proposalLeadDays, rule),
+  );
+  if (!openedAt || Date.parse(due) >= Date.parse(openedAt)) return due;
+  return endOfDay(shiftDays(localDate(openedAt), rule.proposalLeadDays, rule));
 }
 
 export const periodStartsAt = (period: Period) =>
@@ -323,5 +339,132 @@ export function previewPlanImport(
       invalid,
     },
     rows,
+  };
+}
+
+/* Plan work waiting on an officer (HP2-52) */
+
+type WorkOwner = Pick<
+  PlanningWorkItem,
+  'institutionId' | 'institutionName' | 'officerId' | 'officerName'
+>;
+
+const shortDate = (instant: string) =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Africa/Nairobi',
+  }).format(new Date(instant));
+
+/**
+ * What an institution's plan and foundation documents wait on from its officer, as of
+ * `now`. Shared by the API and the mock so the work views agree (HP2-52).
+ */
+export function planningWorkFor(
+  owner: WorkOwner,
+  plan: Plan,
+  foundations: Foundations,
+  now: string,
+): PlanningWorkItem[] {
+  const at = Date.parse(now);
+  const items: PlanningWorkItem[] = [];
+  const latest = (periodId: string) =>
+    plan.baselines
+      .filter((baseline) => baseline.periodId === periodId)
+      .sort((a, b) => b.version - a.version)[0];
+  for (const proposal of plan.proposals) {
+    const baseline = latest(proposal.periodId);
+    if (proposal.status === 'proposed' && baseline?.status === 'proposed') {
+      const started = at >= Date.parse(proposal.startsAt);
+      const late = at > Date.parse(proposal.dueAt);
+      items.push({
+        ...owner,
+        id: `proposal:${baseline.id}`,
+        kind: 'proposal',
+        title: `${proposal.periodLabel} baseline proposal to approve or return`,
+        tab: 'baselines',
+        dueAt: proposal.dueAt,
+        flag: started
+          ? `${proposal.periodLabel} started on ${shortDate(proposal.startsAt)} without an approved baseline`
+          : late
+            ? `Proposal deadline ${shortDate(proposal.dueAt)} has passed`
+            : null,
+      });
+    }
+  }
+  for (const baseline of plan.baselines)
+    if (baseline.historicalSeed && !baseline.historicalSeed.confirmedAt)
+      items.push({
+        ...owner,
+        id: `seed:${baseline.id}`,
+        kind: 'seed_confirmation',
+        title: `${baseline.periodLabel} seeded baseline to confirm against the approved plan`,
+        tab: 'baselines',
+        dueAt: null,
+        flag: baseline.locked
+          ? `${baseline.periodLabel} reporting has opened; its reviews cannot be finalized until this is confirmed`
+          : null,
+      });
+  for (const amendment of plan.amendments)
+    if (amendment.status === 'pending')
+      items.push({
+        ...owner,
+        id: `amendment:${amendment.id}`,
+        kind: 'amendment',
+        title: `Amendment to ${amendment.milestoneCode} to confirm or decline`,
+        tab: 'amendments',
+        dueAt: null,
+        flag: null,
+      });
+  for (const indicator of foundations.indicators) {
+    const active = indicator.versions.find(
+      (version) => version.status === 'active',
+    );
+    if (active && indicator.review?.versionId !== active.id)
+      items.push({
+        ...owner,
+        id: `foundation:${active.id}`,
+        kind: 'foundation',
+        title: `${indicator.label} version ${active.version} to review`,
+        tab: 'foundations',
+        dueAt: foundations.deadline,
+        flag: null,
+      });
+  }
+  return items;
+}
+
+/** Flagged first, then by due date (undated last), then by institution. */
+export function planningWorkSummary(items: PlanningWorkItem[]): PlanningWork {
+  const sorted = [...items].sort(
+    (a, b) =>
+      Number(b.flag !== null) - Number(a.flag !== null) ||
+      (a.dueAt ? Date.parse(a.dueAt) : Infinity) -
+        (b.dueAt ? Date.parse(b.dueAt) : Infinity) ||
+      a.institutionId.localeCompare(b.institutionId),
+  );
+  const officers = new Map<string, PlanningWork['byOfficer'][number]>();
+  for (const item of sorted) {
+    if (!item.officerId) continue;
+    const row = officers.get(item.officerId) ?? {
+      officerId: item.officerId,
+      officerName: item.officerName ?? item.officerId,
+      items: 0,
+      flagged: 0,
+    };
+    row.items += 1;
+    if (item.flag) row.flagged += 1;
+    officers.set(item.officerId, row);
+  }
+  return {
+    items: sorted,
+    totals: {
+      items: sorted.length,
+      flagged: sorted.filter((item) => item.flag).length,
+    },
+    byOfficer: [...officers.values()].sort((a, b) =>
+      a.officerName.localeCompare(b.officerName),
+    ),
   };
 }

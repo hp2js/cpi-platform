@@ -1,14 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
-import {
-  Award,
-  Bell,
-  Building2,
-  FileText,
-  FolderOpen,
-  House,
-} from 'lucide-react';
+import { Award, Building2, FileText, FolderOpen, House } from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
 import { Brand } from '@/components/brand';
 import { SimulationBanner } from '@/components/simulation-banner';
@@ -24,43 +17,50 @@ import { planQuery } from '@/features/planning/queries';
 import { useSession } from '@/features/session/use-session';
 import {
   AttentionBadge,
-  NavList,
+  NavSections,
+  RailBrand,
   SkipLink,
   useMeasuredHeight,
   type NavItem,
 } from './shared';
 import { formatCalendarDate } from '@/lib/dates';
 
-// Four sections by task: the same full labels fit the phone bar, so the visible label is the
-// accessible name everywhere (WCAG 2.5.3).
-const nav = [
-  { to: '/institution', label: 'Home', icon: House, exact: true },
-  {
-    to: '/institution/reports',
-    label: 'Reports',
-    icon: FileText,
-    exact: false,
-  },
-  {
-    to: '/institution/plan',
-    label: 'Plan & documents',
-    icon: FolderOpen,
-    exact: false,
-  },
-  { to: '/institution/results', label: 'Results', icon: Award, exact: false },
-] as const satisfies readonly NavItem[];
+const home = {
+  to: '/institution',
+  label: 'Home',
+  icon: House,
+  exact: true,
+} as const satisfies NavItem;
+const plan = {
+  to: '/institution/plan',
+  label: 'Plan & documents',
+  icon: FolderOpen,
+  exact: false,
+} as const satisfies NavItem;
+const reports = {
+  to: '/institution/reports',
+  label: 'Reports',
+  icon: FileText,
+  exact: false,
+} as const satisfies NavItem;
+const results = {
+  to: '/institution/results',
+  label: 'Results',
+  icon: Award,
+  exact: false,
+} as const satisfies NavItem;
+const profile = {
+  to: '/institution/profile',
+  label: 'Our institution',
+  icon: Building2,
+  exact: false,
+} as const satisfies NavItem;
 
-// The desktop rail adds the destinations the phone bar reaches from the header.
-const railNav = [
-  ...nav,
-  {
-    to: '/institution/profile',
-    label: 'Our institution',
-    icon: Building2,
-    exact: false,
-  },
-  { to: '/institution/inbox', label: 'Inbox', icon: Bell, exact: false },
-] as const satisfies readonly NavItem[];
+// Phones and tablets: the four sections in the order of the year (the plan before the first
+// report, results at the end). The same full labels fit the phone bar, so the visible label is
+// the accessible name everywhere (WCAG 2.5.3). The inbox and the institution page are in the
+// header and account menu.
+const nav = [home, plan, reports, results] as const;
 
 /** How many things in each section need the focal person now. */
 function useAttention(institutionId: string) {
@@ -95,20 +95,17 @@ function useAttention(institutionId: string) {
 function ReportingFor({ institutionId }: { institutionId: string }) {
   const institution = useQuery(institutionQuery(institutionId));
   return (
-    <>
+    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
       <span className="text-xs font-bold tracking-wide text-base-dark uppercase">
         Reporting for
-      </span>{' '}
-      <span className="font-bold">
+      </span>
+      <span className="min-w-0 font-bold">
         {institution.data?.name ?? institutionId}
       </span>
       {institution.data && (
-        <>
-          {' '}
-          <span className="text-sm text-base-dark">({institutionId})</span>
-        </>
+        <span className="text-sm text-base-dark">{institutionId}</span>
       )}
-    </>
+    </span>
   );
 }
 
@@ -120,14 +117,12 @@ function QuarterList({ institutionId }: { institutionId: string }) {
   const cycle = useQuery(cycleQuery);
   const obligations = useQuery(obligationsQuery(institutionId));
   return (
-    <section aria-labelledby="quarters-heading">
-      <h2
-        id="quarters-heading"
-        className="px-3 text-xs font-bold tracking-wide text-base-dark uppercase"
-      >
-        {cycle.data ? `${cycle.data.label} quarters` : 'Quarters'}
-      </h2>
-      <ul className="mt-2 grid gap-1 text-sm">
+    // Under Reports: the year's quarters, each one report.
+    <section
+      aria-label={cycle.data ? `${cycle.data.label} quarters` : 'Quarters'}
+      className="mt-1"
+    >
+      <ul className="ml-5 grid gap-1 border-l text-sm">
         {cycle.data?.periods.map((period) => {
           const obligation = obligations.data?.find(
             (item) => item.periodId === period.id,
@@ -147,7 +142,7 @@ function QuarterList({ institutionId }: { institutionId: string }) {
               <Link
                 to="/institution/reports/$periodId"
                 params={{ periodId: period.id }}
-                className="block min-h-touch border-l-4 border-transparent px-3 py-2 text-ink no-underline hover:bg-base-lightest data-[status=active]:border-primary data-[status=active]:text-primary"
+                className="-ml-px block min-h-touch border-l-4 border-transparent px-3 py-2 text-ink no-underline hover:bg-base-lightest data-[status=active]:border-primary data-[status=active]:text-primary"
               >
                 <span className="block font-bold">
                   {period.label}
@@ -172,7 +167,7 @@ function QuarterList({ institutionId }: { institutionId: string }) {
   );
 }
 
-/** The desktop rail: wordmark, whose reports these are, sections and the year's quarters. */
+/** The desktop rail: the wordmark, then the focal person's work in the order of the year. */
 function InstitutionRail({
   institutionId,
   counts,
@@ -181,21 +176,23 @@ function InstitutionRail({
   counts: Partial<Record<string, number>>;
 }) {
   return (
-    <div className="flex min-h-full flex-col gap-6 p-4">
-      <Link
-        to="/institution"
-        activeOptions={{ exact: true }}
-        aria-label="Institution home"
-      >
-        <Brand />
-      </Link>
-      <p className="px-3 text-sm">
-        <ReportingFor institutionId={institutionId} />
-      </p>
-      <nav aria-label="Institution">
-        <NavList items={railNav} counts={counts} />
-      </nav>
-      <QuarterList institutionId={institutionId} />
+    <div className="flex h-full min-h-0 flex-col">
+      <RailBrand to="/institution" label="Institution home" />
+      <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+        label="Institution"
+        counts={counts}
+        sections={[
+          { heading: 'Overview', items: [home] },
+          { heading: '1 · Prepare the year', items: [plan, profile] },
+          {
+            heading: '2 · Report each quarter',
+            items: [reports],
+            extra: <QuarterList institutionId={institutionId} />,
+          },
+          { heading: '3 · Year end', items: [results] },
+        ]}
+      />
     </div>
   );
 }
@@ -220,17 +217,18 @@ export function InstitutionLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden border-r bg-white desktop:block"
         >
           <InstitutionRail institutionId={institutionId} counts={attention} />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 border-b bg-white"
           >
-            <div className="flex items-center justify-between gap-4 px-4 py-2 tablet:px-6 desktop:justify-end desktop:px-8">
+            <div className="flex items-center justify-between gap-4 px-4 py-2 tablet:px-6 desktop:px-8">
               <Link
                 to="/institution"
                 activeOptions={{ exact: true }}
@@ -239,7 +237,10 @@ export function InstitutionLayout() {
               >
                 <Brand />
               </Link>
-              <div className="flex items-center gap-1">
+              <p className="hidden min-w-0 desktop:block">
+                <ReportingFor institutionId={institutionId} />
+              </p>
+              <div className="flex shrink-0 items-center gap-1">
                 <InboxLink to="/institution/inbox" />
                 <AccountMenu session={session} />
               </div>
@@ -270,7 +271,7 @@ export function InstitutionLayout() {
           <main
             id="main"
             tabIndex={-1}
-            className="mx-auto w-full max-w-desktop flex-1 px-4 py-6 outline-none tablet:px-6 desktop:mx-0 desktop:max-w-desktop-lg desktop:px-8"
+            className="w-full min-w-0 flex-1 px-4 py-6 outline-none tablet:px-6 desktop:px-8"
           >
             <Outlet />
           </main>

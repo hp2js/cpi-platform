@@ -7,12 +7,15 @@ import {
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { request } from '@/lib/api';
+import { fetchFile, request } from '@/lib/api';
 
 export const annualKeys = {
   overview: ['annual'] as const,
   report: ['annual', 'report'] as const,
   results: ['results'] as const,
+  /** Under `annual`, so a publication refreshes it with the overview. */
+  institution: (institutionId: string) =>
+    ['annual', 'institution', institutionId] as const,
 };
 
 export const annualQuery = queryOptions({
@@ -30,6 +33,18 @@ export const resultsQuery = queryOptions({
   queryFn: ({ signal }) =>
     request('/api/results', institutionResultsSchema, { signal }),
 });
+
+/** Every published version of one institution's result, for staff in scope (HP2-68). */
+export const institutionResultsQuery = (institutionId: string) =>
+  queryOptions({
+    queryKey: annualKeys.institution(institutionId),
+    queryFn: ({ signal }) =>
+      request(
+        `/api/institutions/${encodeURIComponent(institutionId)}/results`,
+        institutionResultsSchema,
+        { signal },
+      ),
+  });
 
 export const publishResults = (institutionIds: string[]) =>
   request('/api/annual/publish', annualOverviewSchema, {
@@ -79,3 +94,16 @@ export const recordExtension = (extension: ExtensionRequest) =>
     method: 'POST',
     json: extension,
   });
+
+/** Downloads a generated report document under the name the server gave it (HP2-64). */
+export async function downloadDocument(path: `/api/${string}`) {
+  const file = await fetchFile(path, {
+    headers: { Accept: 'application/pdf' },
+  });
+  const url = URL.createObjectURL(file.blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.fileName ?? 'cpi-annual-report.pdf';
+  link.click();
+  URL.revokeObjectURL(url);
+}

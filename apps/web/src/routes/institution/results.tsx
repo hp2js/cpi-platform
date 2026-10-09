@@ -4,11 +4,17 @@ import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
 import { downloadExport, resultsQuery } from '@/features/annual/queries';
-import { AnnualResultView } from '@/features/annual/result-view';
-import { formatDateTime } from '@/lib/dates';
+import { PublishedResults } from '@/features/annual/published-results';
+import { EarlierYears } from '@/features/years/earlier-years';
+import { cycleQuery, institutionQuery } from '@/features/directory/queries';
+import { useSession } from '@/features/session/use-session';
 
 export function ResultsPage() {
   const results = useQuery(resultsQuery);
+  const institutionId = useSession().user.institutionId ?? '';
+  // Whose result this is: the page names the institution, which a printout needs.
+  const institution = useQuery(institutionQuery(institutionId));
+  const cycle = useQuery(cycleQuery);
   const exportCsv = useMutation({
     mutationFn: () =>
       downloadExport('/api/results/export.csv', 'cpi-annual-result.csv'),
@@ -19,8 +25,14 @@ export function ResultsPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
+        eyebrow={
+          institution.data
+            ? `${institutionId} · ${institution.data.name}`
+            : institutionId
+        }
         title="Annual results"
         description="Your own published result and its explanation. Other institutions’ results and evidence are never shown here."
+        screenOnlyDescription
         actions={
           current && (
             <>
@@ -53,49 +65,10 @@ export function ResultsPage() {
               <p className="mt-1 text-sm text-base-dark">{data.message}</p>
             </section>
           ) : (
-            <div className="grid gap-8">
-              {data.results.map((result) => (
-                <section
-                  key={result.id}
-                  aria-labelledby={`result-${result.id}`}
-                  className="grid gap-4"
-                >
-                  <div>
-                    <h2
-                      id={`result-${result.id}`}
-                      className="text-lg font-bold"
-                    >
-                      Version {result.version}{' '}
-                      {result.status === 'current'
-                        ? '(current)'
-                        : '(superseded)'}
-                    </h2>
-                    <p className="text-sm text-base-dark">
-                      Published {formatDateTime(result.publishedAt)} by{' '}
-                      {result.publishedBy} · batch {result.batchId}
-                      {result.correctionReason &&
-                        ` · correction: ${result.correctionReason}`}
-                    </p>
-                  </div>
-                  {result.status === 'current' ? (
-                    <AnnualResultView
-                      evaluation={result.evaluation}
-                      profileName={result.profileName}
-                      simulation={result.simulation}
-                    />
-                  ) : (
-                    <p className="bg-base-lightest p-4 text-sm">
-                      Superseded result:{' '}
-                      {result.evaluation.total.status === 'calculated'
-                        ? `${result.evaluation.total.points} / 100`
-                        : 'not calculated'}
-                      . It remains on record; the current version above replaces
-                      it.
-                    </p>
-                  )}
-                </section>
-              ))}
-            </div>
+            <PublishedResults
+              results={data.results}
+              cycleLabel={cycle.data?.label ?? ''}
+            />
           )
         }
       </QueryView>
@@ -104,6 +77,7 @@ export function ResultsPage() {
           {exportCsv.error.message}
         </p>
       )}
+      <EarlierYears />
     </div>
   );
 }

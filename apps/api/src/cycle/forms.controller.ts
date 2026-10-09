@@ -8,7 +8,12 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import type { FormValidation, FormVersion } from '@cpi/contracts';
+import type {
+  FormCheck,
+  FormCreation,
+  FormValidation,
+  FormVersion,
+} from '@cpi/contracts';
 import { CurrentUser, Roles, type User } from '../auth/sessions';
 import { FormsService } from './forms.service';
 
@@ -25,6 +30,13 @@ export class FormsController {
     return this.forms.list(user);
   }
 
+  /** Whether a new version can be started now (FR03). Declared before `:formId`. */
+  @Get('creation')
+  @Roles('administrator')
+  creation(): Promise<FormCreation> {
+    return this.forms.creation();
+  }
+
   @Get(':formId')
   get(
     @CurrentUser() user: User,
@@ -37,6 +49,17 @@ export class FormsController {
   @Roles('administrator')
   validation(@Param('formId') id: string): Promise<FormValidation> {
     return this.forms.validation(id);
+  }
+
+  /** Checks a draft as edited, without saving it: issues, changes and publication impact. */
+  @Post(':formId/check')
+  @HttpCode(200)
+  @Roles('administrator')
+  check(
+    @Param('formId') id: string,
+    @Body() body: unknown,
+  ): Promise<FormCheck> {
+    return this.forms.check(id, body);
   }
 
   @Put(':formId')

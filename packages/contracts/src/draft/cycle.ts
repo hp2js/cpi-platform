@@ -63,5 +63,10 @@ export const cycleSchema = z.object({
   periods: z.array(periodSchema).length(4),
   dayCounting: dayCountingSchema,
   riskScale: riskScaleSchema,
+  /**
+   * When an administrator opened this year from the previous one (HP2-100); null for the year
+   * the platform was set up with. Deadlines that fell before it are moved after it.
+   */
+  openedAt: instantSchema.nullable(),
 });
 export type Cycle = z.infer<typeof cycleSchema>;

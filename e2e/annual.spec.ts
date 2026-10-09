@@ -89,24 +89,19 @@ test('scripted year, withheld results, batch publication and oversight (AT13–A
 
   // Supervisor metrics carry numerators and denominators; filters live in the URL.
   await as(page, 'supervisor', '/supervisor');
-  const coverage = page.getByRole('row', { name: /Submission coverage/ });
-  await expect(coverage.getByRole('cell').nth(0)).toHaveText('31');
-  await expect(coverage.getByRole('cell').nth(1)).toHaveText('32');
-  await expect(
+  // Each metric is shown once, as a card with its numerator and denominator (HP2-55).
+  const card = (label: string) =>
     page
-      .getByRole('row', { name: /Annual release coverage/ })
-      .getByRole('cell')
-      .nth(2),
-  ).toHaveText('100%');
+      .getByRole('region', { name: 'Coverage and review' })
+      .getByText(label, { exact: true })
+      .first() // the chart below repeats the label as a drawing
+      .locator('..');
+  await expect(card('Submission coverage')).toContainText('31 of 32');
+  await expect(card('Annual release coverage')).toContainText('100%');
   await page.getByRole('combobox', { name: 'Quarter', exact: true }).click();
   await page.getByRole('option', { name: 'Q3' }).click();
   await expect(page).toHaveURL(/periodId=FY2026-27-Q3/);
-  await expect(
-    page
-      .getByRole('row', { name: /Submission coverage/ })
-      .getByRole('cell')
-      .nth(0),
-  ).toHaveText('7');
+  await expect(card('Submission coverage')).toContainText('7 of 8');
   await page.reload();
   await expect(
     page.getByRole('combobox', { name: 'Quarter', exact: true }),
@@ -132,13 +127,11 @@ test('a published result is corrected only through a case and keeps its history 
     .getByRole('link')
     .click();
   const reviewUrl = page.url();
-  await page
-    .getByLabel('Reason for reopening')
-    .fill('Later evidence shows the Q4 exception review was not done.');
-  await page.getByRole('button', { name: 'Reopen with this reason' }).click();
+  // Told before writing a reason (HP2-51); the reopen form only appears once a case is open.
   await expect(
-    page.getByText(/An administrator must open a correction case/),
+    page.getByText(/An administrator must open a correction case for Q4/),
   ).toBeVisible();
+  await expect(page.getByLabel('Reason for reopening')).toHaveCount(0);
 
   await as(page, 'administrator', '/admin/annual');
   const demo8 = page.getByRole('listitem').filter({ hasText: 'DEMO-008' });
@@ -202,5 +195,33 @@ test('a published result is corrected only through a case and keeps its history 
   await expect(page.getByText('96.25').first()).toBeVisible();
   await expect(
     page.getByText(/correction: Later evidence shows/),
+  ).toBeVisible();
+
+  // The earlier version stays readable in full, with what the correction changed (HP2-68).
+  const changes = page.getByRole('region', {
+    name: 'What changed from version 1',
+  });
+  await expect(changes).toContainText(
+    'Annual result: 100.00 / 100 → 96.25 / 100',
+  );
+  await expect(changes).toContainText(/Q4: 15\.00 .* → 11\.25/);
+  await expect(
+    page.getByText(/^Superseded by version 2 on .*: Later evidence shows/),
+  ).toBeVisible();
+  await page.getByText('Read version 1 in full').click();
+  await expect(page.getByRole('region', { name: 'Report cover' })).toHaveCount(
+    2,
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download PDF of version 1' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('CPI-FY2026-27-DEMO-008-v1.pdf');
+
+  // Supervisors read every version on the institution's page.
+  await as(page, 'supervisor', '/supervisor/institutions/DEMO-008');
+  const published = page.getByRole('region', { name: 'Published results' });
+  await expect(
+    published.getByRole('heading', { name: 'Version 1 (superseded)' }),
   ).toBeVisible();
 });

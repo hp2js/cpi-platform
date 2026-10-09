@@ -126,7 +126,7 @@ function RowsField({
                 Remove row {index + 1}
               </Button>
             </div>
-            <div data-columns className="grid gap-3 tablet:grid-cols-2">
+            <div data-columns className="grid gap-3 @tablet:grid-cols-2">
               {columns.map((column) => {
                 const cellId = `${id}-r${index}-${column.id}`;
                 const cell = row[column.id] ?? null;
@@ -227,7 +227,7 @@ function RowsField({
         >
           Add a row
         </Button>
-        <p className="mt-1 text-xs text-base-dark">
+        <p className="mt-1 text-sm text-base-dark">
           {question.minRows
             ? `At least ${question.minRows} ${question.minRows === 1 ? 'row' : 'rows'}, `
             : ''}
@@ -254,7 +254,7 @@ function FieldShell({
   return (
     <div id={id} className="grid scroll-mt-28 gap-2">
       <div>
-        <div className="font-bold">
+        <div className="text-title font-bold">
           {label}
           {required === false && (
             <span className="ml-2 text-sm font-normal text-base-dark">
@@ -265,7 +265,7 @@ function FieldShell({
         {help && (
           <p
             id={`${id}-hint`}
-            className="mt-1 max-w-measure text-xs text-base-dark"
+            className="mt-1 max-w-measure text-sm text-base-dark"
           >
             {help}
           </p>
@@ -451,7 +451,7 @@ function UploadButton({
           {label}
         </Label>
         {!replaces && (
-          <span className="text-xs text-base-dark">
+          <span className="text-sm text-base-dark">
             PDF, DOCX, XLSX, JPEG or PNG · up to 20 MB. Submitted files may be
             read by AI to help officers review them; officers make every
             decision.
@@ -466,7 +466,7 @@ function UploadButton({
             max={1}
             aria-label={`Uploading ${status.name}`}
           />
-          <p aria-live="polite" className="text-xs text-base-dark">
+          <p aria-live="polite" className="text-sm text-base-dark">
             {status.progress >= 1
               ? `Saving ${status.name}…`
               : `Uploading ${status.name}… ${Math.round(status.progress * 100)}%`}
@@ -610,7 +610,7 @@ export function QuestionField({
                   return (
                     <li
                       key={item.id}
-                      className="grid gap-2 rounded-md border bg-white p-3 tablet:grid-cols-[1fr_auto] tablet:items-center"
+                      className="grid gap-2 rounded-md border bg-white p-3 @tablet:grid-cols-[1fr_auto] @tablet:items-center"
                     >
                       <span id={`${itemId}-label`}>{item.label}</span>
                       <YesNo
@@ -785,11 +785,13 @@ function TextArea({
     <form.Field name={name}>
       {(field) => (
         <div id={id} className="grid scroll-mt-28 gap-2">
-          <Label htmlFor={`${id}-input`}>{label}</Label>
+          <Label htmlFor={`${id}-input`} className="text-md font-bold">
+            {label}
+          </Label>
           {help && (
             <p
               id={`${id}-hint`}
-              className="max-w-measure text-xs text-base-dark"
+              className="max-w-measure text-sm text-base-dark"
             >
               {help}
             </p>
@@ -930,7 +932,7 @@ export function MilestoneCard({
       id={`milestone-${milestone.id}`}
       aria-labelledby={`${completedId}-title`}
       className={cn(
-        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 tablet:p-6',
+        'grid scroll-mt-28 gap-4 rounded-lg border border-base-lighter bg-white p-4 @tablet:p-6',
         questions.length > 0 && 'border-l-8 border-l-warning',
       )}
     >
@@ -947,7 +949,7 @@ export function MilestoneCard({
             <div key={question.question}>
               <p>{question.question}</p>
               {question.requestedEvidence && (
-                <p className="text-xs text-base-darker">
+                <p className="text-sm text-base-darker">
                   Requested: {question.requestedEvidence}
                 </p>
               )}
@@ -960,13 +962,10 @@ export function MilestoneCard({
           {milestone.code}
           {milestone.mandatory ? ' · Committee obligation' : ''}
         </p>
-        <h3
-          id={`${completedId}-title`}
-          className="mt-1 text-md leading-tight font-bold"
-        >
+        <h3 id={`${completedId}-title`} className="mt-1 text-title font-bold">
           {milestone.title}
         </h3>
-        <dl className="mt-2 grid gap-1 text-sm tablet:grid-cols-[auto_1fr] tablet:gap-x-3">
+        <dl className="mt-2 grid gap-1 text-sm @tablet:grid-cols-[auto_1fr] @tablet:gap-x-3">
           <dt className="text-base-dark">Activity</dt>
           <dd>{milestone.activity}</dd>
           <dt className="text-base-dark">Completion condition</dt>
@@ -976,7 +975,7 @@ export function MilestoneCard({
       <form.Field name={completedName}>
         {(field) => (
           <div id={completedId} className="grid scroll-mt-28 gap-2">
-            <p id={`${completedId}-label`} className="font-bold">
+            <p id={`${completedId}-label`} className="text-md font-bold">
               Was this milestone completed by the end of the quarter?
             </p>
             <YesNo

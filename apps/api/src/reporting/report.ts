@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import type {
   Draft,
   EvidenceItem,
@@ -10,11 +10,13 @@ import { publishedFormForPeriod } from '../cycle/rules';
 import type { Db } from '../database/db';
 import {
   baselines,
+  closures,
   drafts,
   evidence,
   formVersions,
   obligations,
   periods,
+  publications,
   receipts,
   submissions,
 } from '../database/schema';
@@ -115,6 +117,8 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
     items,
     issued,
     [latest],
+    [closure],
+    [publication],
   ] = await Promise.all([
     toObligations(db, [obligation], 'institution'),
     db.select().from(periods).where(eq(periods.id, obligation.periodId)),
@@ -139,6 +143,20 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
       .from(submissions)
       .where(eq(submissions.obligationId, obligation.id))
       .orderBy(desc(submissions.revision))
+      .limit(1),
+    db
+      .select({ reason: closures.reason, by: closures.by, at: closures.at })
+      .from(closures)
+      .where(eq(closures.obligationId, obligation.id)),
+    db
+      .select({ id: publications.id })
+      .from(publications)
+      .where(
+        and(
+          eq(publications.institutionId, obligation.institutionId),
+          isNull(publications.supersededBy),
+        ),
+      )
       .limit(1),
   ]);
   const draft: Draft | null = draftRow ?? null;
@@ -167,6 +185,8 @@ export async function loadReport(db: Db, obligation: ObligationRow) {
       form !== undefined &&
       !view!.flags.includes('not_yet_due') &&
       isEditableState(obligation.state),
+    closure: closure ?? null,
+    resultPublished: Boolean(publication),
   };
   return {
     bundle,

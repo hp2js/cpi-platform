@@ -6,6 +6,7 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
+import publicSans from '@/assets/fonts/public-sans-latin-wght-normal.woff2';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -210,7 +211,7 @@ function DocumentPreview({ blob, title }: { blob: Blob; title: string }) {
   if (html === null)
     return <PreviewMessage>Reading the document…</PreviewMessage>;
   const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title.replace(/[<&]/g, '')}</title><style>
-    @font-face{font-family:'Public Sans';font-weight:300 700;src:url('/fonts/public-sans-latin-wght-normal.woff2') format('woff2')}body{font:16px/1.62 'Public Sans',system-ui,sans-serif;color:#1b1b1b;background:#fff;max-width:48rem;margin:0 auto;padding:2rem}
+    @font-face{font-family:'Public Sans';font-weight:300 700;src:url('${new URL(publicSans, window.location.href).href}') format('woff2')}body{font:16px/1.62 'Public Sans',system-ui,sans-serif;color:#1b1b1b;background:#fff;max-width:48rem;margin:0 auto;padding:2rem}
     table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}img{max-width:100%}
   </style></head><body>${html || '<p><em>The document has no text.</em></p>'}</body></html>`;
   return (

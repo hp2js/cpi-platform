@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq, ne } from 'drizzle-orm';
+import { eq, inArray, ne } from 'drizzle-orm';
 import { DB, type Database, type Db } from '../database/db';
 import { formVersions, obligations } from '../database/schema';
 
@@ -25,6 +25,19 @@ export class FormsRepository {
       .from(obligations)
       .where(ne(obligations.state, 'not_started'));
     return rows.map((row) => row.periodId);
+  }
+
+  /** Institutions with a reporting obligation in any of these periods. */
+  async institutionsReportingIn(
+    periodIds: string[],
+    db: Db = this.db,
+  ): Promise<number> {
+    if (periodIds.length === 0) return 0;
+    const rows = await db
+      .selectDistinct({ institutionId: obligations.institutionId })
+      .from(obligations)
+      .where(inArray(obligations.periodId, periodIds));
+    return rows.length;
   }
 
   async insertForm(values: NewForm, db: Db = this.db): Promise<FormRow> {

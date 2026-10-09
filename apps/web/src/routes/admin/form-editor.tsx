@@ -6,6 +6,7 @@ import {
   type Column,
   type ColumnType,
   type FormDraftUpdate,
+  type FormImpact,
   type FormIssue,
   type FormVersion,
   type Milestone,
@@ -24,13 +25,32 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  CircleAlert,
+  CircleCheck,
+  Copy,
+  FolderInput,
+  ListTree,
   Lock,
   Plus,
   Save,
   Trash2,
+  Undo2,
 } from 'lucide-react';
-import { createContext, useContext, useId, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PreviewSwitch } from '@/components/preview-switch';
 import { QueryView } from '@/components/query-view';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -46,18 +66,31 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { cycleQuery } from '@/features/directory/queries';
 import { ChangeList } from '@/features/forms/change-list';
+import { ImpactSummary, periodOutcome } from '@/features/forms/impact';
 import {
   discardForm,
+  formCheckQuery,
+  formCreationQuery,
   formKeys,
   formQuery,
   formsQuery,
-  formValidationQuery,
   invalidateForms,
   publishForm,
   saveForm,
@@ -75,6 +108,8 @@ import { profilesQuery } from '@/features/settings/queries';
 import { isApiError } from '@/lib/api';
 import { weightSummary } from '@/features/settings/labels';
 import { formatDateTime } from '@/lib/dates';
+import { usePresence } from '@/lib/use-presence';
+import { cn } from '@/lib/utils';
 import { SelectField } from '@/components/select-field';
 import { questionTypeLabels } from '@/features/forms/labels';
 
@@ -131,6 +166,7 @@ function issueAnchor(path: string) {
     return match[2] ? `edit-s${match[1]}-q${match[2]}` : `edit-s${match[1]}`;
   if (path.startsWith('weights') || path === 'profile') return 'edit-profile';
   if (path.startsWith('periodIds')) return 'edit-periods';
+  if (path === 'sections') return 'edit-sections';
   return 'edit-title';
 }
 
@@ -143,7 +179,140 @@ function issueLocation(path: string) {
   if (path.startsWith('weights') || path === 'profile')
     return 'Scoring profile';
   if (path.startsWith('periodIds')) return 'Periods';
+  if (path === 'sections') return 'Sections';
   return 'Form';
+}
+
+/** The live publication issues, so each part of the editor can show its own (FR03). */
+const IssuesContext = createContext<FormIssue[]>([]);
+
+/**
+ * Which questions are open, and how to bring any part of the editor into view (from the
+ * outline or an issue link), opening what hides it first.
+ */
+interface EditorView {
+  open: ReadonlySet<string>;
+  toggle: (questionId: string) => void;
+  reveal: (anchor: string) => void;
+}
+const ViewContext = createContext<EditorView>({
+  open: new Set(),
+  toggle: () => undefined,
+  reveal: () => undefined,
+});
+
+/** Duplicating and moving questions, for each question's own controls (HP2-73). */
+interface Arrange {
+  sections: { id: string; title: string }[];
+  duplicate: (sectionIndex: number, questionIndex: number) => void;
+  moveTo: (
+    sectionIndex: number,
+    questionIndex: number,
+    targetSection: number,
+  ) => void;
+  shift: (sectionIndex: number, questionIndex: number, by: -1 | 1) => void;
+}
+const ArrangeContext = createContext<Arrange>({
+  sections: [],
+  duplicate: () => undefined,
+  moveTo: () => undefined,
+  shift: () => undefined,
+});
+
+/** A copy of `list` with `items` inserted at `index` and `remove` entries taken out there. */
+const splice = <T,>(
+  list: T[],
+  index: number,
+  remove: number,
+  ...items: T[]
+) => [...list.slice(0, index), ...items, ...list.slice(index + remove)];
+
+const questionTitle = (question: Question) =>
+  question.label.trim() || 'Untitled question';
+const sectionTitle = (section: { title: string }, index: number) =>
+  `Section ${index + 1}${section.title.trim() ? `: ${section.title.trim()}` : ''}`;
+
+/** What can be undone: everything the administrator edits in the draft. */
+type Snapshot = Pick<FormDraftUpdate, 'title' | 'periodIds' | 'sections'>;
+const UNDO_LIMIT = 50;
+/** How long editing must pause before the draft saves itself. */
+const AUTOSAVE_DELAY = 2_500;
+/** How often a save that failed for lack of a connection is retried. */
+const AUTOSAVE_RETRY = 15_000;
+
+const setupAnchors = new Set(['edit-title', 'edit-profile', 'edit-periods']);
+const isSetupIssue = (path: string) =>
+  path === 'title' ||
+  path === 'profile' ||
+  path.startsWith('weights') ||
+  path.startsWith('periodIds');
+
+/**
+ * The preview keeps its own answers; it starts afresh when questions, items or columns are
+ * added, removed or change type, and keeps them while wording is edited.
+ */
+function previewShape(sections: FormVersion['sections']) {
+  return sections
+    .flatMap((section) =>
+      section.questions.map((question) =>
+        [
+          question.id,
+          question.type,
+          ...(question.items ?? []).map((item) => item.id),
+          ...(question.columns ?? []).map(
+            (column) => `${column.id}:${column.type}`,
+          ),
+        ].join(','),
+      ),
+    )
+    .join('|');
+}
+
+/** Issues for one place in the form: `match` picks the paths that belong to it. */
+function FieldIssues({
+  id,
+  match,
+}: {
+  id?: string;
+  match: (path: string) => boolean;
+}) {
+  const issues = useContext(IssuesContext).filter((issue) => match(issue.path));
+  if (issues.length === 0) return null;
+  return (
+    <ul id={id} className="grid gap-1 text-sm text-error-dark">
+      {issues.map((issue) => (
+        <li
+          key={`${issue.path}-${issue.message}`}
+          className="flex items-start gap-1"
+        >
+          <CircleAlert className="mt-1 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            <span className="sr-only">Problem: </span>
+            {issue.message}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const questionPath = (sectionIndex: number, questionIndex: number) =>
+  `sections.${sectionIndex}.questions.${questionIndex}`;
+const ownPath = (prefix: string) => (path: string) =>
+  path === prefix || path.startsWith(`${prefix}.`);
+/** A section's own issues: its title, ID and question count, not those of its questions. */
+const sectionPath = (sectionIndex: number) => (path: string) =>
+  ownPath(`sections.${sectionIndex}`)(path) &&
+  !path.startsWith(`sections.${sectionIndex}.questions.`);
+
+/** The latest value once it has stopped changing for `delay` ms. */
+function useSettled<T>(value: T, delay = 400) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return settled;
 }
 
 const previewMilestones: Milestone[] = [
@@ -168,7 +337,7 @@ function Preview({ form }: { form: FormVersion }) {
   const rejectUpload = () =>
     Promise.reject(new Error('Uploads are disabled in preview.'));
   return (
-    <div className="grid gap-6">
+    <div className="@container grid gap-6">
       <Alert>
         <AlertDescription>
           Preview as an institution sees it. Nothing entered here is saved.
@@ -259,14 +428,24 @@ function CycleProfile() {
 }
 
 function Issues({ issues }: { issues: FormIssue[] }) {
+  const { reveal } = useContext(ViewContext);
   if (issues.length === 0)
-    return <p className="text-sm">No issues: this version can be published.</p>;
+    return (
+      <p className="flex items-center gap-1 text-sm">
+        <CircleCheck className="size-4 text-success-dark" aria-hidden="true" />
+        No issues: this version can be published.
+      </p>
+    );
   return (
     <ul className="grid gap-2 text-sm">
       {issues.map((issue) => (
         <li key={`${issue.path}-${issue.message}`}>
           <a
             href={`#${issueAnchor(issue.path)}`}
+            onClick={(event) => {
+              event.preventDefault();
+              reveal(issueAnchor(issue.path));
+            }}
             className="font-bold text-primary underline-offset-4 hover:underline"
           >
             {issueLocation(issue.path)}
@@ -278,28 +457,249 @@ function Issues({ issues }: { issues: FormIssue[] }) {
   );
 }
 
-function DraftEditor({ form }: { form: FormVersion }) {
+/** What a publication did, kept for the notice shown once the version is locked. */
+export interface PublishOutcome {
+  version: number;
+  impact: FormImpact;
+}
+
+function DraftEditor({
+  form,
+  onPublished,
+}: {
+  form: FormVersion;
+  onPublished: (outcome: PublishOutcome) => void;
+}) {
   const queryClient = useQueryClient();
   const cycle = useQuery(cycleQuery);
-  const validation = useQuery(formValidationQuery(form.id));
+  const creation = useQuery(formCreationQuery);
   const [defaults, setDefaults] = useState(editableOf(form));
   const editor = useForm({ defaultValues: defaults });
   const dirty = useStore(editor.store, (state) => state.isDirty);
   useUnsavedWork(dirty);
   const values = useStore(editor.store, (state) => state.values);
+  // Checked by the server as the administrator edits, without saving (FR03).
+  const snapshot = useMemo(
+    () => ({
+      title: values.title,
+      periodIds: values.periodIds,
+      sections: values.sections,
+    }),
+    [values.title, values.periodIds, values.sections],
+  );
+  const settled = useSettled(snapshot);
+  const check = useQuery(formCheckQuery(form.id, settled));
 
+  // Questions start folded so the form reads as an outline; new ones open for editing.
+  const [openIds, setOpenIds] = useState<ReadonlySet<string>>(new Set());
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const preview = usePresence(showPreview);
+  const [phoneWidth, setPhoneWidth] = useState(false);
+  const [target, setTarget] = useState<string | null>(null);
+  const toggle = (questionId: string) =>
+    setOpenIds((previous) => {
+      const next = new Set(previous);
+      if (!next.delete(questionId)) next.add(questionId);
+      return next;
+    });
+  const reveal = (anchor: string) => {
+    const match = /^edit-s(\d+)-q(\d+)$/.exec(anchor);
+    const question = match
+      ? values.sections[Number(match[1])]?.questions[Number(match[2])]
+      : undefined;
+    if (question) setOpenIds((previous) => new Set(previous).add(question.id));
+    if (setupAnchors.has(anchor)) setSetupOpen(true);
+    setOutlineOpen(false);
+    setTarget(anchor);
+  };
+  // Once it is open, scroll to it and put focus on its first field.
+  useEffect(() => {
+    if (!target) return;
+    const element = document.getElementById(target);
+    element?.scrollIntoView({ block: 'start' });
+    element
+      ?.querySelector<HTMLElement>(
+        'input:not([type="hidden"]), textarea, [role="checkbox"], button',
+      )
+      ?.focus({ preventScroll: true });
+    setTarget(null);
+  }, [target]);
+  const allQuestions = values.sections.flatMap((section) =>
+    section.questions.map((question) => question.id),
+  );
+
+  const versions = useQuery(formsQuery).data ?? [];
+  const history = historicalIds(versions);
+  const allQuestionIds = [
+    ...history.questions,
+    ...values.sections.flatMap((section) =>
+      section.questions.map((question) => question.id),
+    ),
+  ];
   const save = useMutation({
-    mutationFn: () => saveForm(form.id, editor.state.values),
-    onSuccess: async (saved) => {
+    mutationFn: (update: FormDraftUpdate) => saveForm(form.id, update),
+    onSuccess: async (saved, sent) => {
       const next = editableOf(saved);
       setDefaults(next);
-      editor.reset(next);
+      // Edits made while the save was on its way are kept, and saved next on the new revision.
+      if (JSON.stringify(editor.state.values) === JSON.stringify(sent))
+        editor.reset(next);
+      else editor.setFieldValue('baseRevision', saved.revision);
       queryClient.setQueryData(formKeys.detail(form.id), saved);
-      await queryClient.invalidateQueries({
-        queryKey: formKeys.validation(form.id),
-      });
+      await queryClient.invalidateQueries({ queryKey: formKeys.creation });
     },
   });
+  const { mutate } = save;
+  const saveNow = useCallback(
+    () => mutate(editor.state.values),
+    [mutate, editor],
+  );
+  const offline = save.isError && !isApiError(save.error);
+
+  // Autosave once editing pauses. A refused save (a conflict or invalid input) waits for the
+  // administrator; one lost to the connection is retried when it is back (HP2-73).
+  useEffect(() => {
+    if (!dirty || save.isPending || save.isError) return;
+    const timer = window.setTimeout(saveNow, AUTOSAVE_DELAY);
+    return () => window.clearTimeout(timer);
+  }, [dirty, values, save.isPending, save.isError, saveNow]);
+  useEffect(() => {
+    if (!offline) return;
+    const retry = () => saveNow();
+    const timer = window.setInterval(retry, AUTOSAVE_RETRY);
+    window.addEventListener('online', retry);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [offline, saveNow]);
+
+  // Undo: each pause in editing is one step back (HP2-73).
+  const [undoStack, setUndoStack] = useState<Snapshot[]>([]);
+  const snapshotKey = JSON.stringify(settled);
+  const lastSnapshot = useRef<{ key: string; value: Snapshot }>({
+    key: snapshotKey,
+    value: settled,
+  });
+  const restoring = useRef(false);
+  useEffect(() => {
+    const previous = lastSnapshot.current;
+    if (previous.key === snapshotKey) return;
+    if (!restoring.current)
+      setUndoStack((stack) => [...stack.slice(1 - UNDO_LIMIT), previous.value]);
+    restoring.current = false;
+    lastSnapshot.current = { key: snapshotKey, value: settled };
+  }, [snapshotKey, settled]);
+  const [announcement, setAnnouncement] = useState('');
+  const undo = () => {
+    const previous = undoStack.at(-1);
+    if (!previous) return;
+    restoring.current = true;
+    editor.setFieldValue('title', previous.title);
+    editor.setFieldValue('periodIds', previous.periodIds);
+    editor.setFieldValue('sections', previous.sections);
+    setUndoStack((stack) => stack.slice(0, -1));
+    setAnnouncement('Undid the last change.');
+  };
+
+  const arrange: Arrange = {
+    sections: values.sections,
+    duplicate: (sectionIndex, questionIndex) => {
+      const source = values.sections[sectionIndex]?.questions[questionIndex];
+      if (!source) return;
+      const id = nextId('question', allQuestionIds);
+      const copy: Question = {
+        ...structuredClone(source),
+        id,
+        label: source.label.trim() ? `${source.label.trim()} (copy)` : '',
+      };
+      editor.setFieldValue(
+        'sections',
+        values.sections.map((section, index) =>
+          index === sectionIndex
+            ? {
+                ...section,
+                questions: splice(
+                  section.questions,
+                  questionIndex + 1,
+                  0,
+                  copy,
+                ),
+              }
+            : section,
+        ),
+      );
+      setOpenIds((previous) => new Set(previous).add(id));
+      setAnnouncement(`Duplicated “${questionTitle(source)}”.`);
+      setTarget(`edit-s${sectionIndex}-q${questionIndex + 1}`);
+    },
+    moveTo: (sectionIndex, questionIndex, targetSection) => {
+      const source = values.sections[sectionIndex]?.questions[questionIndex];
+      const destination = values.sections[targetSection];
+      if (!source || !destination || targetSection === sectionIndex) return;
+      editor.setFieldValue(
+        'sections',
+        values.sections.map((section, index) =>
+          index === sectionIndex
+            ? {
+                ...section,
+                questions: splice(section.questions, questionIndex, 1),
+              }
+            : index === targetSection
+              ? { ...section, questions: [...section.questions, source] }
+              : section,
+        ),
+      );
+      setAnnouncement(
+        `Moved “${questionTitle(source)}” to the end of ${sectionTitle(destination, targetSection)}.`,
+      );
+      setTarget(`edit-s${targetSection}-q${destination.questions.length}`);
+    },
+    shift: (sectionIndex, questionIndex, by) => {
+      const source = values.sections[sectionIndex]?.questions[questionIndex];
+      if (!source) return;
+      void editor.moveFieldValues(
+        `sections[${sectionIndex}].questions`,
+        questionIndex,
+        questionIndex + by,
+      );
+      setAnnouncement(
+        `Moved “${questionTitle(source)}” to position ${questionIndex + by + 1} of ${values.sections[sectionIndex]!.questions.length}.`,
+      );
+    },
+  };
+  const duplicateSection = (sectionIndex: number) => {
+    const source = values.sections[sectionIndex];
+    if (!source) return;
+    const taken = [...allQuestionIds];
+    const questions = source.questions
+      // The scored milestone block appears once in a form; it is never copied.
+      .filter((question) => question.type !== 'milestone_progress')
+      .map((question) => {
+        const id = nextId('question', taken);
+        taken.push(id);
+        return { ...structuredClone(question), id };
+      });
+    const id = nextId('section', [
+      ...history.sections,
+      ...values.sections.map((section) => section.id),
+    ]);
+    editor.setFieldValue(
+      'sections',
+      splice(values.sections, sectionIndex + 1, 0, {
+        ...structuredClone(source),
+        id,
+        title: source.title.trim() ? `${source.title.trim()} (copy)` : '',
+        questions,
+      }),
+    );
+    setAnnouncement(
+      `Duplicated ${sectionTitle(source, sectionIndex)} as section ${sectionIndex + 2}.`,
+    );
+    setTarget(`edit-s${sectionIndex + 1}`);
+  };
   const navigate = useNavigate();
   const reload = async () => {
     const latest = await queryClient.fetchQuery({
@@ -310,9 +710,8 @@ function DraftEditor({ form }: { form: FormVersion }) {
     setDefaults(next);
     editor.reset(next);
     save.reset();
-    await queryClient.invalidateQueries({
-      queryKey: formKeys.validation(form.id),
-    });
+    restoring.current = true;
+    setUndoStack([]);
   };
   const conflict = isApiError(save.error, 409);
   const [discardReason, setDiscardReason] = useState('');
@@ -325,8 +724,10 @@ function DraftEditor({ form }: { form: FormVersion }) {
     },
   });
   const publish = useMutation({
-    mutationFn: () => publishForm(form.id),
-    onSuccess: async (published) => {
+    mutationFn: (impact: FormImpact) =>
+      publishForm(form.id).then((published) => ({ published, impact })),
+    onSuccess: async ({ published, impact }) => {
+      onPublished({ version: published.version, impact });
       queryClient.setQueryData(formKeys.detail(form.id), published);
       await invalidateForms(queryClient);
     },
@@ -341,15 +742,22 @@ function DraftEditor({ form }: { form: FormVersion }) {
     enableBeforeUnload: () => dirty,
   });
 
-  const versions = useQuery(formsQuery).data ?? [];
-  const history = historicalIds(versions);
-  const allQuestionIds = [
-    ...history.questions,
-    ...values.sections.flatMap((section) =>
-      section.questions.map((question) => question.id),
-    ),
-  ];
-  const issues = validation.data?.issues ?? [];
+  // The check is current once it describes exactly what is on screen.
+  const checked =
+    check.isSuccess &&
+    !check.isPlaceholderData &&
+    settled.title === values.title &&
+    settled.periodIds === values.periodIds &&
+    settled.sections === values.sections;
+  const issues = check.data?.issues ?? [];
+  const impact = check.data?.impact;
+  const assignable = new Set(
+    creation.data?.assignablePeriods.map((period) => period.id) ?? [],
+  );
+  // A draft no period can use any more: say so, and how to get out of it.
+  const deadEnd =
+    creation.isSuccess &&
+    !values.periodIds.some((periodId) => assignable.has(periodId));
   const publishIssues = isApiError(publish.error)
     ? Object.entries(publish.error.fieldErrors).map(([path, message]) => ({
         path,
@@ -359,385 +767,741 @@ function DraftEditor({ form }: { form: FormVersion }) {
 
   return (
     <HistoryContext.Provider value={versions}>
-      <Tabs defaultValue="edit" className="grid gap-6">
-        <div
-          data-sticky
-          className="z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-lighter bg-white px-4 py-3 tablet:sticky tablet:top-(--sticky-top) desktop:-mx-8 desktop:px-8"
-        >
-          <TabsList>
-            <TabsTrigger value="edit">Edit</TabsTrigger>
-            <TabsTrigger value="preview">Preview as institution</TabsTrigger>
-          </TabsList>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-base-dark" aria-live="polite">
-              {save.isPending
-                ? 'Saving…'
-                : dirty
-                  ? 'Unsaved changes'
-                  : `Saved ${formatDateTime(form.updatedAt)}`}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => save.mutate()}
-              disabled={!dirty || save.isPending}
-            >
-              <Save aria-hidden="true" />
-              Save draft
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  disabled={dirty || publish.isPending || issues.length > 0}
-                >
-                  Publish version {form.version}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Publish version {form.version}?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    The published version is immutable. Institutions report on
-                    it for the assigned periods, and existing responses are not
-                    migrated.
-                    {!form.weightsLocked &&
-                      ' Publishing also locks the cycle’s scoring profile for the whole cycle.'}
-                    {form.basedOnVersion &&
-                      ' Institutions, officers and supervisors are told what changed:'}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                {form.basedOnVersion && (
-                  <div className="max-h-64 overflow-y-auto text-sm">
-                    <ChangeList changes={form.changes} />
-                  </div>
-                )}
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => publish.mutate()}>
-                    Publish
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            {form.basedOnVersion && (
-              <AlertDialog
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setDiscardReason('');
-                    discard.reset();
-                  }
-                }}
+      <IssuesContext.Provider value={issues}>
+        <ViewContext.Provider value={{ open: openIds, toggle, reveal }}>
+          <ArrangeContext.Provider value={arrange}>
+            <div className="grid gap-6">
+              <div
+                data-sticky
+                className="z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-lighter bg-white px-4 py-3 tablet:sticky tablet:top-(--sticky-top) desktop:-mx-8 desktop:px-8"
               >
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost">
-                    <Trash2 aria-hidden="true" />
-                    Discard draft
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Discard draft version {form.version}?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Its edits are lost; published versions are not affected.
-                      The reason is kept in the audit log.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="grid gap-2">
-                    <Label htmlFor="discard-reason">Reason</Label>
-                    <Textarea
-                      id="discard-reason"
-                      value={discardReason}
-                      onChange={(event) => setDiscardReason(event.target.value)}
-                    />
-                  </div>
-                  {discard.isError && (
-                    <p role="alert" className="text-sm text-error-dark">
-                      {discard.error.message}
-                    </p>
-                  )}
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep the draft</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      disabled={
-                        discardReason.trim().length < 10 || discard.isPending
-                      }
-                      onClick={(event) => {
-                        event.preventDefault();
-                        discard.mutate();
-                      }}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Popover open={outlineOpen} onOpenChange={setOutlineOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline">
+                        <ListTree aria-hidden="true" />
+                        Outline
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="max-h-[70vh] w-80 overflow-y-auto p-4 text-sm"
                     >
-                      Discard draft
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        </div>
-
-        {save.isError && (
-          <Alert variant="destructive">
-            <AlertTitle>The form was not saved</AlertTitle>
-            <AlertDescription>
-              <p>
-                {save.error.message}
-                {!conflict && ' Your changes on this page are kept.'}
-              </p>
-              {conflict && (
-                <Button
-                  variant="plain"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => void reload()}
-                >
-                  Reload the saved draft
-                </Button>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-        {publish.isError && (
-          <Alert variant="destructive">
-            <AlertTitle>Publication blocked</AlertTitle>
-            <AlertDescription>
-              <p>{publish.error.message}</p>
-              <Issues issues={publishIssues} />
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <TabsContent value="edit" className="grid gap-6">
-          <section
-            aria-labelledby="checks-heading"
-            className="rounded-lg border bg-white p-5"
-          >
-            <h2 id="checks-heading" className="font-bold">
-              Publication checks
-            </h2>
-            <p className="mb-3 text-sm text-base-dark">
-              Checked by the server against the last saved draft.
-              {dirty && ' Save to re-check your changes.'}
-            </p>
-            {validation.data ? (
-              <Issues issues={issues} />
-            ) : (
-              <p className="text-sm">Checking…</p>
-            )}
-          </section>
-
-          {form.basedOnVersion && (
-            <section
-              aria-labelledby="changes-heading"
-              className="rounded-lg border bg-white p-5"
-            >
-              <h2 id="changes-heading" className="font-bold">
-                Changes from version {form.basedOnVersion}
-              </h2>
-              <p className="mb-3 text-sm text-base-dark">
-                As last saved. Institutions, officers and supervisors see this
-                summary when the version is published.
-                {dirty && ' Save to include your latest edits.'}
-              </p>
-              <ChangeList changes={form.changes} />
-            </section>
-          )}
-
-          <editor.Field name="title">
-            {(field) => (
-              <div id="edit-title" className="grid max-w-measure gap-2">
-                <Label htmlFor="form-title">Form title</Label>
-                <Input
-                  id="form-title"
-                  value={field.state.value}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </div>
-            )}
-          </editor.Field>
-
-          <CycleProfile />
-
-          <editor.Field name="periodIds">
-            {(field) => (
-              <fieldset
-                id="edit-periods"
-                className="grid gap-3 rounded-lg border bg-white p-5"
-              >
-                <legend className="px-1 font-bold">
-                  Periods using this version
-                </legend>
-                <p className="text-sm text-base-dark">
-                  Periods that have started reporting keep the version they
-                  started on.
-                </p>
-                <div className="flex flex-wrap gap-x-6 gap-y-2">
-                  {cycle.data?.periods.map((period) => (
-                    <div key={period.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`period-${period.id}`}
-                        checked={field.state.value.includes(period.id)}
-                        onCheckedChange={(checked) =>
-                          field.handleChange(
-                            checked === true
-                              ? [...field.state.value, period.id]
-                              : field.state.value.filter(
-                                  (id) => id !== period.id,
-                                ),
-                          )
-                        }
-                      />
-                      <Label
-                        htmlFor={`period-${period.id}`}
-                        className="font-normal"
-                      >
-                        {period.label}
-                      </Label>
-                    </div>
-                  ))}
+                      <nav aria-label="Form outline">
+                        <ol className="grid gap-3">
+                          <li>
+                            <a
+                              href="#edit-title"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                reveal('edit-title');
+                              }}
+                              className="font-bold text-primary underline-offset-4 hover:underline"
+                            >
+                              Form setup
+                            </a>
+                          </li>
+                          {values.sections.map((section, sectionIndex) => (
+                            <li key={section.id} className="grid gap-1">
+                              <a
+                                href={`#edit-s${sectionIndex}`}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  reveal(`edit-s${sectionIndex}`);
+                                }}
+                                className="font-bold text-primary underline-offset-4 hover:underline"
+                              >
+                                {sectionIndex + 1}.{' '}
+                                {section.title.trim() || 'Untitled section'}
+                              </a>
+                              <ol className="grid gap-1 border-l pl-3">
+                                {section.questions.map(
+                                  (question, questionIndex) => (
+                                    <li key={question.id}>
+                                      <a
+                                        href={`#edit-s${sectionIndex}-q${questionIndex}`}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          reveal(
+                                            `edit-s${sectionIndex}-q${questionIndex}`,
+                                          );
+                                        }}
+                                        className="text-primary underline-offset-4 hover:underline"
+                                      >
+                                        {question.label.trim() ||
+                                          'Untitled question'}
+                                      </a>
+                                    </li>
+                                  ),
+                                )}
+                              </ol>
+                            </li>
+                          ))}
+                        </ol>
+                      </nav>
+                    </PopoverContent>
+                  </Popover>
+                  <PreviewSwitch
+                    label="Institution preview"
+                    shown={showPreview}
+                    onChange={setShowPreview}
+                    controls={preview.mounted ? 'form-preview' : undefined}
+                  />
                 </div>
-              </fieldset>
-            )}
-          </editor.Field>
-
-          {values.sections.map((section, sectionIndex) => (
-            <section
-              key={section.id}
-              id={`edit-s${sectionIndex}`}
-              aria-label={`Section ${sectionIndex + 1}`}
-              className="grid scroll-mt-24 gap-4 rounded-lg border bg-white p-5"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <h2 className="font-bold">
-                  Section {sectionIndex + 1}{' '}
-                  <span className="font-mono text-xs font-normal text-base-dark">
-                    {section.id}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    id="publish-hint"
+                    className="text-sm text-base-dark"
+                    aria-live="polite"
+                  >
+                    {save.isPending
+                      ? 'Saving…'
+                      : offline
+                        ? 'Not saved: no connection. Retrying…'
+                        : dirty
+                          ? 'Unsaved changes'
+                          : `Saved ${formatDateTime(form.updatedAt)}`}
+                    {dirty && !save.isPending && (
+                      <span className="sr-only">. Save before publishing.</span>
+                    )}
                   </span>
-                </h2>
-                {!section.questions.some(
-                  (question) => question.type === 'milestone_progress',
-                ) && (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      void editor.removeFieldValue('sections', sectionIndex)
-                    }
+                    onClick={undo}
+                    disabled={undoStack.length === 0}
                   >
-                    <Trash2 aria-hidden="true" />
-                    Remove section
+                    <Undo2 aria-hidden="true" />
+                    Undo
                   </Button>
-                )}
-              </div>
-              <div className="grid gap-3 tablet:grid-cols-2">
-                <editor.Field name={`sections[${sectionIndex}].title`}>
-                  {(field) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor={`s${sectionIndex}-title`}>
-                        Section title
-                      </Label>
-                      <Input
-                        id={`s${sectionIndex}-title`}
-                        value={field.state.value}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
+                  <Button
+                    variant="outline"
+                    onClick={saveNow}
+                    disabled={!dirty || save.isPending}
+                  >
+                    <Save aria-hidden="true" />
+                    Save draft
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        disabled={
+                          dirty ||
+                          !checked ||
+                          !impact ||
+                          publish.isPending ||
+                          issues.length > 0
                         }
-                      />
-                    </div>
-                  )}
-                </editor.Field>
-                <editor.Field name={`sections[${sectionIndex}].description`}>
-                  {(field) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor={`s${sectionIndex}-description`}>
-                        Description (optional)
-                      </Label>
-                      <Textarea
-                        id={`s${sectionIndex}-description`}
-                        value={field.state.value ?? ''}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value || undefined)
+                        aria-describedby={
+                          dirty
+                            ? 'publish-hint'
+                            : issues.length
+                              ? 'checks-heading'
+                              : undefined
                         }
-                      />
-                    </div>
+                      >
+                        Publish version {form.version}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Publish version {form.version}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          The published version is immutable. Institutions
+                          report on it for the assigned periods, and existing
+                          responses are not migrated.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="grid max-h-[60vh] gap-4 overflow-y-auto">
+                        <section
+                          aria-labelledby="impact-heading"
+                          className="grid gap-2"
+                        >
+                          <h3 id="impact-heading" className="text-sm font-bold">
+                            What changes
+                          </h3>
+                          {impact && <ImpactSummary impact={impact} />}
+                        </section>
+                        {form.basedOnVersion && check.data && (
+                          <section
+                            aria-labelledby="impact-changes-heading"
+                            className="grid gap-2"
+                          >
+                            <h3
+                              id="impact-changes-heading"
+                              className="text-sm font-bold"
+                            >
+                              What they are told changed from version{' '}
+                              {form.basedOnVersion}
+                            </h3>
+                            <ChangeList changes={check.data.changes} />
+                          </section>
+                        )}
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          disabled={!impact}
+                          onClick={() => impact && publish.mutate(impact)}
+                        >
+                          Publish
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  {form.basedOnVersion && (
+                    <AlertDialog
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setDiscardReason('');
+                          discard.reset();
+                        }
+                      }}
+                    >
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost">
+                          <Trash2 aria-hidden="true" />
+                          Discard draft
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Discard draft version {form.version}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Its edits are lost; published versions are not
+                            affected. The reason is kept in the audit log.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="grid gap-2">
+                          <Label htmlFor="discard-reason">Reason</Label>
+                          <Textarea
+                            id="discard-reason"
+                            value={discardReason}
+                            onChange={(event) =>
+                              setDiscardReason(event.target.value)
+                            }
+                          />
+                        </div>
+                        {discard.isError && (
+                          <p role="alert" className="text-sm text-error-dark">
+                            {discard.error.message}
+                          </p>
+                        )}
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep the draft</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            disabled={
+                              discardReason.trim().length < 10 ||
+                              discard.isPending
+                            }
+                            onClick={(event) => {
+                              event.preventDefault();
+                              discard.mutate();
+                            }}
+                          >
+                            Discard draft
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
-                </editor.Field>
+                </div>
               </div>
-              <ol className="grid gap-3">
-                {section.questions.map((question, questionIndex) => (
-                  <QuestionEditor
-                    key={question.id}
-                    editor={editor}
-                    question={question}
-                    sectionIndex={sectionIndex}
-                    questionIndex={questionIndex}
-                    count={section.questions.length}
-                  />
-                ))}
-              </ol>
-              <AddQuestion
-                onAdd={(type) =>
-                  void editor.pushFieldValue(
-                    `sections[${sectionIndex}].questions`,
-                    {
-                      id: nextId('question', allQuestionIds),
-                      label: '',
-                      type,
-                      required: true,
-                      kind: 'informational',
-                      ...(type === 'evidence'
-                        ? { evidenceCategory: 'other' as const }
-                        : {}),
-                      ...(type === 'choice' ? { choices: ['', ''] } : {}),
-                      ...(type === 'checklist'
-                        ? { items: [{ id: 'item-1', label: '' }] }
-                        : {}),
-                      ...(type === 'repeated'
-                        ? {
-                            columns: [
+
+              <p role="status" className="sr-only">
+                {announcement}
+              </p>
+              {save.isError && !offline && (
+                <Alert variant="destructive">
+                  <AlertTitle>The form was not saved</AlertTitle>
+                  <AlertDescription>
+                    <p>
+                      {save.error.message}
+                      {!conflict && ' Your changes on this page are kept.'}
+                    </p>
+                    {conflict && (
+                      <Button
+                        variant="plain"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => void reload()}
+                      >
+                        Reload the saved draft
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {publish.isError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Publication blocked</AlertTitle>
+                  <AlertDescription>
+                    <p>{publish.error.message}</p>
+                    <Issues issues={publishIssues} />
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="@container">
+                {/*
+                  The preview slides in beside the editor and the editor narrows to make room; when
+                  it is hidden the editor takes the whole width (HP2-73).
+                */}
+                <div
+                  className={cn(
+                    'grid items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-300 ease-out @tablet-lg:grid-cols-[minmax(0,1fr)_0rem]',
+                    preview.shown &&
+                      'gap-x-6 @tablet-lg:grid-cols-[minmax(0,1fr)_var(--container-mobile-lg)]',
+                  )}
+                >
+                  <div className="@container grid min-w-0 gap-4">
+                    <section
+                      aria-labelledby="checks-heading"
+                      className="rounded-lg border bg-white p-4"
+                    >
+                      <h2 id="checks-heading" className="font-bold">
+                        Publication checks
+                      </h2>
+                      <p
+                        className={cn(
+                          'text-sm text-base-dark',
+                          issues.length ? 'mb-2' : 'sr-only',
+                        )}
+                      >
+                        Checked as you edit, including unsaved changes. Each
+                        problem is also shown where it is.
+                      </p>
+                      <div aria-live="polite">
+                        {check.data ? (
+                          <Issues issues={issues} />
+                        ) : check.isError ? (
+                          <p role="alert" className="text-sm text-error-dark">
+                            The checks could not run: {check.error.message}
+                          </p>
+                        ) : (
+                          <p className="text-sm">Checking…</p>
+                        )}
+                        {check.data && !checked && (
+                          <p className="mt-2 text-sm text-base-dark">
+                            Checking your latest edits…
+                          </p>
+                        )}
+                      </div>
+                    </section>
+
+                    {form.basedOnVersion && (
+                      <section
+                        aria-labelledby="changes-heading"
+                        className="rounded-lg border bg-white p-4"
+                      >
+                        <h2 id="changes-heading" className="font-bold">
+                          Changes from version {form.basedOnVersion}
+                        </h2>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-sm">
+                            What institutions, officers and supervisors are told
+                            (including unsaved edits)
+                          </summary>
+                          <div className="mt-2">
+                            <ChangeList
+                              changes={check.data?.changes ?? form.changes}
+                            />
+                          </div>
+                        </details>
+                      </section>
+                    )}
+
+                    <details
+                      open={setupOpen}
+                      onToggle={(event) =>
+                        setSetupOpen(event.currentTarget.open)
+                      }
+                      className="rounded-lg border bg-white"
+                    >
+                      <summary className="flex min-h-touch cursor-pointer flex-wrap items-center gap-x-2 px-4 py-2">
+                        <span className="font-bold">Form setup</span>
+                        <span className="text-sm text-base-dark">
+                          Title, scoring profile and periods ·{' '}
+                          {values.periodIds
+                            .map(
+                              (id) =>
+                                cycle.data?.periods.find(
+                                  (period) => period.id === id,
+                                )?.label ?? id,
+                            )
+                            .join(', ') || 'no period'}
+                        </span>
+                        {issues.some((issue) => isSetupIssue(issue.path)) && (
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-error-dark">
+                            <CircleAlert
+                              className="size-4"
+                              aria-hidden="true"
+                            />
+                            {
+                              issues.filter((issue) => isSetupIssue(issue.path))
+                                .length
+                            }{' '}
+                            to fix
+                          </span>
+                        )}
+                      </summary>
+                      <div className="grid gap-6 border-t p-4">
+                        <editor.Field name="title">
+                          {(field) => (
+                            <div
+                              id="edit-title"
+                              className="grid max-w-measure gap-2"
+                            >
+                              <Label htmlFor="form-title">Form title</Label>
+                              <Input
+                                id="form-title"
+                                value={field.state.value}
+                                aria-invalid={issues.some(
+                                  (issue) => issue.path === 'title',
+                                )}
+                                aria-describedby="title-issues"
+                                onChange={(event) =>
+                                  field.handleChange(event.target.value)
+                                }
+                              />
+                              <FieldIssues
+                                id="title-issues"
+                                match={ownPath('title')}
+                              />
+                            </div>
+                          )}
+                        </editor.Field>
+
+                        <div id="edit-profile-issues" className="grid gap-2">
+                          <CycleProfile />
+                          <FieldIssues
+                            match={(path) =>
+                              path === 'profile' || ownPath('weights')(path)
+                            }
+                          />
+                        </div>
+
+                        <editor.Field name="periodIds">
+                          {(field) => (
+                            <fieldset
+                              id="edit-periods"
+                              className="grid gap-3 rounded-lg border bg-white p-5"
+                            >
+                              <legend className="px-1 font-bold">
+                                Periods using this version
+                              </legend>
+                              <p className="text-sm text-base-dark">
+                                Periods that have started reporting keep the
+                                version they started on.
+                              </p>
+                              {deadEnd && (
+                                <Alert>
+                                  <CircleAlert aria-hidden="true" />
+                                  <AlertTitle>
+                                    No period can use this draft as it is
+                                  </AlertTitle>
+                                  <AlertDescription>
+                                    {creation.data &&
+                                    creation.data.assignablePeriods.length
+                                      ? `Assign it to ${creation.data.assignablePeriods.map((period) => period.label).join(', ')} to publish it, or discard it.`
+                                      : 'Every period in this cycle has started reporting, so this draft cannot be published. Keep it for reference or discard it; it does not affect any report.'}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                {cycle.data?.periods.map((period) => (
+                                  <div
+                                    key={period.id}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Checkbox
+                                      id={`period-${period.id}`}
+                                      checked={field.state.value.includes(
+                                        period.id,
+                                      )}
+                                      onCheckedChange={(checked) =>
+                                        field.handleChange(
+                                          checked === true
+                                            ? [...field.state.value, period.id]
+                                            : field.state.value.filter(
+                                                (id) => id !== period.id,
+                                              ),
+                                        )
+                                      }
+                                    />
+                                    <Label
+                                      htmlFor={`period-${period.id}`}
+                                      className="font-normal"
+                                    >
+                                      {period.label}
+                                      {creation.isSuccess &&
+                                        !assignable.has(period.id) && (
+                                          <span className="text-base-dark">
+                                            {' '}
+                                            (started reporting)
+                                          </span>
+                                        )}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                              <FieldIssues match={ownPath('periodIds')} />
+                              {impact && (
+                                <details className="text-sm">
+                                  <summary className="cursor-pointer">
+                                    What publishing would do to each period
+                                  </summary>
+                                  <ul className="mt-2 grid gap-1">
+                                    {impact.periods.map((period) => (
+                                      <li key={period.periodId}>
+                                        <span className="font-bold">
+                                          {period.label}
+                                        </span>{' '}
+                                        {periodOutcome(period)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              )}
+                            </fieldset>
+                          )}
+                        </editor.Field>
+                      </div>
+                    </details>
+                    <FieldIssues
+                      id="edit-sections"
+                      match={(path) => path === 'sections'}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setOpenIds(new Set(allQuestions))}
+                      >
+                        <ChevronsUpDown aria-hidden="true" />
+                        Expand all questions
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setOpenIds(new Set())}
+                      >
+                        <ChevronsDownUp aria-hidden="true" />
+                        Collapse all questions
+                      </Button>
+                    </div>
+
+                    {values.sections.map((section, sectionIndex) => (
+                      <section
+                        key={section.id}
+                        id={`edit-s${sectionIndex}`}
+                        aria-label={`Section ${sectionIndex + 1}`}
+                        className="grid scroll-mt-24 gap-4 rounded-lg border bg-white p-5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <h2 className="font-bold">
+                            Section {sectionIndex + 1}{' '}
+                            <span className="font-mono text-xs font-normal text-base-dark">
+                              {section.id}
+                            </span>
+                          </h2>
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicateSection(sectionIndex)}
+                            >
+                              <Copy aria-hidden="true" />
+                              Duplicate section
+                            </Button>
+                            {!section.questions.some(
+                              (question) =>
+                                question.type === 'milestone_progress',
+                            ) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  void editor.removeFieldValue(
+                                    'sections',
+                                    sectionIndex,
+                                  )
+                                }
+                              >
+                                <Trash2 aria-hidden="true" />
+                                Remove section
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid gap-3 @tablet:grid-cols-2">
+                          <editor.Field
+                            name={`sections[${sectionIndex}].title`}
+                          >
+                            {(field) => (
+                              <div className="grid gap-2">
+                                <Label htmlFor={`s${sectionIndex}-title`}>
+                                  Section title
+                                </Label>
+                                <Input
+                                  id={`s${sectionIndex}-title`}
+                                  value={field.state.value}
+                                  onChange={(event) =>
+                                    field.handleChange(event.target.value)
+                                  }
+                                />
+                              </div>
+                            )}
+                          </editor.Field>
+                          <editor.Field
+                            name={`sections[${sectionIndex}].description`}
+                          >
+                            {(field) => (
+                              <div className="grid gap-2">
+                                <Label htmlFor={`s${sectionIndex}-description`}>
+                                  Description (optional)
+                                </Label>
+                                <Textarea
+                                  id={`s${sectionIndex}-description`}
+                                  value={field.state.value ?? ''}
+                                  onChange={(event) =>
+                                    field.handleChange(
+                                      event.target.value || undefined,
+                                    )
+                                  }
+                                />
+                              </div>
+                            )}
+                          </editor.Field>
+                        </div>
+                        <FieldIssues match={sectionPath(sectionIndex)} />
+                        <ol className="grid gap-3">
+                          {section.questions.map((question, questionIndex) => (
+                            <QuestionEditor
+                              key={question.id}
+                              editor={editor}
+                              question={question}
+                              sectionIndex={sectionIndex}
+                              questionIndex={questionIndex}
+                              count={section.questions.length}
+                            />
+                          ))}
+                        </ol>
+                        <AddQuestion
+                          onAdd={(type) => {
+                            const id = nextId('question', allQuestionIds);
+                            setOpenIds((previous) => new Set(previous).add(id));
+                            void editor.pushFieldValue(
+                              `sections[${sectionIndex}].questions`,
                               {
-                                id: 'column-1',
+                                id,
                                 label: '',
-                                type: 'text' as const,
+                                type,
                                 required: true,
+                                kind: 'informational',
+                                ...(type === 'evidence'
+                                  ? { evidenceCategory: 'other' as const }
+                                  : {}),
+                                ...(type === 'choice'
+                                  ? { choices: ['', ''] }
+                                  : {}),
+                                ...(type === 'checklist'
+                                  ? { items: [{ id: 'item-1', label: '' }] }
+                                  : {}),
+                                ...(type === 'repeated'
+                                  ? {
+                                      columns: [
+                                        {
+                                          id: 'column-1',
+                                          label: '',
+                                          type: 'text' as const,
+                                          required: true,
+                                        },
+                                      ],
+                                      minRows: 1,
+                                      maxRows: 20,
+                                    }
+                                  : {}),
                               },
-                            ],
-                            minRows: 1,
-                            maxRows: 20,
-                          }
-                        : {}),
-                    },
-                  )
-                }
-              />
-            </section>
-          ))}
-          <div>
-            <Button
-              variant="outline"
-              onClick={() =>
-                void editor.pushFieldValue('sections', {
-                  id: nextId('section', [
-                    ...history.sections,
-                    ...values.sections.map((section) => section.id),
-                  ]),
-                  title: '',
-                  questions: [],
-                })
-              }
-            >
-              <Plus aria-hidden="true" />
-              Add section
-            </Button>
-          </div>
-        </TabsContent>
-        <TabsContent value="preview">
-          <Preview form={{ ...form, ...values }} />
-        </TabsContent>
-      </Tabs>
+                            );
+                          }}
+                        />
+                      </section>
+                    ))}
+                    <div>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          void editor.pushFieldValue('sections', {
+                            id: nextId('section', [
+                              ...history.sections,
+                              ...values.sections.map((section) => section.id),
+                            ]),
+                            title: '',
+                            questions: [],
+                          })
+                        }
+                      >
+                        <Plus aria-hidden="true" />
+                        Add section
+                      </Button>
+                    </div>
+                  </div>
+                  {preview.mounted && (
+                    // Stretched to the row, so the panel inside can stay in view while scrolling;
+                    // clipped, so the panel slides in from the edge rather than squeezing.
+                    <div
+                      id="form-preview"
+                      inert={!preview.shown}
+                      className={cn(
+                        'min-w-0 self-stretch transition-[opacity,translate] duration-300 ease-out @tablet-lg:overflow-x-clip',
+                        preview.shown
+                          ? 'translate-x-0 opacity-100'
+                          : 'translate-y-2 opacity-0 @tablet-lg:translate-x-8 @tablet-lg:translate-y-0',
+                      )}
+                    >
+                      <section
+                        aria-labelledby="preview-heading"
+                        className="grid gap-3 rounded-lg border bg-base-lightest p-4 @tablet-lg:w-(--container-mobile-lg) @tablet-lg:sticky @tablet-lg:top-[calc(var(--sticky-top)+5.5rem)] @tablet-lg:max-h-[calc(100dvh-var(--sticky-top)-7rem)] @tablet-lg:overflow-y-auto"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h2 id="preview-heading" className="font-bold">
+                            Institution preview
+                          </h2>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-pressed={phoneWidth}
+                            onClick={() => setPhoneWidth((phone) => !phone)}
+                          >
+                            Phone width
+                          </Button>
+                        </div>
+                        <div
+                          className={cn(
+                            'w-full',
+                            phoneWidth &&
+                              'mx-auto max-w-phone rounded-lg border bg-white p-3',
+                          )}
+                        >
+                          <Preview
+                            key={previewShape(values.sections)}
+                            form={{ ...form, ...values }}
+                          />
+                        </div>
+                      </section>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </ArrangeContext.Provider>
+        </ViewContext.Provider>
+      </IssuesContext.Provider>
     </HistoryContext.Provider>
   );
 }
@@ -793,37 +1557,48 @@ function QuestionEditor({
   const base = `sections[${sectionIndex}].questions[${questionIndex}]` as const;
   const domId = `edit-s${sectionIndex}-q${questionIndex}`;
   const scored = question.type === 'milestone_progress';
+  const view = useContext(ViewContext);
+  const arrange = useContext(ArrangeContext);
+  const open = view.open.has(question.id);
   return (
     <li
       id={domId}
       className="grid scroll-mt-24 gap-3 rounded-md border bg-white p-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm">
-          <span className="font-bold">{typeLabels[question.type]}</span>{' '}
-          <span className="text-base-dark">
-            ·{' '}
-            {scored
-              ? 'Scored: implementation milestones from each locked baseline'
-              : 'Informational: never changes a score'}{' '}
-            ·{' '}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={open ? `${domId}-body` : undefined}
+          onClick={() => view.toggle(question.id)}
+          className="flex min-h-touch min-w-0 flex-1 items-start gap-2 text-left"
+        >
+          <ChevronRight
+            className={cn(
+              'mt-1 size-4 shrink-0 transition-transform',
+              open && 'rotate-90',
+            )}
+            aria-hidden="true"
+          />
+          <span className="grid min-w-0">
+            <span className="font-bold break-words">
+              {question.label.trim() || 'Untitled question'}
+            </span>
+            <span className="text-sm text-base-dark">
+              {typeLabels[question.type]} ·{' '}
+              {scored
+                ? 'Scored: implementation milestones from each locked baseline'
+                : 'Informational: never changes a score'}{' '}
+              · <span className="font-mono text-xs">{question.id}</span>
+            </span>
           </span>
-          <span className="font-mono text-xs text-base-dark">
-            {question.id}
-          </span>
-        </p>
+        </button>
         <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
             disabled={questionIndex === 0}
-            onClick={() =>
-              void editor.moveFieldValues(
-                `sections[${sectionIndex}].questions`,
-                questionIndex,
-                questionIndex - 1,
-              )
-            }
+            onClick={() => arrange.shift(sectionIndex, questionIndex, -1)}
           >
             <ArrowUp aria-hidden="true" />
             <span className="sr-only">Move up</span>
@@ -832,17 +1607,46 @@ function QuestionEditor({
             variant="ghost"
             size="icon-sm"
             disabled={questionIndex === count - 1}
-            onClick={() =>
-              void editor.moveFieldValues(
-                `sections[${sectionIndex}].questions`,
-                questionIndex,
-                questionIndex + 1,
-              )
-            }
+            onClick={() => arrange.shift(sectionIndex, questionIndex, 1)}
           >
             <ArrowDown aria-hidden="true" />
             <span className="sr-only">Move down</span>
           </Button>
+          {arrange.sections.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm">
+                  <FolderInput aria-hidden="true" />
+                  <span className="sr-only">Move to another section</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Move to the end of</DropdownMenuLabel>
+                {arrange.sections.map((section, index) =>
+                  index === sectionIndex ? null : (
+                    <DropdownMenuItem
+                      key={section.id}
+                      onSelect={() =>
+                        arrange.moveTo(sectionIndex, questionIndex, index)
+                      }
+                    >
+                      {sectionTitle(section, index)}
+                    </DropdownMenuItem>
+                  ),
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {!scored && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => arrange.duplicate(sectionIndex, questionIndex)}
+            >
+              <Copy aria-hidden="true" />
+              <span className="sr-only">Duplicate question</span>
+            </Button>
+          )}
           {!scored && (
             <Button
               variant="ghost"
@@ -860,153 +1664,165 @@ function QuestionEditor({
           )}
         </div>
       </div>
-      <div className="grid gap-3 tablet:grid-cols-2">
-        <editor.Field name={`${base}.label`}>
-          {(field) => (
-            <div className="grid gap-2">
-              <Label htmlFor={`${domId}-label`}>Question label</Label>
-              <Input
-                id={`${domId}-label`}
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-            </div>
-          )}
-        </editor.Field>
-        <editor.Field name={`${base}.help`}>
-          {(field) => (
-            <div className="grid gap-2">
-              <Label htmlFor={`${domId}-help`}>Help text (optional)</Label>
-              <Textarea
-                id={`${domId}-help`}
-                rows={2}
-                className="min-h-0"
-                value={field.state.value ?? ''}
-                onChange={(event) =>
-                  field.handleChange(event.target.value || undefined)
-                }
-              />
-            </div>
-          )}
-        </editor.Field>
-      </div>
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        {!scored && (
-          <editor.Field name={`${base}.required`}>
-            {(field) => (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id={`${domId}-required`}
-                  checked={field.state.value}
-                  onCheckedChange={(checked) =>
-                    field.handleChange(checked === true)
-                  }
-                />
-                <Label htmlFor={`${domId}-required`} className="font-normal">
-                  Required
-                </Label>
-              </div>
-            )}
-          </editor.Field>
-        )}
-        {question.type === 'evidence' && (
-          <editor.Field name={`${base}.evidenceCategory`}>
-            {(field) => (
-              <div className="grid gap-2">
-                <Label htmlFor={`${domId}-category`}>Evidence category</Label>
-                <SelectField
-                  className="w-48"
-                  id={`${domId}-category`}
-                  value={field.state.value ?? 'other'}
-                  onChange={(value) =>
-                    field.handleChange(
-                      value as NonNullable<Question['evidenceCategory']>,
-                    )
-                  }
-                  options={Object.entries(evidenceCategoryLabel).map(
-                    ([value, label]) => ({ value, label }),
-                  )}
-                />
-              </div>
-            )}
-          </editor.Field>
-        )}
-      </div>
-      {question.type === 'choice' && (
-        <editor.Field name={`${base}.choices`}>
-          {(field) => (
-            <div className="grid gap-2">
-              <Label htmlFor={`${domId}-choices`}>Options, one per line</Label>
-              <Textarea
-                id={`${domId}-choices`}
-                value={(field.state.value ?? []).join('\n')}
-                onChange={(event) =>
-                  field.handleChange(event.target.value.split('\n'))
-                }
-              />
-            </div>
-          )}
-        </editor.Field>
-      )}
-      {LIMITED.includes(question.type) && (
-        <editor.Field name={`${base}.limits`}>
-          {(field) => (
-            <LimitsEditor
-              id={`${domId}-limits`}
-              type={question.type}
-              value={field.state.value}
-              onChange={field.handleChange}
-            />
-          )}
-        </editor.Field>
-      )}
-      {question.type === 'checklist' && (
-        <editor.Field name={`${base}.items`}>
-          {(field) => (
-            <ItemsEditor
-              id={`${domId}-items`}
-              questionId={question.id}
-              value={field.state.value ?? []}
-              onChange={field.handleChange}
-            />
-          )}
-        </editor.Field>
-      )}
-      {question.type === 'repeated' && (
-        <>
-          <editor.Field name={`${base}.columns`}>
-            {(field) => (
-              <ColumnsEditor
-                id={`${domId}-columns`}
-                questionId={question.id}
-                value={field.state.value ?? []}
-                onChange={field.handleChange}
-              />
-            )}
-          </editor.Field>
-          <div className="flex flex-wrap gap-4">
-            <editor.Field name={`${base}.minRows`}>
+      <FieldIssues match={ownPath(questionPath(sectionIndex, questionIndex))} />
+      {open && (
+        <div id={`${domId}-body`} className="grid gap-3">
+          <div className="grid gap-3 @tablet:grid-cols-2">
+            <editor.Field name={`${base}.label`}>
               {(field) => (
-                <NumberSetting
-                  id={`${domId}-min-rows`}
-                  label="Fewest rows"
-                  value={field.state.value}
-                  onChange={field.handleChange}
-                />
+                <div className="grid gap-2">
+                  <Label htmlFor={`${domId}-label`}>Question label</Label>
+                  <Input
+                    id={`${domId}-label`}
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </div>
               )}
             </editor.Field>
-            <editor.Field name={`${base}.maxRows`}>
+            <editor.Field name={`${base}.help`}>
               {(field) => (
-                <NumberSetting
-                  id={`${domId}-max-rows`}
-                  label="Most rows"
-                  value={field.state.value}
-                  onChange={field.handleChange}
-                />
+                <div className="grid gap-2">
+                  <Label htmlFor={`${domId}-help`}>Help text (optional)</Label>
+                  <Textarea
+                    id={`${domId}-help`}
+                    rows={2}
+                    className="min-h-0"
+                    value={field.state.value ?? ''}
+                    onChange={(event) =>
+                      field.handleChange(event.target.value || undefined)
+                    }
+                  />
+                </div>
               )}
             </editor.Field>
           </div>
-        </>
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            {!scored && (
+              <editor.Field name={`${base}.required`}>
+                {(field) => (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`${domId}-required`}
+                      checked={field.state.value}
+                      onCheckedChange={(checked) =>
+                        field.handleChange(checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor={`${domId}-required`}
+                      className="font-normal"
+                    >
+                      Required
+                    </Label>
+                  </div>
+                )}
+              </editor.Field>
+            )}
+            {question.type === 'evidence' && (
+              <editor.Field name={`${base}.evidenceCategory`}>
+                {(field) => (
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${domId}-category`}>
+                      Evidence category
+                    </Label>
+                    <SelectField
+                      className="w-48"
+                      id={`${domId}-category`}
+                      value={field.state.value ?? 'other'}
+                      onChange={(value) =>
+                        field.handleChange(
+                          value as NonNullable<Question['evidenceCategory']>,
+                        )
+                      }
+                      options={Object.entries(evidenceCategoryLabel).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                  </div>
+                )}
+              </editor.Field>
+            )}
+          </div>
+          {question.type === 'choice' && (
+            <editor.Field name={`${base}.choices`}>
+              {(field) => (
+                <div className="grid gap-2">
+                  <Label htmlFor={`${domId}-choices`}>
+                    Options, one per line
+                  </Label>
+                  <Textarea
+                    id={`${domId}-choices`}
+                    value={(field.state.value ?? []).join('\n')}
+                    onChange={(event) =>
+                      field.handleChange(event.target.value.split('\n'))
+                    }
+                  />
+                </div>
+              )}
+            </editor.Field>
+          )}
+          {LIMITED.includes(question.type) && (
+            <editor.Field name={`${base}.limits`}>
+              {(field) => (
+                <LimitsEditor
+                  id={`${domId}-limits`}
+                  type={question.type}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                />
+              )}
+            </editor.Field>
+          )}
+          {question.type === 'checklist' && (
+            <editor.Field name={`${base}.items`}>
+              {(field) => (
+                <ItemsEditor
+                  id={`${domId}-items`}
+                  questionId={question.id}
+                  value={field.state.value ?? []}
+                  onChange={field.handleChange}
+                />
+              )}
+            </editor.Field>
+          )}
+          {question.type === 'repeated' && (
+            <>
+              <editor.Field name={`${base}.columns`}>
+                {(field) => (
+                  <ColumnsEditor
+                    id={`${domId}-columns`}
+                    questionId={question.id}
+                    value={field.state.value ?? []}
+                    onChange={field.handleChange}
+                  />
+                )}
+              </editor.Field>
+              <div className="flex flex-wrap gap-4">
+                <editor.Field name={`${base}.minRows`}>
+                  {(field) => (
+                    <NumberSetting
+                      id={`${domId}-min-rows`}
+                      label="Fewest rows"
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                    />
+                  )}
+                </editor.Field>
+                <editor.Field name={`${base}.maxRows`}>
+                  {(field) => (
+                    <NumberSetting
+                      id={`${domId}-max-rows`}
+                      label="Most rows"
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                    />
+                  )}
+                </editor.Field>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </li>
   );
@@ -1406,9 +2222,24 @@ function ColumnsEditor({
   );
 }
 
-function PublishedView({ form }: { form: FormVersion }) {
+function PublishedView({
+  form,
+  outcome,
+}: {
+  form: FormVersion;
+  outcome: PublishOutcome | null;
+}) {
   return (
     <div className="grid gap-6">
+      {outcome && (
+        <Alert role="status">
+          <CircleCheck aria-hidden="true" />
+          <AlertTitle>Version {outcome.version} is published</AlertTitle>
+          <AlertDescription>
+            <ImpactSummary impact={outcome.impact} done />
+          </AlertDescription>
+        </Alert>
+      )}
       <Alert>
         <Lock aria-hidden="true" />
         <AlertTitle>
@@ -1428,6 +2259,8 @@ function PublishedView({ form }: { form: FormVersion }) {
 export function FormEditorPage() {
   const { formId } = route.useParams();
   const form = useQuery(formQuery(formId));
+  // Shown once the draft becomes the locked, published version (FR03).
+  const [outcome, setOutcome] = useState<PublishOutcome | null>(null);
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -1450,9 +2283,12 @@ export function FormEditorPage() {
       <QueryView query={form} label="form">
         {(data) =>
           data.status === 'draft' ? (
-            <DraftEditor key={data.id} form={data} />
+            <DraftEditor key={data.id} form={data} onPublished={setOutcome} />
           ) : (
-            <PublishedView form={data} />
+            <PublishedView
+              form={data}
+              outcome={outcome?.version === data.version ? outcome : null}
+            />
           )
         }
       </QueryView>

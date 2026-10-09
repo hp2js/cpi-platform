@@ -66,7 +66,7 @@ Outside the scripted year, sign in as a focal person and upload any pack PDF, or
 
 ## Configuration
 
-Administrators turn it on or off under **Operations → Evidence assistant**. That page also shows the provider, model, endpoint host, prompt revision, limits and usage. A reset or a new simulation run turns it off. The provider and model are deployment configuration (`apps/api/src/config.ts`, `.env.example`), so changing them needs no code change.
+Administrators turn it on or off under **Run the year → Evidence assistant**. That page also shows the provider, model, endpoint host, prompt revision, limits and usage. A reset or a new simulation run turns it off. The provider and model are deployment configuration (`apps/api/src/config.ts`, `.env.example`), so changing them needs no code change.
 
 | Variable                         | Default                     | Meaning                                                                                                                      |
 | -------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |

@@ -1,7 +1,10 @@
 import {
+  formCheckSchema,
+  formCreationSchema,
   formValidationSchema,
   formVersionSchema,
   formVersionsSchema,
+  type FormCheckRequest,
   type FormDraftUpdate,
 } from '@cpi/contracts';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -12,7 +15,33 @@ export const formKeys = {
   all: ['forms'] as const,
   detail: (id: string) => ['forms', id] as const,
   validation: (id: string) => ['forms', id, 'validation'] as const,
+  check: (id: string, draft: FormCheckRequest) =>
+    ['forms', id, 'check', draft] as const,
+  creation: ['forms', 'creation'] as const,
 };
+
+/** Whether a new version can be started now, and why not (FR03). */
+export const formCreationQuery = queryOptions({
+  queryKey: formKeys.creation,
+  queryFn: ({ signal }) =>
+    request('/api/forms/creation', formCreationSchema, { signal }),
+});
+
+/**
+ * Publication checks, changes and impact for the draft as edited, before it is saved. The
+ * server decides; the editor only shows what it returns.
+ */
+export const formCheckQuery = (id: string, draft: FormCheckRequest) =>
+  queryOptions({
+    queryKey: formKeys.check(id, draft),
+    queryFn: ({ signal }) =>
+      request(`/api/forms/${encodeURIComponent(id)}/check`, formCheckSchema, {
+        method: 'POST',
+        json: draft,
+        signal,
+      }),
+    placeholderData: (previous) => previous,
+  });
 
 export const formsQuery = queryOptions({
   queryKey: formKeys.all,

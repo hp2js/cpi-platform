@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { dayCountingModeSchema } from './cycle.js';
 import { institutionIdSchema, instantSchema } from './common.js';
 import { indicatorWeightsSchema } from './forms.js';
+import { metricSchema } from './oversight.js';
+import { reportIdentitySchema } from './identity.js';
 import { componentScoreSchema, fractionSchema } from './review.js';
 
 /** Named business-time boundaries the demo clock can advance to (FR14). */
@@ -190,6 +192,8 @@ export const publishedResultSchema = z.object({
   correctionReason: z.string().nullable(),
   profileName: z.string(),
   simulation: z.boolean(),
+  /** The report identity in force when this version was published (HP2-65). */
+  identity: reportIdentitySchema,
   evaluation: annualEvaluationSchema.omit({
     publication: true,
     correction: true,
@@ -209,6 +213,35 @@ export const institutionResultsSchema = z.object({
 });
 export type InstitutionResults = z.infer<typeof institutionResultsSchema>;
 
+/**
+ * One institution in the consolidated summary (HP2-66), listed by institution and never ranked.
+ * An unreleased institution carries its reasons and no figures.
+ */
+export const consolidatedSummaryRowSchema = z.object({
+  institutionId: institutionIdSchema,
+  institutionName: z.string(),
+  released: z.boolean(),
+  reasons: z.array(z.string()),
+  points: z.string().nullable(),
+  foundationPoints: z.string().nullable(),
+  quarters: z.array(
+    z.object({
+      periodLabel: z.string(),
+      status: quarterDispositionSchema.shape.status,
+      /** Quarter implementation points out of the implementation weight ÷ 4. */
+      points: z.string().nullable(),
+      late: z.boolean(),
+    }),
+  ),
+  lateQuarters: z.number().int().nonnegative(),
+  officerName: z.string().nullable(),
+  version: z.number().int().positive().nullable(),
+  publishedAt: instantSchema.nullable(),
+});
+export type ConsolidatedSummaryRow = z.infer<
+  typeof consolidatedSummaryRowSchema
+>;
+
 export const consolidatedReportSchema = z.object({
   schemaVersion: z.literal('cpi-export-1'),
   simulation: z.boolean(),
@@ -221,6 +254,33 @@ export const consolidatedReportSchema = z.object({
       institutionId: institutionIdSchema,
       institutionName: z.string(),
       reasons: z.array(z.string()),
+    }),
+  ),
+  /** Every expected institution in scope, by institution ID (HP2-66). */
+  summary: z.array(consolidatedSummaryRowSchema),
+  /** The oversight measures for the cycle in scope, each with numerator and denominator. */
+  coverage: z.array(metricSchema),
+  /** The cycle profile's weights, so the method is stated once for the whole report. */
+  weights: indicatorWeightsSchema,
+  /** Publication batches in scope, oldest first. */
+  batches: z.array(
+    z.object({
+      batchId: z.string(),
+      publishedAt: instantSchema,
+      publishedBy: z.string(),
+      institutions: z.number().int().positive(),
+    }),
+  ),
+  /** Corrected publications since first release, with their reasons. */
+  corrections: z.array(
+    z.object({
+      institutionId: institutionIdSchema,
+      institutionName: z.string(),
+      fromVersion: z.number().int().positive(),
+      toVersion: z.number().int().positive(),
+      reason: z.string(),
+      publishedAt: instantSchema,
+      publishedBy: z.string(),
     }),
   ),
 });

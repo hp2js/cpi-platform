@@ -36,7 +36,7 @@ Sign in at <http://127.0.0.1:5180/sign-in?demo=open> and pick a demo account. Sw
 | Do                                                                        | Expect                                                                     |
 | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Reporting forms** → **Version 1** → **Publish version 1** → **Publish** | "No issues: this version can be published", then "this version is locked"  |
-| **Operations → Evidence assistant** → **Turn on**                         | "The evidence assistant is on", with the provider and model you configured |
+| **Run the year → Evidence assistant** → **Turn on**                       | "The evidence assistant is on", with the provider and model you configured |
 
 ## B. Focal person, DEMO-001: report and submit
 

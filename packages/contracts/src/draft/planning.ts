@@ -388,3 +388,42 @@ export const foundationsSchema = z.object({
   indicators: z.array(foundationIndicatorSchema),
 });
 export type Foundations = z.infer<typeof foundationsSchema>;
+
+/**
+ * Plan work waiting on an officer (HP2-52): baseline proposals to approve or return, seeded Q1
+ * baselines and amendments to confirm, and foundation documents to review. `flag` says in
+ * words why an item is urgent (its quarter has started, or a deadline has passed).
+ */
+export const planningWorkItemSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['proposal', 'seed_confirmation', 'amendment', 'foundation']),
+  institutionId: institutionIdSchema,
+  institutionName: z.string(),
+  officerId: z.string().nullable(),
+  officerName: z.string().nullable(),
+  /** What to act on, e.g. "Q2 baseline proposal". */
+  title: z.string(),
+  /** The tab of the institution page where it is done. */
+  tab: z.enum(['baselines', 'amendments', 'foundations']),
+  dueAt: instantSchema.nullable(),
+  flag: z.string().nullable(),
+});
+export type PlanningWorkItem = z.infer<typeof planningWorkItemSchema>;
+
+const planningCountsSchema = z.object({
+  items: z.number().int().nonnegative(),
+  flagged: z.number().int().nonnegative(),
+});
+
+/** `GET /api/planning/work`: the caller's plan work, most urgent first, with counts. */
+export const planningWorkSchema = z.object({
+  items: z.array(planningWorkItemSchema),
+  totals: planningCountsSchema,
+  byOfficer: z.array(
+    planningCountsSchema.extend({
+      officerId: z.string(),
+      officerName: z.string(),
+    }),
+  ),
+});
+export type PlanningWork = z.infer<typeof planningWorkSchema>;

@@ -11,6 +11,8 @@ import { planningHandlers } from './planning';
 import { fileHandlers } from './files';
 import { planEditorHandlers } from './plan-editor';
 import { reportingHandlers } from './reporting';
+import { reportIdentityHandlers } from './report-identity';
+import { yearsHandlers } from './years';
 import { reviewHandlers } from './review';
 import { accountHandlers } from './account';
 import { adminHandlers } from './admin';
@@ -27,6 +29,8 @@ export const handlers = [
   ...directoryHandlers,
   ...formHandlers,
   ...reportingHandlers,
+  ...reportIdentityHandlers,
+  ...yearsHandlers,
   ...reviewHandlers,
   ...assistantHandlers,
   ...planningHandlers,

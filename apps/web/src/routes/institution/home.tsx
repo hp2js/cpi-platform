@@ -160,9 +160,14 @@ function buildTodos({
         : `Propose your ${proposal.periodLabel} baseline`,
       detail: returned
         ? `Returned by ${returned.by}: ${returned.failedChecks.map((check) => failedCheckLabels[check].toLowerCase()).join('; ') || returned.reason}.`
-        : proposal.plannedMilestones
-          ? `${proposal.plannedMilestones} ${proposal.plannedMilestones === 1 ? 'milestone is' : 'milestones are'} planned. Your officer approves the baseline before the quarter starts.`
-          : `Plan the quarter’s milestones and send them to your officer before the quarter starts.`,
+        : Date.parse(now) >= Date.parse(proposal.startsAt)
+          ? // The quarter is already under way (a year opened late, HP2-100).
+            proposal.plannedMilestones
+            ? `${proposal.plannedMilestones} ${proposal.plannedMilestones === 1 ? 'milestone is' : 'milestones are'} planned. The quarter has started, so send them to your officer for approval now.`
+            : 'The quarter has started. Plan its milestones and send them to your officer for approval.'
+          : proposal.plannedMilestones
+            ? `${proposal.plannedMilestones} ${proposal.plannedMilestones === 1 ? 'milestone is' : 'milestones are'} planned. Your officer approves the baseline before the quarter starts.`
+            : `Plan the quarter’s milestones and send them to your officer before the quarter starts.`,
       deadline: proposal.dueAt,
       action: (
         <Link

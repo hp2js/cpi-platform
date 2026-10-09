@@ -8,12 +8,16 @@ import type {
   Draft,
   EvidenceItem,
   EvidenceSuitability,
+  FinancialYearChange,
   OversightComment,
+  Period,
   ReassignmentSuggestion,
   FormVersion,
   InstitutionRecord,
   Receipt,
   ReportAnswers,
+  ReportIdentity,
+  ReportImage,
 } from '@cpi/contracts';
 import { initialBaselines, type MockBaseline } from '@cpi/contracts/fixtures';
 import {
@@ -177,6 +181,43 @@ export interface MockDb {
   processedEvents: string[];
   closures: { obligationId: string; reason: string; by: string; at: string }[];
   publications: MockPublication[];
+  /** The cycle's report identity (HP2-65); null until an administrator sets one. */
+  reportIdentity: ReportIdentity | null;
+  reportIdentityChanges: { at: string; by: string; summary: string }[];
+  /** Report logos and signatures; the bytes are kept by SHA-256 like evidence files. */
+  reportImages: (ReportImage & { uploadedAt: string; uploadedBy: string })[];
+  /** The next financial year, planned ahead (HP2-100); apart from `cycle`, which is active. */
+  plannedYears: {
+    id: string;
+    label: string;
+    startsOn: string;
+    foundationDeadline: string;
+    evaluationCutoff: string;
+    profileId: string;
+    periods: Period[];
+    revision: number;
+    plannedAt: string;
+    plannedBy: string;
+  }[];
+  yearChanges: FinancialYearChange[];
+  /** Closed years: their calendar as it ran and the results never published (HP2-100). */
+  closedYears: {
+    id: string;
+    label: string;
+    timezone: string;
+    startsOn: string;
+    endsOn: string;
+    foundationDeadline: string;
+    evaluationCutoff: string;
+    profileId: string;
+    profileName: string;
+    periods: Period[];
+    closedAt: string;
+    closedBy: string;
+    pending: { institutionId: string; institutionName: string }[];
+  }[];
+  /** A closed year's published results, every version, exactly as released. */
+  archivedPublications: (MockPublication & { yearId: string })[];
   corrections: {
     id: string;
     institutionId: string;
@@ -246,6 +287,8 @@ export interface MockPublication {
   /** Immutable snapshot of the evaluation at release. */
   evaluation: unknown;
   points: string;
+  /** The report identity in force at release (HP2-65). */
+  identity: ReportIdentity | null;
 }
 
 export interface MockNotification {
@@ -289,12 +332,15 @@ export interface MockDelivery {
  * 17: the risk scale's change log.
  * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
- * 20: evidence assistant switch, runs and suggestions.
- * 21: evidence assistant chat messages.
+ * 20: the report identity, its change log and images; the identity kept with each release.
+ * 21: planned financial years and their change log.
+ * 22: closed financial years and their archived results.
+ * 23: the cycle's `openedAt`.
+ * 24: evidence assistant switch, runs, suggestions and chat messages.
  */
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 24;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '21:da0dd497';
+export const SCHEMA_SHAPE = '24:3978f26d';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -369,6 +415,13 @@ function seed(): MockDb {
     foundationReviews: [],
     processedEvents: [],
     closures: [],
+    reportIdentity: null,
+    reportIdentityChanges: [],
+    reportImages: [],
+    plannedYears: [],
+    yearChanges: [],
+    closedYears: [],
+    archivedPublications: [],
     publications: [],
     corrections: [],
     evidence: foundations.evidence,

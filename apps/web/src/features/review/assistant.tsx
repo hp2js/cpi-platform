@@ -409,7 +409,7 @@ function AssistantOff() {
   return (
     <p className="bg-base-lightest px-3 py-2 text-sm">
       The evidence assistant is turned off. An administrator can turn it on
-      under Operations → Evidence assistant.
+      under Run the year → Evidence assistant.
     </p>
   );
 }

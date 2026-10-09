@@ -4,6 +4,26 @@ Scope: `apps/web` against the persisted API (default) · Issue: HP2-35 · Record
 
 This records what has been checked, what the checks found and fixed, and what has not been verified. Automated checks catch a subset of accessibility problems; **this is not a claim of full WCAG 2.2 conformance** (PRD §11).
 
+## Accessibility position and browsers (HP2-92, HP2-95)
+
+The public [accessibility statement](../apps/web/src/routes/accessibility.tsx) (`/accessibility`, linked from sign-in and the account menu) states the position: **partially conformant** with WCAG 2.2 AA. It lists what is tested on every change, the known limitations and how to report a problem. A full conformance claim waits for an independent audit by a qualified assessor, with assistive-technology users. That audit is a pilot gate: it cannot be done by the people who built the platform. Until then the statement's date is updated whenever the checks change.
+
+Every journey runs in Chromium. The core journeys, tagged `@core`, also run in Firefox and WebKit (Safari's engine) on every change:
+
+- sign-in and demonstration accounts;
+- draft, upload and submit;
+- officer review and the file viewer;
+- clarification;
+- annual results with print and download;
+- form publishing.
+
+Firefox currently skips two steps, each tracked:
+
+- the PDF page render (HP2-98: pdf.js does not start under the automated Firefox);
+- the two-tab concurrent edit (HP2-99: a second tab stays blank while the development service worker runs).
+
+Printing to PDF in tests is Chromium-only; the other engines check the print layout. Real-device checks on an iPhone (Safari) and an Android phone (Chrome) are still to be done by a person and recorded here.
+
 ## What runs on every change
 
 CI (`.github/workflows/ci.yml`) runs `pnpm format:check` and `pnpm check` (lint, typecheck, unit tests including the web tests against the mock, builds), then starts the Compose stack and runs `pnpm test:smoke`, the API integration tests and `pnpm test:e2e` against the persisted API, and repeats smoke and `pnpm test:e2e:prod` on the production images. The latest full local run is recorded in [verification-results.md](verification-results.md). The browser suites are in `e2e/`:

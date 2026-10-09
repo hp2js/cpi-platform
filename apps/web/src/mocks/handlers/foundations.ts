@@ -49,7 +49,10 @@ const calculated = (maxPoints: number, numerator: number): ComponentScore => ({
 });
 
 /** Checklist scoring (PRD §10.3): claimed checks with a supplied document, then officer-accepted checks. */
-function foundationsFor(user: MockUser, institutionId: string): Foundations {
+export function foundationsFor(
+  user: MockUser,
+  institutionId: string,
+): Foundations {
   const db = getDb();
   const internal = user.role !== 'institution';
   return {

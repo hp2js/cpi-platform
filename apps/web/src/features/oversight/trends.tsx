@@ -1,4 +1,5 @@
 import type { Oversight, TrendPoint } from '@cpi/contracts';
+import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -169,7 +170,7 @@ export function Trends({
             <TableHeader>
               <TableRow>
                 <TableHead scope="col">Quarter</TableHead>
-                <TableHead scope="col">Reports due</TableHead>
+                <TableHead scope="col">Reporting</TableHead>
                 <TableHead scope="col">On time</TableHead>
                 <TableHead scope="col">Finalized</TableHead>
                 <TableHead scope="col">Awaiting officer</TableHead>
@@ -181,18 +182,38 @@ export function Trends({
               {data.trends.map((point) => (
                 <TableRow key={point.periodId}>
                   <TableHead scope="row">{point.periodLabel}</TableHead>
-                  <TableCell className="tabular-nums">
-                    {point.due === 0 ? 'Not yet due' : point.due}
+                  <TableCell className="whitespace-normal tabular-nums">
+                    {point.status === 'due' ? (
+                      `${point.received} of ${point.due} received`
+                    ) : point.status === 'open' ? (
+                      <>
+                        Open · due {formatDateTime(point.submissionDeadline)}
+                        <span className="block text-xs text-base-dark">
+                          {point.received} of {point.expected} received
+                        </span>
+                      </>
+                    ) : (
+                      'Not open yet'
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-normal tabular-nums">
+                    {point.status === 'due' ? (
+                      `${point.onTime} (${percent(rate(point.onTime, point.due))})`
+                    ) : (
+                      <>
+                        Not applicable
+                        <span className="block text-xs text-base-dark">
+                          {point.status === 'open'
+                            ? 'Measured once the deadline passes'
+                            : 'Reporting has not opened'}
+                        </span>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    {point.due === 0
+                    {point.received === 0
                       ? 'Not applicable'
-                      : `${point.onTime} (${percent(rate(point.onTime, point.due))})`}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {point.submitted === 0
-                      ? 'Not applicable'
-                      : `${point.finalized} of ${point.submitted} (${percent(rate(point.finalized, point.submitted))})`}
+                      : `${point.finalized} of ${point.received} (${percent(rate(point.finalized, point.received))})`}
                   </TableCell>
                   <TableCell className="tabular-nums">
                     {point.awaitingOfficer}

@@ -1,3 +1,4 @@
+import { InstitutionPublishedResults } from '@/features/annual/published-results';
 import type {
   AccountingOfficer,
   InstitutionType,
@@ -596,6 +597,9 @@ export function InstitutionDetailPage() {
               />
               <FocalPersonsCard institution={institution} />
               <ReportingCard institution={institution} />
+              <div className="widescreen:col-span-2">
+                <InstitutionPublishedResults institutionId={institution.id} />
+              </div>
             </div>
           ) : (
             <p className="text-base-dark">

@@ -21,8 +21,9 @@ const buttonVariants = cva(
         // usa-button--secondary: USWDS's red, reserved for destructive actions.
         destructive:
           'bg-secondary text-white hover:bg-secondary-dark active:bg-secondary-darker',
+        // A toggle (aria-pressed) that is on is filled, so its state shows without reading it.
         outline:
-          'bg-white text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] hover:text-primary-dark hover:shadow-[inset_0_0_0_2px_var(--color-primary-dark)] active:text-primary-darker active:shadow-[inset_0_0_0_2px_var(--color-primary-darker)]',
+          'bg-white text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] hover:text-primary-dark hover:shadow-[inset_0_0_0_2px_var(--color-primary-dark)] active:text-primary-darker active:shadow-[inset_0_0_0_2px_var(--color-primary-darker)] aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:bg-primary-dark aria-pressed:hover:text-white',
         // usa-button--base
         secondary: 'bg-base-dark text-white hover:bg-base-darker active:bg-ink',
         // Neutral secondary: dismissive and utility actions (Cancel, Close, Back, Print,

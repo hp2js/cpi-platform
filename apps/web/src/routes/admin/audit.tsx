@@ -26,6 +26,10 @@ import {
   auditSearch,
   type AuditFilters,
 } from '@/features/events/queries';
+import {
+  auditActionLabel,
+  auditObjectLabel,
+} from '@/features/events/audit-labels';
 import { roleLabel } from '@/features/session/queries';
 import { formatDateTime } from '@/lib/dates';
 
@@ -127,10 +131,13 @@ export function AuditPage() {
             searchPlaceholder="Search actions"
             value={filters.action ?? ''}
             onChange={(value) => set({ action: value || undefined })}
-            options={(data?.actions ?? []).map((action) => ({
-              value: action,
-              label: action,
-            }))}
+            options={(data?.actions ?? [])
+              .map((action) => ({
+                value: action,
+                label: auditActionLabel(action),
+                description: action,
+              }))
+              .sort((a, b) => a.label.localeCompare(b.label))}
           />
         </div>
         <div className="grid gap-2">
@@ -155,7 +162,10 @@ export function AuditPage() {
             onChange={(value) => set({ objectType: value || undefined })}
             options={[
               { value: '', label: 'All object types' },
-              ...objectTypes.map((type) => ({ value: type, label: type })),
+              ...objectTypes.map((type) => ({
+                value: type,
+                label: auditObjectLabel(type),
+              })),
             ]}
           />
         </div>
@@ -204,35 +214,79 @@ export function AuditPage() {
               {result.total} {result.total === 1 ? 'event' : 'events'}, newest
               first
             </p>
-            <div className="min-w-0 rounded-lg border bg-white">
-              <Table className="min-w-[60rem]">
+            {/* Phones: one card per event, so the summary is never squeezed. */}
+            <ol className="grid gap-3 tablet:hidden">
+              {result.events.map((event) => (
+                <li
+                  key={event.id}
+                  className="grid gap-1 rounded-lg border bg-white p-4 text-sm"
+                >
+                  <p className="font-bold">
+                    {auditActionLabel(event.action)}
+                    {elevated.has(event.action) && (
+                      <Badge variant="secondary" className="ml-2">
+                        Elevated
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="font-mono text-xs text-base-dark">
+                    {event.action}
+                  </p>
+                  <p>{event.summary}</p>
+                  <p className="text-base-dark">
+                    {event.actorName} ({roleLabel[event.actorRole]}) ·{' '}
+                    {auditObjectLabel(event.objectType)} {event.objectId}
+                    {event.objectVersion && `, version ${event.objectVersion}`}
+                  </p>
+                  <p className="text-xs text-base-dark">
+                    Business time {formatDateTime(event.businessTime)} · Actual
+                    time {formatDateTime(event.actualTime)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+            <div className="hidden min-w-0 overflow-x-auto rounded-lg border bg-white tablet:block">
+              <Table className="min-w-[56rem] table-fixed">
                 <TableCaption className="sr-only">
                   Audit events, newest first
                 </TableCaption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead scope="col">Business time</TableHead>
-                    <TableHead scope="col">Actor</TableHead>
-                    <TableHead scope="col">Action</TableHead>
-                    <TableHead scope="col">Object</TableHead>
+                    <TableHead scope="col" className="w-36">
+                      Business time
+                    </TableHead>
+                    <TableHead scope="col" className="w-36">
+                      Actor
+                    </TableHead>
+                    <TableHead scope="col" className="w-48">
+                      Action
+                    </TableHead>
+                    <TableHead scope="col" className="w-36">
+                      Object
+                    </TableHead>
                     <TableHead scope="col">Summary</TableHead>
-                    <TableHead scope="col">Actual time (UTC)</TableHead>
+                    <TableHead scope="col" className="w-36">
+                      Actual time
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {result.events.map((event) => (
                     <TableRow key={event.id}>
-                      <TableCell className="text-sm whitespace-nowrap">
+                      <TableCell className="text-sm whitespace-normal">
                         {formatDateTime(event.businessTime)}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm whitespace-normal">
                         {event.actorName}
                         <span className="block text-xs text-base-dark">
                           {roleLabel[event.actorRole]}
                         </span>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {event.action}
+                      <TableCell className="text-sm whitespace-normal">
+                        {auditActionLabel(event.action)}
+                        <span className="block font-mono text-xs break-all text-base-dark">
+                          {event.action}
+                        </span>
                         {elevated.has(event.action) && (
                           <Badge
                             variant="secondary"
@@ -242,8 +296,8 @@ export function AuditPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {event.objectType} {event.objectId}
+                      <TableCell className="text-sm break-words whitespace-normal">
+                        {auditObjectLabel(event.objectType)} {event.objectId}
                         {event.objectVersion && (
                           <span className="block text-xs text-base-dark">
                             version {event.objectVersion}
@@ -253,8 +307,8 @@ export function AuditPage() {
                       <TableCell className="text-sm whitespace-normal">
                         {event.summary}
                       </TableCell>
-                      <TableCell className="font-mono text-xs whitespace-nowrap">
-                        {event.actualTime.slice(0, 19).replace('T', ' ')}
+                      <TableCell className="text-sm whitespace-normal">
+                        {formatDateTime(event.actualTime)}
                       </TableCell>
                     </TableRow>
                   ))}

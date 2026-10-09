@@ -5,11 +5,14 @@ export function PageHeader({
   eyebrow,
   description,
   actions,
+  screenOnlyDescription = false,
 }: {
   title: string;
   eyebrow?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  /** The description is on-screen guidance only and is left out of printouts. */
+  screenOnlyDescription?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4 border-b border-base-lighter pb-6 tablet:flex-row tablet:items-end tablet:justify-between">
@@ -17,7 +20,10 @@ export function PageHeader({
         {eyebrow && <p className="text-sm font-bold text-primary">{eyebrow}</p>}
         <h1 className="mt-1 text-xl font-bold text-balance">{title}</h1>
         {description && (
-          <div className="mt-2 max-w-measure text-sm text-base-dark">
+          <div
+            data-print-hide={screenOnlyDescription || undefined}
+            className="mt-2 max-w-measure text-sm text-base-dark"
+          >
             {description}
           </div>
         )}

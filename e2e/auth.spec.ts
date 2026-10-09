@@ -68,28 +68,32 @@ test.beforeEach(async ({ page }) => {
   await signOut(page);
 });
 
-test('email and password sign-in, with one message for any mistake', async ({
-  page,
-}) => {
-  await submitPassword(page, 'officer.a@example.invalid', 'not-it');
-  await expect(
-    page.getByText('The email or password is not right.'),
-  ).toBeVisible();
-  await submitPassword(page, 'nobody@example.invalid', DEMO_PASSWORD);
-  await expect(
-    page.getByText('The email or password is not right.'),
-  ).toBeVisible();
+test(
+  'email and password sign-in, with one message for any mistake',
+  { tag: '@core' },
+  async ({ page }) => {
+    await submitPassword(page, 'officer.a@example.invalid', 'not-it');
+    await expect(
+      page.getByText('The email or password is not right.'),
+    ).toBeVisible();
+    await submitPassword(page, 'nobody@example.invalid', DEMO_PASSWORD);
+    await expect(
+      page.getByText('The email or password is not right.'),
+    ).toBeVisible();
 
-  // The published demo password is shown in the demonstration overlay.
-  await page
-    .getByRole('button', { name: /Explore with a demonstration account/ })
-    .click();
-  await expect(page.getByRole('dialog').getByText(DEMO_PASSWORD)).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page).not.toHaveURL(/demo=open/);
-  await signInWithPassword(page, 'officer.a@example.invalid', DEMO_PASSWORD);
-  await expect(page).toHaveURL(/\/officer$/);
-});
+    // The published demo password is shown in the demonstration overlay.
+    await page
+      .getByRole('button', { name: /Explore with a demonstration account/ })
+      .click();
+    await expect(
+      page.getByRole('dialog').getByText(DEMO_PASSWORD),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page).not.toHaveURL(/demo=open/);
+    await signInWithPassword(page, 'officer.a@example.invalid', DEMO_PASSWORD);
+    await expect(page).toHaveURL(/\/officer$/);
+  },
+);
 
 test('a right password still needs the emailed code', async ({ page }) => {
   await submitPassword(page, 'officer.b@example.invalid', DEMO_PASSWORD);

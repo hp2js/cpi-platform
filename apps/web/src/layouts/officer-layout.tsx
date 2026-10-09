@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { InboxLink } from '@/components/inbox-link';
 import { Link, Outlet } from '@tanstack/react-router';
 import {
-  Bell,
   ChartColumn,
   ClipboardList,
   FileSearch,
@@ -23,26 +22,37 @@ import {
 } from '@/components/ui/sheet';
 import { institutionsQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
-import { NavList, SkipLink, useMeasuredHeight, type NavItem } from './shared';
+import {
+  NavSections,
+  RailBrand,
+  SkipLink,
+  useMeasuredHeight,
+  type NavItem,
+} from './shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const nav = [
+// In the order an officer works: what is assigned, the evidence behind it, then each
+// institution in the portfolio. The rules are for reference. The inbox is in the header.
+const review = [
   { to: '/officer', label: 'Assigned work', icon: ClipboardList, exact: true },
-  {
-    to: '/officer/portfolio',
-    label: 'My portfolio',
-    icon: ChartColumn,
-    exact: false,
-  },
   {
     to: '/officer/evidence',
     label: 'Evidence',
     icon: FileSearch,
     exact: false,
   },
+] as const satisfies readonly NavItem[];
+const portfolioNav = [
+  {
+    to: '/officer/portfolio',
+    label: 'My portfolio',
+    icon: ChartColumn,
+    exact: false,
+  },
+] as const satisfies readonly NavItem[];
+const reference = [
   { to: '/officer/rules', label: 'Rules in use', icon: Scale, exact: false },
-  { to: '/officer/inbox', label: 'Inbox', icon: Bell, exact: false },
 ] as const satisfies readonly NavItem[];
 
 function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
@@ -56,61 +66,63 @@ function OfficerRail({ onNavigate }: { onNavigate?: () => void }) {
       `${institution.id} ${institution.name}`.toLowerCase().includes(terms),
   );
   return (
-    <div className="flex min-h-full flex-col gap-6 p-4">
-      <Link
-        to="/officer"
-        activeOptions={{ exact: true }}
-        onClick={onNavigate}
-        aria-label="Officer home"
-      >
-        <Brand />
-      </Link>
-      <nav aria-label="Officer">
-        <NavList items={nav} onNavigate={onNavigate} />
-      </nav>
-      <section aria-labelledby="portfolio-heading">
-        <h2
-          id="portfolio-heading"
-          className="px-3 text-xs font-bold tracking-wide text-base-dark uppercase"
-        >
-          My portfolio
-          {portfolio.data && ` (${portfolio.data.length})`}
-        </h2>
-        {(portfolio.data?.length ?? 0) > 8 && (
-          <div className="mt-2 px-1">
-            <Label htmlFor="portfolio-filter" className="sr-only">
-              Filter my portfolio
-            </Label>
-            <Input
-              id="portfolio-filter"
-              type="search"
-              placeholder="Filter institutions"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          </div>
-        )}
-        <ul className="mt-2 grid gap-1 text-sm">
-          {shown.map((institution) => (
-            <li key={institution.id}>
-              <Link
-                to="/officer/institutions/$institutionId"
-                params={{ institutionId: institution.id }}
-                onClick={onNavigate}
-                className="block min-h-touch border-l-4 border-transparent px-3 py-2 text-ink hover:bg-base-lightest data-[status=active]:border-primary data-[status=active]:text-primary"
-              >
-                <span className="block font-bold">{institution.id}</span>
-                <span className="block text-xs text-base-dark">
-                  {institution.name}
-                </span>
-              </Link>
-            </li>
-          ))}
-          {portfolio.isPending && (
-            <li className="px-3 text-xs text-base-dark">Loading portfolio…</li>
-          )}
-        </ul>
-      </section>
+    <div className="flex h-full min-h-0 flex-col">
+      <RailBrand to="/officer" label="Officer home" onNavigate={onNavigate} />
+      <NavSections
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+        label="Officer"
+        onNavigate={onNavigate}
+        sections={[
+          { heading: 'Review work', items: review },
+          {
+            heading: 'Portfolio',
+            items: portfolioNav,
+            extra: (
+              <section aria-label="My portfolio" className="mt-1">
+                {(portfolio.data?.length ?? 0) > 8 && (
+                  <div className="mt-1 mb-2 px-1">
+                    <Label htmlFor="portfolio-filter" className="sr-only">
+                      Filter my portfolio
+                    </Label>
+                    <Input
+                      id="portfolio-filter"
+                      type="search"
+                      placeholder="Filter institutions"
+                      value={filter}
+                      onChange={(event) => setFilter(event.target.value)}
+                    />
+                  </div>
+                )}
+                <ul className="ml-5 grid gap-1 border-l text-sm">
+                  {shown.map((institution) => (
+                    <li key={institution.id}>
+                      <Link
+                        to="/officer/institutions/$institutionId"
+                        params={{ institutionId: institution.id }}
+                        onClick={onNavigate}
+                        className="-ml-px block min-h-touch border-l-4 border-transparent px-3 py-2 text-ink hover:bg-base-lightest data-[status=active]:border-primary data-[status=active]:text-primary"
+                      >
+                        <span className="block font-bold">
+                          {institution.id}
+                        </span>
+                        <span className="block text-xs text-base-dark">
+                          {institution.name}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                  {portfolio.isPending && (
+                    <li className="px-3 text-xs text-base-dark">
+                      Loading portfolio…
+                    </li>
+                  )}
+                </ul>
+              </section>
+            ),
+          },
+          { heading: 'Reference', items: reference },
+        ]}
+      />
     </div>
   );
 }
@@ -133,13 +145,14 @@ export function OfficerLayout() {
       <div className="flex flex-1">
         <aside
           data-sticky
-          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-y-auto border-r bg-white desktop:block"
+          className="sticky top-(--banner-h) hidden h-[calc(100svh-var(--banner-h))] w-64 shrink-0 self-start overflow-hidden border-r bg-white desktop:block"
         >
           <OfficerRail />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             ref={headerRef}
+            data-print-hide
             data-sticky
             className="sticky top-(--banner-h) z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2 desktop:justify-end"
           >
@@ -155,7 +168,7 @@ export function OfficerLayout() {
                     <span className="sr-only">Open navigation</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-72 overflow-hidden p-0">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SheetDescription className="sr-only">
                     Officer navigation and assigned portfolio
