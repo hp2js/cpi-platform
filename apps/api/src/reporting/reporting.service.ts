@@ -19,6 +19,7 @@ import { currentState } from '../database/state';
 import { Events, assignedOfficers, institutionUsers } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
 import { Files } from '../storage/files';
+import { AssistantService } from '../assistant/assistant.service';
 import { loadReport, ownObligation, toEvidenceItem } from './report';
 import { ReportingRepository } from './reporting.repository';
 import {
@@ -56,6 +57,7 @@ export class ReportingService {
     private readonly repository: ReportingRepository,
     private readonly events: Events,
     private readonly files: Files,
+    private readonly assistant: AssistantService,
   ) {}
 
   async report(user: User, id: string): Promise<ReportBundle> {
@@ -297,13 +299,14 @@ export class ReportingService {
    * A retry after a lost response returns the original receipt (`created: false`), with no
    * second revision (AT06). The body is checked after scope, replay and editability.
    */
-  submit(
+  async submit(
     user: User,
     id: string,
     key: string,
     body: unknown,
   ): Promise<Created<Receipt>> {
-    return write(this.db, async (tx, businessTime) => {
+    let submitted: string | undefined;
+    const result = await write(this.db, async (tx, businessTime) => {
       const obligation = await ownObligation(tx, user, id);
       const replay = await this.repository.receiptForKey(user.id, key, tx);
       if (replay) return { created: false, body: replay };
@@ -460,8 +463,12 @@ export class ReportingService {
           link: `/officer/reviews/${submissionId}`,
         },
       );
+      submitted = submissionId;
       return { created: true, body: receipt };
     });
+    // The evidence assistant reads the files in the background; the receipt never waits for it.
+    if (submitted) void this.assistant.reviewSubmission(user, submitted);
+    return result;
   }
 
   receipts(user: User): Promise<Receipt[]> {

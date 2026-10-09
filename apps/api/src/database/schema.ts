@@ -18,6 +18,7 @@ import type {
   FormChange,
   RiskScale,
   AccountingOfficer,
+  AssistantChatMessage,
   AssistantFinding,
   AssistantKind,
   AssistantRun,
@@ -854,4 +855,20 @@ export const assistantSuggestions = pgTable('assistant_suggestions', {
   quote: text(),
   page: integer(),
   decision: jsonb().$type<NonNullable<AssistantSuggestion['decision']>>(),
+});
+
+/** The officer's chat about one submission: questions and the assistant's replies, in order. */
+export const assistantMessages = pgTable('assistant_messages', {
+  id: text().primaryKey(),
+  seq: serial(),
+  submissionId: text()
+    .notNull()
+    .references(() => submissions.id),
+  role: text().$type<AssistantChatMessage['role']>().notNull(),
+  text: text().notNull(),
+  by: text().notNull(),
+  /** Business time. */
+  at: instant().notNull(),
+  provider: text(),
+  model: text(),
 });

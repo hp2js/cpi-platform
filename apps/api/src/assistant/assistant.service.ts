@@ -1,11 +1,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  ASSISTANT_CHAT_MAX_REPLY,
   ASSISTANT_PROMPT_REVISION,
   assess,
+  assistantChatRequestSchema,
   assistantCheckHints,
   assistantMessages,
   assistantDecisionRequestSchema,
   hiddenKinds,
+  type AssistantChat,
+  type AssistantChatContext,
   type AssistantContext,
   type AssistantRun,
   type AssistantSettings,
@@ -14,7 +18,14 @@ import {
 import { assignedInstitutionIds, readableInstitutionIds } from '../auth/scope';
 import type { User } from '../auth/sessions';
 import { CONFIG, type AppConfig } from '../config';
-import { DB, nextId, write, type Database, type Db } from '../database/db';
+import {
+  DB,
+  nextId,
+  write,
+  type Database,
+  type Db,
+  type Tx,
+} from '../database/db';
 import { toNairobi } from '../database/schema';
 import { Events } from '../events/events';
 import { ApiError, notFound } from '../http/api-error';
@@ -27,17 +38,44 @@ import {
 import { Files } from '../storage/files';
 import {
   AssistantRepository,
+  type MessageRow,
   type RunRow,
   type SuggestionRow,
 } from './assistant.repository';
 import { extractText } from './extract';
 import { providerFrom, type Provider } from './providers';
 
+type Item = Parameters<Files['read']>[0] & {
+  id: string;
+  version: number;
+  fileName: string;
+  mimeType: string;
+};
+
+/** The HTTP status a provider failed with (429: rate limit or no credits; 401: bad key), or null. */
+const providerStatus = (error: unknown) =>
+  typeof (error as { status?: unknown })?.status === 'number'
+    ? (error as { status: number }).status
+    : null;
+
+/** The provider's answer, or the signal's abort reason once time is up. */
+const withinTime = <T>(work: Promise<T>, signal: AbortSignal) =>
+  Promise.race([
+    work,
+    new Promise<never>((_, reject) =>
+      signal.addEventListener('abort', () => reject(signal.reason), {
+        once: true,
+      }),
+    ),
+  ]);
+
 /**
- * The evidence assistant (PRD §14). On demand, per file, for the assigned officer; supervisors
- * and administrators read. A run happens outside the write lock and outside the request, so the
- * review never waits on a model; nothing here writes decisions, suitability checks or scores.
- * Logs and audit records carry identifiers, model, timings and outcomes, never document text.
+ * The evidence assistant (PRD §14). Each file is read when the report is submitted (and again
+ * on the assigned officer's request); the officer accepts, amends or dismisses every
+ * suggestion, and can ask about the whole submission in a chat. Supervisors and administrators
+ * read. Runs and replies happen outside the write lock, so the review never waits on a model;
+ * nothing here writes decisions, suitability checks or scores. Logs and audit records carry
+ * identifiers, model, timings and outcomes, never document text, questions or replies.
  */
 @Injectable()
 export class AssistantService {
@@ -68,13 +106,8 @@ export class AssistantService {
     return !this.unavailableReason() && (await this.repository.enabled(db));
   }
 
-  /** The submission's file and its review context; 404 outside the caller's scope. */
-  private async load(
-    db: Db,
-    user: User,
-    submissionId: string,
-    evidenceId: string,
-  ) {
+  /** The submission and its review context; 404 outside the caller's scope. */
+  private async scope(db: Db, user: User, submissionId: string) {
     const institutionId = await this.repository.submissionInstitution(
       submissionId,
       db,
@@ -86,29 +119,55 @@ export class AssistantService {
       throw notFound();
     const data = await loadReviewData(db, [institutionId]);
     const submission = data.submissions.find((row) => row.id === submissionId)!;
-    if (!submission.evidenceIds.includes(evidenceId)) throw notFound();
-    const item = data.evidence.find((row) => row.id === evidenceId)!;
     const obligation = obligationOf(data, submission);
     const period = periodOf(data, obligation.periodId);
     const institution = data.institutions.find(
       (row) => row.id === institutionId,
     )!;
-    const context: AssistantContext = {
-      institution: { id: institution.id, name: institution.name },
-      period: {
-        label: period.label,
-        startsOn: period.startsOn,
-        endsOn: period.endsOn,
-      },
-      citations: milestonesOf(data, submission).flatMap((milestone) =>
-        (submission.answers.milestones[milestone.id]?.evidence ?? [])
-          .filter((reference) => reference.evidenceId === evidenceId)
-          .map((reference) => ({
-            milestoneCode: milestone.code,
-            milestoneTitle: milestone.title,
-            passage: reference.passage,
-          })),
+    const citations = milestonesOf(data, submission).flatMap((milestone) =>
+      (submission.answers.milestones[milestone.id]?.evidence ?? []).map(
+        (reference) => ({
+          evidenceId: reference.evidenceId,
+          milestoneCode: milestone.code,
+          milestoneTitle: milestone.title,
+          passage: reference.passage,
+        }),
       ),
+    );
+    const assigned =
+      user.role === 'officer' &&
+      (await assignedInstitutionIds(db, user.id)).includes(institutionId);
+    const items = submission.evidenceIds.map((id) =>
+      data.evidence.find((row) => row.id === id)!,
+    );
+    return {
+      data,
+      items,
+      assigned,
+      context: {
+        institution: { id: institution.id, name: institution.name },
+        period: {
+          label: period.label,
+          startsOn: period.startsOn,
+          endsOn: period.endsOn,
+        },
+        citations,
+      },
+    };
+  }
+
+  /** One file of the submission, the context for it, and its earlier versions. */
+  private file(
+    { data, items, assigned, context }: Awaited<ReturnType<typeof this.scope>>,
+    evidenceId: string,
+  ) {
+    const item = items.find((row) => row.id === evidenceId);
+    if (!item) throw notFound();
+    const fileContext: AssistantContext = {
+      ...context,
+      citations: context.citations
+        .filter((citation) => citation.evidenceId === evidenceId)
+        .map(({ evidenceId: _, ...citation }) => citation),
     };
     // This version and the versions it replaced: earlier suggestions stay visible as history.
     const versions = new Map<string, number>();
@@ -118,10 +177,16 @@ export class AssistantService {
       at = data.evidence.find((row) => row.id === at!.predecessorId)
     )
       versions.set(at.id, at.version);
-    const assigned =
-      user.role === 'officer' &&
-      (await assignedInstitutionIds(db, user.id)).includes(institutionId);
-    return { item, context, versions, assigned };
+    return { item, context: fileContext, versions, assigned };
+  }
+
+  private async load(
+    db: Db,
+    user: User,
+    submissionId: string,
+    evidenceId: string,
+  ) {
+    return this.file(await this.scope(db, user, submissionId), evidenceId);
   }
 
   private stale(run: RunRow) {
@@ -194,7 +259,55 @@ export class AssistantService {
     };
   }
 
-  /** Starts a run, or reuses a finished one for the same file version, model and prompt. */
+  /**
+   * Records a new run for this file version unless a finished one for the same provider, model
+   * and prompt (or one still running) can be reused. Call inside `write()`; execute after it.
+   */
+  private async start(
+    tx: Tx,
+    businessTime: string,
+    actor: User,
+    requestedBy: string,
+    item: Item,
+    context: AssistantContext,
+  ) {
+    const previous = await this.repository.runs([item.id], tx);
+    const reusable = previous.some(
+      ({ run }) =>
+        (['completed', 'declined'].includes(run.status) &&
+          run.provider === this.provider.name &&
+          run.model === this.provider.model &&
+          run.promptRevision === ASSISTANT_PROMPT_REVISION) ||
+        (run.status === 'running' && !this.stale(run)),
+    );
+    if (reusable) return null;
+    const id = await nextId(tx, 'arun');
+    await this.repository.insertRun(
+      {
+        id,
+        evidenceId: item.id,
+        status: 'running',
+        provider: this.provider.name,
+        model: this.provider.model,
+        promptRevision: ASSISTANT_PROMPT_REVISION,
+        requestedBy,
+        requestedAt: businessTime,
+        startedAt: toNairobi(new Date()),
+      },
+      tx,
+    );
+    await this.events.audit(
+      tx,
+      businessTime,
+      actor,
+      'assistant.run',
+      { type: 'evidence', id: item.id, version: item.version },
+      `Evidence assistant run ${id} ${actor.role === 'institution' ? 'started on submission' : 'requested'} (${this.provider.name}, ${this.provider.model}, ${ASSISTANT_PROMPT_REVISION})`,
+    );
+    return { id, item, context };
+  }
+
+  /** On the officer's request: a first run, or a retry after a failure. */
   async run(
     user: User,
     submissionId: string,
@@ -219,50 +332,54 @@ export class AssistantService {
           'The evidence assistant is turned off.',
           'assistant_off',
         );
-      const previous = await this.repository.runs([evidenceId], tx);
-      const reusable = previous.some(
-        ({ run }) =>
-          (['completed', 'declined'].includes(run.status) &&
-            run.provider === this.provider.name &&
-            run.model === this.provider.model &&
-            run.promptRevision === ASSISTANT_PROMPT_REVISION) ||
-          (run.status === 'running' && !this.stale(run)),
-      );
-      if (reusable) return null;
-      const id = await nextId(tx, 'arun');
-      await this.repository.insertRun(
-        {
-          id,
-          evidenceId,
-          status: 'running',
-          provider: this.provider.name,
-          model: this.provider.model,
-          promptRevision: ASSISTANT_PROMPT_REVISION,
-          requestedBy: user.displayName,
-          requestedAt: businessTime,
-          startedAt: toNairobi(new Date()),
-        },
-        tx,
-      );
-      await this.events.audit(
+      return this.start(
         tx,
         businessTime,
         user,
-        'assistant.run',
-        { type: 'evidence', id: evidenceId, version: item.version },
-        `Evidence assistant run ${id} requested (${this.provider.name}, ${this.provider.model}, ${ASSISTANT_PROMPT_REVISION})`,
+        user.displayName,
+        item,
+        context,
       );
-      return { id, item, context };
     });
     if (started) void this.execute(started.id, started.item, started.context);
     return this.view(user, submissionId, evidenceId);
   }
 
-  private async execute(
-    runId: string,
-    item: Parameters<Files['read']>[0] & { mimeType: string },
-    context: AssistantContext,
-  ) {
+  /**
+   * Reads every file of a new submission in the background, so suggestions are ready when the
+   * officer opens the review. Does nothing while the assistant is off; never fails the submission.
+   */
+  async reviewSubmission(user: User, submissionId: string): Promise<void> {
+    try {
+      const started = await write(this.db, async (tx, businessTime) => {
+        if (!(await this.active(tx))) return [];
+        const scope = await this.scope(tx, user, submissionId);
+        const runs = [];
+        for (const item of scope.items) {
+          const { context } = this.file(scope, item.id);
+          const run = await this.start(
+            tx,
+            businessTime,
+            user,
+            'Evidence assistant, on submission',
+            item,
+            context,
+          );
+          if (run) runs.push(run);
+        }
+        return runs;
+      });
+      for (const run of started)
+        void this.execute(run.id, run.item, run.context);
+    } catch {
+      this.logger.warn({
+        event: 'assistant.review_submission_failed',
+        submissionId,
+      });
+    }
+  }
+
+  private async execute(runId: string, item: Item, context: AssistantContext) {
     const begin = Date.now();
     const signal = AbortSignal.timeout(this.config.ASSISTANT_TIMEOUT_MS);
     const finish = async (
@@ -315,14 +432,10 @@ export class AssistantService {
           message: assistantMessages[extraction.reason],
         });
       const { document } = extraction;
-      const proposal = await Promise.race([
+      const proposal = await withinTime(
         this.provider.propose(document, context, signal),
-        new Promise<never>((_, reject) =>
-          signal.addEventListener('abort', () => reject(signal.reason), {
-            once: true,
-          }),
-        ),
-      ]);
+        signal,
+      );
       const result = assess(document, context, proposal.candidates);
       result.discarded.untraceable += proposal.malformed;
       const hidden = hiddenKinds(
@@ -343,8 +456,13 @@ export class AssistantService {
           (suggestion) => !hidden.includes(suggestion.kind),
         ),
       );
-    } catch {
-      // The error may quote the provider's reply; record only the outcome.
+    } catch (error) {
+      // The error may quote the provider's reply; record only the outcome and HTTP status.
+      this.logger.warn({
+        event: 'assistant.provider_failed',
+        runId,
+        providerStatus: providerStatus(error),
+      });
       await finish({
         status: 'failed',
         message: signal.aborted
@@ -410,6 +528,185 @@ export class AssistantService {
       return found.run.evidenceId;
     });
     return this.view(user, submissionId, evidenceId);
+  }
+
+  private toMessage(row: MessageRow): AssistantChat['messages'][number] {
+    return {
+      id: row.id,
+      role: row.role,
+      text: row.text,
+      by: row.by,
+      at: row.at,
+      provider: row.provider,
+      model: row.model,
+    };
+  }
+
+  async chat(
+    user: User,
+    submissionId: string,
+    db: Db = this.db,
+  ): Promise<AssistantChat> {
+    const { assigned } = await this.scope(db, user, submissionId);
+    const enabled = await this.active(db);
+    return {
+      enabled,
+      canAsk: enabled && assigned,
+      messages: (await this.repository.messages(submissionId, db)).map((row) =>
+        this.toMessage(row),
+      ),
+    };
+  }
+
+  /**
+   * The officer's question about the whole submission. The question is stored first; the reply
+   * is worked out outside the write lock from every readable file, within the time limit, and
+   * stored as the assistant's message (a plain failure message when it could not answer).
+   */
+  async ask(
+    user: User,
+    submissionId: string,
+    body: unknown,
+  ): Promise<AssistantChat> {
+    const asked = await write(this.db, async (tx, businessTime) => {
+      const scope = await this.scope(tx, user, submissionId);
+      if (!scope.assigned)
+        throw new ApiError(
+          403,
+          'Only the assigned officer can ask the evidence assistant.',
+          'forbidden',
+        );
+      if (!(await this.active(tx)))
+        throw new ApiError(
+          409,
+          'The evidence assistant is turned off.',
+          'assistant_off',
+        );
+      const parsed = assistantChatRequestSchema.safeParse(body);
+      if (!parsed.success)
+        throw new ApiError(
+          422,
+          'Write a question of up to 1,000 characters.',
+          'invalid_request',
+          Object.fromEntries(
+            parsed.error.issues.map((issue) => [
+              issue.path.join('.'),
+              issue.message,
+            ]),
+          ),
+        );
+      const history = await this.repository.messages(submissionId, tx);
+      await this.repository.insertMessage(
+        {
+          id: await nextId(tx, 'amsg'),
+          submissionId,
+          role: 'officer',
+          text: parsed.data.question,
+          by: user.displayName,
+          at: businessTime,
+        },
+        tx,
+      );
+      await this.events.audit(
+        tx,
+        businessTime,
+        user,
+        'assistant.chat',
+        { type: 'submission', id: submissionId },
+        `Question to the evidence assistant (${this.provider.name}, ${this.provider.model})`,
+      );
+      return { scope, question: parsed.data.question, history };
+    });
+
+    const begin = Date.now();
+    const signal = AbortSignal.timeout(this.config.ASSISTANT_TIMEOUT_MS);
+    const { scope, question } = asked;
+    let reply = assistantMessages.chat_failed;
+    let outcome = 'failed';
+    let status: number | null = null;
+    try {
+      // ponytail: reads and extracts every file per question; cache by file version if slow.
+      const files = await Promise.all(
+        scope.items.map(async (item) => {
+          const bytes = await this.files.read(item);
+          const extraction = bytes
+            ? await extractText(
+                bytes,
+                item.mimeType,
+                this.config.ASSISTANT_MAX_PAGES,
+              )
+            : null;
+          return {
+            fileName: item.fileName,
+            document: extraction?.ok ? extraction.document : null,
+          };
+        }),
+      );
+      const context: AssistantChatContext = {
+        ...scope.context,
+        citations: scope.context.citations.map(
+          ({ evidenceId, ...citation }) => ({
+            ...citation,
+            fileName:
+              scope.items.find((item) => item.id === evidenceId)?.fileName ??
+              'a file not in this submission',
+          }),
+        ),
+      };
+      const answer = (
+        await withinTime(
+          this.provider.chat(
+            files,
+            context,
+            asked.history.filter(
+              (row) => row.text !== assistantMessages.chat_failed,
+            ),
+            question,
+            signal,
+          ),
+          signal,
+        )
+      )
+        .trim()
+        .slice(0, ASSISTANT_CHAT_MAX_REPLY);
+      if (answer) {
+        reply = answer;
+        outcome = 'answered';
+      }
+    } catch (error) {
+      // The error may quote the provider's reply; record only the outcome and HTTP status.
+      outcome = signal.aborted ? 'timed_out' : 'failed';
+      status = providerStatus(error);
+    }
+    await write(this.db, async (tx, businessTime) => {
+      // A reset may have removed the submission meanwhile.
+      if (!(await this.repository.submissionInstitution(submissionId, tx)))
+        return;
+      await this.repository.insertMessage(
+        {
+          id: await nextId(tx, 'amsg'),
+          submissionId,
+          role: 'assistant',
+          text: reply,
+          by: 'Evidence assistant',
+          at: businessTime,
+          provider: this.provider.name,
+          model: this.provider.model,
+        },
+        tx,
+      );
+    });
+    this.logger.log({
+      event: 'assistant.chat',
+      submissionId,
+      provider: this.provider.name,
+      model: this.provider.model,
+      outcome,
+      providerStatus: status,
+      files: scope.items.length,
+      durationMs: Date.now() - begin,
+    });
+    return this.chat(user, submissionId);
   }
 
   async settings(): Promise<AssistantSettings> {

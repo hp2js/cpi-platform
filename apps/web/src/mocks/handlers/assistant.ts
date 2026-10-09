@@ -2,18 +2,27 @@ import { http, HttpResponse } from 'msw';
 import {
   ASSISTANT_PROMPT_REVISION,
   assess,
+  assistantChatRequestSchema,
   assistantCheckHints,
   assistantDecisionRequestSchema,
   assistantMessages,
   assistantSettingsRequestSchema,
   deterministicCandidates,
+  deterministicChatReply,
   hiddenKinds,
+  type AssistantChat,
   type AssistantContext,
   type AssistantSettings,
   type AssistantView,
 } from '@cpi/contracts';
 import type { MockUser } from '@cpi/contracts/fixtures';
-import { commit, getDb, nextId, type MockAssistantRun } from '../db';
+import {
+  commit,
+  getDb,
+  nextId,
+  type MockAssistantRun,
+  type MockEvidence,
+} from '../db';
 import {
   extractText,
   MOCK_MAX_PAGES,
@@ -109,6 +118,143 @@ function view(user: MockUser, submissionId: unknown, evidenceId: unknown) {
   return result;
 }
 
+/**
+ * Reads one file version and records the run, unless a finished run for the same provider and
+ * prompt can be reused. The mock reads synchronously; the API reads in the background.
+ */
+async function read(
+  user: MockUser,
+  item: MockEvidence,
+  context: AssistantContext,
+  requestedBy: string,
+) {
+  const db = getDb();
+  const reusable = db.assistantRuns.some(
+    (run) =>
+      run.evidenceId === item.id &&
+      ['completed', 'declined'].includes(run.status) &&
+      run.provider === MOCK_PROVIDER.name &&
+      run.promptRevision === ASSISTANT_PROMPT_REVISION,
+  );
+  if (!reusable) {
+    const begin = Date.now();
+    const base: Omit<MockAssistantRun, 'id' | 'status'> = {
+      evidenceId: item.id,
+      message: null,
+      provider: MOCK_PROVIDER.name,
+      model: MOCK_PROVIDER.model,
+      promptRevision: ASSISTANT_PROMPT_REVISION,
+      language: null,
+      unit: null,
+      unreadablePages: [],
+      discarded: { untraceable: 0, instructionLike: 0 },
+      hiddenKinds: [],
+      requestedBy,
+      requestedAt: db.businessTime,
+      durationMs: null,
+    };
+    const bytes = await loadFile(item.sha256);
+    const extraction = bytes
+      ? await extractText(bytes, item.mimeType)
+      : ({ ok: false, reason: 'no_contents' } as const);
+    commit((store) => {
+      const id = nextId('arun');
+      if (!extraction.ok) {
+        store.assistantRuns.push({
+          ...base,
+          id,
+          status: 'declined',
+          message: assistantMessages[extraction.reason],
+          durationMs: Date.now() - begin,
+        });
+      } else {
+        const { document } = extraction;
+        const result = assess(
+          document,
+          context,
+          deterministicCandidates(document, context),
+        );
+        const hidden = hiddenKinds(result.language, [], []);
+        store.assistantRuns.push({
+          ...base,
+          id,
+          status: 'completed',
+          language: result.language,
+          unit: document.unit,
+          unreadablePages: result.unreadablePages,
+          discarded: result.discarded,
+          hiddenKinds: hidden,
+          durationMs: Date.now() - begin,
+        });
+        for (const suggestion of result.suggestions)
+          if (!hidden.includes(suggestion.kind))
+            store.assistantSuggestions.push({
+              ...suggestion,
+              id: nextId('asug'),
+              runId: id,
+              decision: null,
+            });
+      }
+      audit(
+        store,
+        user,
+        'assistant.run',
+        { type: 'evidence', id: item.id, version: item.version },
+        `Evidence assistant run ${id} ${user.role === 'institution' ? 'started on submission' : 'requested'} (${MOCK_PROVIDER.name}, ${MOCK_PROVIDER.model}, ${ASSISTANT_PROMPT_REVISION})`,
+      );
+    });
+  }
+}
+
+/** The mock twin of the API's `reviewSubmission`: every file of a new submission, if on. */
+export async function reviewSubmission(user: MockUser, submissionId: string) {
+  const db = getDb();
+  if (!db.assistantEnabled) return;
+  const submission = db.submissions.find((row) => row.id === submissionId)!;
+  for (const evidenceId of submission.evidenceIds) {
+    const { item, context } = load(user, submissionId, evidenceId);
+    await read(user, item, context, 'Evidence assistant, on submission');
+  }
+}
+
+function chatScope(user: MockUser, submissionId: unknown) {
+  const db = getDb();
+  const submission = db.submissions.find((row) => row.id === submissionId);
+  const obligation = db.obligations.find(
+    (row) => row.id === submission?.obligationId,
+  );
+  if (
+    !submission ||
+    !obligation ||
+    !canReadInstitution(user, obligation.institutionId)
+  )
+    throw notFound();
+  const assigned =
+    user.role === 'officer' &&
+    assignedInstitutionIds(user.id).includes(obligation.institutionId);
+  return { submission, assigned };
+}
+
+function chat(user: MockUser, submissionId: unknown): AssistantChat {
+  const db = getDb();
+  const { submission, assigned } = chatScope(user, submissionId);
+  return {
+    enabled: db.assistantEnabled,
+    canAsk: db.assistantEnabled && assigned,
+    messages: db.assistantMessages
+      .filter((row) => row.submissionId === submission.id)
+      .map((row) => ({
+        id: row.id,
+        role: row.role,
+        text: row.text,
+        by: row.by,
+        at: row.at,
+        provider: row.provider,
+        model: row.model,
+      })),
+  };
+}
+
 const forbidden = (message: string) => apiError(403, message, 'forbidden');
 
 export const assistantHandlers = [
@@ -144,81 +290,7 @@ export const assistantHandlers = [
           'The evidence assistant is turned off.',
           'assistant_off',
         );
-      const reusable = db.assistantRuns.some(
-        (run) =>
-          run.evidenceId === item.id &&
-          ['completed', 'declined'].includes(run.status) &&
-          run.provider === MOCK_PROVIDER.name &&
-          run.promptRevision === ASSISTANT_PROMPT_REVISION,
-      );
-      if (!reusable) {
-        const begin = Date.now();
-        const base: Omit<MockAssistantRun, 'id' | 'status'> = {
-          evidenceId: item.id,
-          message: null,
-          provider: MOCK_PROVIDER.name,
-          model: MOCK_PROVIDER.model,
-          promptRevision: ASSISTANT_PROMPT_REVISION,
-          language: null,
-          unit: null,
-          unreadablePages: [],
-          discarded: { untraceable: 0, instructionLike: 0 },
-          hiddenKinds: [],
-          requestedBy: user.displayName,
-          requestedAt: db.businessTime,
-          durationMs: null,
-        };
-        const bytes = await loadFile(item.sha256);
-        const extraction = bytes
-          ? await extractText(bytes, item.mimeType)
-          : ({ ok: false, reason: 'no_contents' } as const);
-        commit((store) => {
-          const id = nextId('arun');
-          if (!extraction.ok) {
-            store.assistantRuns.push({
-              ...base,
-              id,
-              status: 'declined',
-              message: assistantMessages[extraction.reason],
-              durationMs: Date.now() - begin,
-            });
-          } else {
-            const { document } = extraction;
-            const result = assess(
-              document,
-              context,
-              deterministicCandidates(document, context),
-            );
-            const hidden = hiddenKinds(result.language, [], []);
-            store.assistantRuns.push({
-              ...base,
-              id,
-              status: 'completed',
-              language: result.language,
-              unit: document.unit,
-              unreadablePages: result.unreadablePages,
-              discarded: result.discarded,
-              hiddenKinds: hidden,
-              durationMs: Date.now() - begin,
-            });
-            for (const suggestion of result.suggestions)
-              if (!hidden.includes(suggestion.kind))
-                store.assistantSuggestions.push({
-                  ...suggestion,
-                  id: nextId('asug'),
-                  runId: id,
-                  decision: null,
-                });
-          }
-          audit(
-            store,
-            user,
-            'assistant.run',
-            { type: 'evidence', id: item.id, version: item.version },
-            `Evidence assistant run ${id} requested (${MOCK_PROVIDER.name}, ${MOCK_PROVIDER.model}, ${ASSISTANT_PROMPT_REVISION})`,
-          );
-        });
-      }
+      await read(user, item, context, user.displayName);
       return HttpResponse.json(
         view(user, params.submissionId, params.evidenceId),
         { status: 202 },
@@ -275,6 +347,92 @@ export const assistantHandlers = [
         );
       });
       return HttpResponse.json(view(user, params.submissionId, run.evidenceId));
+    },
+  ),
+
+  http.get('/api/reviews/:submissionId/assistant/chat', async ({ params }) => {
+    await networkDelay();
+    const user = requireRole('officer', 'supervisor', 'administrator');
+    return HttpResponse.json(chat(user, params.submissionId));
+  }),
+
+  http.post(
+    '/api/reviews/:submissionId/assistant/chat',
+    async ({ params, request }) => {
+      await networkDelay();
+      const user = requireRole('officer', 'supervisor', 'administrator');
+      const { submission, assigned } = chatScope(user, params.submissionId);
+      if (!assigned)
+        return forbidden(
+          'Only the assigned officer can ask the evidence assistant.',
+        );
+      if (!getDb().assistantEnabled)
+        return apiError(
+          409,
+          'The evidence assistant is turned off.',
+          'assistant_off',
+        );
+      const parsed = assistantChatRequestSchema.safeParse(
+        await request.json().catch(() => undefined),
+      );
+      if (!parsed.success)
+        return apiError(
+          422,
+          'Write a question of up to 1,000 characters.',
+          'invalid_request',
+          Object.fromEntries(
+            parsed.error.issues.map((issue) => [
+              issue.path.join('.'),
+              issue.message,
+            ]),
+          ),
+        );
+      const db = getDb();
+      const files = [];
+      for (const evidenceId of submission.evidenceIds) {
+        const item = db.evidence.find((row) => row.id === evidenceId)!;
+        const bytes = await loadFile(item.sha256);
+        const extraction = bytes
+          ? await extractText(bytes, item.mimeType)
+          : undefined;
+        files.push({
+          fileName: item.fileName,
+          document: extraction?.ok ? extraction.document : null,
+        });
+      }
+      const reply = deterministicChatReply(files, parsed.data.question);
+      commit((store) => {
+        store.assistantMessages.push(
+          {
+            id: nextId('amsg'),
+            submissionId: submission.id,
+            role: 'officer',
+            text: parsed.data.question,
+            by: user.displayName,
+            at: store.businessTime,
+            provider: null,
+            model: null,
+          },
+          {
+            id: nextId('amsg'),
+            submissionId: submission.id,
+            role: 'assistant',
+            text: reply,
+            by: 'Evidence assistant',
+            at: store.businessTime,
+            provider: MOCK_PROVIDER.name,
+            model: MOCK_PROVIDER.model,
+          },
+        );
+        audit(
+          store,
+          user,
+          'assistant.chat',
+          { type: 'submission', id: submission.id },
+          `Question to the evidence assistant (${MOCK_PROVIDER.name}, ${MOCK_PROVIDER.model})`,
+        );
+      });
+      return HttpResponse.json(chat(user, params.submissionId));
     },
   ),
 

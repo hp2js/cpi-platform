@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { asc, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { DB, type Database, type Db } from '../database/db';
 import {
+  assistantMessages,
   assistantRuns,
   assistantSuggestions,
   obligations,
@@ -11,6 +12,7 @@ import {
 
 export type RunRow = typeof assistantRuns.$inferSelect;
 export type SuggestionRow = typeof assistantSuggestions.$inferSelect;
+export type MessageRow = typeof assistantMessages.$inferSelect;
 
 @Injectable()
 export class AssistantRepository {
@@ -120,6 +122,25 @@ export class AssistantRepository {
       .update(assistantSuggestions)
       .set({ decision })
       .where(eq(assistantSuggestions.id, id));
+  }
+
+  /** The submission's chat, oldest first. */
+  async messages(
+    submissionId: string,
+    db: Db = this.db,
+  ): Promise<MessageRow[]> {
+    return db
+      .select()
+      .from(assistantMessages)
+      .where(eq(assistantMessages.submissionId, submissionId))
+      .orderBy(asc(assistantMessages.seq));
+  }
+
+  async insertMessage(
+    values: typeof assistantMessages.$inferInsert,
+    db: Db = this.db,
+  ): Promise<void> {
+    await db.insert(assistantMessages).values(values);
   }
 
   /** Counts for the administrator's usage view. */

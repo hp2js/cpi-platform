@@ -4,7 +4,7 @@
 
 ## What it does
 
-On the review page, under each file's suitability checks, the assigned officer can ask the assistant about that file. It never runs on its own. It suggests answers to the questions the officer already asks about every file:
+When an institution submits a report, the assistant reads each file in the background, so its suggestions are waiting under each file's suitability checks when the officer opens the review. It does this only while an administrator has it turned on and its provider is approved; the assigned officer can ask again after a failed run, or for files submitted while it was off. The officer accepts, amends or dismisses every suggestion. It suggests answers to the questions the officer already asks about every file:
 
 | Kind (`assistantKinds`) | Question                                                    | Who decides the finding                                                    |
 | ----------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -16,6 +16,17 @@ On the review page, under each file's suitability checks, the assigned officer c
 | `missing`               | Is a date or a signature missing, or is the file unrelated? | The platform checks all the readable text; never when a page is unreadable |
 
 Every suggestion shows the passage it is based on and opens the file at that page or sheet, and every suggestion is labelled AI-generated. The officer accepts, amends or dismisses each one separately; there is no "accept all". Decisions are attributed, audited and visible read-only to supervisors and administrators in scope. Institutions have no route to any of it.
+
+### Chat about the submission
+
+Under the suitability checks, **Ask the evidence assistant** lets the assigned officer ask questions about the whole submission ("Who chaired the meeting?", "Is M-02 supported anywhere?"). Supervisors and administrators read the conversation. Each answer comes from every readable file in the submission, with the institution, the period and the milestones' cited locations:
+
+- The prompt tells the model to answer only from the files, name the file and page, quote exact words, say when the files do not say, and never give a score, verdict or decision. As with suggestions, the files are fenced data and instruction-like lines are withheld before sending.
+- Answers are AI-generated text, labelled as such, and are not traced the way suggestions are. They never record anything in the review.
+- The last 10 messages go with each question. Files are included whole, up to `ASSISTANT_MAX_PAGES` × 3,000 characters in total; files past that are named as left out, never cut part way.
+- In the deterministic mode (and the mock), the reply is a word search: the three lines that share the most words with the question, with file and page.
+- The reply arrives within `ASSISTANT_TIMEOUT_MS`. When the provider fails, the conversation says so and the question can be asked again.
+- Questions and replies are stored in `assistant_messages`. Logs and audit records (`assistant.chat`) carry identifiers, provider, model, outcome and timing, never the text.
 
 ### Help with the suitability checks
 
@@ -98,13 +109,24 @@ ASSISTANT_TEMPERATURE=                # empty for reasoning models (o-series, gp
 ASSISTANT_PROVIDER_TERMS=docs/assistant.md#openai
 ```
 
-Other hosted APIs with an OpenAI-compatible endpoint work the same way. The request uses JSON mode (`response_format: json_object`); a provider that ignores it still works, because the reply is parsed leniently and anything malformed is counted as untraceable.
+Other providers work the same way, because they offer an OpenAI-compatible endpoint. Change these three variables:
+
+| Provider          | `ASSISTANT_BASE_URL`                                      | `ASSISTANT_MODEL`, for example |
+| ----------------- | --------------------------------------------------------- | ------------------------------ |
+| OpenAI            | `https://api.openai.com/v1`                               | `gpt-4.1-mini`                 |
+| Anthropic         | `https://api.anthropic.com/v1`                            | `claude-sonnet-5-5`            |
+| Google Gemini     | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash`             |
+| Mistral           | `https://api.mistral.ai/v1`                               | `mistral-small-latest`         |
+| OpenRouter (many) | `https://openrouter.ai/api/v1`                            | `anthropic/claude-sonnet-5-5`  |
+| Ollama (local)    | `http://127.0.0.1:11434/v1`                               | `qwen2.5:7b`                   |
+
+`ASSISTANT_API_KEY` is that provider's key. Each one needs its own row under data protection before it can be turned on. The request uses JSON mode (`response_format: json_object`); a provider that ignores it still works, because the reply is parsed leniently and anything malformed is counted as untraceable.
 
 ## Data protection (HP2-62)
 
 Only synthetic documents may be sent to any provider until the responsible organization approves data processing and transfer. That covers the evaluation set and the fictional demonstration packs. It applies to local models too, until their hosting is approved. Outside demo mode, `ASSISTANT_REAL_DATA_APPROVED` enforces this.
 
-What leaves the platform on each run: the file's extracted text, the institution's name and ID, the period, and the citing milestones with their cited locations. Nothing else is sent: no names of users, no scores, no other files.
+What leaves the platform on each run: the file's extracted text, the institution's name and ID, the period, and the citing milestones with their cited locations. On each chat question: the extracted text of every file in the submission, the same context, the officer's question and the last 10 messages of the conversation. Nothing else is sent: no names of users, no scores, no other submissions.
 
 | Provider                                                        | Where it is processed                                                          | What it retains                                                                                                                                                        | Status                                                            |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |

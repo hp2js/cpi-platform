@@ -56,4 +56,37 @@ describe('OpenAI-compatible provider', () => {
     const { body } = await call({ ASSISTANT_TEMPERATURE: '' });
     expect(body).not.toHaveProperty('temperature');
   });
+
+  it('chats through any OpenAI-compatible endpoint (Anthropic here) without JSON mode', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Page 1 says "text".' } }],
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetch);
+    const reply = await providerFrom(
+      config({
+        ASSISTANT_BASE_URL: 'https://api.anthropic.com/v1/',
+        ASSISTANT_MODEL: 'claude-sonnet-5-5',
+      }),
+    ).chat(
+      [{ fileName: 'a.pdf', document: { unit: 'page', pages: ['text'] } }],
+      context,
+      [],
+      'What does it say?',
+      AbortSignal.timeout(1000),
+    );
+    const [url, init] = fetch.mock.calls[0]!;
+    const body = JSON.parse(init.body);
+    expect(url).toBe('https://api.anthropic.com/v1/chat/completions');
+    expect(body.model).toBe('claude-sonnet-5-5');
+    expect(body).not.toHaveProperty('response_format');
+    expect(body.messages.at(-1)).toEqual({
+      role: 'user',
+      content: 'What does it say?',
+    });
+    expect(reply).toBe('Page 1 says "text".');
+  });
 });

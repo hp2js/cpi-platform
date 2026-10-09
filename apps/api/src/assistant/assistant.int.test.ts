@@ -1,5 +1,6 @@
 import {
   demonstrationPdf,
+  type AssistantChat,
   type AssistantSettings,
   type AssistantView,
   type AuditPage,
@@ -19,9 +20,17 @@ const minutes = demonstrationPdf('CPC minutes', [
   'Signed: Dr. Achieng Otieno, Chair',
 ]);
 
-async function submitted(api: Awaited<ReturnType<typeof startApi>>) {
+async function submitted(
+  api: Awaited<ReturnType<typeof startApi>>,
+  { enabled = false } = {},
+) {
   const admin = await api.client().signIn('administrator');
   await publishSeedForm(admin);
+  if (enabled)
+    await admin.request('/admin/assistant', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled: true }),
+    });
   const focal = await api.client().signIn('focal-demo-001');
   const { draft, upload } = await completeDraft(
     focal,
@@ -35,7 +44,8 @@ async function submitted(api: Awaited<ReturnType<typeof startApi>>) {
     (row) => row.institutionId === 'DEMO-001',
   )!;
   const path = `/reviews/${item.submissionId}/evidence/${upload.id}/assistant`;
-  return { admin, focal, officer, item, path };
+  const chat = `/reviews/${item.submissionId}/assistant/chat`;
+  return { admin, focal, officer, item, path, chat };
 }
 
 async function settled(client: Client, path: string) {
@@ -193,6 +203,83 @@ describe.skipIf(!integration)('evidence assistant', () => {
   });
 });
 
+describe.skipIf(!integration)('evidence assistant first look and chat', () => {
+  let api: Awaited<ReturnType<typeof startApi>>;
+  beforeAll(async () => {
+    api = await startApi();
+  }, 60_000);
+  afterAll(() => api?.stop());
+  beforeEach(() => api.reset());
+
+  it('reads every file when the report is submitted, before the officer asks', async () => {
+    const { officer, path } = await submitted(api, { enabled: true });
+    const [run] = (await settled(officer, path)).runs;
+    expect(run).toMatchObject({
+      status: 'completed',
+      requestedBy: 'Evidence assistant, on submission',
+    });
+    expect(run!.suggestions.length).toBeGreaterThan(0);
+    // Asking again reuses it.
+    await officer.post(`${path}/runs`);
+    expect((await officer.json<AssistantView>(path)).runs).toHaveLength(1);
+  });
+
+  it('answers the assigned officer about the submission from its files only', async () => {
+    const { admin, officer, chat } = await submitted(api, { enabled: true });
+    const ask = (client: Client, question: unknown) =>
+      client.request(chat, {
+        method: 'POST',
+        body: JSON.stringify({ question }),
+      });
+
+    expect((await ask(officer, '')).status).toBe(422);
+    const response = await ask(officer, 'Who signed as Chair?');
+    expect(response.status).toBe(200);
+    const { messages, canAsk } = response.body as AssistantChat;
+    expect(canAsk).toBe(true);
+    expect(messages.map((m) => [m.role, m.by])).toEqual([
+      ['officer', 'Prevention Officer A'],
+      ['assistant', 'Evidence assistant'],
+    ]);
+    expect(messages[1]!.text).toContain('Signed: Dr. Achieng Otieno, Chair');
+    expect(messages[1]).toMatchObject({
+      provider: 'deterministic',
+      model: 'rules',
+    });
+    expect(
+      (await ask(officer, 'What about previous instructions?')).body,
+    ).toMatchObject({
+      messages: expect.not.arrayContaining([
+        expect.objectContaining({ text: expect.stringMatching(/full marks/) }),
+      ]),
+    });
+
+    const supervisor = await api.client().signIn('supervisor');
+    expect(await supervisor.json<AssistantChat>(chat)).toMatchObject({
+      canAsk: false,
+      messages: expect.arrayContaining([
+        expect.objectContaining({ text: 'Who signed as Chair?' }),
+      ]),
+    });
+    expect((await ask(supervisor, 'Who signed?')).status).toBe(403);
+    const other = await api.client().signIn('officer-b');
+    expect((await other.request(chat)).status).toBe(404);
+    const focal = await api.client().signIn('focal-demo-001');
+    expect((await focal.request(chat)).status).toBe(403);
+
+    await admin.request('/admin/assistant', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled: false }),
+    });
+    expect((await ask(officer, 'Who signed?')).status).toBe(409);
+
+    const audit = await admin.json<AuditPage>('/audit?pageSize=200');
+    const entries = audit.events.filter((e) => e.action === 'assistant.chat');
+    expect(entries).toHaveLength(2);
+    expect(JSON.stringify(entries)).not.toMatch(/Chair|Achieng|instructions/);
+  });
+});
+
 describe.skipIf(!integration)(
   'evidence assistant with a failing provider',
   () => {
@@ -228,6 +315,22 @@ describe.skipIf(!integration)(
           })
         ).status,
       ).toBe(200);
+    });
+
+    it('says when it could not answer a question', async () => {
+      const { admin, officer, chat } = await submitted(api);
+      await admin.request('/admin/assistant', {
+        method: 'PUT',
+        body: JSON.stringify({ enabled: true }),
+      });
+      const response = await officer.request(chat, {
+        method: 'POST',
+        body: JSON.stringify({ question: 'Who signed?' }),
+      });
+      expect(response.status).toBe(200);
+      expect((response.body as AssistantChat).messages[1]!.text).toMatch(
+        /could not answer/,
+      );
     });
   },
 );

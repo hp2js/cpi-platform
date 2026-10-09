@@ -14,7 +14,7 @@ const injection = [
   ),
 ];
 
-test('the officer asks about one file, then accepts, amends and dismisses suggestions; the supervisor reads them', async ({
+test('the officer asks about one file, accepts, amends and dismisses suggestions, and asks about the submission; the supervisor reads them', async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -27,7 +27,22 @@ test('the officer asks about one file, then accepts, amends and dismisses sugges
     passage: 'MIN. CPC/01',
   });
 
+  // While it is off, the officer sees that it is off, and nothing to act on.
+  await signInAs(page, 'officer-a');
+  const [submitted] = await api<{ submissionId: string }[]>(
+    page,
+    '/api/reviews',
+  );
+  await page.goto(`/officer/reviews/${submitted!.submissionId}`);
+  await expect(
+    page.getByText('The evidence assistant is turned off.').first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Ask the evidence assistant/ }),
+  ).toHaveCount(0);
+
   // Administrator turns the assistant on.
+  await signInAs(page, 'administrator');
   await visit(page, 'administrator', '/admin/assistant');
   await expect(
     page.getByRole('heading', { name: 'The evidence assistant is off' }),
@@ -90,6 +105,17 @@ test('the officer asks about one file, then accepts, amends and dismisses sugges
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
 
+  // Officer asks about the whole submission; the answer comes from its files only.
+  const chat = page.getByRole('region', { name: 'Ask the evidence assistant' });
+  await chat
+    .getByLabel('Your question about this submission')
+    .fill('Who signed the minutes?');
+  await chat.getByRole('button', { name: 'Ask' }).click();
+  await expect(chat.getByText('Evidence assistant (AI-generated)')).toBeVisible(
+    { timeout: 30_000 },
+  );
+  await expect(chat.getByText(/full marks/)).toHaveCount(0);
+
   // Supervisor reads the same suggestions and decisions, and cannot act.
   await signInAs(page, 'supervisor');
   await page.goto(`/supervisor/reviews/${item!.submissionId}`);
@@ -98,6 +124,11 @@ test('the officer asks about one file, then accepts, amends and dismisses sugges
   await expect(read.getByText('Amended')).toBeVisible();
   await expect(read.getByText('Dismissed')).toBeVisible();
   await expect(read.getByRole('button', { name: 'Accept' })).toHaveCount(0);
+  const readChat = page.getByRole('region', {
+    name: 'Ask the evidence assistant',
+  });
+  await expect(readChat.getByText('Who signed the minutes?')).toBeVisible();
+  await expect(readChat.getByRole('button', { name: 'Ask' })).toHaveCount(0);
   await expect(
     read.getByRole('button', { name: /Ask the evidence assistant/ }),
   ).toHaveCount(0);

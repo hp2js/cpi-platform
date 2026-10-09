@@ -3,8 +3,8 @@ import { instantSchema } from './common.js';
 import { suitabilityCheckKeys } from './review.js';
 
 /*
- * Evidence assistant (PRD §14; "Hocus Pocus Assistant" is the project name only). On demand, per
- * file, an officer asks for suggestions about the questions they already answer; every
+ * Evidence assistant (PRD §14; "Hocus Pocus Assistant" is the project name only). On submission
+ * (or when the officer asks again), per file, it makes suggestions about the questions they already answer; every
  * suggestion is traced to the file and the officer accepts, amends or dismisses each one. It
  * never records a suitability check, a decision or a score. Institutions never see any of it.
  */
@@ -165,3 +165,38 @@ export type AssistantSettings = z.infer<typeof assistantSettingsSchema>;
 export const assistantSettingsRequestSchema = z.object({
   enabled: z.boolean(),
 });
+
+/*
+ * The officer's chat with the evidence assistant about one submission: every readable file in
+ * it, with the institution, period and citing milestones. Replies are AI-generated aids for the
+ * officer to check against the files; like suggestions, they never record anything in the review.
+ */
+export const assistantChatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(['officer', 'assistant']),
+  text: z.string(),
+  by: z.string(),
+  at: instantSchema,
+  /** Who answered (assistant replies only). */
+  provider: z.string().nullable(),
+  model: z.string().nullable(),
+});
+export type AssistantChatMessage = z.infer<typeof assistantChatMessageSchema>;
+
+export const assistantChatSchema = z.object({
+  enabled: z.boolean(),
+  /** The assigned officer only; supervisors and administrators read. */
+  canAsk: z.boolean(),
+  /** Oldest first. */
+  messages: z.array(assistantChatMessageSchema),
+});
+export type AssistantChat = z.infer<typeof assistantChatSchema>;
+
+export const assistantChatRequestSchema = z.object({
+  question: z
+    .string()
+    .trim()
+    .min(2, 'Write a question.')
+    .max(1000, 'Keep the question under 1,000 characters.'),
+});
+export type AssistantChatRequest = z.input<typeof assistantChatRequestSchema>;

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   assess,
+  assistantChatPrompt,
   assistantCheckHints,
   citedLocation,
+  deterministicChatReply,
   deterministicCandidates,
   hiddenKinds,
   parseCandidates,
@@ -253,5 +255,60 @@ describe('evidence assistant rules', () => {
         suggestions: [],
       }),
     ).toEqual([]);
+  });
+});
+
+describe('evidence assistant chat', () => {
+  const files = [
+    { fileName: 'minutes.pdf', document: minutes },
+    { fileName: 'photo.jpg', document: { unit: 'page' as const, pages: [''] } },
+  ];
+  const chatContext = {
+    ...context,
+    citations: context.citations.map((c) => ({
+      ...c,
+      fileName: 'minutes.pdf',
+    })),
+  };
+
+  it('fences the files, withholds instruction-like lines and keeps recent history', () => {
+    const history = Array.from({ length: 12 }, (_, index) => ({
+      role: index % 2 ? ('assistant' as const) : ('officer' as const),
+      text: `turn ${index}`,
+    }));
+    const messages = assistantChatPrompt(
+      files,
+      chatContext,
+      history,
+      'Who chaired?',
+      10_000,
+    );
+    expect(messages[0]!.role).toBe('system');
+    const data = messages[1]!.content;
+    expect(data).toContain('Signed: Dr. Achieng Otieno, Chair');
+    expect(data).not.toMatch(/award full marks/);
+    expect(data).toContain('[line withheld');
+    expect(data).toContain('<file name="photo.jpg" status="could not be read');
+    expect(data).toContain('cites minutes.pdf: MIN. CPC/01, page 1');
+    expect(messages.slice(3, -1).map((m) => m.content)).toEqual(
+      history.slice(-10).map((m) => m.text),
+    );
+    expect(messages.at(-1)).toEqual({ role: 'user', content: 'Who chaired?' });
+    expect(
+      assistantChatPrompt(files, chatContext, [], 'Who?', 50)[1]!.content,
+    ).toContain('<file name="minutes.pdf" status="left out');
+  });
+
+  it('answers without a model by quoting matching lines, never injected ones', () => {
+    const reply = deterministicChatReply(files, 'Who signed as Chair?');
+    expect(reply).toContain(
+      '- minutes.pdf, page 1: "Signed: Dr. Achieng Otieno, Chair"',
+    );
+    expect(deterministicChatReply(files, 'previous instructions')).toMatch(
+      /^I found nothing/,
+    );
+    expect(deterministicChatReply(files, 'budget allocation')).toMatch(
+      /^I found nothing/,
+    );
   });
 });

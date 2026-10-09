@@ -1,4 +1,5 @@
 import {
+  assistantChatSchema,
   assistantKindLabels,
   assistantViewSchema,
   type AssistantDecisionRequest,
@@ -12,7 +13,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { Sparkles } from 'lucide-react';
+import { MessagesSquare, Sparkles } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,9 +24,11 @@ import { isApiError, request } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 
 /*
- * The evidence assistant (PRD §14) beside a file's suitability checks. It runs only when the
- * assigned officer asks; every suggestion is labelled AI-generated, points to its passage
- * and is accepted, amended or dismissed on its own. Nothing here records a check or decision.
+ * The evidence assistant (PRD §14) beside a file's suitability checks. It reads each file when
+ * the report is submitted (the assigned officer can ask again after a failure); every suggestion
+ * is labelled AI-generated, points to its passage and is accepted, amended or dismissed on its
+ * own. `AssistantChat` lets the officer ask about the whole submission. Nothing here records a
+ * check or decision.
  */
 
 const base = (submissionId: string, evidenceId: string) =>
@@ -314,8 +317,7 @@ export function AssistantPanel({
   });
   const headingId = `assistant-${item.id}`;
   const view = query.data;
-  // An unavailable or off assistant leaves the review exactly as it was.
-  if (!view || (!view.enabled && view.runs.length === 0)) return null;
+  if (!view) return null;
   const current = view.runs.filter((run) => run.evidenceId === item.id);
   const [latest] = current;
   const history = view.runs.filter((run) => run !== latest);
@@ -336,6 +338,7 @@ export function AssistantPanel({
         AI-generated suggestions. Check each one against the file. They never
         record a suitability check, a decision or a score.
       </p>
+      {!view.enabled && <AssistantOff />}
 
       {latest?.status === 'running' && (
         <p role="status" className="text-sm">
@@ -396,6 +399,137 @@ export function AssistantPanel({
             ))}
           </div>
         </details>
+      )}
+    </section>
+  );
+}
+
+/** Shown instead of the assistant's actions while it is off; the review works as usual. */
+function AssistantOff() {
+  return (
+    <p className="bg-base-lightest px-3 py-2 text-sm">
+      The evidence assistant is turned off. An administrator can turn it on
+      under Operations → Evidence assistant.
+    </p>
+  );
+}
+
+const chatPath = (submissionId: string) =>
+  `/api/reviews/${encodeURIComponent(submissionId)}/assistant/chat` as const;
+
+export const assistantChatQuery = (submissionId: string) =>
+  queryOptions({
+    queryKey: ['reviews', submissionId, 'assistant-chat'] as const,
+    queryFn: ({ signal }) =>
+      request(chatPath(submissionId), assistantChatSchema, { signal }),
+  });
+
+/** The officer's questions about the whole submission, answered from its files. */
+export function AssistantChat({ submissionId }: { submissionId: string }) {
+  const queryClient = useQueryClient();
+  const query = useQuery(assistantChatQuery(submissionId));
+  const [question, setQuestion] = useState('');
+  const questionId = useId();
+  const ask = useMutation({
+    mutationFn: (text: string) =>
+      request(chatPath(submissionId), assistantChatSchema, {
+        method: 'POST',
+        json: { question: text },
+      }),
+    onSuccess: (chat) => {
+      queryClient.setQueryData(assistantChatQuery(submissionId).queryKey, chat);
+      setQuestion('');
+    },
+  });
+  const chat = query.data;
+  if (!chat) return null;
+  const error = ask.isError
+    ? isApiError(ask.error)
+      ? (ask.error.fieldErrors.question ?? ask.error.message)
+      : 'The question was not sent. Try again.'
+    : null;
+
+  return (
+    <section aria-labelledby="assistant-chat-heading" className="grid gap-3">
+      <h2
+        id="assistant-chat-heading"
+        className="flex items-center gap-2 text-lg font-bold"
+      >
+        <MessagesSquare className="size-5" aria-hidden="true" />
+        Ask the evidence assistant
+      </h2>
+      <p className="text-xs text-base-dark">
+        AI-generated answers from this submission's files. Check each answer
+        against the files. They never record a suitability check, a decision or
+        a score.
+      </p>
+      {!chat.enabled && <AssistantOff />}
+      {chat.messages.length > 0 && (
+        <ol aria-label="Conversation" className="grid gap-2">
+          {chat.messages.map((message) => (
+            <li
+              key={message.id}
+              className={
+                message.role === 'officer'
+                  ? 'grid gap-1 rounded-md bg-base-lightest p-3 text-sm'
+                  : 'grid gap-1 rounded-md border border-base-lighter p-3 text-sm'
+              }
+            >
+              <p className="text-xs font-bold text-base-dark">
+                {message.role === 'officer'
+                  ? message.by
+                  : 'Evidence assistant (AI-generated)'}
+                {' · '}
+                {formatDateTime(message.at)}
+              </p>
+              <p className="break-words whitespace-pre-wrap">{message.text}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {ask.isPending && (
+        <p role="status" className="text-sm">
+          Reading the files to answer. This stops by itself if it takes too
+          long.
+        </p>
+      )}
+      {chat.canAsk && (
+        <form
+          className="grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            ask.mutate(question);
+          }}
+        >
+          <Label htmlFor={questionId}>
+            Your question about this submission
+          </Label>
+          <Textarea
+            id={questionId}
+            value={question}
+            maxLength={1000}
+            onChange={(event) => setQuestion(event.target.value)}
+            aria-describedby={error ? `${questionId}-error` : undefined}
+          />
+          {error && (
+            <p
+              id={`${questionId}-error`}
+              role="alert"
+              className="font-bold text-error-dark"
+            >
+              {error}
+            </p>
+          )}
+          <div>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={ask.isPending || question.trim().length < 2}
+            >
+              Ask
+            </Button>
+          </div>
+        </form>
       )}
     </section>
   );

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import {
   assistantSettingsRequestSchema,
+  type AssistantChat,
   type AssistantSettings,
   type AssistantView,
 } from '@cpi/contracts';
@@ -56,6 +57,27 @@ export class AssistantController {
     @Body() body: unknown,
   ): Promise<AssistantView> {
     return this.assistant.decide(user, id, suggestionId, body);
+  }
+
+  @Get('reviews/:submissionId/assistant/chat')
+  @Roles('officer', 'supervisor', 'administrator')
+  chat(
+    @CurrentUser() user: User,
+    @Param('submissionId') id: string,
+  ): Promise<AssistantChat> {
+    return this.assistant.chat(user, id);
+  }
+
+  /** Answers within ASSISTANT_TIMEOUT_MS; the reply (or why there is none) is the newest message. */
+  @Post('reviews/:submissionId/assistant/chat')
+  @HttpCode(200)
+  @Roles('officer')
+  ask(
+    @CurrentUser() user: User,
+    @Param('submissionId') id: string,
+    @Body() body: unknown,
+  ): Promise<AssistantChat> {
+    return this.assistant.ask(user, id, body);
   }
 
   @Get('admin/assistant')

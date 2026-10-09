@@ -1,4 +1,5 @@
 import type {
+  AssistantChatMessage,
   AssistantRun,
   AssistantSuggestion,
   Attestation,
@@ -223,6 +224,8 @@ export interface MockDb {
   assistantEnabled: boolean;
   assistantRuns: MockAssistantRun[];
   assistantSuggestions: (AssistantSuggestion & { runId: string })[];
+  /** The officers' chats with the assistant, oldest first. */
+  assistantMessages: (AssistantChatMessage & { submissionId: string })[];
 }
 
 export type MockAssistantRun = Omit<
@@ -287,10 +290,11 @@ export interface MockDelivery {
  * 18: form versions' draft revision and change summary; checklist and repeated-row answers.
  * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
  * 20: evidence assistant switch, runs and suggestions.
+ * 21: evidence assistant chat messages.
  */
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '20:762d3be7';
+export const SCHEMA_SHAPE = '21:da0dd497';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -382,6 +386,7 @@ function seed(): MockDb {
     assistantEnabled: false,
     assistantRuns: [],
     assistantSuggestions: [],
+    assistantMessages: [],
   };
 }
 

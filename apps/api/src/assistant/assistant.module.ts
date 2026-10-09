@@ -6,5 +6,6 @@ import { AssistantService } from './assistant.service';
 @Module({
   controllers: [AssistantController],
   providers: [AssistantService, AssistantRepository],
+  exports: [AssistantService],
 })
 export class AssistantModule {}

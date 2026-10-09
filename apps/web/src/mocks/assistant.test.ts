@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  assistantChatSchema,
   assistantSettingsSchema,
   assistantViewSchema,
   demonstrationPdf,
@@ -164,5 +165,46 @@ describe('evidence assistant (PRD §14)', () => {
     ).runs;
     expect(run).toMatchObject({ status: 'declined', suggestions: [] });
     expect(run!.message).toMatch(/no stored contents/);
+  });
+});
+
+describe('evidence assistant first look and chat', () => {
+  it('reads every file when the report is submitted, before the officer asks', async () => {
+    await enable(true);
+    const { path } = await submitted();
+    const { runs } = await request(path, assistantViewSchema);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      status: 'completed',
+      requestedBy: 'Evidence assistant, on submission',
+    });
+  });
+
+  it('answers the assigned officer about the submission from its files only', async () => {
+    await enable(true);
+    const { item } = await submitted();
+    const chat = `/api/reviews/${item.submissionId}/assistant/chat` as const;
+    const ask = (question: string) =>
+      request(chat, assistantChatSchema, {
+        method: 'POST',
+        json: { question },
+      });
+    expect(await status(ask(''))).toBe(422);
+    const { messages } = await ask('Who signed as Chair?');
+    expect(messages.map((m) => m.role)).toEqual(['officer', 'assistant']);
+    expect(messages[1]!.text).toContain('Signed: Dr. Achieng Otieno, Chair');
+    expect((await ask('previous instructions')).messages[3]!.text).toMatch(
+      /^I found nothing/,
+    );
+
+    await signInAs('supervisor');
+    expect(await request(chat, assistantChatSchema)).toMatchObject({
+      canAsk: false,
+    });
+    expect(await status(ask('Who signed?'))).toBe(403);
+    await signInAs('officer-b');
+    expect(await status(request(chat, assistantChatSchema))).toBe(404);
+    await enable(false);
+    expect(await status(ask('Who signed?'))).toBe(409);
   });
 });
