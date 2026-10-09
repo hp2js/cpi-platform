@@ -16,6 +16,7 @@ import { yearsHandlers } from './years';
 import { reviewHandlers } from './review';
 import { accountHandlers } from './account';
 import { adminHandlers } from './admin';
+import { assistantHandlers } from './assistant';
 import { sessionHandlers } from './session';
 import { settingsHandlers } from './settings';
 import { supervisionHandlers } from './supervision';
@@ -31,6 +32,7 @@ export const handlers = [
   ...reportIdentityHandlers,
   ...yearsHandlers,
   ...reviewHandlers,
+  ...assistantHandlers,
   ...planningHandlers,
   ...fileHandlers,
   ...planEditorHandlers,

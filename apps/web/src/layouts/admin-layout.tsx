@@ -13,6 +13,7 @@ import {
   Ruler,
   ScrollText,
   SlidersHorizontal,
+  Sparkles,
   Stamp,
   UserRound,
   Users,
@@ -85,6 +86,7 @@ const sections = [
         label: 'Simulation clock',
         icon: CalendarClock,
       },
+      { to: '/admin/assistant', label: 'Evidence assistant', icon: Sparkles },
     ],
   },
   {

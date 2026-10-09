@@ -8,6 +8,7 @@ import type {
 } from '@cpi/contracts';
 import { planQuery } from '@/features/planning/queries';
 import { FileViewer } from '@/features/files/file-viewer';
+import { AssistantChat } from '@/features/review/assistant';
 import {
   SuitabilitySection,
   suitabilityStatus,
@@ -1829,6 +1830,7 @@ export function ReviewPage() {
                 </section>
               )}
               <SuitabilitySection bundle={bundle} />
+              <AssistantChat submissionId={bundle.submissionId} />
               <section
                 aria-labelledby="milestones-heading"
                 className="grid gap-4"

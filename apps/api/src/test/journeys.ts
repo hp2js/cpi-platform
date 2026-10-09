@@ -36,12 +36,13 @@ export async function completeDraft(
   focal: Client,
   institutionId: string,
   fileText = 'minutes',
+  bytes = pdf(fileText),
 ) {
   const path = obligationPath(institutionId);
   const upload = (
     await focal.upload(
       `${path}/evidence`,
-      { name: 'cpc-minutes.pdf', bytes: pdf(fileText) },
+      { name: 'cpc-minutes.pdf', bytes },
       { category: 'cpc_minutes' },
     )
   ).body as EvidenceItem;

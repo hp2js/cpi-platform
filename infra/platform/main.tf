@@ -203,6 +203,19 @@ resource "azurerm_key_vault_secret" "resend_api_key" {
   }
 }
 
+# The evidence assistant's model provider key (docs/assistant.md), set like resend-api-key:
+# `az keyvault secret set --name assistant-api-key`. Unused while var.assistant.provider is
+# deterministic.
+resource "azurerm_key_vault_secret" "assistant_api_key" {
+  name         = "assistant-api-key"
+  key_vault_id = azurerm_key_vault.main.id
+  content_type = "text/plain"
+  value        = "unset"
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 # --- PostgreSQL: VNet-only, TLS required, backups sized by environment ----------------------
 resource "azurerm_postgresql_flexible_server" "main" {
   name                              = "psql-${local.name}-${local.suffix}"

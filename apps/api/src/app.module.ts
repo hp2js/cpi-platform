@@ -1,6 +1,7 @@
 import { Module, type INestApplication } from '@nestjs/common';
 import helmet from 'helmet';
 import { AdminModule } from './admin/admin.module';
+import { AssistantModule } from './assistant/assistant.module';
 import { AnnualModule } from './annual/annual.module';
 import { AuthModule } from './auth/auth.module';
 import { CycleModule } from './cycle/cycle.module';
@@ -27,6 +28,7 @@ import { SupervisionModule } from './supervision/supervision.module';
     CycleModule,
     ReportingModule,
     ReviewModule,
+    AssistantModule,
     PlanningModule,
     AnnualModule,
     EventsModule,

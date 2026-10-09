@@ -16,6 +16,8 @@
 
 # Not used inside images.
 docs
+# …except the fictional evidence packs the scripted demonstration year uploads.
+!docs/demo-evidence-packs
 e2e
 scripts
 *.md

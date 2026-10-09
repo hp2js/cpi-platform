@@ -21,3 +21,6 @@ docs/acceptance/scoring-worksheet.md
 
 # Demo evidence packs supplied as-is; seed fixtures record each file's SHA-256.
 docs/demo-evidence-packs/
+
+# Written by `pnpm --filter @cpi/api assistant:evaluate`.
+docs/assistant-evaluation/results/

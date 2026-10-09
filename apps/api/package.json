@@ -15,7 +15,8 @@
     "db:seed": "tsx --env-file-if-exists=../../.env src/database/seed.ts",
     "storage:migrate": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts migrate",
     "storage:gc": "tsx --env-file-if-exists=../../.env src/storage/maintenance.ts gc",
-    "user:invite-admin": "tsx --env-file-if-exists=../../.env src/auth/invite-admin.ts"
+    "user:invite-admin": "tsx --env-file-if-exists=../../.env src/auth/invite-admin.ts",
+    "assistant:evaluate": "tsx --env-file-if-exists=../../.env src/assistant/evaluate.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1143.0",
@@ -31,10 +32,13 @@
     "express": "5.2.1",
     "helmet": "8.3.0",
     "ioredis": "6.0.0",
+    "mammoth": "1.13.0",
+    "pdfjs-dist": "6.3.289",
     "pg": "8.23.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-email": "6.11.0",
+    "read-excel-file": "9.3.10",
     "reflect-metadata": "0.2.2",
     "resend": "6.32.0",
     "rxjs": "7.8.2",

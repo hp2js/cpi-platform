@@ -25,6 +25,7 @@ import {
   sha256,
 } from '../services/evidence';
 import { storeFile } from '../services/files';
+import { reviewSubmission } from './assistant';
 import { apiError, notFound } from '../services/http';
 import { networkDelay } from '../services/latency';
 import { daysLate } from '../services/obligations';
@@ -360,8 +361,8 @@ export const reportingHandlers = [
             : 'pending_baseline_approval',
       };
       // Receipt, revision, state, events and idempotency record are committed together (FR07).
+      const submissionId = nextId('sub');
       commit((store) => {
-        const submissionId = nextId('sub');
         store.submissions.push({
           id: submissionId,
           obligationId: obligation.id,
@@ -428,6 +429,7 @@ export const reportingHandlers = [
           },
         );
       });
+      await reviewSubmission(user, submissionId);
       return HttpResponse.json(receipt, { status: 201 });
     },
   ),

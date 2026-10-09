@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import { assistantKindSchema } from '@cpi/contracts';
+
+const kindList = z
+  .string()
+  .default('')
+  .transform((value) =>
+    value
+      .split(',')
+      .map((kind) => kind.trim())
+      .filter(Boolean),
+  )
+  .pipe(z.array(assistantKindSchema));
 
 const schema = z
   .object({
@@ -76,6 +88,40 @@ const schema = z
       .default('30000,120000')
       .transform((value) => value.split(',').map(Number))
       .pipe(z.array(z.number().int().min(0)).length(2)),
+    /**
+     * Evidence assistant (PRD §14, docs/assistant.md). `deterministic` needs no model or network;
+     * `openai-compatible` calls ASSISTANT_BASE_URL (Ollama's `/v1` or a hosted API). Administrators
+     * turn it on or off; these only choose what it runs on.
+     */
+    ASSISTANT_PROVIDER: z
+      .enum(['deterministic', 'openai-compatible'])
+      .default('deterministic'),
+    ASSISTANT_BASE_URL: z.url().default('http://127.0.0.1:11434/v1'),
+    ASSISTANT_MODEL: z.string().min(1).default('qwen2.5:7b'),
+    ASSISTANT_API_KEY: z.string().default(''),
+    /**
+     * Sampling temperature; 0 for repeatable runs. Empty omits it, for models that accept only
+     * their default (OpenAI's reasoning models, for example).
+     */
+    ASSISTANT_TEMPERATURE: z
+      .string()
+      .default('0')
+      .transform((value) => (value.trim() === '' ? null : Number(value)))
+      .pipe(z.number().min(0).max(2).nullable()),
+    /**
+     * Where this provider's data handling (what leaves, where it is processed, what it keeps) is
+     * recorded. A model provider stays unavailable until this names it (§13).
+     */
+    ASSISTANT_PROVIDER_TERMS: z.string().trim().default(''),
+    /** Outside demo mode, no file goes to any provider until data processing is approved (§13). */
+    ASSISTANT_REAL_DATA_APPROVED: z.stringbool().default(false),
+    ASSISTANT_TIMEOUT_MS: z.coerce.number().int().min(1000).default(90_000),
+    /** Administrators can lower the page limit; 50 is the ceiling (Decision 7). */
+    ASSISTANT_MAX_PAGES: z.coerce.number().int().min(1).max(50).default(50),
+    /** Kinds below the accuracy bar in this deployment (Decision 5), comma separated. */
+    ASSISTANT_HIDDEN_KINDS: kindList,
+    /** Kinds that met the bar for Kiswahili and mixed-language documents (Decision 6). */
+    ASSISTANT_OTHER_LANGUAGE_KINDS: kindList,
     /** Idle session lifetime; each authenticated request extends it. */
     SESSION_TTL_SECONDS: z.coerce
       .number()

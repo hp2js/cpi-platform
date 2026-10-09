@@ -8,9 +8,10 @@ locals {
   identity_id = data.azurerm_user_assigned_identity.app.id
   portal_url  = "https://${azurerm_container_app.web.ingress[0].fqdn}"
   secrets = {
-    database-url   = azurerm_key_vault_secret.database_url.versionless_id
-    redis-url      = azurerm_key_vault_secret.redis_url.versionless_id
-    resend-api-key = azurerm_key_vault_secret.resend_api_key.versionless_id
+    database-url      = azurerm_key_vault_secret.database_url.versionless_id
+    redis-url         = azurerm_key_vault_secret.redis_url.versionless_id
+    resend-api-key    = azurerm_key_vault_secret.resend_api_key.versionless_id
+    assistant-api-key = azurerm_key_vault_secret.assistant_api_key.versionless_id
   }
   api_env = {
     NODE_ENV               = "production"
@@ -25,11 +26,20 @@ locals {
     PORTAL_URL             = local.portal_url
     ADMIN_EMAIL            = var.admin_email
     EMAIL_FROM             = var.email_from
+    # Evidence assistant (docs/assistant.md); the provider key comes from Key Vault.
+    ASSISTANT_PROVIDER           = var.assistant.provider
+    ASSISTANT_BASE_URL           = var.assistant.base_url
+    ASSISTANT_MODEL              = var.assistant.model
+    ASSISTANT_TEMPERATURE        = var.assistant.temperature
+    ASSISTANT_PROVIDER_TERMS     = var.assistant.provider_terms
+    ASSISTANT_REAL_DATA_APPROVED = tostring(var.assistant.real_data_approved)
+    ASSISTANT_HIDDEN_KINDS       = var.assistant.hidden_kinds
   }
   api_secret_env = {
-    DATABASE_URL   = "database-url"
-    REDIS_URL      = "redis-url"
-    RESEND_API_KEY = "resend-api-key"
+    DATABASE_URL      = "database-url"
+    REDIS_URL         = "redis-url"
+    RESEND_API_KEY    = "resend-api-key"
+    ASSISTANT_API_KEY = "assistant-api-key"
   }
 }
 

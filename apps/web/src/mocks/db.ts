@@ -1,4 +1,7 @@
 import type {
+  AssistantChatMessage,
+  AssistantRun,
+  AssistantSuggestion,
   Attestation,
   Cycle,
   Decision,
@@ -258,7 +261,18 @@ export interface MockDb {
     string,
     { userId: string; codeHash: string; attempts: number; expiresAt: number }
   >;
+  /** Evidence assistant (PRD §14): on or off, runs and the officers' decisions on suggestions. */
+  assistantEnabled: boolean;
+  assistantRuns: MockAssistantRun[];
+  assistantSuggestions: (AssistantSuggestion & { runId: string })[];
+  /** The officers' chats with the assistant, oldest first. */
+  assistantMessages: (AssistantChatMessage & { submissionId: string })[];
 }
+
+export type MockAssistantRun = Omit<
+  AssistantRun,
+  'suggestions' | 'evidenceVersion' | 'checkHints'
+>;
 
 export interface MockPublication {
   id: string;
@@ -322,10 +336,11 @@ export interface MockDelivery {
  * 21: planned financial years and their change log.
  * 22: closed financial years and their archived results.
  * 23: the cycle's `openedAt`.
+ * 24: evidence assistant switch, runs, suggestions and chat messages.
  */
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '23:37656e3f';
+export const SCHEMA_SHAPE = '24:3978f26d';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -421,6 +436,10 @@ function seed(): MockDb {
     institutionTypes: structuredClone(initialInstitutionTypes),
     loginAttempts: {},
     signInChallenges: {},
+    assistantEnabled: false,
+    assistantRuns: [],
+    assistantSuggestions: [],
+    assistantMessages: [],
   };
 }
 
