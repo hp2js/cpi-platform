@@ -308,3 +308,41 @@ test('on a phone, the builder stacks the preview under the editor (HP2-93)', asy
     ),
   ).toBe(true);
 });
+
+test('form autosave settles, preserves undo, and saves the restored draft', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await midYear(page);
+  await visit(page, 'administrator', '/admin/forms/form-v2');
+  await page.locator('summary', { hasText: 'Form setup' }).click();
+  const title = page.getByLabel('Form title');
+  const original = await title.inputValue();
+  const saves: string[] = [];
+  page.on('request', (request) => {
+    if (
+      request.method() === 'PUT' &&
+      new URL(request.url()).pathname === '/api/forms/form-v2'
+    )
+      saves.push(request.postData() ?? '');
+  });
+  await title.fill('Autosave regression');
+  await expect(page.getByText(/^Saved /)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Undo', exact: true }),
+  ).toBeEnabled();
+  expect(saves).toHaveLength(1);
+  // An idle editor must not keep saving or add phantom undo steps.
+  await page.waitForTimeout(3_000);
+  expect(saves).toHaveLength(1);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(title).toHaveValue(original);
+  await expect(page.getByText(/^Saved /)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Undo', exact: true }),
+  ).toBeDisabled();
+  expect(saves).toHaveLength(2);
+  await page.reload();
+  await page.locator('summary', { hasText: 'Form setup' }).click();
+  await expect(page.getByLabel('Form title')).toHaveValue(original);
+});

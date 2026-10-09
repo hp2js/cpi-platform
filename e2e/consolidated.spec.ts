@@ -37,7 +37,7 @@ test('the consolidated report opens with the method, coverage and a summary of e
     ['DEMO-001', '88.75'],
     ['DEMO-005', '70.00'],
     ['DEMO-004', '96.25'],
-  ])
+  ] as const)
     await expect(
       summary.getByRole('row').filter({ hasText: id }),
     ).toContainText(points);

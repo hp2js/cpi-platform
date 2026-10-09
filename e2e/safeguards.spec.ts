@@ -137,8 +137,8 @@ test(
       .getByRole('link', { name: 'DEMO-001' })
       .click();
     await passSuitability(page);
-    for (const code of ['M-01', 'M-02', 'M-03', 'M-04']) {
-      const card = page.getByRole('article', { name: new RegExp(`^${code} `) });
+    for (const name of [/^M-01 /, /^M-02 /, /^M-03 /, /^M-04 /]) {
+      const card = page.getByRole('article', { name });
       await card.getByLabel(/^Accept:/).check();
       await card.getByRole('button', { name: 'Save decision' }).click();
       await expect(card.getByText(/Saved by/)).toBeVisible();
@@ -231,8 +231,8 @@ test(
         .getByRole('article', { name: /^M-01 / })
         .getByText('Changed since revision 1: needs a new review.'),
     ).toBeVisible();
-    for (const code of ['M-02', 'M-03', 'M-04']) {
-      const card = page.getByRole('article', { name: new RegExp(`^${code} `) });
+    for (const name of [/^M-02 /, /^M-03 /, /^M-04 /]) {
+      const card = page.getByRole('article', { name });
       await card
         .getByRole('button', {
           name: 'Confirm earlier decision for revision 2',

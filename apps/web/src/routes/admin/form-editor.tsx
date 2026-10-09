@@ -41,9 +41,11 @@ import {
 } from 'lucide-react';
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -477,11 +479,15 @@ function DraftEditor({
   useUnsavedWork(dirty);
   const values = useStore(editor.store, (state) => state.values);
   // Checked by the server as the administrator edits, without saving (FR03).
-  const settled = useSettled({
-    title: values.title,
-    periodIds: values.periodIds,
-    sections: values.sections,
-  });
+  const snapshot = useMemo(
+    () => ({
+      title: values.title,
+      periodIds: values.periodIds,
+      sections: values.sections,
+    }),
+    [values.title, values.periodIds, values.sections],
+  );
+  const settled = useSettled(snapshot);
   const check = useQuery(formCheckQuery(form.id, settled));
 
   // Questions start folded so the form reads as an outline; new ones open for editing.
@@ -545,7 +551,11 @@ function DraftEditor({
       await queryClient.invalidateQueries({ queryKey: formKeys.creation });
     },
   });
-  const saveNow = () => save.mutate(editor.state.values);
+  const { mutate } = save;
+  const saveNow = useCallback(
+    () => mutate(editor.state.values),
+    [mutate, editor],
+  );
   const offline = save.isError && !isApiError(save.error);
 
   // Autosave once editing pauses. A refused save (a conflict or invalid input) waits for the
@@ -554,8 +564,7 @@ function DraftEditor({
     if (!dirty || save.isPending || save.isError) return;
     const timer = window.setTimeout(saveNow, AUTOSAVE_DELAY);
     return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- restarts on every edit
-  }, [dirty, values, save.isPending, save.isError]);
+  }, [dirty, values, save.isPending, save.isError, saveNow]);
   useEffect(() => {
     if (!offline) return;
     const retry = () => saveNow();
@@ -565,8 +574,7 @@ function DraftEditor({
       window.clearInterval(timer);
       window.removeEventListener('online', retry);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- saveNow reads the latest values
-  }, [offline]);
+  }, [offline, saveNow]);
 
   // Undo: each pause in editing is one step back (HP2-73).
   const [undoStack, setUndoStack] = useState<Snapshot[]>([]);
@@ -583,8 +591,7 @@ function DraftEditor({
       setUndoStack((stack) => [...stack.slice(1 - UNDO_LIMIT), previous.value]);
     restoring.current = false;
     lastSnapshot.current = { key: snapshotKey, value: settled };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the content
-  }, [snapshotKey]);
+  }, [snapshotKey, settled]);
   const [announcement, setAnnouncement] = useState('');
   const undo = () => {
     const previous = undoStack.at(-1);

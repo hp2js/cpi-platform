@@ -177,7 +177,9 @@ test(
       reason = '',
     ) => {
       const card = page.getByRole('article').filter({ hasText: code });
-      await card.getByLabel(new RegExp(`^${outcome}:`)).check();
+      await card
+        .getByLabel(outcome === 'Accept' ? /^Accept:/ : /^Reject:/)
+        .check();
       if (reason) await card.getByRole('textbox').fill(reason);
       await card.getByRole('button', { name: 'Save decision' }).click();
       await expect(
