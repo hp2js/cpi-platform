@@ -29,6 +29,23 @@ variable "email_from" {
   type    = string
   default = "CPI Platform <onboarding@resend.dev>"
 }
+variable "assistant" {
+  description = "Evidence assistant model settings (docs/assistant.md). The API key is the Key Vault secret assistant-api-key. Outside demo mode nothing is sent to a provider until real_data_approved is true (§13)."
+  type = object({
+    provider           = optional(string, "deterministic")
+    base_url           = optional(string, "https://api.openai.com/v1")
+    model              = optional(string, "gpt-4.1-mini")
+    temperature        = optional(string, "0") # "" for models that accept only their default (GPT-5, o-series)
+    provider_terms     = optional(string, "")  # the provider's data-handling row in docs/assistant.md
+    real_data_approved = optional(bool, false)
+    hidden_kinds       = optional(string, "passage")
+  })
+  default = {}
+  validation {
+    condition     = contains(["deterministic", "openai-compatible"], var.assistant.provider)
+    error_message = "assistant.provider is deterministic or openai-compatible."
+  }
+}
 variable "alert_emails" {
   type        = string
   default     = ""
