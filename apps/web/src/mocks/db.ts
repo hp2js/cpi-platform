@@ -197,6 +197,24 @@ export interface MockDb {
     plannedBy: string;
   }[];
   yearChanges: FinancialYearChange[];
+  /** Closed years: their calendar as it ran and the results never published (HP2-100). */
+  closedYears: {
+    id: string;
+    label: string;
+    timezone: string;
+    startsOn: string;
+    endsOn: string;
+    foundationDeadline: string;
+    evaluationCutoff: string;
+    profileId: string;
+    profileName: string;
+    periods: Period[];
+    closedAt: string;
+    closedBy: string;
+    pending: { institutionId: string; institutionName: string }[];
+  }[];
+  /** A closed year's published results, every version, exactly as released. */
+  archivedPublications: (MockPublication & { yearId: string })[];
   corrections: {
     id: string;
     institutionId: string;
@@ -302,10 +320,11 @@ export interface MockDelivery {
  * 19: emailed sign-in codes; temporary passwords (`passwordExpiresAt`).
  * 20: the report identity, its change log and images; the identity kept with each release.
  * 21: planned financial years and their change log.
+ * 22: closed financial years and their archived results.
  */
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '21:5553e345';
+export const SCHEMA_SHAPE = '22:3b2bedb2';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
@@ -385,6 +404,8 @@ function seed(): MockDb {
     reportImages: [],
     plannedYears: [],
     yearChanges: [],
+    closedYears: [],
+    archivedPublications: [],
     publications: [],
     corrections: [],
     evidence: foundations.evidence,

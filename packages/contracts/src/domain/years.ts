@@ -1,6 +1,7 @@
 import type {
   DayCounting,
   FinancialYearInput,
+  OpeningReadiness,
   Period,
 } from '../draft/index.js';
 import { endOfDay, localDate, shiftDays } from './days.js';
@@ -242,4 +243,37 @@ export function summarizeYearChange(
       `Scoring profile ${profileName(before.profileId)} → ${profileName(after.profileId)}`,
     );
   return changes;
+}
+
+/**
+ * Whether the active year is complete, so the next can open (HP2-100): every institution's
+ * result is published, or the evaluation cutoff has passed and the rest are left pending.
+ */
+export function openingReadiness(
+  active: { label: string; evaluationCutoff: string },
+  institutions: { id: string; name: string }[],
+  publishedIds: Iterable<string>,
+  businessTime: string,
+): OpeningReadiness {
+  const published = new Set(publishedIds);
+  const pending = institutions
+    .filter((institution) => !published.has(institution.id))
+    .map((institution) => ({
+      institutionId: institution.id,
+      institutionName: institution.name,
+    }));
+  const cutoffPassed =
+    Date.parse(businessTime) > Date.parse(active.evaluationCutoff);
+  const blocker =
+    pending.length > 0 && !cutoffPassed
+      ? `${pending.length} of ${institutions.length} institutions have no published result for ${active.label}, and its evaluation cutoff (${yearDate(localDate(active.evaluationCutoff))}) has not passed. Publish their results, or wait for the cutoff.`
+      : null;
+  return {
+    ready: blocker === null,
+    published: institutions.length - pending.length,
+    total: institutions.length,
+    pending,
+    cutoffPassed,
+    blocker,
+  };
 }

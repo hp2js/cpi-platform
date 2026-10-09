@@ -287,6 +287,51 @@ export const plannedYears = pgTable('planned_years', {
   plannedBy: text().notNull(),
 });
 
+/**
+ * A financial year that has closed (HP2-100): its calendar as it ran, and the institutions whose
+ * result was never published. Its published results move to `archived_publications`; the year's
+ * working records are cleared when the next year opens.
+ */
+export const closedYears = pgTable('closed_years', {
+  id: text().primaryKey(),
+  label: text().notNull(),
+  timezone: text().notNull(),
+  startsOn: date().notNull(),
+  endsOn: date().notNull(),
+  foundationDeadline: instant().notNull(),
+  evaluationCutoff: instant().notNull(),
+  profileId: text().notNull(),
+  profileName: text().notNull(),
+  periods: jsonb().$type<Period[]>().notNull(),
+  closedAt: instant().notNull(),
+  closedBy: text().notNull(),
+  pending: jsonb()
+    .$type<{ institutionId: string; institutionName: string }[]>()
+    .notNull(),
+});
+
+/** A closed year's published results, every version, exactly as released (HP2-100). */
+export const archivedPublications = pgTable('archived_publications', {
+  id: text().primaryKey(),
+  yearId: text()
+    .notNull()
+    .references(() => closedYears.id),
+  seq: integer().notNull(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  version: integer().notNull(),
+  batchId: text().notNull(),
+  publishedAt: instant().notNull(),
+  publishedBy: text().notNull(),
+  supersededBy: text(),
+  correctionReason: text(),
+  profileName: text().notNull(),
+  evaluation: jsonb().notNull(),
+  points: text().notNull(),
+  identity: jsonb().$type<ReportIdentity>(),
+});
+
 /** Every change to the financial years, with its reason (HP2-100). */
 export const financialYearChanges = pgTable('financial_year_changes', {
   id: serial().primaryKey(),

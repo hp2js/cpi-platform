@@ -588,18 +588,30 @@ export const annualHandlers = [
       await networkDelay();
       const user = requireUser();
       const db = getDb();
-      const publication = db.publications.find(
+      // A closed year's release is read from its archive, under that year's name (HP2-100).
+      const archived = db.archivedPublications.find(
+        (candidate) => candidate.id === params.publicationId,
+      );
+      const releases = archived
+        ? db.archivedPublications.filter(
+            (candidate) => candidate.yearId === archived.yearId,
+          )
+        : db.publications;
+      const publication = releases.find(
         (candidate) =>
           candidate.id === params.publicationId &&
           readableInstitutionIds(user).includes(candidate.institutionId),
       );
       if (!publication) return notFound();
       const result = toPublished(publication);
-      const next = db.publications.find(
+      const next = releases.find(
         (candidate) => candidate.id === publication.supersededBy,
       );
       const generated = institutionReportDocument(result, {
-        cycleLabel: db.cycle.label,
+        cycleLabel: archived
+          ? (db.closedYears.find((year) => year.id === archived.yearId)
+              ?.label ?? db.cycle.label)
+          : db.cycle.label,
         generatedAt: db.businessTime,
         images: await imagesFor(result.identity),
         supersededBy: next

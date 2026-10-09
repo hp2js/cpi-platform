@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { calendarDateSchema, instantSchema } from './common.js';
+import { publishedResultSchema } from './annual.js';
 import { periodSchema } from './cycle.js';
 
 /**
@@ -12,6 +13,28 @@ export const financialYearStatusSchema = z.enum([
   'closed',
 ]);
 export type FinancialYearStatus = z.infer<typeof financialYearStatusSchema>;
+
+const institutionRefSchema = z.object({
+  institutionId: z.string(),
+  institutionName: z.string(),
+});
+
+/**
+ * Whether the active year is complete, so the planned year can open: every institution's result
+ * published, or the evaluation cutoff passed with the rest explicitly left pending.
+ */
+export const openingReadinessSchema = z.object({
+  ready: z.boolean(),
+  /** Institutions with a current published result for the active year, of all institutions. */
+  published: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  /** Institutions without a published result; opening leaves them pending in the closed year. */
+  pending: z.array(institutionRefSchema),
+  cutoffPassed: z.boolean(),
+  /** Why the year cannot open yet; null when it can. */
+  blocker: z.string().nullable(),
+});
+export type OpeningReadiness = z.infer<typeof openingReadinessSchema>;
 
 export const financialYearSchema = z.object({
   id: z.string(),
@@ -31,6 +54,12 @@ export const financialYearSchema = z.object({
   /** Who planned it and when; null for the year the platform was set up with. */
   plannedBy: z.string().nullable(),
   plannedAt: instantSchema.nullable(),
+  /** A planned year: whether it can open now. Null for active and closed years. */
+  opening: openingReadinessSchema.nullable(),
+  /** A closed year: when and by whom, and the results it closed without. */
+  closedAt: instantSchema.nullable(),
+  closedBy: z.string().nullable(),
+  pending: z.array(institutionRefSchema),
 });
 export type FinancialYear = z.infer<typeof financialYearSchema>;
 
@@ -65,6 +94,23 @@ export type FinancialYearUpdate = z.infer<typeof financialYearUpdateSchema>;
 
 export const financialYearDiscardSchema = z.object({ reason: reasonSchema });
 export type FinancialYearDiscard = z.infer<typeof financialYearDiscardSchema>;
+
+export const financialYearOpenSchema = z.object({
+  reason: reasonSchema,
+  /** Confirms that institutions without a published result stay pending in the closed year. */
+  leavePending: z.boolean(),
+});
+export type FinancialYearOpen = z.infer<typeof financialYearOpenSchema>;
+
+/** A closed year's published results, every version, within the reader's scope. */
+export const closedYearResultsSchema = z.object({
+  year: financialYearSchema,
+  /** Newest first. */
+  results: z.array(publishedResultSchema),
+  /** Institutions in scope whose result was never published in that year. */
+  pending: z.array(institutionRefSchema),
+});
+export type ClosedYearResults = z.infer<typeof closedYearResultsSchema>;
 
 export const financialYearChangeSchema = z.object({
   at: instantSchema,

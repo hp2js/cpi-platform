@@ -30,6 +30,7 @@ const labels = new Map<string, string>(
     'evidence.suitability': 'Evidence suitability checked',
     'evidence.upload': 'Evidence file uploaded',
     'financial_year.discard': 'Planned financial year discarded',
+    'financial_year.open': 'Financial year opened, previous year closed',
     'financial_year.plan': 'Financial year planned',
     'financial_year.update': 'Planned financial year changed',
     'form.discard': 'Draft form version discarded',

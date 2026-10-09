@@ -9,7 +9,7 @@ import {
 } from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { CalendarPlus, Pencil, Trash2 } from 'lucide-react';
+import { CalendarCheck, CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
@@ -27,7 +27,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +36,7 @@ import { useUnsavedWork } from '@/features/session/unsaved-work';
 import { calendarQuery } from '@/features/settings/queries';
 import {
   discardYear,
+  openYear,
   planYear,
   updateYear,
   yearsKeys,
@@ -161,6 +163,13 @@ function YearCard({
           {year.plannedBy && year.plannedAt && (
             <p className="text-sm text-base-dark">
               Planned by {year.plannedBy}, {formatDateTime(year.plannedAt)}
+            </p>
+          )}
+          {year.closedBy && year.closedAt && (
+            <p className="text-sm text-base-dark">
+              Closed by {year.closedBy}, {formatDateTime(year.closedAt)}
+              {year.pending.length > 0 &&
+                ` · ${year.pending.length} result${year.pending.length === 1 ? '' : 's'} never published`}
             </p>
           )}
         </div>
@@ -524,6 +533,154 @@ function DiscardYear({ year }: { year: FinancialYear }) {
   );
 }
 
+/**
+ * Opens the planned year once the active one is complete (HP2-100): says exactly what carries
+ * over, what is archived and what starts afresh, and asks for a reason.
+ */
+function OpenYear({
+  year,
+  active,
+}: {
+  year: FinancialYear;
+  active: FinancialYear;
+}) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
+  const [leavePending, setLeavePending] = useState(false);
+  const opening = year.opening!;
+  const open = useMutation({
+    mutationFn: () => openYear(year.id, reason, leavePending),
+    onSuccess: async (result) => {
+      queryClient.setQueryData(yearsKeys.all, result);
+      // Every screen's data belongs to the new year now.
+      await queryClient.invalidateQueries();
+    },
+  });
+  const errors = isApiError(open.error) ? open.error.fieldErrors : {};
+  return (
+    <AlertDialog
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setReason('');
+          setLeavePending(false);
+          open.reset();
+        }
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          size="sm"
+          disabled={!opening.ready}
+          aria-describedby={opening.ready ? undefined : `${year.id}-blocked`}
+        >
+          <CalendarCheck aria-hidden="true" />
+          Open {year.label}
+        </Button>
+      </AlertDialogTrigger>
+      {!opening.ready && (
+        <span id={`${year.id}-blocked`} className="sr-only">
+          {opening.blocker}
+        </span>
+      )}
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Open {year.label} and close {active.label}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This cannot be undone. {active.label} becomes a closed year.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="grid max-h-[60vh] gap-4 overflow-y-auto text-sm">
+          <section className="grid gap-1">
+            <h3 className="font-bold">What happens</h3>
+            <ul className="grid list-disc gap-1 pl-5">
+              <li>
+                {active.label}&rsquo;s published results and their history stay
+                readable here, and each institution keeps its own under Results.
+              </li>
+              <li>
+                Its reports, reviews, clarifications, plans, foundation
+                documents and evidence are cleared from the working screens.
+              </li>
+              <li>
+                Institutions, people, assignments, scoring profiles, calendar
+                settings and the report identity carry over.
+              </li>
+              <li>
+                Every institution gets {year.label}&rsquo;s four quarters,
+                reporting on the last published form until a new version is
+                published. Plans and foundation documents start afresh: nothing
+                is assumed achieved again.
+              </li>
+              <li>Institution users, officers and supervisors are notified.</li>
+            </ul>
+          </section>
+          {opening.pending.length > 0 && (
+            <section className="grid gap-2">
+              <h3 className="font-bold">
+                {opening.pending.length} result
+                {opening.pending.length === 1 ? '' : 's'} never published
+              </h3>
+              <ul className="grid list-disc gap-1 pl-5">
+                {opening.pending.map((item) => (
+                  <li key={item.institutionId}>
+                    {item.institutionId} · {item.institutionName}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="leave-pending"
+                  className="mt-1"
+                  checked={leavePending}
+                  aria-invalid={Boolean(errors.leavePending)}
+                  onCheckedChange={(checked) =>
+                    setLeavePending(checked === true)
+                  }
+                />
+                <Label htmlFor="leave-pending" className="font-normal">
+                  Leave these results pending in {active.label}. They stay on
+                  record as never published.
+                </Label>
+              </div>
+            </section>
+          )}
+          <div className="grid gap-2">
+            <Label htmlFor="open-year-reason">Reason</Label>
+            <Textarea
+              id="open-year-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          {open.isError && (
+            <p role="alert" className="font-bold text-error-dark">
+              {open.error.message}
+            </p>
+          )}
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Not yet</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={
+              reason.trim().length < 10 ||
+              (opening.pending.length > 0 && !leavePending) ||
+              open.isPending
+            }
+            onClick={(event) => {
+              event.preventDefault();
+              open.mutate();
+            }}
+          >
+            Open {year.label}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function Years({ data }: { data: FinancialYears }) {
   const [editing, setEditing] = useState<string | null>(null);
   const active = data.years.find((year) => year.status === 'active');
@@ -549,8 +706,9 @@ function Years({ data }: { data: FinancialYears }) {
                 Adjust in the reporting calendar
               </Link>
             )}
-            {year.status === 'planned' && (
+            {year.status === 'planned' && active && (
               <div className="flex flex-wrap gap-1">
+                <OpenYear year={year} active={active} />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -562,18 +720,37 @@ function Years({ data }: { data: FinancialYears }) {
                 <DiscardYear year={year} />
               </div>
             )}
+            {year.status === 'closed' && (
+              <Link
+                to="/admin/financial-years/$yearId"
+                params={{ yearId: year.id }}
+                className={buttonVariants({ variant: 'plain', size: 'sm' })}
+              >
+                View published results
+              </Link>
+            )}
           </YearCard>
         ),
       )}
 
-      {planned && active && (
+      {planned?.opening && active && (
         <Alert>
           <AlertDescription>
-            {planned.label} opens once {active.label} is complete: its results
-            published, or its evaluation cutoff (
-            {formatCalendarDate(active.evaluationCutoff.slice(0, 10))}) passed
-            with any remaining results left pending. Until then {active.label}{' '}
-            stays the active year, and nothing in it changes.
+            {planned.opening.ready ? (
+              <>
+                {active.label} is complete: {planned.opening.published} of{' '}
+                {planned.opening.total} institutions have a published result
+                {planned.opening.pending.length > 0 &&
+                  ' and its evaluation cutoff has passed'}
+                . {planned.label} can be opened.
+              </>
+            ) : (
+              <>
+                {planned.label} opens once {active.label} is complete.{' '}
+                {planned.opening.blocker} Until then {active.label} stays the
+                active year, and nothing in it changes.
+              </>
+            )}
           </AlertDescription>
         </Alert>
       )}

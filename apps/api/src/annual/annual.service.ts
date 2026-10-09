@@ -62,13 +62,26 @@ export class AnnualService {
         candidate.id === publicationId &&
         scope.includes(candidate.institutionId),
     );
-    if (!publication) throw notFound();
-    const result = toPublished(data, publication);
-    const next = data.publications.find(
-      (candidate) => candidate.id === publication.supersededBy,
-    );
+    // A closed year's release is read from its archive, under that year's name (HP2-100).
+    const archived = publication
+      ? undefined
+      : await this.repository.archived(publicationId);
+    if (
+      !publication &&
+      !scope.includes(archived?.publication.institutionId ?? '')
+    )
+      throw notFound();
+    const release = publication ?? archived!.publication;
+    const result = toPublished(data, release);
+    const next = publication
+      ? data.publications.find(
+          (candidate) => candidate.id === publication.supersededBy,
+        )
+      : release.supersededBy
+        ? (await this.repository.archived(release.supersededBy))?.publication
+        : undefined;
     const generated = institutionReportDocument(result, {
-      cycleLabel: data.cycle.label,
+      cycleLabel: archived?.yearLabel ?? data.cycle.label,
       generatedAt: data.businessTime,
       images: await this.identity.imagesFor(result.identity),
       supersededBy: next
@@ -81,7 +94,7 @@ export class AnnualService {
     });
     await this.audited(
       user,
-      { type: 'publication', id: publication.id, version: publication.version },
+      { type: 'publication', id: release.id, version: release.version },
       `Downloaded ${generated.fileName}`,
     );
     return {

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
+import { EarlierYears } from '@/features/years/earlier-years';
 import { FinalizedComparison } from '@/features/oversight/comparison';
 import { oversightQuery } from '@/features/oversight/queries';
 import { Trends } from '@/features/oversight/trends';
@@ -28,6 +29,7 @@ export function PortfolioPage() {
           </div>
         )}
       </QueryView>
+      <EarlierYears />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
 } from '@/components/list-controls';
 import { PageHeader } from '@/components/page-header';
 import { QueryView } from '@/components/query-view';
+import { EarlierYears } from '@/features/years/earlier-years';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -449,6 +450,7 @@ export function ReportsPage() {
           {csv.error.message}
         </p>
       )}
+      <EarlierYears />
     </div>
   );
 }

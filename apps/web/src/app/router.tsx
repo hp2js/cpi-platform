@@ -466,6 +466,11 @@ const adminYearsRoute = createRoute({
   path: 'financial-years',
   component: page(() => import('@/routes/admin/years'), 'YearsPage'),
 });
+const adminClosedYearRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'financial-years/$yearId',
+  component: page(() => import('@/routes/admin/closed-year'), 'ClosedYearPage'),
+});
 const adminCalendarRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'calendar',
@@ -619,6 +624,7 @@ export const routeTree = rootRoute.addChildren([
       adminReportIdentityRoute,
       adminAssignmentsRoute,
       adminYearsRoute,
+      adminClosedYearRoute,
       adminCalendarRoute,
       adminRiskScaleRoute,
       adminInstitutionsRoute,

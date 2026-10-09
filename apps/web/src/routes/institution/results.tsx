@@ -5,6 +5,7 @@ import { QueryView } from '@/components/query-view';
 import { Button } from '@/components/ui/button';
 import { downloadExport, resultsQuery } from '@/features/annual/queries';
 import { PublishedResults } from '@/features/annual/published-results';
+import { EarlierYears } from '@/features/years/earlier-years';
 import { cycleQuery, institutionQuery } from '@/features/directory/queries';
 import { useSession } from '@/features/session/use-session';
 
@@ -76,6 +77,7 @@ export function ResultsPage() {
           {exportCsv.error.message}
         </p>
       )}
+      <EarlierYears />
     </div>
   );
 }
