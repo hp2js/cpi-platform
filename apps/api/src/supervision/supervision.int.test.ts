@@ -15,9 +15,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { auditEvents, notifications, supervisions } from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
 import {
-  STRONG_PASSWORD,
+  activateInvited,
   completeDraft,
-  emailedToken,
   publishSeedForm,
   submitDraft,
 } from '../test/journeys';
@@ -81,9 +80,11 @@ describe.skipIf(!integration)(
             })
           ).status,
         ).toBe(200);
-      const two = api.client();
-      const token = await emailedToken(admin, 'supervisor.two@example.invalid');
-      await two.post(`/auth/tokens/${token}`, { password: STRONG_PASSWORD });
+      const two = await activateInvited(
+        admin,
+        api.client(),
+        'supervisor.two@example.invalid',
+      );
       return { id, two };
     }
 
@@ -403,6 +404,23 @@ describe.skipIf(!integration)(
           })
         ).body,
       ).toEqual({ changed: ['DEMO-001'], unchanged: ['DEMO-005'] });
+    });
+
+    it('reads an open quarter as open, with its deadline and reports in (HP2-55)', async () => {
+      await publishSeedForm(admin);
+      const focal = await api.client().signIn('focal-demo-001');
+      const { draft } = await completeDraft(focal, 'DEMO-001');
+      await submitDraft(focal, 'DEMO-001', draft.version);
+      const officer = await api.client().signIn('officer-a');
+      const [q1, q2] = (await officer.json<Oversight>('/oversight')).trends;
+      expect(q1).toMatchObject({
+        status: 'open',
+        expected: 4,
+        received: 1,
+        due: 0,
+        submissionDeadline: expect.stringMatching(/^2026-10-15T/),
+      });
+      expect(q2).toMatchObject({ status: 'not_open', received: 0 });
     });
   },
 );

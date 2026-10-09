@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 import type {
   CalendarSettings,
+  FormCheck,
+  FormCreation,
   FormVersion,
   People,
   ProfilesState,
@@ -8,9 +10,14 @@ import type {
   Session,
 } from '@cpi/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { auditEvents, notifications, periods } from '../database/schema';
+import {
+  auditEvents,
+  notifications,
+  periods,
+  systemState,
+} from '../database/schema';
 import { integration, startApi, type Client } from '../test/api';
-import { STRONG_PASSWORD, emailedToken } from '../test/journeys';
+import { activateInvited } from '../test/journeys';
 
 /** Ported from apps/web/src/mocks/settings.test.ts and thin-path.test.ts (AT03). */
 describe.skipIf(!integration)('reporting cycle', () => {
@@ -168,6 +175,70 @@ describe.skipIf(!integration)('reporting cycle', () => {
       );
     });
 
+    it('checks unsaved edits, linked to their fields, with the publication impact (HP2-70)', async () => {
+      await admin.post('/forms/form-v1/publish');
+      const draft = (await admin.post('/forms')).body as FormVersion;
+      const sections = structuredClone(draft.sections);
+      sections[0]!.questions[0]!.label = ' ';
+      const check = (
+        await admin.post('/forms/form-v2/check', {
+          title: draft.title,
+          periodIds: ['FY2026-27-Q1', 'FY2026-27-Q3', 'FY2026-27-Q4'],
+          sections,
+        })
+      ).body as FormCheck;
+      expect(check.valid).toBe(false);
+      expect(check.issues).toEqual(
+        expect.arrayContaining([
+          {
+            path: 'sections.0.questions.0.label',
+            message: 'Give the question a label.',
+          },
+          expect.objectContaining({ path: 'periodIds' }),
+        ]),
+      );
+      expect(
+        check.impact.periods.map((period) => [period.label, period.outcome]),
+      ).toEqual([
+        ['Q1', 'locked'],
+        ['Q2', 'keeps'],
+        ['Q3', 'moves'],
+        ['Q4', 'moves'],
+      ]);
+      expect(check.impact.institutions).toBe(8);
+      expect(check.impact.recipients).toEqual([
+        { role: 'institution', count: 8 },
+        { role: 'officer', count: 2 },
+        { role: 'supervisor', count: 1 },
+      ]);
+      // Nothing was saved.
+      expect((await admin.json<FormVersion>('/forms/form-v2')).revision).toBe(
+        draft.revision,
+      );
+      const focal = await api.client().signIn('focal-demo-001');
+      expect(
+        (await focal.post('/forms/form-v2/check', { title: 'x' })).status,
+      ).toBe(403);
+    });
+
+    it('explains when no period is left for a new version (HP2-70)', async () => {
+      await admin.post('/forms/form-v1/publish');
+      expect(await admin.json<FormCreation>('/forms/creation')).toMatchObject({
+        allowed: true,
+        reason: null,
+      });
+      await api.db
+        .update(systemState)
+        .set({ businessTime: '2027-08-01T09:00:00+03:00' });
+      const creation = await admin.json<FormCreation>('/forms/creation');
+      expect(creation).toMatchObject({ allowed: false, assignablePeriods: [] });
+      expect(creation.reason).toMatch(/Every period in this cycle has started/);
+      expect(await admin.post('/forms')).toMatchObject({
+        status: 409,
+        body: { code: 'no_assignable_period', message: creation.reason },
+      });
+    });
+
     it('refuses to change scored criteria in a later version', async () => {
       await admin.post('/forms/form-v1/publish');
       const draft = (await admin.post('/forms')).body as FormVersion;
@@ -297,17 +368,9 @@ describe.skipIf(!integration)('reporting cycle', () => {
         },
       });
 
-      // New accounts are invited: they sign in after setting a password from the email.
+      // New accounts are invited: they sign in with the emailed temporary password.
       expect(deputy.status).toBe('invited');
-      const session = api.client();
-      const token = await emailedToken(admin, deputy.email);
-      expect(
-        (
-          await session.post(`/auth/tokens/${token}`, {
-            password: STRONG_PASSWORD,
-          })
-        ).status,
-      ).toBe(200);
+      const session = await activateInvited(admin, api.client(), deputy.email);
       expect((await session.request('/session')).status).toBe(200);
       await admin.post(`/settings/users/${deputy.id}/status`, {
         active: false,

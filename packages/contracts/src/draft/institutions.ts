@@ -157,3 +157,6 @@ export const supervisionChangeRequestSchema = z.object({
   supervisorId: z.string(),
   reason: z.string().trim().min(10).max(1000),
 });
+export type SupervisionChangeRequest = z.infer<
+  typeof supervisionChangeRequestSchema
+>;

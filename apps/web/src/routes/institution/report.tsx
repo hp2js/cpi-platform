@@ -7,16 +7,12 @@ import { useUnsavedWork } from '@/features/session/unsaved-work';
 import type { EvidenceItem, ReportAnswers, ReportBundle } from '@cpi/contracts';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  getRouteApi,
-  Link,
-  useBlocker,
-  useNavigate,
-} from '@tanstack/react-router';
-import { ArrowRight, CircleAlert, CircleCheck, Lock, Save } from 'lucide-react';
+import { getRouteApi, useBlocker, useNavigate } from '@tanstack/react-router';
+import { ArrowRight, CircleAlert, CircleCheck, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Glossary } from '@/components/glossary';
 import { PageHeader } from '@/components/page-header';
+import { ReportUnavailable } from '@/features/reporting/unavailable';
 import { QueryView } from '@/components/query-view';
 import { WorkflowStateBadge } from '@/components/status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -38,11 +34,7 @@ import { useSavedDefaultsForm } from '@/features/reporting/use-report-form';
 import { useSession } from '@/features/session/use-session';
 import { isApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import {
-  formatCalendarDate,
-  formatDateRange,
-  formatDateTime,
-} from '@/lib/dates';
+import { formatDateRange, formatDateTime } from '@/lib/dates';
 
 const route = getRouteApi('/authed/institution/reports/$periodId');
 
@@ -393,7 +385,8 @@ function ReportEditor({
         <aside className="rounded-lg border border-base-lighter bg-white p-4 desktop:sticky desktop:top-[calc(var(--sticky-top)+5rem)] desktop:order-last">
           <ReportContents bundle={bundle} values={values} />
         </aside>
-        <div className="grid gap-8">
+        {/* Fields lay out by the width they get, as in the administrator's phone-width preview. */}
+        <div className="@container grid gap-8">
           {form.sections.map((section) => (
             <section
               key={section.id}
@@ -460,52 +453,6 @@ function ReportDeadline({ bundle }: { bundle: ReportBundle }) {
   );
 }
 
-function Unavailable({ bundle }: { bundle: ReportBundle }) {
-  const receipt = bundle.receipts.at(-1);
-  if (receipt) {
-    return (
-      <Alert>
-        <Lock aria-hidden="true" />
-        <AlertTitle>
-          Revision {receipt.revision} was submitted and cannot be changed
-        </AlertTitle>
-        <AlertDescription>
-          <p>
-            Submitted revisions are kept exactly as received. If the reviewing
-            officer asks for clarification, you will be able to submit a new
-            revision.
-          </p>
-          <Link
-            to="/institution/receipts/$receiptId"
-            params={{ receiptId: receipt.id }}
-            className={buttonVariants({
-              variant: 'plain',
-              size: 'sm',
-              className: 'mt-2',
-            })}
-          >
-            View receipt
-          </Link>
-        </AlertDescription>
-      </Alert>
-    );
-  }
-  return (
-    <Alert>
-      <AlertTitle>
-        {bundle.form
-          ? 'This report is not open yet'
-          : 'The report form has not been published yet'}
-      </AlertTitle>
-      <AlertDescription>
-        {bundle.form
-          ? `Reporting opens after the quarter ends on ${formatCalendarDate(bundle.period.endsOn)}.`
-          : 'You will be notified when the administrator publishes it. Nothing is needed from you yet.'}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 export function ReportPage() {
   const { periodId } = route.useParams();
   const session = useSession();
@@ -551,7 +498,7 @@ export function ReportPage() {
               }
             />
           ) : (
-            <Unavailable bundle={data} />
+            <ReportUnavailable bundle={data} />
           )
         }
       </QueryView>

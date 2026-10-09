@@ -74,10 +74,10 @@ test('a failed upload is explained and retried without duplicating the file', as
   await openEditor(page);
   const cpc = page.locator('#field-questions-cpc-minutes');
   await fault(page, 'network', '/evidence');
-  await cpc.locator('input[type=file]').setInputFiles({
+  await cpc.getByLabel('Upload a file', { exact: true }).setInputFiles({
     name: 'minutes.pdf',
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.7 minutes'),
+    buffer: Buffer.from('%PDF-1.7 minutes\n%%EOF\n'),
   });
   await expect(cpc.getByRole('alert')).toContainText(
     'The upload was interrupted',
@@ -86,12 +86,12 @@ test('a failed upload is explained and retried without duplicating the file', as
   await expect(cpc.getByText('minutes.pdf')).toBeVisible();
   // A second attempt with the same file returns the completed record rather than a duplicate.
   await cpc
-    .locator('input[type=file]')
+    .getByLabel('Upload a file', { exact: true })
     .first()
     .setInputFiles({
       name: 'minutes.pdf',
       mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.7 minutes'),
+      buffer: Buffer.from('%PDF-1.7 minutes\n%%EOF\n'),
     });
   await expect(cpc.getByText('minutes.pdf')).toHaveCount(1);
 });

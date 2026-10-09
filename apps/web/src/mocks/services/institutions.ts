@@ -8,7 +8,7 @@ import {
 import type { MockDb } from '../db';
 import { committee, type MockBaseline } from '@cpi/contracts/fixtures';
 import type { MockUser } from '@cpi/contracts/fixtures';
-import { accountStatus, sendLink, type PreparedLink } from './auth';
+import { accountStatus, sendInvitation, type PreparedInvitation } from './auth';
 import { parseCsv } from '@cpi/contracts';
 
 /**
@@ -29,7 +29,9 @@ export interface NewInstitution {
   typeId: string | undefined;
   /** What the request gave, for error messages. */
   typeInput: string;
-  officer: MockUser | undefined;
+  /** Null: no reviewing officer yet. Undefined: one was named but no active officer matches. */
+  officer: MockUser | null | undefined;
+  officerInput: string;
   /** Null: no supervisor. Undefined: one was named but no active supervisor matches. */
   supervisor: MockUser | null | undefined;
   supervisorInput: string;
@@ -100,7 +102,8 @@ export function institutionProblems(
         : 'Choose the institution type.',
     );
   errors.push(...accountingOfficerProblems(input.accountingOfficer));
-  if (!input.officer) errors.push('Choose an active prevention officer.');
+  if (input.officer === undefined)
+    errors.push(`No active prevention officer matches ${input.officerInput}.`);
   if (input.focalUser) {
     const email = input.focalUser.email.toLowerCase();
     if (!EMAIL_PATTERN.test(email))
@@ -153,10 +156,10 @@ const opensAt = (endsOn: string) =>
 export function createInstitution(
   db: MockDb,
   admin: MockUser,
-  input: NewInstitution & { officer: MockUser },
+  input: NewInstitution & { officer: MockUser | null },
   seedOpenedQuarters: boolean,
   nextId: (prefix: string) => string,
-  invitation?: PreparedLink,
+  invitation?: PreparedInvitation,
 ) {
   const now = Date.parse(db.businessTime);
   const type = db.institutionTypes.find((item) => item.id === input.typeId)!;
@@ -173,15 +176,16 @@ export function createInstitution(
       phone: input.accountingOfficer.phone.trim(),
     },
   });
-  db.assignments.push({
-    institutionId: input.id,
-    officerId: input.officer.id,
-    validFrom: db.businessTime,
-    validTo: null,
-    reason: 'Initial assignment on onboarding',
-    cover: null,
-    handoverNote: null,
-  });
+  if (input.officer)
+    db.assignments.push({
+      institutionId: input.id,
+      officerId: input.officer.id,
+      validFrom: db.businessTime,
+      validTo: null,
+      reason: 'Initial assignment on onboarding',
+      cover: null,
+      handoverNote: null,
+    });
   if (input.supervisor)
     db.supervisions.push({
       institutionId: input.id,
@@ -217,7 +221,7 @@ export function createInstitution(
       status: 'approved',
       historicalSeed: {
         reason:
-          'SEEDED HISTORICAL BASELINE for the simulated year, loaded on onboarding because the quarter had already opened.',
+          'Seeded historical baseline for the simulated year, loaded on onboarding because the quarter had already opened.',
         loadedAt: db.businessTime,
         confirmedBy: null,
         confirmedAt: null,
@@ -249,7 +253,7 @@ export function createInstitution(
       passwordHash: null,
     };
     db.users.push(focal);
-    if (invitation) sendLink(db, focal, invitation, admin);
+    if (invitation) sendInvitation(db, focal, invitation, admin);
   }
 }
 
@@ -262,7 +266,8 @@ export function fromCreateRequest(
     name: request.name,
     typeId: activeTypeId(db, request.typeId),
     typeInput: request.typeId,
-    officer: activeOfficer(db, request.officerId),
+    officer: request.officerId ? activeOfficer(db, request.officerId) : null,
+    officerInput: request.officerId ?? '',
     supervisor: request.supervisorId
       ? activeSupervisor(db, request.supervisorId)
       : null,
@@ -281,14 +286,9 @@ export function previewImport(
   const columns = header.map((name) => name.trim().toLowerCase());
   const missing = institutionImportColumns
     .filter((column) =>
-      [
-        'institution_id',
-        'name',
-        'type',
-        'officer_email',
-        'ao_name',
-        'ao_designation',
-      ].includes(column),
+      ['institution_id', 'name', 'type', 'ao_name', 'ao_designation'].includes(
+        column,
+      ),
     )
     .filter((column) => !columns.includes(column));
   const fileErrors: string[] = [];
@@ -311,6 +311,7 @@ export function previewImport(
     const focalEmail = cell(cells, 'focal_email');
     const focalName = cell(cells, 'focal_name');
     const typeInput = cell(cells, 'type');
+    const officerInput = cell(cells, 'officer_email');
     const supervisorInput = columns.includes('supervisor_email')
       ? cell(cells, 'supervisor_email')
       : '';
@@ -319,7 +320,8 @@ export function previewImport(
       name: cell(cells, 'name'),
       typeId: activeTypeId(db, typeInput),
       typeInput,
-      officer: activeOfficer(db, cell(cells, 'officer_email')),
+      officer: officerInput ? activeOfficer(db, officerInput) : null,
+      officerInput,
       supervisor: supervisorInput
         ? activeSupervisor(db, supervisorInput)
         : defaultSupervisor(db),

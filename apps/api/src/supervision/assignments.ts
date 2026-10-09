@@ -76,24 +76,26 @@ export async function reassignInstitution(
   },
 ) {
   const nameOf = await names(tx);
-  const current = (await currentAssignment(tx, input.institutionId))!;
-  const [previous] = await tx
-    .select()
-    .from(users)
-    .where(eq(users.id, current.officerId));
-  await tx
-    .update(assignments)
-    .set({ validTo: at })
-    .where(eq(assignments.id, current.id));
-  const cover = input.coverUntil
-    ? {
-        until: endOfDay(input.coverUntil),
-        // Cover of cover still returns to the officer who is away.
-        returnToOfficerId:
-          current.cover?.returnToOfficerId ?? current.officerId,
-        setById: input.actor.id,
-      }
-    : null;
+  // None when the institution was created without a reviewing officer: this is the first.
+  const current = await currentAssignment(tx, input.institutionId);
+  const [previous] = current
+    ? await tx.select().from(users).where(eq(users.id, current.officerId))
+    : [];
+  if (current)
+    await tx
+      .update(assignments)
+      .set({ validTo: at })
+      .where(eq(assignments.id, current.id));
+  const cover =
+    current && input.coverUntil
+      ? {
+          until: endOfDay(input.coverUntil),
+          // Cover of cover still returns to the officer who is away.
+          returnToOfficerId:
+            current.cover?.returnToOfficerId ?? current.officerId,
+          setById: input.actor.id,
+        }
+      : null;
   const note = input.handoverNote?.trim() || null;
   await tx.insert(assignments).values({
     institutionId: input.institutionId,

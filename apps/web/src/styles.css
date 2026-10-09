@@ -112,6 +112,9 @@
   --text-sm--line-height: 1.62;
   --text-md: 1.0625rem;
   --text-md--line-height: 1.62;
+  /* Card and question titles: between body text and section headings. */
+  --text-title: 1.1875rem;
+  --text-title--line-height: 1.35;
   --text-lg: 1.375rem;
   --text-lg--line-height: 1.2;
   --text-xl: 2rem;
@@ -134,6 +137,8 @@
   --container-desktop-lg: 75rem;
   --container-widescreen: 87.5rem;
   --container-measure: 68ch;
+  /* The phone width the form preview can be shown at; matches the 390 px accessibility check. */
+  --container-phone: 24.375rem;
 
   /* Minimum target size, in px so the density setting below never shrinks it. */
   --spacing-touch: 44px;
@@ -156,14 +161,14 @@
   font-style: normal;
   font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/public-sans-latin-wght-normal.woff2') format('woff2');
+  src: url('./assets/fonts/public-sans-latin-wght-normal.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Public Sans';
   font-style: italic;
   font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/public-sans-latin-wght-italic.woff2') format('woff2');
+  src: url('./assets/fonts/public-sans-latin-wght-italic.woff2') format('woff2');
 }
 
 @layer base {
@@ -333,27 +338,67 @@ button:focus-visible,
 }
 
 /*
- * Print view for receipts and reports: navigation and controls are removed, while the
- * simulation banner and profile labels stay so printed results remain clearly labelled.
+ * Print view: the page prints as a document, not as the app. Navigation, headers, controls and
+ * screen-only notices are removed (data-print-hide); the simulation banner stays as the
+ * document's simulation marking. Tables lose their scroll container and min-widths so every
+ * column fits the page and wraps, rows stay whole, table headers repeat on each page, and
+ * headings keep with what follows. Large blocks are allowed to break across pages, so a long
+ * section never leaves an empty page behind it (HP2-63).
  */
 @media print {
+  @page {
+    margin: 14mm 12mm;
+  }
   nav,
   aside,
   [data-print-hide] {
     display: none !important;
   }
-  body {
-    background: #fff;
+  html {
+    font-size: 75%;
+  }
+  body,
+  .bg-canvas {
+    background: #fff !important;
   }
   main {
     padding: 0 !important;
+    max-width: none !important;
   }
   [data-sticky] {
     position: static !important;
   }
-  section,
-  article,
+  [data-slot='table-container'] {
+    overflow: visible !important;
+  }
   table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  /* Cells wrap between words (never inside one), with print-sized padding instead of touch targets. */
+  th,
+  td {
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    height: auto !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr,
+  li,
+  dl > div,
+  [data-print-keep] {
     break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3,
+  caption {
+    break-after: avoid;
+  }
+  [data-print-break-before] {
+    break-before: page;
   }
 }

@@ -34,6 +34,12 @@ describe('request validation', () => {
   });
   it('returns validated data', () =>
     expect(pipe.transform({ name: 'Example' })).toEqual({ name: 'Example' }));
+  it('raises the endpoint-specific error when one is given', () => {
+    const custom = new NotFoundException('custom');
+    expect(() =>
+      new SchemaValidationPipe(z.string(), () => custom).transform(1),
+    ).toThrow(custom);
+  });
 });
 it('only logs safe dependency error codes', () => {
   expect(errorCode({ code: 'ECONNREFUSED', message: 'password=secret' })).toBe(

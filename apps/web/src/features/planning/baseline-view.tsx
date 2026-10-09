@@ -34,8 +34,22 @@ const status = {
   },
 } as const;
 
+/**
+ * One status per baseline (HP2-53). A seeded historical baseline (PRD §10.4) is usable only
+ * once the officer confirms it, so it never shows "Approved" beside a pending confirmation.
+ */
+function statusOf(baseline: Baseline) {
+  if (!baseline.historicalSeed) return status[baseline.status];
+  return baseline.historicalSeed.confirmedAt
+    ? { ...status.approved, label: 'Seeded historical baseline · confirmed' }
+    : {
+        ...status.proposed,
+        label: 'Seeded historical baseline · officer to confirm',
+      };
+}
+
 export function BaselineStatus({ baseline }: { baseline: Baseline }) {
-  const { label, icon: Icon, className } = status[baseline.status];
+  const { label, icon: Icon, className } = statusOf(baseline);
   return (
     <span className="flex flex-wrap items-center gap-2">
       <span
@@ -47,14 +61,6 @@ export function BaselineStatus({ baseline }: { baseline: Baseline }) {
         <Icon className="size-3.5" aria-hidden="true" />
         {label}
       </span>
-      {baseline.historicalSeed && (
-        <span className="rounded-md border px-2 py-1 text-xs font-bold tracking-wide">
-          SEEDED HISTORICAL BASELINE ·{' '}
-          {baseline.historicalSeed.confirmedAt
-            ? 'confirmed'
-            : 'awaiting officer confirmation'}
-        </span>
-      )}
       {baseline.locked && (
         <span className="inline-flex items-center gap-1 text-xs text-base-dark">
           <Lock className="size-3.5" aria-hidden="true" />
@@ -114,7 +120,17 @@ export function MilestoneTable({ baseline }: { baseline: Baseline }) {
   );
 }
 
-export function BaselineNotes({ baseline }: { baseline: Baseline }) {
+/**
+ * Who reads the notes: the institution is told nothing is needed from it; staff are told the
+ * officer confirms a seeded baseline before its quarter's reviews can be finalized.
+ */
+export function BaselineNotes({
+  baseline,
+  audience = 'staff',
+}: {
+  baseline: Baseline;
+  audience?: 'institution' | 'staff';
+}) {
   return (
     <div className="grid gap-1 text-sm">
       {baseline.approval && (
@@ -146,11 +162,15 @@ export function BaselineNotes({ baseline }: { baseline: Baseline }) {
       )}
       {baseline.historicalSeed && (
         <p className="text-base-dark">
-          {baseline.historicalSeed.reason} Loaded{' '}
-          {formatDateTime(baseline.historicalSeed.loadedAt)}
+          This is a seeded historical baseline: the simulation loaded{' '}
+          {baseline.periodLabel}&rsquo;s milestones from the approved plan
+          because the quarter had opened before the platform was in use (
+          {formatDateTime(baseline.historicalSeed.loadedAt)}).{' '}
           {baseline.historicalSeed.confirmedAt
-            ? `; confirmed by ${baseline.historicalSeed.confirmedBy}, ${formatDateTime(baseline.historicalSeed.confirmedAt)}.`
-            : '.'}
+            ? `${baseline.historicalSeed.confirmedBy} confirmed it matches the approved plan, ${formatDateTime(baseline.historicalSeed.confirmedAt)}.`
+            : audience === 'institution'
+              ? 'Nothing is needed from you: your officer confirms it matches your approved plan.'
+              : `The officer confirms it matches the approved plan; until then, ${baseline.periodLabel} reviews cannot be finalized.`}
         </p>
       )}
     </div>

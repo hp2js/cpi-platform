@@ -195,9 +195,46 @@ export const reviewQueueItemSchema = z.object({
   firstSubmittedAt: instantSchema,
   decisionsRecorded: z.number().int().nonnegative(),
   decisionsRequired: z.number().int().nonnegative(),
+  /** When this revision's review was finalized; null while it is open (HP2-48). */
+  finalizedAt: instantSchema.nullable(),
+  /**
+   * Whose move it is on open work, since when, and for how many whole days: the officer from
+   * receipt (or the latest reopening), the institution while a clarification is open. Null once
+   * finalized, so completed work never shows a growing wait.
+   */
+  waiting: z
+    .object({
+      on: z.enum(['officer', 'institution']),
+      since: instantSchema,
+      days: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  /** Whole days from first submission: to now while open, fixed at finalization once done. */
+  caseDays: z.number().int().nonnegative(),
 });
 export type ReviewQueueItem = z.infer<typeof reviewQueueItemSchema>;
 export const reviewQueueSchema = z.array(reviewQueueItemSchema);
+
+/**
+ * Whether a finalized review can be reopened now, and why not (PRD §7.4, HP2-51). After the
+ * institution's annual result is published, only an administrator-opened correction case for
+ * this quarter allows it; `correction` is that case, or the open case for another quarter.
+ */
+export const reopenEligibilitySchema = z.object({
+  allowed: z.boolean(),
+  reason: z.string().nullable(),
+  published: z.boolean(),
+  correction: z
+    .object({
+      periodId: z.string(),
+      periodLabel: z.string(),
+      reason: z.string(),
+      openedBy: z.string(),
+      openedAt: instantSchema,
+    })
+    .nullable(),
+});
+export type ReopenEligibility = z.infer<typeof reopenEligibilitySchema>;
 
 export const reviewBundleSchema = z.object({
   submissionId: z.string(),
@@ -241,6 +278,7 @@ export const reviewBundleSchema = z.object({
   reopenings: z.array(
     z.object({ reason: z.string(), by: z.string(), at: instantSchema }),
   ),
+  reopen: reopenEligibilitySchema,
 });
 export type ReviewBundle = z.infer<typeof reviewBundleSchema>;
 

@@ -40,6 +40,16 @@ for (const dependency of ['redis', 'postgres', 'minio']) {
       ],
       'down',
     );
+    if (dependency === 'redis') {
+      // Signed-in requests say sign-in is unavailable instead of an unexpected error.
+      // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request -- the local stack is plain HTTP
+      const session = await fetch('http://127.0.0.1:5180/api/session', {
+        headers: { cookie: 'cpi_session=smoke' },
+        signal: AbortSignal.timeout(5000),
+      });
+      assert.equal(session.status, 503);
+      assert.equal((await session.json()).code, 'session_store_unavailable');
+    }
   } finally {
     compose('start', dependency);
     await waitReady();

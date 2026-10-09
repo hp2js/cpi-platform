@@ -52,6 +52,15 @@ export const comparisonRowSchema = z.object({
 export const trendPointSchema = z.object({
   periodId: z.string(),
   periodLabel: z.string(),
+  /**
+   * Where the quarter stands (HP2-55): reporting not open yet (the quarter has not ended), open
+   * until the submission deadline, or due. Rates need `due`, so they apply only once it is due.
+   */
+  status: z.enum(['not_open', 'open', 'due']),
+  submissionDeadline: instantSchema,
+  /** Reports expected for the quarter in the caller's scope, and how many are in already. */
+  expected: z.number().int().nonnegative(),
+  received: z.number().int().nonnegative(),
   /** Reports whose deadline has passed. */
   due: z.number().int().nonnegative(),
   submitted: z.number().int().nonnegative(),
@@ -104,6 +113,9 @@ export const assignmentChangeRequestSchema = z.object({
   /** Shown to the new officer on the institution's page and in their notification. */
   handoverNote: z.string().trim().max(2000).optional(),
 });
+export type AssignmentChangeRequest = z.infer<
+  typeof assignmentChangeRequestSchema
+>;
 export const assignmentHistorySchema = z.array(
   z.object({
     institutionId: institutionIdSchema,
@@ -154,9 +166,15 @@ export const reassignmentSuggestionRequestSchema = z.object({
   suggestedOfficerId: z.string().nullable(),
   reason: z.string().trim().min(10).max(1000),
 });
+export type ReassignmentSuggestionRequest = z.infer<
+  typeof reassignmentSuggestionRequestSchema
+>;
 export const suggestionDismissRequestSchema = z.object({
   note: z.string().trim().min(10).max(1000),
 });
+export type SuggestionDismissRequest = z.infer<
+  typeof suggestionDismissRequestSchema
+>;
 
 /** Many institutions to one officer, each with its own history entry (500+ institutions). */
 export const bulkAssignmentRequestSchema = z.object({
@@ -165,11 +183,15 @@ export const bulkAssignmentRequestSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
   handoverNote: z.string().trim().max(2000).optional(),
 });
+export type BulkAssignmentRequest = z.infer<typeof bulkAssignmentRequestSchema>;
 export const bulkSupervisionRequestSchema = z.object({
   institutionIds: z.array(institutionIdSchema).min(1).max(1000),
   supervisorId: z.string(),
   reason: z.string().trim().min(10).max(1000),
 });
+export type BulkSupervisionRequest = z.infer<
+  typeof bulkSupervisionRequestSchema
+>;
 export const bulkChangeResultSchema = z.object({
   changed: z.array(institutionIdSchema),
   /** Already with that officer or supervisor: nothing to change. */

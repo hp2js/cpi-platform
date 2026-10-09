@@ -1,4 +1,10 @@
-import type { AuthConfig, DemoAccount, Role } from '@cpi/contracts';
+import type {
+  AuthConfig,
+  DemoAccount,
+  Role,
+  Session,
+  SignInChallenge,
+} from '@cpi/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -12,6 +18,7 @@ import {
   FlaskConical,
   Gauge,
   Landmark,
+  MailCheck,
   Search,
   Settings,
 } from 'lucide-react';
@@ -43,12 +50,15 @@ import {
 import { Label } from '@/components/ui/label';
 import {
   authConfigQuery,
+  confirmSignInCode,
   demoAccountsQuery,
   roleHome,
   roleLabel,
   signIn,
   type Credentials,
 } from '@/features/session/queries';
+import { isApiError } from '@/lib/api';
+import { formatDateTime } from '@/lib/dates';
 import { SkipLink } from '@/layouts/shared';
 
 const route = getRouteApi('/sign-in');
@@ -79,15 +89,23 @@ const roleOrder: { role: Role; icon: LucideIcon; description: string }[] = [
   },
 ];
 
-function useSignIn() {
+function useEnter() {
   const { redirect } = route.useSearch();
   const navigate = useNavigate();
+  return async (session: Session) => {
+    // A temporary password is replaced first; the guard sends the person there from home.
+    const home = roleHome[session.user.role];
+    await navigate({ to: redirect?.startsWith(home) ? redirect : home });
+  };
+}
+
+function useSignIn() {
   const queryClient = useQueryClient();
+  const enter = useEnter();
   return useMutation({
     mutationFn: (credentials: Credentials) => signIn(queryClient, credentials),
-    onSuccess: async (session) => {
-      const home = roleHome[session.user.role];
-      await navigate({ to: redirect?.startsWith(home) ? redirect : home });
+    onSuccess: async (result) => {
+      if (!('challengeId' in result)) await enter(result);
     },
   });
 }
@@ -97,6 +115,21 @@ function PasswordForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false);
+  const challenge =
+    mutation.data && 'challengeId' in mutation.data ? mutation.data : null;
+  if (challenge)
+    return (
+      <CodeForm
+        email={email}
+        challenge={challenge}
+        resending={mutation.isPending}
+        onResend={() => mutation.mutate({ email, password })}
+        onCancel={() => {
+          setPassword('');
+          mutation.reset();
+        }}
+      />
+    );
   return (
     <form
       className="grid gap-4"
@@ -165,6 +198,105 @@ function PasswordForm() {
       <Button type="submit" disabled={mutation.isPending}>
         {mutation.isPending ? 'Signing in…' : 'Sign in'}
       </Button>
+    </form>
+  );
+}
+
+/** The second step: the six-digit code emailed after the password was accepted. */
+function CodeForm({
+  email,
+  challenge,
+  resending,
+  onResend,
+  onCancel,
+}: {
+  email: string;
+  challenge: SignInChallenge;
+  resending: boolean;
+  onResend: () => void;
+  onCancel: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const enter = useEnter();
+  const [code, setCode] = useState('');
+  const mutation = useMutation({
+    mutationFn: () =>
+      confirmSignInCode(queryClient, challenge.challengeId, code),
+    onSuccess: enter,
+  });
+  const fieldError = isApiError(mutation.error)
+    ? mutation.error.fieldErrors.code
+    : undefined;
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        mutation.mutate();
+      }}
+    >
+      <p
+        role="status"
+        className="flex items-start gap-2 text-sm"
+        key={challenge.challengeId}
+      >
+        <MailCheck
+          className="mt-1 size-4 shrink-0 text-primary"
+          aria-hidden="true"
+        />
+        <span>
+          We emailed a 6-digit code to <strong>{email}</strong>. It works until{' '}
+          {formatDateTime(challenge.expiresAt)}.
+        </span>
+      </p>
+      <div className="grid gap-2">
+        <Label htmlFor="sign-in-code">Sign-in code</Label>
+        <Input
+          id="sign-in-code"
+          // The step's only field, revealed by the person's own action.
+          autoFocus
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+          aria-invalid={fieldError ? true : undefined}
+          aria-describedby={fieldError ? 'sign-in-code-error' : undefined}
+          className="font-mono tracking-widest"
+          required
+        />
+        {fieldError && (
+          <p id="sign-in-code-error" className="text-sm text-error-dark">
+            {fieldError}
+          </p>
+        )}
+      </div>
+      {mutation.isError && !fieldError && (
+        <Alert variant="destructive">
+          <AlertDescription>{mutation.error.message}</AlertDescription>
+        </Alert>
+      )}
+      <Button type="submit" disabled={code.length !== 6 || mutation.isPending}>
+        {mutation.isPending ? 'Checking…' : 'Verify and sign in'}
+      </Button>
+      <div className="flex flex-wrap justify-between gap-2">
+        <Button
+          type="button"
+          variant="plain"
+          disabled={resending}
+          onClick={() => {
+            setCode('');
+            mutation.reset();
+            onResend();
+          }}
+        >
+          {resending ? 'Sending…' : 'Send a new code'}
+        </Button>
+        <Button type="button" variant="plain" onClick={onCancel}>
+          Use a different account
+        </Button>
+      </div>
     </form>
   );
 }
@@ -440,7 +572,8 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
       </section>
       <SheetContent
         side="right"
-        className="w-full gap-0 outline-none tablet:max-w-mobile-lg"
+        // The header and the password stay put; only the list of accounts scrolls.
+        className="w-full gap-0 overflow-hidden outline-none tablet:max-w-mobile-lg"
         // Start on the sheet itself: no keyboard popping up on phones, and Tab reaches the list.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -485,7 +618,8 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
             </nav>
           )}
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto">
+        {/* Relative, so visually hidden text inside is clipped here, not by the whole sheet. */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-6 p-5">
             {mutation.isError && (
               <Alert variant="destructive">
@@ -516,7 +650,7 @@ function DemoAccounts({ config }: { config: AuthConfig }) {
           </div>
         </div>
         {config.demoPassword && (
-          <div className="grid gap-2 border-t bg-base-lightest p-5 text-sm">
+          <div className="grid shrink-0 gap-2 border-t bg-base-lightest p-5 text-sm">
             <p>
               <span className="font-bold">Prefer the sign-in form?</span>{' '}
               <span className="text-base-dark">
@@ -579,11 +713,19 @@ export function SignInPage() {
             </>
           )}
           <p className="text-sm text-base-dark">
-            New to the platform? Your administrator sends you an invitation by
-            email to set your password.
+            New to the platform? Your administrator sends you an email with a
+            temporary password; you choose your own when you first sign in.
           </p>
         </section>
         {config.data?.demoAccounts && <DemoAccounts config={config.data} />}
+        <p className="text-center text-sm">
+          <Link
+            to="/accessibility"
+            className="text-primary underline underline-offset-4"
+          >
+            Accessibility statement
+          </Link>
+        </p>
       </main>
     </div>
   );

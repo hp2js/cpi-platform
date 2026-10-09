@@ -16,6 +16,7 @@ import {
 import type {
   BaselineCheck,
   FormChange,
+  ReportIdentity,
   RiskScale,
   AccountingOfficer,
   Attestation,
@@ -28,6 +29,7 @@ import type {
   FormSection,
   IndicatorWeights,
   Milestone,
+  Period,
   ProfileChecklists,
   Receipt,
   ReportAnswers,
@@ -89,8 +91,13 @@ export const users = pgTable('users', {
   phone: text().notNull().default(''),
   institutionId: text().references(() => institutions.id),
   active: boolean().notNull().default(true),
-  /** scrypt hash; the demo marker for seeded accounts; null until an invited person sets one. */
+  /** scrypt hash; the demo marker for seeded accounts; null for accounts invited by link before temporary passwords. */
   passwordHash: text(),
+  /**
+   * Set while the account still uses the emailed temporary password: it stops working at this
+   * time, and the person must choose their own password before using the platform.
+   */
+  passwordExpiresAt: instant(),
   /** The current single-use invitation or reset link (its token hash only). */
   authLink: jsonb().$type<{
     purpose: 'invitation' | 'reset';
@@ -185,6 +192,8 @@ export const scoringProfiles = pgTable('scoring_profiles', {
 export const cycles = pgTable('cycles', {
   id: text().primaryKey(),
   label: text().notNull(),
+  /** When the year was opened from the previous one (HP2-100); null for the seeded year. */
+  openedAt: instant(),
   timezone: text().notNull(),
   foundationDeadline: instant().notNull(),
   evaluationCutoff: instant().notNull(),
@@ -212,6 +221,33 @@ export const cycles = pgTable('cycles', {
       source:
         'Demonstration labels from common 1–5 risk practice; confirm against the EACC risk assessment template before use.',
     }),
+  /** Who issues the cycle's annual report and how it is branded (HP2-65); null until set. */
+  reportIdentity: jsonb().$type<ReportIdentity>(),
+});
+
+/** Changes to the report identity, for the settings page; each is also audited. */
+export const reportIdentityChanges = pgTable('report_identity_changes', {
+  id: serial().primaryKey(),
+  at: instant().notNull(),
+  by: text().notNull(),
+  summary: text().notNull(),
+});
+
+/**
+ * Report logos and signature images (HP2-65). The bytes are in object storage; a published
+ * report keeps referring to the image it was published with, so rows are never deleted.
+ */
+export const reportImages = pgTable('report_images', {
+  id: text().primaryKey(),
+  bucket: text().notNull(),
+  objectKey: text().notNull(),
+  mimeType: text().$type<'image/png' | 'image/jpeg'>().notNull(),
+  sizeBytes: integer().notNull(),
+  sha256: text().notNull(),
+  width: integer().notNull(),
+  height: integer().notNull(),
+  uploadedAt: instant().notNull(),
+  uploadedBy: text().notNull(),
 });
 
 export const riskScaleChanges = pgTable('risk_scale_changes', {
@@ -232,6 +268,80 @@ export const periods = pgTable('periods', {
   startsOn: date().notNull(),
   endsOn: date().notNull(),
   submissionDeadline: instant().notNull(),
+});
+
+/**
+ * The next financial year, planned ahead (HP2-100). Kept apart from `cycles` and `periods` so
+ * planning it never touches the active year's deadlines, reports or scores.
+ */
+export const plannedYears = pgTable('planned_years', {
+  id: text().primaryKey(),
+  label: text().notNull(),
+  startsOn: date().notNull(),
+  foundationDeadline: instant().notNull(),
+  evaluationCutoff: instant().notNull(),
+  profileId: text()
+    .notNull()
+    .references(() => scoringProfiles.id),
+  periods: jsonb().$type<Period[]>().notNull(),
+  revision: integer().notNull().default(0),
+  plannedAt: instant().notNull(),
+  plannedBy: text().notNull(),
+});
+
+/**
+ * A financial year that has closed (HP2-100): its calendar as it ran, and the institutions whose
+ * result was never published. Its published results move to `archived_publications`; the year's
+ * working records are cleared when the next year opens.
+ */
+export const closedYears = pgTable('closed_years', {
+  id: text().primaryKey(),
+  label: text().notNull(),
+  timezone: text().notNull(),
+  startsOn: date().notNull(),
+  endsOn: date().notNull(),
+  foundationDeadline: instant().notNull(),
+  evaluationCutoff: instant().notNull(),
+  profileId: text().notNull(),
+  profileName: text().notNull(),
+  periods: jsonb().$type<Period[]>().notNull(),
+  closedAt: instant().notNull(),
+  closedBy: text().notNull(),
+  pending: jsonb()
+    .$type<{ institutionId: string; institutionName: string }[]>()
+    .notNull(),
+});
+
+/** A closed year's published results, every version, exactly as released (HP2-100). */
+export const archivedPublications = pgTable('archived_publications', {
+  id: text().primaryKey(),
+  yearId: text()
+    .notNull()
+    .references(() => closedYears.id),
+  seq: integer().notNull(),
+  institutionId: text()
+    .notNull()
+    .references(() => institutions.id),
+  version: integer().notNull(),
+  batchId: text().notNull(),
+  publishedAt: instant().notNull(),
+  publishedBy: text().notNull(),
+  supersededBy: text(),
+  correctionReason: text(),
+  profileName: text().notNull(),
+  evaluation: jsonb().notNull(),
+  points: text().notNull(),
+  identity: jsonb().$type<ReportIdentity>(),
+});
+
+/** Every change to the financial years, with its reason (HP2-100). */
+export const financialYearChanges = pgTable('financial_year_changes', {
+  id: serial().primaryKey(),
+  at: instant().notNull(),
+  by: text().notNull(),
+  yearId: text().notNull(),
+  summary: text().notNull(),
+  reason: text().notNull(),
 });
 
 export const calendarChanges = pgTable('calendar_changes', {
@@ -715,6 +825,8 @@ export const publications = pgTable('publications', {
   /** Immutable snapshot of the evaluation at release. */
   evaluation: jsonb().notNull(),
   points: text().notNull(),
+  /** The report identity in force at release (HP2-65); null for releases made before it existed. */
+  identity: jsonb().$type<ReportIdentity>(),
 });
 
 export const corrections = pgTable('corrections', {
@@ -772,6 +884,8 @@ export const deliveries = pgTable('deliveries', {
   attempts: integer().notNull().default(0),
   lastAttemptAt: instant(),
   lastError: text(),
+  /** Real time the delivery worker may next try it; null once delivered or failed. */
+  nextAttemptAt: instant(),
 });
 
 /** Local stand-in for email (no real recipients). */

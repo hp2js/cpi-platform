@@ -7,15 +7,6 @@ import { QueryView } from '@/components/query-view';
 import { Combobox } from '@/components/combobox';
 import { Label } from '@/components/ui/label';
 import { SelectField } from '@/components/select-field';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { ObligationMatrix } from '@/features/directory/obligation-matrix';
 import {
   assignmentsQuery,
@@ -31,6 +22,8 @@ import {
 } from '@/features/oversight/queries';
 import { formatDateTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { planningWorkQuery } from '@/features/planning/queries';
+import { PlanningWorkList } from '@/features/planning/work-list';
 
 const route = getRouteApi('/authed/supervisor/');
 
@@ -136,6 +129,9 @@ function Filters({ search }: { search: OversightSearch }) {
  * count says whose move it is and opens the submissions list.
  */
 function NeedsAttention({ data }: { data: Oversight }) {
+  // Plan work is counted across the supervisor's institutions (HP2-52).
+  const work = useQuery(planningWorkQuery);
+  const planTotals = work.data?.totals ?? { items: 0, flagged: 0 };
   const pastTarget = data.trends.reduce(
     (sum, point) => sum + point.reviewOverdue,
     0,
@@ -159,7 +155,18 @@ function NeedsAttention({ data }: { data: Oversight }) {
       count: data.backlog.awaitingInstitution,
       urgent: false,
     },
+    {
+      label: 'Plans and documents awaiting officer',
+      detail:
+        planTotals.flagged > 0
+          ? `Baselines, amendments and foundation documents across your institutions; ${planTotals.flagged} urgent`
+          : 'Baselines, amendments and foundation documents across your institutions',
+      count: planTotals.items,
+      urgent: planTotals.flagged > 0,
+      plans: true,
+    },
   ];
+  const flaggedItems = work.data?.items.filter((item) => item.flag) ?? [];
   const total = items.reduce((sum, item) => sum + item.count, 0);
   return (
     <section aria-labelledby="attention-heading" className="grid gap-3">
@@ -172,36 +179,63 @@ function NeedsAttention({ data }: { data: Oversight }) {
             className="size-5 shrink-0 text-success-darker"
             aria-hidden="true"
           />
-          Nothing is waiting on review in this view.
+          Nothing is waiting on review or plan approval in this view.
         </p>
       ) : (
-        <ul className="grid gap-3 tablet:grid-cols-3">
-          {items.map((item) => (
-            <li
-              key={item.label}
-              className={cn(
-                'grid gap-1 border border-base-lighter bg-white p-4',
-                item.count > 0 &&
-                  (item.urgent
-                    ? 'border-l-8 border-l-error'
-                    : 'border-l-8 border-l-warning'),
-              )}
-            >
-              <p className="text-sm font-bold">{item.label}</p>
-              <p className="text-xl font-bold tabular-nums">{item.count}</p>
-              <p className="text-xs text-base-dark">{item.detail}</p>
-              {item.count > 0 && (
-                <Link
-                  to="/supervisor/submissions"
-                  className="mt-1 text-sm usa-link"
-                >
-                  View submissions
-                  <span className="sr-only"> {item.label.toLowerCase()}</span>
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-3 tablet:grid-cols-2 widescreen:grid-cols-4">
+            {items.map((item) => (
+              <li
+                key={item.label}
+                className={cn(
+                  'grid gap-1 border border-base-lighter bg-white p-4',
+                  item.count > 0 &&
+                    (item.urgent
+                      ? 'border-l-8 border-l-error'
+                      : 'border-l-8 border-l-warning'),
+                )}
+              >
+                <p className="text-sm font-bold">{item.label}</p>
+                <p className="text-xl font-bold tabular-nums">{item.count}</p>
+                <p className="text-xs text-base-dark">{item.detail}</p>
+                {item.count > 0 &&
+                  ('plans' in item ? (
+                    <Link
+                      to="/supervisor/workload"
+                      className="mt-1 text-sm usa-link"
+                    >
+                      View officer workload
+                      <span className="sr-only">
+                        {' '}
+                        {item.label.toLowerCase()}
+                      </span>
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/supervisor/submissions"
+                      className="mt-1 text-sm usa-link"
+                    >
+                      View submissions
+                      <span className="sr-only">
+                        {' '}
+                        {item.label.toLowerCase()}
+                      </span>
+                    </Link>
+                  ))}
+              </li>
+            ))}
+          </ul>
+          {flaggedItems.length > 0 && (
+            <div className="grid gap-2">
+              <h3 className="font-bold">Urgent plan work</h3>
+              <PlanningWorkList
+                items={flaggedItems}
+                audience="supervisor"
+                caption="Urgent plan work waiting on officers"
+              />
+            </div>
+          )}
+        </>
       )}
     </section>
   );
@@ -227,47 +261,13 @@ function Metrics({ data }: { data: Oversight }) {
           <MetricCard key={metric.id} metric={metric} />
         ))}
       </div>
-      <div
-        className={cn(
-          'grid gap-6 rounded-lg border border-base-lighter bg-white p-5',
-          charted && 'desktop:grid-cols-2',
-        )}
-      >
-        {charted && <MetricChart metrics={data.metrics} />}
-        <Table>
-          {charted && (
-            <TableCaption className="text-left">
-              The chart shows the same values as this table.
-            </TableCaption>
-          )}
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Metric</TableHead>
-              <TableHead scope="col">Numerator</TableHead>
-              <TableHead scope="col">Denominator</TableHead>
-              <TableHead scope="col">Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.metrics.map((metric) => (
-              <TableRow key={metric.id}>
-                <TableHead scope="row">{metric.label}</TableHead>
-                <TableCell className="tabular-nums">
-                  {metric.numerator}
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {metric.denominator}
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {metric.percent === null
-                    ? 'Not applicable'
-                    : `${metric.percent}%`}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {/* The cards above carry each value with its numerator and denominator; the chart
+          only draws them, so it is shown once something is non-zero and nothing repeats. */}
+      {charted && (
+        <div className="rounded-lg border border-base-lighter bg-white p-5">
+          <MetricChart metrics={data.metrics} />
+        </div>
+      )}
       <dl className="grid gap-3 tablet:grid-cols-2">
         {[
           {

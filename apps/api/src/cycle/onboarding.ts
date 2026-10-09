@@ -1,4 +1,5 @@
 import {
+  FICTIONAL_EMAIL,
   institutionImportColumns,
   parseCsv,
   type AccountingOfficer,
@@ -6,7 +7,7 @@ import {
   type InstitutionImportPreview,
 } from '@cpi/contracts';
 import { committee } from '@cpi/contracts/fixtures';
-import { sendInvitation } from '../auth/invitations';
+import type { Invite } from '../auth/invitations';
 import type { User } from '../auth/sessions';
 import { nextId, type Db, type Tx } from '../database/db';
 import {
@@ -31,14 +32,22 @@ import { loadCycle } from '../database/state';
 const ID_PATTERN = /^[A-Z]+-\d{3}$/;
 const EMAIL_PATTERN = /^[^@\s]+@example\.invalid$/;
 
-/** What validation needs to know about existing records, loaded once per request. */
-export async function directorySnapshot(db: Db) {
+/**
+ * What validation needs to know about existing records, loaded once per request.
+ * `fictionalEmails`: demo deployments accept only @example.invalid sign-in addresses.
+ */
+export async function directorySnapshot(db: Db, fictionalEmails: boolean) {
   const [institutionRows, userRows, typeRows] = await Promise.all([
     db.select().from(institutions),
     db.select().from(users),
     db.select().from(institutionTypes).orderBy(institutionTypes.position),
   ]);
-  return { institutions: institutionRows, users: userRows, types: typeRows };
+  return {
+    institutions: institutionRows,
+    users: userRows,
+    types: typeRows,
+    fictionalEmails,
+  };
 }
 export type Snapshot = Awaited<ReturnType<typeof directorySnapshot>>;
 
@@ -49,7 +58,9 @@ export interface NewInstitution {
   typeId: string | undefined;
   /** What the request gave, for error messages. */
   typeInput: string;
-  officer: User | undefined;
+  /** Null: no reviewing officer yet. Undefined: one was named but no active officer matches. */
+  officer: User | null | undefined;
+  officerInput: string;
   /** Null: no supervisor. Undefined: one was named but no active supervisor matches. */
   supervisor: User | null | undefined;
   supervisorInput: string;
@@ -135,10 +146,13 @@ export function institutionProblems(
         : 'Choose the institution type.',
     );
   errors.push(...accountingOfficerProblems(input.accountingOfficer));
-  if (!input.officer) errors.push('Choose an active prevention officer.');
+  if (input.officer === undefined)
+    errors.push(`No active prevention officer matches ${input.officerInput}.`);
   if (input.focalUser) {
     const email = input.focalUser.email.toLowerCase();
-    if (!EMAIL_PATTERN.test(email))
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+      errors.push('The focal email is not a valid email address.');
+    else if (snapshot.fictionalEmails && !FICTIONAL_EMAIL.test(email))
       errors.push(
         'The focal email must be a fictional @example.invalid address.',
       );
@@ -162,7 +176,10 @@ export function fromCreateRequest(
     name: request.name,
     typeId: activeTypeId(snapshot, request.typeId),
     typeInput: request.typeId,
-    officer: activeUser(snapshot, 'officer', request.officerId),
+    officer: request.officerId
+      ? activeUser(snapshot, 'officer', request.officerId)
+      : null,
+    officerInput: request.officerId ?? '',
     supervisor: request.supervisorId
       ? activeUser(snapshot, 'supervisor', request.supervisorId)
       : null,
@@ -181,14 +198,9 @@ export function previewImport(
   const columns = header.map((name) => name.trim().toLowerCase());
   const missing = institutionImportColumns
     .filter((column) =>
-      [
-        'institution_id',
-        'name',
-        'type',
-        'officer_email',
-        'ao_name',
-        'ao_designation',
-      ].includes(column),
+      ['institution_id', 'name', 'type', 'ao_name', 'ao_designation'].includes(
+        column,
+      ),
     )
     .filter((column) => !columns.includes(column));
   const fileErrors: string[] = [];
@@ -211,6 +223,7 @@ export function previewImport(
     const focalEmail = cell(cells, 'focal_email');
     const focalName = cell(cells, 'focal_name');
     const typeInput = cell(cells, 'type');
+    const officerInput = cell(cells, 'officer_email');
     const supervisorInput = columns.includes('supervisor_email')
       ? cell(cells, 'supervisor_email')
       : '';
@@ -219,7 +232,10 @@ export function previewImport(
       name: cell(cells, 'name'),
       typeId: activeTypeId(snapshot, typeInput),
       typeInput,
-      officer: activeUser(snapshot, 'officer', cell(cells, 'officer_email')),
+      officer: officerInput
+        ? activeUser(snapshot, 'officer', officerInput)
+        : null,
+      officerInput,
       supervisor: supervisorInput
         ? activeUser(snapshot, 'supervisor', supervisorInput)
         : defaultSupervisor(snapshot),
@@ -273,10 +289,10 @@ const opensAt = (endsOn: string) =>
 export async function createInstitution(
   tx: Tx,
   businessTime: string,
-  portalUrl: string,
+  invite: Invite,
   admin: User,
   snapshot: Snapshot,
-  input: NewInstitution & { officer: User },
+  input: NewInstitution & { officer: User | null },
   seedOpenedQuarters: boolean,
 ) {
   const now = Date.parse(businessTime);
@@ -295,13 +311,14 @@ export async function createInstitution(
       phone: input.accountingOfficer.phone.trim(),
     },
   });
-  await tx.insert(assignments).values({
-    institutionId: input.id,
-    officerId: input.officer.id,
-    validFrom: businessTime,
-    validTo: null,
-    reason: 'Initial assignment on onboarding',
-  });
+  if (input.officer)
+    await tx.insert(assignments).values({
+      institutionId: input.id,
+      officerId: input.officer.id,
+      validFrom: businessTime,
+      validTo: null,
+      reason: 'Initial assignment on onboarding',
+    });
   if (input.supervisor)
     await tx.insert(supervisions).values({
       institutionId: input.id,
@@ -332,7 +349,7 @@ export async function createInstitution(
       status: 'approved',
       historicalSeed: {
         reason:
-          'SEEDED HISTORICAL BASELINE for the simulated year, loaded on onboarding because the quarter had already opened.',
+          'Seeded historical baseline for the simulated year, loaded on onboarding because the quarter had already opened.',
         loadedAt: businessTime,
         confirmedBy: null,
         confirmedAt: null,
@@ -365,6 +382,6 @@ export async function createInstitution(
         passwordHash: null,
       })
       .returning();
-    await sendInvitation(tx, businessTime, portalUrl, focal!, admin);
+    await invite(tx, focal!);
   }
 }

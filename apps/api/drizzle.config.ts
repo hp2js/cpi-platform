@@ -1,6 +1,6 @@
-import { config } from 'dotenv';
+import { existsSync } from 'node:fs';
 import { defineConfig } from 'drizzle-kit';
-config({ path: '../../.env', quiet: true });
+if (existsSync('../../.env')) process.loadEnvFile('../../.env');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 export default defineConfig({
   schema: './src/database/schema.ts',

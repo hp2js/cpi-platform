@@ -142,3 +142,59 @@ export async function emailedToken(admin: Client, email: string) {
 }
 
 export const STRONG_PASSWORD = 'correct horse battery staple';
+
+/** The newest match of `pattern` in the email sink for that address. */
+async function emailed(admin: Client, email: string, pattern: RegExp) {
+  const mails =
+    await admin.json<{ to: string; body: string }[]>('/admin/email-sink');
+  const found = mails
+    .filter((candidate) => candidate.to === email.toLowerCase())
+    .map((candidate) => candidate.body.match(pattern)?.[1])
+    .find(Boolean);
+  if (!found)
+    throw new Error(`Nothing matching ${pattern} emailed to ${email}`);
+  return found;
+}
+export const emailedPassword = (admin: Client, email: string) =>
+  emailed(admin, email, /Temporary password: (\S+)/);
+export const emailedCode = (admin: Client, email: string) =>
+  emailed(admin, email, /Your sign-in code is (\d{6})/);
+
+/** Password sign-in through the emailed code; returns the final response. */
+export async function passwordSignIn(
+  client: Client,
+  admin: Client,
+  email: string,
+  password: string,
+) {
+  const first = await client.post('/session', { email, password });
+  if (first.status !== 202) return first;
+  const { challengeId } = first.body as { challengeId: string };
+  return client.post('/session/code', {
+    challengeId,
+    code: await emailedCode(admin, email),
+  });
+}
+
+/** An invited person signs in with the emailed temporary password and chooses their own. */
+export async function activateInvited(
+  admin: Client,
+  client: Client,
+  email: string,
+  password = STRONG_PASSWORD,
+) {
+  const signedIn = await passwordSignIn(
+    client,
+    admin,
+    email,
+    await emailedPassword(admin, email),
+  );
+  if (signedIn.status !== 200)
+    throw new Error(`Sign-in failed: ${signedIn.status}`);
+  const changed = await client.post('/account/password', {
+    newPassword: password,
+  });
+  if (changed.status !== 204)
+    throw new Error(`Password change failed: ${changed.status}`);
+  return client;
+}

@@ -15,4 +15,3 @@ export type Role = z.infer<typeof roleSchema>;
 
 /** Stable institution identifier, e.g. DEMO-001. Display names may change; IDs do not. */
 export const institutionIdSchema = z.string().regex(/^[A-Z]+-\d{3}$/);
-export type InstitutionId = z.infer<typeof institutionIdSchema>;

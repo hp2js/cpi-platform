@@ -279,8 +279,10 @@ export function AssignmentsPage() {
   const officers = (people.data?.users ?? [])
     .filter((user) => user.role === 'officer' && user.active)
     .map((user) => ({ id: user.id, name: user.displayName }));
-  const [institutionId, setInstitutionId] = useState('DEMO-001');
-  const [officerId, setOfficerId] = useState('officer-b');
+  // Until chosen: the first institution, and the first officer not already reviewing it.
+  const [chosenInstitutionId, setInstitutionId] = useState('');
+  const institutionId = chosenInstitutionId || institutions.data?.[0]?.id || '';
+  const [officerId, setOfficerId] = useState('');
   const [reason, setReason] = useState('');
   const [suggestionId, setSuggestionId] = useState<string | undefined>();
   const [temporary, setTemporary] = useState(false);
@@ -292,16 +294,15 @@ export function AssignmentsPage() {
   )?.officerId;
   // Never offer the institution's current officer as the new one.
   const newOfficerId =
-    officerId === currentOfficerId
-      ? (officers.find((officer) => officer.id !== currentOfficerId)?.id ??
-        officerId)
-      : officerId;
+    officerId && officerId !== currentOfficerId
+      ? officerId
+      : (officers.find((officer) => officer.id !== currentOfficerId)?.id ?? '');
   const reasonTooShort = reason.trim().length < 10;
   const mutation = useMutation({
     mutationFn: () =>
       reassign(institutionId, newOfficerId, reason, {
         suggestionId,
-        coverUntil: temporary ? coverUntil : undefined,
+        coverUntil: temporary && currentOfficerId ? coverUntil : undefined,
         handoverNote: handoverNote.trim() || undefined,
       }),
     onSuccess: async () => {
@@ -421,14 +422,16 @@ export function AssignmentsPage() {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="assign-temporary"
-                checked={temporary}
+                checked={temporary && Boolean(currentOfficerId)}
+                disabled={!currentOfficerId}
                 onCheckedChange={(value) => setTemporary(value === true)}
               />
               <Label htmlFor="assign-temporary" className="font-normal">
                 Temporary cover, for example while the officer is on leave
+                {!currentOfficerId && ' (needs a current officer)'}
               </Label>
             </div>
-            {temporary && (
+            {temporary && currentOfficerId && (
               <div className="grid gap-2 tablet:max-w-mobile">
                 <Label htmlFor="assign-cover-until">Cover ends on</Label>
                 <Input
@@ -462,13 +465,19 @@ export function AssignmentsPage() {
           <div>
             <Button
               disabled={
+                !institutionId ||
+                !newOfficerId ||
                 reasonTooShort ||
-                (temporary && !coverUntil) ||
+                (temporary && currentOfficerId && !coverUntil) ||
                 mutation.isPending
               }
               onClick={() => mutation.mutate()}
             >
-              {temporary ? 'Start cover' : 'Reassign'}
+              {temporary && currentOfficerId
+                ? 'Start cover'
+                : currentOfficerId
+                  ? 'Reassign'
+                  : 'Assign'}
             </Button>
           </div>
         </section>

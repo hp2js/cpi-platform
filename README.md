@@ -2,7 +2,7 @@
 
 HP2JS's Adili V3 Track 2 workspace for corruption prevention reporting and review.
 
-The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns and [the storage guide](docs/storage.md) covers files and maintenance. The [design specification](design-system/MASTER.md) defines the USWDS foundation, Adili brand theme and shared component behavior.
+The [PRD](https://docs.google.com/document/d/1E7HgjDUJtKJyFHGqm59FJC_4-tzCgfieI-Ex97EYWlI/edit) defines the product and Linear tracks delivery. The [domain decision register](docs/domain-decisions.md) records prototype defaults, unresolved organizer constraints and their requirement/issue traceability. This README covers setup and day-to-day commands; [the frontend guide](docs/frontend.md) covers implementation patterns [the storage guide](docs/storage.md) covers files and maintenance, [the data model](docs/data-model.md) explains entities and state transitions, and [the platform contracts](docs/platform-contracts.md) cover sessions, Redis, notification delivery, secrets and outage behaviour. [Verification results](docs/verification-results.md) record the latest authorization, upload, concurrency and recovery runs. The [design specification](design-system/MASTER.md) defines the USWDS foundation, Adili brand theme and shared component behavior.
 
 ## Start with Docker
 
@@ -51,7 +51,7 @@ pnpm format           # format source and docs
 pnpm format:check     # CI formatting check
 pnpm test:smoke       # running Docker stack: outages, recovery, DB persistence
 pnpm test:integration # running Docker services: API tests against a `_test` database
-pnpm test:e2e         # running dev stack: browser tests (Playwright)
+pnpm test:e2e         # running dev stack: browser tests (Playwright; core journeys also in Firefox and WebKit)
 pnpm test:e2e:prod    # running `docker:prod` stack: adds web-server checks
 pnpm docker:up        # rebuild and start the development stack
 pnpm docker:dev       # development stack with automatic rebuilds
@@ -66,13 +66,23 @@ Run a script in one workspace with `pnpm --filter <package> <script>`, for examp
 ```sh
 pnpm db:generate     # generate SQL from Drizzle schema changes
 pnpm db:migrate      # apply checked-in migrations to DATABASE_URL
-pnpm db:seed         # load synthetic fixtures
+pnpm db:seed         # replace all data with the fixtures (demo database only)
 ```
 
 - The API applies migrations when it starts and loads the fictional fixtures into an empty database (`DB_AUTO_SETUP=false` turns this off); restarts keep data.
 - Generate migrations on the host so the files land in the checkout. Commit the generated SQL and Drizzle metadata together, and review migrations before applying them.
 - Do not use schema push against shared environments.
+- **Reset boundary (HP2-42).** Restoring fixtures replaces every record, so it runs only against the dedicated disposable demo database: one whose name ends in `_demo` (integration tests use `…_test`). This covers `pnpm db:seed`, a new simulation run, the scripted year and the development reset; elsewhere they refuse (`409 not_demo_database`, or 404 for the development reset). Advancing the clock is also demo-only; with demo mode off, business time follows the real clock. See the [simulation runbook](docs/simulation.md) for what a new run keeps. `.env.example` names it `cpi_demo`. An existing `.env` without `POSTGRES_DB` keeps using `cpi_local`, where resets refuse; to run the demo there, create a `_demo` database and point both `POSTGRES_DB` and `DATABASE_URL` at it.
 - To run a database command inside the development API container: `docker compose exec api pnpm --filter @cpi/api db:migrate`.
+
+**If a migration fails.** The API does not start. It logs `database.migration_failed` with the PostgreSQL error code and message (`docker compose logs api`), and `pnpm db:migrate` prints the same. All pending migrations run in one transaction, so none was applied and existing data is untouched. To recover:
+
+1. Read the error. `42P07`/`42701` (relation or column already exists) usually means the local database was migrated from another branch; a constraint or `NOT NULL` failure means the migration does not fit existing rows.
+2. If the failing migration is not merged yet, fix the schema, delete that migration's SQL, snapshot and `_journal.json` entry, and run `pnpm db:generate` again. Never edit a merged migration; add a new one instead.
+3. If the local data is disposable, reset it instead (below).
+4. Run `pnpm db:migrate` until it prints `Migrations are up to date.`, then start the API.
+
+CI builds a fresh stack on every push (`docker compose up`), so the API migrates and seeds an empty database before the smoke, integration and end-to-end tests run against it.
 
 **Destructive local reset.** This deletes this project's PostgreSQL, Redis and MinIO volumes, including uploaded files:
 
@@ -128,11 +138,19 @@ docs                     Contributor guides
 - **Native dependency builds are allowlisted** in `pnpm-workspace.yaml`.
 - **CI mirrors local checks.** On failure, Compose logs and Playwright traces are uploaded as the `failure-diagnostics` artifact.
 
+## Supported browsers
+
+The current versions of Chrome, Edge, Firefox and Safari, on desktop and on phones (Safari on iPhone, Chrome on Android), at widths down to 390 px. Every journey is tested automatically in Chromium; the core journeys (sign-in and demonstration accounts, draft, upload and submit, officer review and the file viewer, clarification, annual results with print and download, and form publishing) also run in Firefox and WebKit, Safari's engine. Printing to PDF from the test suite is Chromium-only; other engines check the print layout.
+
 ## Troubleshooting
 
 - **Engine mismatch:** run `nvm use`.
-- **Browsers missing for e2e:** run `pnpm exec playwright install chromium`.
+- **Browsers missing for e2e:** run `pnpm exec playwright install chromium firefox webkit`. Run one engine with `pnpm test:e2e --project=chromium`.
 - **Port occupied:** check `docker compose ps` and other local processes, and stop only the conflicting service you own. Ports are fixed in the Compose and Vite configuration.
 - **Readiness fails (503):** readiness requires PostgreSQL, Redis and the configured S3 bucket; liveness only checks that the API process responds. Inspect `docker compose logs api postgres redis minio minio-init`. The API logs `dependency.failure` events with a sanitized error code. Every API response carries an `X-Request-ID` that matches its log entry.
 - **Changes not reflected in Docker:** rerun `pnpm docker:up`.
 - **Local app cannot connect:** compare the `.env` URLs with the host ports above. Inside Docker, services use container names and internal ports instead.
+
+## Workflow validation
+
+The [walkthrough kit](docs/usability/README.md) provides task cards, a team rehearsal, and observation/retest templates for HP2-33. Team role-play is the hackathon validation approach; external practitioner recruitment is outside this delivery scope.

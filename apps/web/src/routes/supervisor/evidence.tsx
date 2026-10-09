@@ -7,7 +7,7 @@ export function EvidencePage() {
       <PageHeader
         eyebrow="Oversight"
         title="Evidence"
-        description="Files submitted by every institution. Filter by institution, quarter, category or review state; open a file or its submission."
+        description="Files submitted by every institution. Filter by institution, quarter, category or review state; open a file or its submission. Foundation documents (procedures, risk assessment, mitigation plan) are on each institution's page under Foundations."
       />
       <EvidenceLookup audience="supervisor" />
     </div>

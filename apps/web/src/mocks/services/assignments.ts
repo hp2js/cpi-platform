@@ -58,18 +58,22 @@ export function reassignInstitution(
   },
 ) {
   const at = input.at ?? db.businessTime;
-  const current = currentAssignment(db, input.institutionId)!;
-  const previous = db.users.find((user) => user.id === current.officerId);
-  current.validTo = at;
-  const cover = input.coverUntil
-    ? {
-        until: endOfDay(input.coverUntil),
-        // Cover of cover still returns to the officer who is away.
-        returnToOfficerId:
-          current.cover?.returnToOfficerId ?? current.officerId,
-        setById: input.actor.id,
-      }
-    : null;
+  // None when the institution was created without a reviewing officer: this is the first.
+  const current = currentAssignment(db, input.institutionId);
+  const previous = current
+    ? db.users.find((user) => user.id === current.officerId)
+    : undefined;
+  if (current) current.validTo = at;
+  const cover =
+    current && input.coverUntil
+      ? {
+          until: endOfDay(input.coverUntil),
+          // Cover of cover still returns to the officer who is away.
+          returnToOfficerId:
+            current.cover?.returnToOfficerId ?? current.officerId,
+          setById: input.actor.id,
+        }
+      : null;
   const note = input.handoverNote?.trim() || null;
   db.assignments.push({
     institutionId: input.institutionId,

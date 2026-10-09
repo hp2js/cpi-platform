@@ -1,6 +1,11 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Db } from '../database/db';
-import { assignments, institutions, supervisions } from '../database/schema';
+import {
+  assignments,
+  institutions,
+  supervisions,
+  users,
+} from '../database/schema';
 import type { User } from './sessions';
 
 /** Current assignment only: reassignment removes access immediately (PRD §5.2). */
@@ -58,4 +63,19 @@ export async function canReadInstitution(
   institutionId: string,
 ) {
   return (await readableInstitutionIds(db, user)).includes(institutionId);
+}
+
+/** The institution's current reviewing officer's name. */
+export async function reviewerName(db: Db, institutionId: string) {
+  const [reviewer] = await db
+    .select({ name: users.displayName })
+    .from(assignments)
+    .innerJoin(users, eq(users.id, assignments.officerId))
+    .where(
+      and(
+        eq(assignments.institutionId, institutionId),
+        isNull(assignments.validTo),
+      ),
+    );
+  return reviewer?.name;
 }

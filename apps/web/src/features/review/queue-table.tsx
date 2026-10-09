@@ -11,9 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useSession } from '@/features/session/use-session';
 import { formatDateTime } from '@/lib/dates';
-import { ageLabel, daysBetween } from './age';
+import { ageLabel } from './age';
 import { reviewQueueQuery, type QueueStatus } from './queries';
 
 /** Review queue, oldest first. Officers see their assigned work; the supervisor reads all. */
@@ -24,9 +23,8 @@ export function ReviewQueueTable({
   status: QueueStatus;
   audience: 'officer' | 'supervisor' | 'administrator';
 }) {
-  const session = useSession();
   const queue = useQuery(reviewQueueQuery(status));
-  const now = session.clock.businessTime;
+  const open = status === 'open';
   return (
     <QueryView
       query={queue}
@@ -54,8 +52,17 @@ export function ReviewQueueTable({
                 <TableHead scope="col">Period</TableHead>
                 <TableHead scope="col">Status</TableHead>
                 <TableHead scope="col">Revision received</TableHead>
-                <TableHead scope="col">Waiting</TableHead>
-                <TableHead scope="col">Case age</TableHead>
+                {open ? (
+                  <>
+                    <TableHead scope="col">Waiting</TableHead>
+                    <TableHead scope="col">Case age</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead scope="col">Finalized</TableHead>
+                    <TableHead scope="col">First submission to final</TableHead>
+                  </>
+                )}
                 <TableHead scope="col">Decisions</TableHead>
               </TableRow>
             </TableHeader>
@@ -102,12 +109,25 @@ export function ReviewQueueTable({
                   <TableCell className="text-sm">
                     {formatDateTime(item.receivedAt)}
                   </TableCell>
-                  <TableCell>
-                    {ageLabel(daysBetween(item.receivedAt, now))}
-                  </TableCell>
-                  <TableCell>
-                    {ageLabel(daysBetween(item.firstSubmittedAt, now))}
-                  </TableCell>
+                  {/* Timing comes from the server: open work waits on someone; finalized work
+                      shows when it was completed and how long it took, never a growing wait. */}
+                  {item.waiting ? (
+                    <TableCell>
+                      {ageLabel(item.waiting.days)}
+                      <span className="block text-xs text-base-dark">
+                        {item.waiting.on === 'officer'
+                          ? 'On the officer'
+                          : 'On the institution (clarification)'}
+                      </span>
+                    </TableCell>
+                  ) : (
+                    <TableCell className="text-sm">
+                      {item.finalizedAt
+                        ? formatDateTime(item.finalizedAt)
+                        : '—'}
+                    </TableCell>
+                  )}
+                  <TableCell>{ageLabel(item.caseDays)}</TableCell>
                   <TableCell className="tabular-nums">
                     {item.decisionsRecorded} of {item.decisionsRequired}
                   </TableCell>

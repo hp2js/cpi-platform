@@ -68,6 +68,12 @@ test('public pages', async ({ page }) => {
     page.getByRole('heading', { name: 'This link cannot be used' }),
   ).toBeVisible();
   await scan(page, 'set-password (invalid link)');
+  await page.goto('/accessibility');
+  await expect(
+    page.getByRole('heading', { name: 'Accessibility statement' }),
+  ).toBeVisible();
+  await expect(page.getByText('partially conformant')).toBeVisible();
+  await scan(page, 'accessibility statement');
   await page.goto('/forbidden');
   await scan(page, 'forbidden');
   await page.goto('/session-expired');
@@ -164,14 +170,20 @@ test('mid-year screens for every role', async ({ page }) => {
     ['/admin/users', 'admin users'],
     ['/admin/account', 'my account'],
     ['/admin/reviews', 'admin reviews'],
+    ['/admin/report-identity', 'admin report identity'],
   ] as const) {
     await visit(page, 'administrator', path);
     await page.waitForLoadState('networkidle');
     await scan(page, name);
   }
   await page.goto('/admin/forms/form-v2');
-  await page.getByRole('tab', { name: 'Preview as institution' }).click();
-  await scan(page, 'admin form preview');
+  // The builder with its live preview beside it, then a question open and the setup shown.
+  await expect(
+    page.getByRole('heading', { name: 'Institution preview' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Expand all questions' }).click();
+  await page.locator('summary', { hasText: 'Form setup' }).click();
+  await scan(page, 'admin form builder');
 });
 
 test('year-end screens for every role', async ({ page }) => {

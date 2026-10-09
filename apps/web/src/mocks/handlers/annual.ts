@@ -1,5 +1,13 @@
 import { http, HttpResponse } from 'msw';
 import {
+  builtinReportImage,
+  consolidatedReportDocument,
+  consolidatedSummary,
+  institutionReportDocument,
+  renderPdf,
+  type ReportIdentity,
+  type ReportImages,
+  defaultReportIdentity,
   closeNonresponseRequestSchema,
   correctionRequestSchema,
   extensionRequestSchema,
@@ -26,13 +34,63 @@ import {
   assignedInstitutionIds,
   readableInstitutionIds,
 } from '../services/scope';
-import { requireRole } from '../services/session';
-import { profileLabel } from '../services/profiles';
+import { requireRole, requireUser } from '../services/session';
+import { loadFile } from '../services/files';
+import { activeWeights, profileLabel } from '../services/profiles';
+import type { MockUser } from '@cpi/contracts/fixtures';
+import { oversightFor } from './oversight';
+import { reportIdentityOf } from './report-identity';
 
 function cutoffPassed() {
   const db = getDb();
   return Date.parse(db.businessTime) > Date.parse(db.cycle.evaluationCutoff);
 }
+
+/** The identity's logo and signature bytes, for a report document (HP2-64). */
+async function imagesFor(identity: ReportIdentity): Promise<ReportImages> {
+  const load = async (image: ReportIdentity['logo']) => {
+    if (!image) return undefined;
+    const bytes =
+      builtinReportImage(image.id)?.bytes ?? (await loadFile(image.sha256));
+    return bytes
+      ? {
+          bytes,
+          mimeType: image.mimeType,
+          width: image.width,
+          height: image.height,
+        }
+      : undefined;
+  };
+  return {
+    logo: await load(identity.logo),
+    signature: await load(identity.signature),
+  };
+}
+
+function downloaded(
+  user: MockUser,
+  id: string,
+  version: number | null,
+  fileName: string,
+) {
+  commit((db) =>
+    audit(
+      db,
+      user,
+      'report.download',
+      { type: 'publication', id, version },
+      `Downloaded ${fileName}`,
+    ),
+  );
+}
+
+const pdfResponse = (bytes: Uint8Array, fileName: string) =>
+  new HttpResponse(bytes.slice().buffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+    },
+  });
 
 function toPublished(publication: MockPublication): PublishedResult {
   const db = getDb();
@@ -52,6 +110,7 @@ function toPublished(publication: MockPublication): PublishedResult {
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
     simulation: true,
+    identity: publication.identity ?? defaultReportIdentity,
     evaluation: publication.evaluation as PublishedResult['evaluation'],
   };
 }
@@ -70,7 +129,7 @@ function overview(institutionIds: string[]): AnnualOverview {
 }
 
 /** Released and unreleased results within the caller's scope (a supervisor's institutions). */
-function consolidated(scope: string[]): ConsolidatedReport {
+function consolidated(user: MockUser, scope: string[]): ConsolidatedReport {
   const db = getDb();
   const released = db.publications
     .filter(
@@ -96,6 +155,17 @@ function consolidated(scope: string[]): ConsolidatedReport {
             : ['Ready, not yet published'],
       };
     });
+  const history = db.publications
+    .filter((publication) => scope.includes(publication.institutionId))
+    .map(toPublished);
+  const { metrics, backlog } = oversightFor(user, {
+    periodId: null,
+    institutionId: null,
+    officerId: null,
+  });
+  const quarters = db.obligations.filter((obligation) =>
+    scope.includes(obligation.institutionId),
+  ).length;
   return {
     schemaVersion: 'cpi-export-1',
     simulation: true,
@@ -104,6 +174,23 @@ function consolidated(scope: string[]): ConsolidatedReport {
     profileName: profileLabel(),
     released,
     unreleased,
+    ...consolidatedSummary(released, unreleased, history),
+    coverage: [
+      ...metrics,
+      {
+        id: 'closed-nonresponse',
+        label: 'Closed without submission',
+        definition:
+          'Institution-quarters closed without submission ÷ all institution-quarters',
+        numerator: backlog.closedNonresponse,
+        denominator: quarters,
+        percent:
+          quarters === 0
+            ? null
+            : Math.round((backlog.closedNonresponse / quarters) * 1000) / 10,
+      },
+    ],
+    weights: activeWeights(db),
   };
 }
 
@@ -270,6 +357,8 @@ export const annualHandlers = [
             evaluation.total.status === 'calculated'
               ? evaluation.total.points
               : '',
+          // The report identity in force now; a correction uses the identity at its time (HP2-65).
+          identity: reportIdentityOf(db),
         };
         db.publications.push(publication);
         // The earlier release stays accessible as superseded (§7.4, AT20).
@@ -471,8 +560,72 @@ export const annualHandlers = [
   http.get('/api/annual/report', async () => {
     await networkDelay();
     const user = requireRole('supervisor', 'administrator');
-    return HttpResponse.json(consolidated(readableInstitutionIds(user)));
+    return HttpResponse.json(consolidated(user, readableInstitutionIds(user)));
   }),
+  /** The consolidated report as a document (HP2-64). */
+  http.get('/api/annual/report.pdf', async () => {
+    await networkDelay();
+    const user = requireRole('supervisor', 'administrator');
+    const db = getDb();
+    const report = consolidated(user, readableInstitutionIds(user));
+    const identity = report.released.at(-1)?.identity ?? reportIdentityOf(db);
+    const generated = consolidatedReportDocument(report, identity, {
+      generatedAt: db.businessTime,
+      images: await imagesFor(identity),
+    });
+    downloaded(
+      user,
+      report.batches.at(-1)?.batchId ?? 'none',
+      null,
+      generated.fileName,
+    );
+    return pdfResponse(renderPdf(generated.document), generated.fileName);
+  }),
+  /** One published version's report as a document, scoped like the results (HP2-64). */
+  http.get(
+    '/api/publications/:publicationId/report.pdf',
+    async ({ params }) => {
+      await networkDelay();
+      const user = requireUser();
+      const db = getDb();
+      // A closed year's release is read from its archive, under that year's name (HP2-100).
+      const archived = db.archivedPublications.find(
+        (candidate) => candidate.id === params.publicationId,
+      );
+      const releases = archived
+        ? db.archivedPublications.filter(
+            (candidate) => candidate.yearId === archived.yearId,
+          )
+        : db.publications;
+      const publication = releases.find(
+        (candidate) =>
+          candidate.id === params.publicationId &&
+          readableInstitutionIds(user).includes(candidate.institutionId),
+      );
+      if (!publication) return notFound();
+      const result = toPublished(publication);
+      const next = releases.find(
+        (candidate) => candidate.id === publication.supersededBy,
+      );
+      const generated = institutionReportDocument(result, {
+        cycleLabel: archived
+          ? (db.closedYears.find((year) => year.id === archived.yearId)
+              ?.label ?? db.cycle.label)
+          : db.cycle.label,
+        generatedAt: db.businessTime,
+        images: await imagesFor(result.identity),
+        supersededBy: next
+          ? {
+              version: next.version,
+              publishedAt: next.publishedAt,
+              reason: next.correctionReason,
+            }
+          : null,
+      });
+      downloaded(user, publication.id, publication.version, generated.fileName);
+      return pdfResponse(renderPdf(generated.document), generated.fileName);
+    },
+  ),
   http.get('/api/annual/report.csv', async () => {
     await networkDelay();
     const user = requireRole('supervisor', 'administrator');
@@ -480,12 +633,33 @@ export const annualHandlers = [
       'cpi-consolidated-results.csv',
       toCsv(
         exportHeader,
-        exportRows(consolidated(readableInstitutionIds(user)).released),
+        exportRows(consolidated(user, readableInstitutionIds(user)).released),
       ),
     );
   }),
 
   // Institution: only its own released results; nothing numerical before release (AT18, AT19).
+  /** Every published version of one institution's result, for staff in scope (HP2-68). */
+  http.get('/api/institutions/:institutionId/results', async ({ params }) => {
+    await networkDelay();
+    const user = requireRole('officer', 'supervisor', 'administrator');
+    const institutionId = String(params.institutionId);
+    if (!readableInstitutionIds(user).includes(institutionId))
+      return notFound();
+    const results = getDb()
+      .publications.filter(
+        (publication) => publication.institutionId === institutionId,
+      )
+      .map(toPublished)
+      .reverse();
+    return HttpResponse.json({
+      released: results.length > 0,
+      message: results.length
+        ? 'Published results are shown below.'
+        : 'Nothing has been published for this institution yet.',
+      results,
+    });
+  }),
   http.get('/api/results', async () => {
     await networkDelay();
     const user = requireRole('institution');

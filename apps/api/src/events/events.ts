@@ -54,7 +54,8 @@ export class Events {
 
   /**
    * Notify recipients once per event: the in-app notification always, and a minimal email
-   * summary with a link (never evidence or unreleased scores) to the demo sink.
+   * summary with a link (never evidence or unreleased scores) queued for the delivery worker,
+   * which sends it to the demo sink after this transaction commits.
    */
   async notify(
     tx: Tx,
@@ -87,7 +88,7 @@ export class Events {
           createdAt: businessTime,
         })
         .onConflictDoNothing();
-      const [delivery] = await tx
+      await tx
         .insert(deliveries)
         .values({
           id: await nextId(tx, 'dlv'),
@@ -102,65 +103,37 @@ export class Events {
             ? `${message.body}\n\nOpen in the portal: ${new URL(link, this.config.PORTAL_URL).href}`
             : message.body,
           status: 'queued',
+          nextAttemptAt: toNairobi(new Date()),
         })
-        .onConflictDoNothing()
-        .returning();
-      if (!delivery) continue;
-      let current = delivery;
-      while (current.status !== 'delivered' && current.attempts < MAX_ATTEMPTS)
-        current = await attemptDelivery(tx, businessTime, current);
+        .onConflictDoNothing();
     }
   }
 }
 
-/** Email only, for account links (invitations, resets): nothing goes to the in-app inbox. */
-export async function sendEmail(
-  tx: Tx,
-  businessTime: string,
-  portalUrl: string,
-  key: string,
-  eventType: string,
-  recipient: User,
-  message: { subject: string; body: string; link: string },
-) {
-  const [delivery] = await tx
-    .insert(deliveries)
-    .values({
-      id: await nextId(tx, 'dlv'),
-      key,
-      eventType,
-      recipientId: recipient.id,
-      recipientName: recipient.displayName,
-      recipientEmail: recipient.email,
-      recipientRole: recipient.role,
-      subject: message.subject,
-      body: `${message.body}\n\n${new URL(message.link, portalUrl).href}`,
-      status: 'queued',
-    })
-    .returning();
-  let current = delivery!;
-  while (current.status !== 'delivered' && current.attempts < MAX_ATTEMPTS)
-    current = await attemptDelivery(tx, businessTime, current);
-}
-
-/** One simulated attempt to the demo email sink. Never contacts a real address. */
+/**
+ * One simulated attempt to the demo email sink. Never contacts a real address. A failure
+ * before the last attempt is retried by the worker at `retryAt`.
+ */
 export async function attemptDelivery(
   tx: Tx,
   businessTime: string,
   delivery: Delivery,
+  retryAt: string | null,
 ): Promise<Delivery> {
   const [state] = await tx
     .select({ failing: systemState.emailFailureMode })
     .from(systemState);
   const attempts = delivery.attempts + 1;
   if (state?.failing) {
+    const retrying = attempts < MAX_ATTEMPTS && retryAt !== null;
     const [updated] = await tx
       .update(deliveries)
       .set({
         attempts,
         lastAttemptAt: businessTime,
         lastError: 'The demo email sink did not accept the message.',
-        status: attempts >= MAX_ATTEMPTS ? 'failed' : 'retrying',
+        status: retrying ? 'retrying' : 'failed',
+        nextAttemptAt: retrying ? retryAt : null,
       })
       .where(eq(deliveries.id, delivery.id))
       .returning();
@@ -180,6 +153,7 @@ export async function attemptDelivery(
       lastAttemptAt: businessTime,
       lastError: null,
       status: 'delivered',
+      nextAttemptAt: null,
     })
     .where(eq(deliveries.id, delivery.id))
     .returning();

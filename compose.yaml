@@ -129,6 +129,13 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-cpi-local-files-only}
       S3_FORCE_PATH_STYLE: 'true'
       S3_PREFIX: ${S3_PREFIX:-evidence/}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      REAL_DOCUMENT_UPLOADS: ${REAL_DOCUMENT_UPLOADS:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Platform administrator}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-CPI Platform <onboarding@resend.dev>}
+      DELIVERY_RETRY_DELAYS_MS: ${DELIVERY_RETRY_DELAYS_MS:-30000,120000}
     ports: ['127.0.0.1:3001:3001']
     volumes:
       - ./apps/api/src:/workspace/apps/api/src

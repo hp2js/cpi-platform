@@ -3,6 +3,7 @@ import {
   planImportPreviewSchema,
   planImportResultSchema,
   planSchema,
+  planningWorkSchema,
   simulationStateSchema,
   type Plan,
 } from '@cpi/contracts';
@@ -350,5 +351,79 @@ describe('importing a plan from a CSV (FR04)', () => {
     expect(
       current.plannedMilestones.find((item) => item.code === 'M-50'),
     ).toMatchObject({ activityId: activity.id, periodId: 'FY2026-27-Q3' });
+  });
+});
+
+describe('plan work in the officer and supervisor views (HP2-52)', () => {
+  const work = () => request('/api/planning/work', planningWorkSchema);
+  const checks = {
+    materialCoverage: true,
+    objectiveConditions: true,
+    mandatoryObligations: true,
+    noFragmentation: true,
+  };
+
+  it('lists plan work waiting on officers, urgent first, and drops it once done', async () => {
+    await signInAs('officer-a');
+    const before = await work();
+    expect(before.totals.items).toBe(before.items.length);
+    expect(new Set(before.items.map((item) => item.officerId))).toEqual(
+      new Set(['officer-a']),
+    );
+    const demo1 = before.items.filter(
+      (item) => item.institutionId === 'DEMO-001',
+    );
+    expect(demo1.map((item) => item.kind).sort()).toEqual([
+      'foundation',
+      'foundation',
+      'foundation',
+      'proposal',
+      'proposal',
+      'proposal',
+      'seed_confirmation',
+    ]);
+    const q2 = demo1.find((item) => item.title.startsWith('Q2 '))!;
+    expect(q2.flag).toBe(
+      'Q2 started on 1 Oct 2026 without an approved baseline',
+    );
+    const firstUnflagged = before.items.findIndex((item) => !item.flag);
+    expect(before.items.slice(firstUnflagged).every((item) => !item.flag)).toBe(
+      true,
+    );
+    expect(before.totals.flagged).toBe(firstUnflagged);
+
+    const current = await plan('DEMO-001');
+    await request(
+      `/api/baselines/${latest(current, 'FY2026-27-Q1').id}/confirm-seed`,
+      z.unknown(),
+      { method: 'POST', json: { version: 1 } },
+    );
+    const proposal = latest(current, Q2);
+    await request(`/api/baselines/${proposal.id}/approve`, z.unknown(), {
+      method: 'POST',
+      json: {
+        version: proposal.version,
+        rationale: 'Matches the approved plan and the cycle guidance.',
+        checks,
+      },
+    });
+    const after = await work();
+    expect(after.totals.items).toBe(before.totals.items - 2);
+    expect(after.totals.flagged).toBe(before.totals.flagged - 2);
+
+    await signInAs('supervisor');
+    const all = await work();
+    expect(all.byOfficer.map((row) => row.officerId).sort()).toEqual([
+      'officer-a',
+      'officer-b',
+    ]);
+    expect(
+      all.byOfficer.find((row) => row.officerId === 'officer-a'),
+    ).toMatchObject({
+      items: after.totals.items,
+      flagged: after.totals.flagged,
+    });
+    await signInAs('focal-demo-001');
+    await expect(work()).rejects.toMatchObject({ status: 403 });
   });
 });

@@ -188,7 +188,35 @@ function useReviewMutation<T>(
   });
 }
 
+/** The revision a later one replaced (HP2-50): kept as received, never decided or scored now. */
+function supersededBy(bundle: ReviewBundle) {
+  const latest = bundle.revisions.reduce(
+    (current, revision) =>
+      revision.revision > current.revision ? revision : current,
+    bundle.revisions[0]!,
+  );
+  return latest.revision > bundle.item.revision ? latest : null;
+}
+
 function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
+  const replaced = supersededBy(bundle);
+  if (replaced && bundle.decisions.length === 0)
+    return (
+      <section
+        aria-labelledby="score-heading"
+        className="rounded-lg border bg-white p-5"
+      >
+        <h2 id="score-heading" className="font-bold">
+          Implementation result for {bundle.item.periodLabel}, revision{' '}
+          {bundle.item.revision}
+        </h2>
+        <p className="mt-2 text-sm">
+          No result: revision {replaced.revision} replaced this revision before
+          any decision was recorded on it. The quarter is scored on the latest
+          revision.
+        </p>
+      </section>
+    );
   return (
     <section
       aria-labelledby="score-heading"
@@ -198,6 +226,7 @@ function ScorePanel({ bundle }: { bundle: ReviewBundle }) {
         <h2 id="score-heading" className="font-bold">
           Implementation result for {bundle.item.periodLabel}, revision{' '}
           {bundle.item.revision}
+          {replaced && ' (as recorded on this superseded revision)'}
         </h2>
         <p className="text-xs text-base-dark">
           {bundle.score.profileName}
@@ -699,9 +728,11 @@ function MilestoneReview({
           (earlier) => earlier.milestoneId === milestone.id,
         )
       ? 'Needs re-review'
-      : bundle.canDecide
-        ? 'Awaiting your decision'
-        : 'Awaiting the officer’s decision';
+      : supersededBy(bundle)
+        ? 'No decision recorded on this revision'
+        : bundle.canDecide
+          ? 'Awaiting your decision'
+          : 'Awaiting the officer’s decision';
   return (
     <article
       aria-labelledby={`m-${milestone.code}`}
@@ -1491,12 +1522,39 @@ function Finalize({ bundle }: { bundle: ReviewBundle }) {
   );
 }
 
-/** Controlled reopen before annual publication: a new decision version with a reason (§7.4). */
+/**
+ * Controlled reopen (§7.4): a new decision version with a reason. After publication it needs an
+ * administrator's correction case for this quarter; the server says whether one exists, so the
+ * officer is told before writing a reason (HP2-51). The action itself still enforces it.
+ */
 function Reopen({ bundle }: { bundle: ReviewBundle }) {
   const [reason, setReason] = useState('');
   const mutation = useReviewMutation(bundle, () =>
     reopenReview(bundle.submissionId, reason),
   );
+  const queryClient = useQueryClient();
+  const { reopen } = bundle;
+  if (!reopen.allowed)
+    return (
+      <section
+        aria-labelledby="reopen-heading"
+        className="grid gap-2 rounded-lg border bg-white p-5"
+      >
+        <h2 id="reopen-heading" className="font-bold">
+          Reopening this review
+        </h2>
+        <p className="flex items-start gap-2 text-sm">
+          <Lock className="mt-1 size-4 shrink-0" aria-hidden="true" />
+          <span>{reopen.reason}</span>
+        </p>
+        {reopen.published && (
+          <p className="text-sm text-base-dark">
+            Ask an administrator to open the case from Annual evaluation. Its
+            reason is kept with the corrected result.
+          </p>
+        )}
+      </section>
+    );
   return (
     <section
       aria-labelledby="reopen-heading"
@@ -1509,6 +1567,15 @@ function Reopen({ bundle }: { bundle: ReviewBundle }) {
         Reopening keeps every earlier decision in the history and tells the
         institution the review is open again.
       </p>
+      {reopen.correction && (
+        <p className="rounded-md bg-primary-lighter p-3 text-sm">
+          Correction case for {reopen.correction.periodLabel}, opened by{' '}
+          {reopen.correction.openedBy},{' '}
+          {formatDateTime(reopen.correction.openedAt)}:{' '}
+          {reopen.correction.reason}. Finalizing again produces a corrected,
+          versioned result.
+        </p>
+      )}
       <div className="grid gap-2">
         <Label htmlFor="reopen-reason">Reason for reopening</Label>
         <Textarea
@@ -1526,7 +1593,16 @@ function Reopen({ bundle }: { bundle: ReviewBundle }) {
         <Button
           variant="outline"
           disabled={reason.trim().length < 10 || mutation.isPending}
-          onClick={() => mutation.mutate(undefined)}
+          onClick={() =>
+            mutation.mutate(undefined, {
+              onError: (error) => {
+                if (isApiError(error, 409))
+                  void queryClient.invalidateQueries({
+                    queryKey: reviewKeys.detail(bundle.submissionId),
+                  });
+              },
+            })
+          }
         >
           Reopen with this reason
         </Button>
@@ -1581,8 +1657,17 @@ export function ReviewPage() {
         description={
           review.data && (
             <span className="flex flex-wrap items-center gap-2">
-              <WorkflowStateBadge state={review.data.item.state} />
-              <FlagList flags={review.data.item.flags} />
+              {supersededBy(review.data) ? (
+                <span className="inline-flex items-center gap-1 rounded-sm bg-base-lightest px-2 py-1 text-xs font-bold">
+                  <History className="size-3.5" aria-hidden="true" />
+                  Superseded revision · read only
+                </span>
+              ) : (
+                <>
+                  <WorkflowStateBadge state={review.data.item.state} />
+                  <FlagList flags={review.data.item.flags} />
+                </>
+              )}
               Received {formatDateTime(review.data.receipt.receivedAt)} (
               {review.data.receipt.timeliness === 'on_time'
                 ? 'on time'
@@ -1610,10 +1695,8 @@ export function ReviewPage() {
             override && loaded.canOverride
               ? { ...loaded, canDecide: true }
               : loaded;
-          const latest = Math.max(
-            ...bundle.revisions.map((revision) => revision.revision),
-          );
-          const obsolete = bundle.item.revision < latest;
+          const replaced = supersededBy(bundle);
+          const obsolete = replaced !== null;
           const openClarification = bundle.clarifications.some(
             (clarification) => clarification.status === 'open',
           );
@@ -1626,13 +1709,36 @@ export function ReviewPage() {
                   onChange={setOverride}
                 />
               )}
-              {obsolete && (
+              {replaced && (
                 <Alert>
                   <History aria-hidden="true" />
-                  <AlertTitle>You are viewing an earlier revision</AlertTitle>
+                  <AlertTitle>
+                    Revision {bundle.item.revision} was superseded by revision{' '}
+                    {replaced.revision}
+                  </AlertTitle>
                   <AlertDescription>
-                    It is kept exactly as received and cannot be decided or
-                    finalized. Open the latest revision to continue.
+                    <p>
+                      It is kept exactly as received, with any decisions
+                      recorded on it, and cannot be decided or finalized.
+                    </p>
+                    <p className="mt-2 flex flex-wrap items-center gap-2">
+                      <span>
+                        {bundle.item.periodLabel} now, on revision{' '}
+                        {replaced.revision}:
+                      </span>
+                      <WorkflowStateBadge state={bundle.item.state} />
+                    </p>
+                    <Link
+                      to={reviewPath(session.user.role)}
+                      params={{ submissionId: replaced.submissionId }}
+                      className={buttonVariants({
+                        variant: 'plain',
+                        size: 'sm',
+                        className: 'mt-2',
+                      })}
+                    >
+                      Open revision {replaced.revision}
+                    </Link>
                   </AlertDescription>
                 </Alert>
               )}

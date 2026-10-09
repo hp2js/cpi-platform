@@ -122,7 +122,13 @@ export function SimulationPage() {
                     {formatDateTime(state.businessTime)}
                   </dd>
                   <dt className="text-base-dark">Boundary events processed</dt>
-                  <dd>{state.processedEvents}</dd>
+                  <dd>
+                    {state.processedEvents} since the seed
+                    <span className="block text-xs text-base-dark">
+                      Boundaries before the seed time, such as Q1 reporting
+                      opening, are part of the seeded state and not counted.
+                    </span>
+                  </dd>
                   <dt className="text-base-dark">Next boundary</dt>
                   <dd>
                     {next
@@ -130,45 +136,54 @@ export function SimulationPage() {
                       : 'None: the cycle is complete'}
                   </dd>
                 </dl>
-                <div className="flex flex-wrap gap-2">
-                  {next && (
-                    <Button
-                      className="h-auto max-w-full shrink py-2 text-left whitespace-normal"
-                      onClick={() => advance.mutate(next.id)}
-                      disabled={advance.isPending}
-                    >
-                      <FastForward aria-hidden="true" />
-                      Advance to {next.label}
-                    </Button>
-                  )}
-                  <Confirm
-                    trigger={
-                      <Button variant="outline" disabled={scenario.isPending}>
-                        <Play aria-hidden="true" />
-                        {scenario.isPending
-                          ? 'Running the scripted year…'
-                          : 'Run the scripted year'}
+                {!state.controls && (
+                  <p className="text-sm">
+                    Business time follows the real clock in this environment.
+                    Advancing it, starting a new run and the scripted year are
+                    available only in the isolated demonstration environment.
+                  </p>
+                )}
+                {state.controls && (
+                  <div className="flex flex-wrap gap-2">
+                    {next && (
+                      <Button
+                        className="h-auto max-w-full shrink py-2 text-left whitespace-normal"
+                        onClick={() => advance.mutate(next.id)}
+                        disabled={advance.isPending}
+                      >
+                        <FastForward aria-hidden="true" />
+                        Advance to {next.label}
                       </Button>
-                    }
-                    title="Run the scripted demonstration year?"
-                    description="Institutions and officers act through the normal application services until the evaluation cutoff. Steps already done are skipped. Publication is left for you."
-                    action="Run"
-                    onConfirm={() => scenario.mutate()}
-                  />
-                  <Confirm
-                    trigger={
-                      <Button variant="ghost" disabled={reset.isPending}>
-                        <RotateCcw aria-hidden="true" />
-                        Start a new run
-                      </Button>
-                    }
-                    title="Start a new simulation run?"
-                    description="This restores the fictional starting fixtures in a new run. The current run's data is discarded."
-                    action="Start new run"
-                    destructive
-                    onConfirm={() => reset.mutate()}
-                  />
-                </div>
+                    )}
+                    <Confirm
+                      trigger={
+                        <Button variant="outline" disabled={scenario.isPending}>
+                          <Play aria-hidden="true" />
+                          {scenario.isPending
+                            ? 'Running the scripted year…'
+                            : 'Run the scripted year'}
+                        </Button>
+                      }
+                      title="Run the scripted demonstration year?"
+                      description="Institutions and officers act through the normal application services until the evaluation cutoff. Steps already done are skipped. Publication is left for you."
+                      action="Run"
+                      onConfirm={() => scenario.mutate()}
+                    />
+                    <Confirm
+                      trigger={
+                        <Button variant="ghost" disabled={reset.isPending}>
+                          <RotateCcw aria-hidden="true" />
+                          Start a new run
+                        </Button>
+                      }
+                      title="Start a new simulation run?"
+                      description="This restores the fictional starting fixtures in a new run. The current run's data is discarded."
+                      action="Start new run"
+                      destructive
+                      onConfirm={() => reset.mutate()}
+                    />
+                  </div>
+                )}
                 {log && (
                   <div className="grid gap-2">
                     <h3 className="text-sm font-bold">
@@ -235,7 +250,7 @@ export function SimulationPage() {
                         >
                           {formatDateTime(boundary.at)}
                         </time>
-                        {!boundary.passed && (
+                        {!boundary.passed && state.controls && (
                           <Button
                             size="xs"
                             variant="ghost"

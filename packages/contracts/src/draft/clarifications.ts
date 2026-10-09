@@ -51,8 +51,6 @@ export type Clarification = z.infer<typeof clarificationSchema>;
 export const closeClarificationRequestSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
 });
-export const clarificationsSchema = z.array(clarificationSchema);
-
 export const clarificationRequestSchema = z.object({
   revision: z.number().int().positive(),
   items: z

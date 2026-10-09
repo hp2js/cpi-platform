@@ -21,6 +21,15 @@ interface RouterContext {
   queryClient: QueryClient;
 }
 
+/** The officer's institution page tabs, kept in the URL so work items can link to them. */
+const officerInstitutionTabs = [
+  'quarters',
+  'baselines',
+  'amendments',
+  'foundations',
+  'plan',
+] as const;
+type OfficerInstitutionTab = (typeof officerInstitutionTabs)[number];
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
   notFoundComponent: NotFoundPage,
@@ -80,10 +89,26 @@ const setPasswordRoute = createRoute({
     'SetPasswordPage',
   ),
 });
+const choosePasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'choose-password',
+  component: lazyRouteComponent(
+    () => import('@/routes/account-access'),
+    'ChoosePasswordPage',
+  ),
+});
 const forbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'forbidden',
   component: ForbiddenPage,
+});
+const accessibilityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'accessibility',
+  component: lazyRouteComponent(
+    () => import('@/routes/accessibility'),
+    'AccessibilityPage',
+  ),
 });
 const sessionExpiredRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -115,6 +140,8 @@ const authedRoute = createRoute({
     const session = await loadSession(context.queryClient);
     if (!session)
       throw redirect({ to: '/sign-in', search: { redirect: location.href } });
+    if (session.user.mustChangePassword)
+      throw redirect({ to: '/choose-password' });
     return { session };
   },
   component: Outlet,
@@ -252,6 +279,12 @@ const officerReviewRoute = createRoute({
 const officerInstitutionRoute = createRoute({
   getParentRoute: () => officerRoute,
   path: 'institutions/$institutionId',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: OfficerInstitutionTab } =>
+    officerInstitutionTabs.includes(search.tab as OfficerInstitutionTab)
+      ? { tab: search.tab as OfficerInstitutionTab }
+      : {},
   component: page(
     () => import('@/routes/officer/institution'),
     'OfficerInstitutionPage',
@@ -393,6 +426,14 @@ const adminAnnualRoute = createRoute({
   path: 'annual',
   component: page(() => import('@/routes/admin/annual'), 'AnnualPage'),
 });
+const adminReportIdentityRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'report-identity',
+  component: page(
+    () => import('@/routes/admin/report-identity'),
+    'ReportIdentityPage',
+  ),
+});
 const adminAssignmentsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'assignments',
@@ -419,6 +460,16 @@ const adminRiskScaleRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: 'risk-scale',
   component: page(() => import('@/routes/admin/risk-scale'), 'RiskScalePage'),
+});
+const adminYearsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'financial-years',
+  component: page(() => import('@/routes/admin/years'), 'YearsPage'),
+});
+const adminClosedYearRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'financial-years/$yearId',
+  component: page(() => import('@/routes/admin/closed-year'), 'ClosedYearPage'),
 });
 const adminCalendarRoute = createRoute({
   getParentRoute: () => adminRoute,
@@ -521,8 +572,10 @@ export const routeTree = rootRoute.addChildren([
   signInRoute,
   forgotPasswordRoute,
   setPasswordRoute,
+  choosePasswordRoute,
   forbiddenRoute,
   sessionExpiredRoute,
+  accessibilityRoute,
   authedRoute.addChildren([
     institutionRoute.addChildren([
       institutionHomeRoute,
@@ -568,7 +621,10 @@ export const routeTree = rootRoute.addChildren([
       adminHomeRoute,
       adminSimulationRoute,
       adminAnnualRoute,
+      adminReportIdentityRoute,
       adminAssignmentsRoute,
+      adminYearsRoute,
+      adminClosedYearRoute,
       adminCalendarRoute,
       adminRiskScaleRoute,
       adminInstitutionsRoute,

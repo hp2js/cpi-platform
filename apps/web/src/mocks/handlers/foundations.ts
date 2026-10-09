@@ -49,7 +49,10 @@ const calculated = (maxPoints: number, numerator: number): ComponentScore => ({
 });
 
 /** Checklist scoring (PRD §10.3): claimed checks with a supplied document, then officer-accepted checks. */
-function foundationsFor(user: MockUser, institutionId: string): Foundations {
+export function foundationsFor(
+  user: MockUser,
+  institutionId: string,
+): Foundations {
   const db = getDb();
   const internal = user.role !== 'institution';
   return {
@@ -191,7 +194,7 @@ export const foundationHandlers = [
         );
       }
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const check = checkUpload(file.name, bytes);
+      const check = await checkUpload(file.name, bytes);
       if (!check.ok)
         return apiError(422, check.message, 'upload_rejected', {
           file: check.message,

@@ -1,9 +1,12 @@
 // @vitest-environment node
 import {
   annualOverviewSchema,
+  compareResults,
   inboxSchema,
   institutionResultsSchema,
+  consolidatedReportSchema,
   oversightSchema,
+  reportBundleSchema,
   reviewBundleSchema,
   reviewQueueSchema,
   scenarioResultSchema,
@@ -82,6 +85,20 @@ describe('scripted demonstration year (PRD §17)', () => {
         'Prevention Officer A',
       ]);
 
+      // A closed quarter tells the institution what was recorded, not that it will open (HP2-47).
+      await signInAs('focal-demo-005');
+      const closedQ3 = () =>
+        request(
+          `/api/obligations/${encodeURIComponent('DEMO-005:FY2026-27-Q3')}/report`,
+          reportBundleSchema,
+        );
+      const closed = await closedQ3();
+      expect(closed).toMatchObject({
+        editable: false,
+        resultPublished: false,
+        closure: { by: 'Prevention Officer B', reason: expect.any(String) },
+      });
+
       // Nothing numerical reaches an institution before release (AT18).
       await signInAs('focal-demo-001');
       const before = await request('/api/results', institutionResultsSchema);
@@ -96,6 +113,30 @@ describe('scripted demonstration year (PRD §17)', () => {
         method: 'POST',
         json: { institutionIds: Object.keys(expected) },
       });
+      // The consolidated summary shows the §17.1 results, by institution (HP2-66).
+      const report = await request(
+        '/api/annual/report',
+        consolidatedReportSchema,
+      );
+      expect(
+        Object.fromEntries(
+          report.summary.map((row) => [row.institutionId, row.points]),
+        ),
+      ).toEqual(expected);
+      expect(report.batches).toEqual([
+        expect.objectContaining({ institutions: 8 }),
+      ]);
+      expect(report.corrections).toEqual([]);
+      expect(
+        report.coverage.find((metric) => metric.id === 'release-coverage'),
+      ).toMatchObject({ numerator: 8, denominator: 8 });
+      expect(
+        report.summary.find((row) => row.institutionId === 'DEMO-003')
+          ?.lateQuarters,
+      ).toBe(1);
+
+      await signInAs('focal-demo-005');
+      expect((await closedQ3()).resultPublished).toBe(true);
       await signInAs('focal-demo-004');
       const released = await request('/api/results', institutionResultsSchema);
       expect(released.results).toHaveLength(1);
@@ -191,6 +232,27 @@ describe('scripted demonstration year (PRD §17)', () => {
         [1, 'superseded'],
       ]);
       expect(results.results[0]?.correctionReason).toMatch(/exception review/);
+
+      // Staff read every version, and what the correction changed (HP2-68).
+      await signInAs('supervisor');
+      const staff = await request(
+        '/api/institutions/DEMO-008/results',
+        institutionResultsSchema,
+      );
+      expect(staff.results.map((result) => result.version)).toEqual([2, 1]);
+      expect(compareResults(staff.results[1]!, staff.results[0]!)).toEqual(
+        expect.arrayContaining([
+          {
+            item: 'Annual result',
+            before: '100.00 / 100',
+            after: '96.25 / 100',
+          },
+        ]),
+      );
+      await signInAs('focal-demo-008');
+      await expect(
+        request('/api/institutions/DEMO-008/results', institutionResultsSchema),
+      ).rejects.toMatchObject({ status: 403 });
     },
   );
 

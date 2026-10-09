@@ -17,7 +17,5 @@ export const apiErrorSchema = z.object({
   code: z.string().optional(),
 });
 export type ApiErrorBody = z.infer<typeof apiErrorSchema>;
-export const livenessSchema = z.object({ status: z.literal('ok') });
-
 export * from './draft/index.js';
 export * from './domain/index.js';

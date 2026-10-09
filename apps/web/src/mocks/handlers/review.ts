@@ -9,6 +9,8 @@ import {
   oversightCommentRequestSchema,
   oversightReplyRequestSchema,
   closeClarificationRequestSchema,
+  queueTiming,
+  reopenEligibility,
   type Decision,
   type ReviewBundle,
   type ReviewQueueItem,
@@ -129,6 +131,23 @@ function queueItem(submission: MockSubmission): ReviewQueueItem {
     firstSubmittedAt: obligation.firstSubmittedAt ?? receipt.receivedAt,
     decisionsRecorded: decided.length,
     decisionsRequired: milestonesOf(submission).length,
+    finalizedAt: submission.finalizedAt,
+    ...queueTiming({
+      receivedAt: receipt.receivedAt,
+      firstSubmittedAt: obligation.firstSubmittedAt ?? receipt.receivedAt,
+      finalizedAt: submission.finalizedAt,
+      reopenedAt:
+        db.reopenings
+          .filter((reopening) => reopening.submissionId === submission.id)
+          .at(-1)?.at ?? null,
+      clarificationRequestedAt:
+        db.clarifications.find(
+          (clarification) =>
+            clarification.submissionId === submission.id &&
+            clarification.status === 'open',
+        )?.requestedAt ?? null,
+      now: db.businessTime,
+    }),
   };
 }
 
@@ -296,7 +315,40 @@ function reviewBundle(
     reopenings: db.reopenings
       .filter((reopening) => reopening.obligationId === obligation.id)
       .map(({ reason, by, at }) => ({ reason, by, at })),
+    reopen: reopenOf(submission),
   };
+}
+
+/** Whether this review can be reopened now, from publication and correction cases (HP2-51). */
+function reopenOf(submission: MockSubmission) {
+  const db = getDb();
+  const obligation = obligationOf(submission);
+  const correction = db.corrections.find(
+    (candidate) =>
+      candidate.institutionId === obligation.institutionId &&
+      candidate.closedAt === null,
+  );
+  return reopenEligibility({
+    finalized: submission.finalizedAt !== null,
+    current: obligation.currentRevision === submission.revision,
+    periodId: obligation.periodId,
+    periodLabel: periodOf(obligation.periodId).label,
+    institutionId: obligation.institutionId,
+    published: db.publications.some(
+      (publication) =>
+        publication.institutionId === obligation.institutionId &&
+        publication.supersededBy === null,
+    ),
+    correction: correction
+      ? {
+          periodId: correction.periodId,
+          periodLabel: periodOf(correction.periodId).label,
+          reason: correction.reason,
+          openedBy: correction.openedBy,
+          openedAt: correction.openedAt,
+        }
+      : null,
+  });
 }
 
 /** Append a decision, superseding any active one for the same milestone and revision. */

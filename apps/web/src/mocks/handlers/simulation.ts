@@ -4,6 +4,7 @@ import {
   assignmentChangeRequestSchema,
   type SimulationState,
 } from '@cpi/contracts';
+import { cycle as seededCycle } from '@cpi/contracts/fixtures';
 import { commit, getDb, resetDb } from '../db';
 import { advanceTo, boundaryState } from '../services/clock';
 import { audit } from '../services/events';
@@ -23,6 +24,8 @@ function state(): SimulationState {
     businessTime: db.businessTime,
     boundaries: boundaryState(),
     processedEvents: db.processedEvents.length,
+    // The mock is always a demonstration.
+    controls: true,
   };
 }
 
@@ -99,6 +102,14 @@ export const simulationHandlers = [
 
   http.post('/api/simulation/scenario', async () => {
     requireRole('administrator');
+    // The script replays the seeded year; after a new year opens it would not fit (HP2-100).
+    const active = getDb().cycle;
+    if (active.id !== seededCycle.id)
+      return apiError(
+        409,
+        `The scripted year replays ${seededCycle.label}, but ${active.label} is the active year. Start a new simulation run first.`,
+        'scenario_needs_new_run',
+      );
     try {
       const result = await runScenario();
       return HttpResponse.json(result);
@@ -152,11 +163,23 @@ export const simulationHandlers = [
         assignment.institutionId === parsed.data.institutionId &&
         assignment.validTo === null,
     );
-    if (!officer || !current) return notFound();
-    if (current.officerId === officer.id)
+    if (
+      !officer ||
+      !db.institutions.some((item) => item.id === parsed.data.institutionId)
+    )
+      return notFound();
+    if (current?.officerId === officer.id)
       return apiError(409, 'This officer is already assigned.', 'no_change');
     const { coverUntil, handoverNote, reason, suggestionId, institutionId } =
       parsed.data;
+    // No current assignment: the institution was created without a reviewing officer.
+    if (!current && coverUntil)
+      return apiError(
+        422,
+        'Cover needs a current officer to return to. Assign the officer without cover.',
+        'invalid_request',
+        { coverUntil: 'Leave cover empty for a first assignment.' },
+      );
     if (coverUntil && coverUntil <= localDate(db.businessTime))
       return apiError(422, 'Cover must end after today.', 'invalid_request', {
         coverUntil: 'Choose a date after today.',

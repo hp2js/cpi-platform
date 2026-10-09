@@ -1,7 +1,9 @@
 import { asc, desc, inArray, isNull } from 'drizzle-orm';
 import {
+  annualTotal,
+  consolidatedSummary,
+  defaultReportIdentity,
   isEvidenceAnswer,
-  add,
   format2,
   mul,
   points as formatPoints,
@@ -18,6 +20,7 @@ import {
   type PublishedResult,
   type QuarterDisposition,
   type Rational,
+  quarterReportingStatus,
 } from '@cpi/contracts';
 import type { Db } from '../database/db';
 import {
@@ -316,31 +319,18 @@ export function evaluate(
       ),
   ];
   let total: AnnualEvaluation['total'];
-  if (reasons.length === 0) {
-    const foundationPoints = sum(
-      foundations.map((foundation) =>
-        mul(
-          rational(foundationMax[foundation.outcome.kind]),
+  if (reasons.length === 0)
+    total = annualTotal(
+      w,
+      Object.fromEntries(
+        foundations.map((foundation) => [
+          foundation.outcome.kind,
           foundation.fraction!,
-        ),
-      ),
+        ]),
+      ) as Record<FoundationKind, Rational>,
+      quarters.map((quarter) => quarter.fraction!),
     );
-    const average = mul(
-      sum(quarters.map((quarter) => quarter.fraction!)),
-      rational(1, 4),
-    );
-    const implementationPoints = mul(rational(w.implementation), average);
-    total = {
-      status: 'calculated',
-      points: format2(add(foundationPoints, implementationPoints)),
-      implementationAverage: {
-        numerator: Number(average.n),
-        denominator: Number(average.d),
-      },
-      foundationPoints: format2(foundationPoints),
-      implementationPoints: format2(implementationPoints),
-    };
-  } else total = { status: 'pending', reasons };
+  else total = { status: 'pending', reasons };
 
   const publication = data.publications.find(
     (candidate) =>
@@ -458,6 +448,7 @@ export function toPublished(
     correctionReason: publication.correctionReason,
     profileName: publication.profileName,
     simulation: true,
+    identity: publication.identity ?? defaultReportIdentity,
     evaluation: publication.evaluation as PublishedResult['evaluation'],
   };
 }
@@ -491,6 +482,17 @@ export function consolidated(
             : ['Ready, not yet published'],
       };
     });
+  const history = data.publications
+    .filter((publication) => scope.includes(publication.institutionId))
+    .map((publication) => toPublished(data, publication));
+  const { metrics, backlog } = oversight(data, scope, false, {
+    periodId: null,
+    institutionId: null,
+    officerId: null,
+  });
+  const quarters = data.obligations.filter((obligation) =>
+    scope.includes(obligation.institutionId),
+  ).length;
   return {
     schemaVersion: 'cpi-export-1',
     simulation: true,
@@ -499,6 +501,18 @@ export function consolidated(
     profileName: data.profile.name,
     released,
     unreleased,
+    ...consolidatedSummary(released, unreleased, history),
+    coverage: [
+      ...metrics,
+      metric(
+        'closed-nonresponse',
+        'Closed without submission',
+        'Institution-quarters closed without submission ÷ all institution-quarters',
+        backlog.closedNonresponse,
+        quarters,
+      ),
+    ],
+    weights: data.profile.weights,
   };
 }
 
@@ -778,6 +792,12 @@ export function oversight(
     return {
       periodId: period.id,
       periodLabel: period.label,
+      status: quarterReportingStatus(period, data.businessTime),
+      submissionDeadline: period.submissionDeadline,
+      expected: quarter.length,
+      received: quarter.filter(
+        (obligation) => obligation.currentRevision !== null,
+      ).length,
       due: dueHere.length,
       submitted: dueHere.filter(
         (obligation) => obligation.currentRevision !== null,

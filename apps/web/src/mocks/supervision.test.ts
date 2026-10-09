@@ -309,3 +309,18 @@ describe('reassignment suggestions', () => {
     });
   });
 });
+
+describe('quarter status in oversight (HP2-55)', () => {
+  it('reads an open quarter as open, with its deadline and reports in', async () => {
+    await submittedQ1('DEMO-001');
+    const [q1, q2] = (await request('/api/oversight', oversightSchema)).trends;
+    expect(q1).toMatchObject({
+      status: 'open',
+      expected: 4,
+      received: 1,
+      due: 0,
+      submissionDeadline: expect.stringMatching(/^2026-10-15T/),
+    });
+    expect(q2).toMatchObject({ status: 'not_open', received: 0 });
+  });
+});
