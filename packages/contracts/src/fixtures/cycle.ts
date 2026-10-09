@@ -5,6 +5,7 @@ export const cycle: Cycle = {
   id: 'FY2026-27',
   label: 'FY 2026/27',
   timezone: 'Africa/Nairobi',
+  openedAt: null,
   foundationDeadline: '2026-09-30T23:59:59+03:00',
   evaluationCutoff: '2027-07-31T23:59:59+03:00',
   periods: [

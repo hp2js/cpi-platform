@@ -22,16 +22,28 @@ import {
 } from '../draft/planning.js';
 import { committee, committeeCodes } from '../fixtures/baselines.js';
 import { parseCsv } from './csv.js';
-import { endOfDay, shiftDays } from './days.js';
+import { endOfDay, localDate, shiftDays } from './days.js';
 
 /*
  * Institution plan rules shared by the API and the development mock (FR04): when proposals
  * are due, what a proposal holds, and the plan CSV import.
  */
 
-/** Proposals are due the configured number of counted days before the quarter starts. */
-export function proposalDueAt(period: Period, rule: DayCounting) {
-  return endOfDay(shiftDays(period.startsOn, -rule.proposalLeadDays, rule));
+/**
+ * Proposals are due the configured number of counted days before the quarter starts. In a year
+ * opened after that date (HP2-100), nobody could have proposed in time, so the institution gets
+ * the same lead time from the day the year opened instead of starting late.
+ */
+export function proposalDueAt(
+  period: Period,
+  rule: DayCounting,
+  openedAt: string | null = null,
+) {
+  const due = endOfDay(
+    shiftDays(period.startsOn, -rule.proposalLeadDays, rule),
+  );
+  if (!openedAt || Date.parse(due) >= Date.parse(openedAt)) return due;
+  return endOfDay(shiftDays(localDate(openedAt), rule.proposalLeadDays, rule));
 }
 
 export const periodStartsAt = (period: Period) =>

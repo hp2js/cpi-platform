@@ -406,6 +406,7 @@ export class YearsService {
         foundationDeadline: planned.foundationDeadline,
         evaluationCutoff: planned.evaluationCutoff,
         profileId: planned.profileId,
+        openedAt: businessTime,
       });
       await tx
         .insert(schema.periods)

@@ -192,6 +192,8 @@ export const scoringProfiles = pgTable('scoring_profiles', {
 export const cycles = pgTable('cycles', {
   id: text().primaryKey(),
   label: text().notNull(),
+  /** When the year was opened from the previous one (HP2-100); null for the seeded year. */
+  openedAt: instant(),
   timezone: text().notNull(),
   foundationDeadline: instant().notNull(),
   evaluationCutoff: instant().notNull(),

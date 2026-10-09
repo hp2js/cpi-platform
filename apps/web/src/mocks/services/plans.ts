@@ -50,9 +50,9 @@ export function periodLocked(
   );
 }
 
-/** Proposals are due the configured number of counted days before the quarter starts. */
+/** Proposals are due the configured lead before the quarter starts, or after a late opening. */
 export const proposalDueAt = (db: MockDb, period: Period) =>
-  sharedDueAt(period, db.cycle.dayCounting);
+  sharedDueAt(period, db.cycle.dayCounting, db.cycle.openedAt);
 
 export { periodStartsAt, sameMilestones } from '@cpi/contracts';
 

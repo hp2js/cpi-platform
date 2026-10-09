@@ -243,6 +243,7 @@ function openYear(
     foundationDeadline: planned.foundationDeadline,
     evaluationCutoff: planned.evaluationCutoff,
     periods: planned.periods,
+    openedAt: db.businessTime,
   };
   db.cycleProfileId = planned.profileId;
   db.forms = form

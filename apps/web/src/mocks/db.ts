@@ -321,10 +321,11 @@ export interface MockDelivery {
  * 20: the report identity, its change log and images; the identity kept with each release.
  * 21: planned financial years and their change log.
  * 22: closed financial years and their archived results.
+ * 23: the cycle's `openedAt`.
  */
-export const SCHEMA_VERSION = 22;
+export const SCHEMA_VERSION = 23;
 /** `${version}:${shape}` of the seed this version describes. */
-export const SCHEMA_SHAPE = '22:3b2bedb2';
+export const SCHEMA_SHAPE = '23:37656e3f';
 const STORAGE_KEY = 'cpi-mock-db';
 
 /** The keys of every record in the seed, as one string: changes when a record gains a field. */
