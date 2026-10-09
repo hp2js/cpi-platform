@@ -112,6 +112,9 @@
   --text-sm--line-height: 1.62;
   --text-md: 1.0625rem;
   --text-md--line-height: 1.62;
+  /* Card and question titles: between body text and section headings. */
+  --text-title: 1.1875rem;
+  --text-title--line-height: 1.35;
   --text-lg: 1.375rem;
   --text-lg--line-height: 1.2;
   --text-xl: 2rem;
