@@ -78,7 +78,7 @@ jobs:
         with:
           sarif_file: security/reports/upload/${{ matrix.tool }}.sarif
           category: ${{ matrix.tool }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sarif-${{ matrix.tool }}
           path: security/reports/${{ matrix.tool }}.sarif
@@ -120,7 +120,7 @@ jobs:
         with:
           sarif_file: security/reports/upload/trivy-image-cpi-${{ matrix.app }}.sarif
           category: trivy-image-${{ matrix.app }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sarif-trivy-image-${{ matrix.app }}
           path: |
@@ -140,7 +140,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: scripts/security-scan.sh gitleaks-regression
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gitleaks-regression
           path: security/reports/regression/
@@ -220,7 +220,7 @@ jobs:
       - name: Apply the merge policy
         if: always()
         run: node scripts/sarif-gate.mjs security/reports/*.sarif --summary "$GITHUB_STEP_SUMMARY" | tee security/reports/gate.md
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: secure-pr-gate-evidence
