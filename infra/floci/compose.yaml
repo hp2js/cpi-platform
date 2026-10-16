@@ -4,7 +4,7 @@
 name: cpi-floci
 services:
   floci-az:
-    image: floci/floci-az:0.13.0@sha256:3a71953fbc0940aa33bbc1c5e88211a320b66812c0840831a9f8558d3d3521c5
+    image: floci/floci-az:0.14.0@sha256:a35e74dfca9a5e811090d8ae98876044fc8990a8874ee525231f524ca56679db
     environment:
       FLOCI_AZ_TLS_ENABLED: 'true'
       FLOCI_AZ_HOSTNAME: floci-az
