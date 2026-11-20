@@ -12,7 +12,7 @@ WORKDIR /src
 RUN tar -xzf /tmp/source.tar.gz --strip-components=1
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -trimpath -o /out/mc .
 
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS server
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS server
 COPY --from=server-build /out/minio /usr/local/bin/minio
 RUN mkdir /data && chown 10001:10001 /data
 USER 10001:10001
@@ -20,7 +20,7 @@ EXPOSE 9000 9001
 ENTRYPOINT ["minio"]
 CMD ["server", "/data", "--console-address", ":9001"]
 
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS setup
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS setup
 COPY --from=client-build /out/mc /usr/local/bin/mc
 COPY docker/minio-init.sh /usr/local/bin/minio-init
 USER 10001:10001
